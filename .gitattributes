@@ -1,0 +1,65 @@
+* text=auto eol=lf
+
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php
+
+# =============================================================================
+# Distribution: export-ignore
+# These paths are excluded from `git archive` output (distribution packages).
+# Nothing is deleted from the repo — only excluded from client-facing archives.
+# Usage: git archive --format=zip --prefix=SecureCAT/ HEAD -o SecureCAT-dist.zip
+# =============================================================================
+
+# --- CI/CD & GitHub ---
+/.github export-ignore
+CHANGELOG.md export-ignore
+.styleci.yml export-ignore
+
+# --- Planning & documentation (internal) ---
+/docs export-ignore
+/graphify-out export-ignore
+
+# --- Defense / presentation / demo files ---
+defense-documentation.md export-ignore
+defense-notes.md export-ignore
+DEMO.md export-ignore
+demo-launch.ps1 export-ignore
+demo-launch.sh export-ignore
+Demo-template.md export-ignore
+presentation-securecat.md export-ignore
+SYSTEM-DEFENSE-DOCUMENTATION.md export-ignore
+system-defense.html export-ignore
+system-planning-prompt.md export-ignore
+stitch-ppt-theme.html export-ignore
+SecureCAT-pilot-proposal.md export-ignore
+securecat-architecture-reference.md export-ignore
+securecat-architecture-reference.docx export-ignore
+mockup.html export-ignore
+REVIEW.md export-ignore
+changes.txt export-ignore
+
+# --- Temp / scratch files ---
+/temp-laravel export-ignore
+check_dupes.php export-ignore
+write_index.py export-ignore
+test_debug.php export-ignore
+test_output.txt export-ignore
+tests_output.txt export-ignore
+mailpit_messages.json export-ignore
+
+# --- Screenshots / images (dev artifacts) ---
+home-header.png export-ignore
+home-page-header.png export-ignore
+release-index-verify.png export-ignore
+release-index-wide.png export-ignore
+
+# --- Development configs ---
+/.editorconfig export-ignore
+/.prettierrc export-ignore
+/phpunit.xml export-ignore
+/.env.example export-ignore
+docker-compose.yml export-ignore
+setup-scheduler.bat export-ignore

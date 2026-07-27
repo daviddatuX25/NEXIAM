@@ -1,0 +1,126 @@
+/*
+ * Print Template — Sandboxed Tailwind CSS
+ *
+ * This is a SEPARATE Tailwind build for print templates (result sheets, admission slips).
+ * It's isolated from the global app.css via CSS @scope, so changes to the app's
+ * global styles won't break template rendering.
+ *
+ * How it works:
+ *  1. Tailwind scans print-template-safelist.html for classes used in templates
+ *  2. Vite builds this as a separate CSS entry → public/build/print-template-[hash].css
+ *  3. PrintTemplateCssService loads the built CSS and injects it into rendered HTML
+ *  4. All styles are scoped to .print-template via @scope (browser-native CSS isolation)
+ *
+ * Theme values are duplicated here on purpose — they're frozen snapshots.
+ * Changing the app theme will NOT automatically propagate to print templates.
+ * Update this file intentionally when you want to change print template styling.
+ *
+ * DARK MODE IMMUNITY: Custom properties are defined on .print-template (not :root)
+ * so they override .dark's inherited values. Since .print-template is a closer
+ * ancestor than <html class="dark">, its custom property values win by inheritance.
+ */
+
+@import 'tailwindcss';
+
+/* Scan the safelist for template-specific classes (DB-stored HTML) */
+@source './print-template-safelist.html';
+
+/* Scan service files for dynamically generated classes */
+@source '../../app/Services/ResultSheetTemplateService.php';
+@source '../../app/Services/AdmissionSlipTemplateService.php';
+
+/* ---- Frozen theme for print templates ---- */
+/* Defined on .print-template (not :root) to override dark mode inheritance.
+ * .print-template is closer in the DOM than <html class="dark">,
+ * so its custom properties win for all descendants. */
+
+.print-template {
+    --background: oklch(0.97 0.01 87.41);
+    --foreground: oklch(0.31 0.02 148.20);
+    --card: oklch(1 0 0 / 0.95);
+    --card-solid: oklch(0.97 0.01 87.41);
+    --card-foreground: oklch(0.30 0.04 29.20);
+    --popover: oklch(0.97 0.01 87.41);
+    --popover-foreground: oklch(0.30 0.04 29.20);
+    --primary: oklch(0.52 0.13 144.33);
+    --primary-foreground: oklch(1.00 0 0);
+    --secondary: oklch(0.96 0.02 147.54);
+    --secondary-foreground: oklch(0.43 0.12 144.33);
+    --muted: oklch(0.94 0.01 72.65);
+    --muted-foreground: oklch(0.50 0.01 156.76);
+    --accent: oklch(0.90 0.05 146.01);
+    --accent-foreground: oklch(0.43 0.12 144.33);
+    --destructive: oklch(0.54 0.19 26.90);
+    --destructive-foreground: oklch(1.00 0 0);
+    --border: oklch(0.88 0 0);
+    --input: oklch(0.88 0.02 77.29);
+    --ring: oklch(0.52 0.13 144.33);
+
+    --font-sans: Montserrat, sans-serif;
+    --font-serif: Merriweather, serif;
+    --font-mono: Source Code Pro, monospace;
+
+    --radius: 0.5rem;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-solid: var(--card-solid);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-mono);
+    --font-serif: var(--font-serif);
+
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Print-specific base styles — force light-mode appearance */
+@layer base {
+    .print-template {
+        font-family: var(--font-sans);
+        color: var(--foreground);
+        background: var(--background);
+        border-color: var(--border);
+    }
+}
+
+/* Dual-layout: two applicants on one page, 50/50 vertical split */
+.print-template--dual {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    height: 100%;
+}
+
+.print-template--half {
+    overflow: hidden;
+}
+
+/* Print-mode resets for dual layout */
+@media print {
+    .print-template--dual {
+        grid-template-rows: 1fr 1fr;
+        height: 100%;
+        page-break-inside: avoid;
+    }
+}

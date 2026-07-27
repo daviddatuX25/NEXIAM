@@ -1,0 +1,6 @@
+# Notification Sounds
+
+This directory contains notification sound files.
+
+Currently using Web Audio API in `notification-sound.js` for sound generation.
+Add MP3 files here if you want to use custom sound files.

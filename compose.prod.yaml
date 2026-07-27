@@ -1,0 +1,83 @@
+# ==============================================================================
+# SECURECAT V2 — PRODUCTION DOCKER COMPOSE CONFIGURATION FOR DOKPLOY
+# ==============================================================================
+# This file automates the creation of the Web App, MySQL database, network,
+# and persistent volumes.
+# ==============================================================================
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        expose:
+            - "80" # Exposed for Dokploy's built-in reverse proxy (Nginx) to route traffic
+        environment:
+            APP_NAME: "SecureCAT"
+            APP_ENV: production
+            APP_DEBUG: "false"
+            APP_URL: "${APP_URL}"
+            APP_KEY: "${APP_KEY}"
+            
+            # Database Configuration (matches the linked mysql service below)
+            DB_CONNECTION: mysql
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: "${DB_DATABASE:-securecat}"
+            DB_USERNAME: root
+            DB_PASSWORD: "${DB_PASSWORD:-secret}"
+
+            # Drivers (using database for minimal footprint)
+            CACHE_STORE: database
+            SESSION_DRIVER: database
+            QUEUE_CONNECTION: database
+            SESSION_LIFETIME: 10080
+            SESSION_ENCRYPT: "false"
+
+            # PDF and Office Document tools (pre-installed inside the image)
+            LARAVEL_PDF_DRIVER: browsershot
+            LARAVEL_PDF_CHROME_PATH: "/usr/bin/chromium"
+            LARAVEL_PDF_NO_SANDBOX: "true"
+            LARAVEL_PDF_NODE_BINARY: "/usr/bin/node"
+            LARAVEL_PDF_NPM_BINARY: "/usr/bin/npm"
+            LIBRE_OFFICE_PATH: "/usr/bin/libreoffice"
+            PDFUNITE_PATH: "/usr/bin/pdfunite"
+            DOCX_CONVERSION_TIMEOUT: 120
+
+            # Super Admin Account (seeded automatically on first run)
+            SUPER_ADMIN_EMAIL: "${SUPER_ADMIN_EMAIL:-sarmientodaviddatu@gmail.com}"
+            SUPER_ADMIN_PASSWORD: "${SUPER_ADMIN_PASSWORD}"
+            SUPER_ADMIN_NAME: "Super Admin"
+
+            # AI Features (Optional)
+            OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+            MIXEDBREAD_API_KEY: "${MIXEDBREAD_API_KEY:-}"
+            MIXEDBREAD_STORE_ID: "${MIXEDBREAD_STORE_ID:-}"
+        volumes:
+            # Persist ALL of storage: uploads, logs, sessions, framework cache
+            - securecat-storage:/var/www/html/storage
+        depends_on:
+            mysql:
+                condition: service_healthy
+        restart: always
+
+    mysql:
+        image: 'mysql:8.4'
+        environment:
+            MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-secret}"
+            MYSQL_DATABASE: "${DB_DATABASE:-securecat}"
+        volumes:
+            # Mount persistent storage for the database files
+            - securecat-db:/var/lib/mysql
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p$${MYSQL_ROOT_PASSWORD}"]
+            retries: 5
+            timeout: 5s
+            interval: 5s
+        restart: always
+
+volumes:
+    securecat-storage:
+        driver: local
+    securecat-db:
+        driver: local

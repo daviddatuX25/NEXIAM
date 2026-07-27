@@ -1,0 +1,72 @@
+/* Toast notification customization for SecureCAT */
+
+/* Toast container - top right position (D-02) */
+.french-toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 420px;
+}
+
+/* Individual toast styling */
+.french-toast {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px -5px rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-family: inherit;
+    animation: french-toast-enter 0.3s ease-out;
+}
+
+/* Enter animation */
+@keyframes french-toast-enter {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Exit animation */
+@keyframes french-toast-leave {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.french-toast--exiting {
+    animation: french-toast-leave 0.2s ease-in forwards;
+}
+
+/* Progress bar (D-03: auto-dismiss indicator) */
+.french-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: hsl(var(--primary));
+    border-radius: 0 0 0.75rem 0.75rem;
+}
+
+/* Toast variants */
+.french-toast--success { border-left: 4px solid hsl(var(--success)); }
+.french-toast--error { border-left: 4px solid hsl(var(--destructive)); }
+.french-toast--info { border-left: 4px solid hsl(var(--primary)); }
