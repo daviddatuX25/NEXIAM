@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Applicant Portal</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:system-ui,sans-serif;background:#e8ecf1;color:#333}
+  .wf{max-width:480px;margin:24px auto;background:#fff;border:2px solid #d0d0d0;border-radius:8px;overflow:hidden}
+  .wf-topbar{background:#f5f5f5;border-bottom:1px solid #ddd;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .wf-topbar .logo{font-weight:700;color:#444}.wf-topbar span{color:#999}
+  .wf-content{padding:20px}
+  .wf-page-title{font-size:16px;font-weight:700;color:#222;margin-bottom:16px}
+  .wf-label{font-size:10px;text-transform:uppercase;color:#999;letter-spacing:1px;margin-bottom:4px}
+  .wf-box{border:1.5px dashed #ccc;border-radius:6px;padding:14px;margin-bottom:14px;background:#fcfcfc}
+  .wf-box h4{font-size:13px;color:#444;margin-bottom:8px}
+  .wf-placeholder{background:#eee;border:1px dashed #ccc;border-radius:4px;min-height:40px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#999;text-align:center}
+  .wf-input{width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;margin-bottom:8px}
+  .wf-btn{display:inline-block;padding:8px 20px;border:1.5px solid #5c7cfa;border-radius:4px;font-size:12px;color:#fff;background:#5c7cfa;text-align:center;cursor:pointer;width:100%}
+  .wf-status{display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px}
+  .wf-dot{width:10px;height:10px;border-radius:50%;background:#5c7cfa;flex-shrink:0}
+  .wf-dot.done{background:#22c55e}.wf-dot.pending{background:#ccc}
+  .wf-note{font-size:10px;color:#aaa;font-style:italic;margin-top:8px;text-align:center}
+  .wf-tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;margin-right:4px;background:#eef1ff;color:#5c7cfa}
+  .nav-row{display:flex;gap:6px;margin-bottom:16px}
+  .nav-row a{font-size:11px;color:#5c7cfa;text-decoration:none}
+  /* Mobile frame */
+  .phone-frame{max-width:400px;margin:0 auto;border:3px solid #333;border-radius:24px;padding:12px;background:#fff}
+</style></head>
+<body>
+
+<div class="nav-row" style="max-width:480px;margin:12px auto 0;padding:0 12px"><a href="index.html">← All Roles</a></div>
+
+<!-- SCREEN 1: APPLICANT LOGIN -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Applicant Portal</span></div>
+  <div class="wf-content">
+    <div class="wf-page-title">Welcome, Applicant</div>
+    <div class="wf-label">Enter your Identifier Key</div>
+    <input class="wf-input" type="text" placeholder="e.g. APP-2026-0451" value="APP-2026-0451">
+    <input class="wf-input" type="password" placeholder="Password" value="••••••••">
+    <button class="wf-btn">Sign In</button>
+    <div class="wf-note">Identifier key given at registration. No email needed.</div>
+  </div>
+</div>
+
+<!-- SCREEN 2: APPLICANT DASHBOARD -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Applicant Dashboard</span></div>
+  <div class="wf-content">
+    <div class="wf-page-title">Hello, Juan Dela Cruz <span class="wf-tag">APP-0451</span></div>
+    
+    <div class="wf-box">
+      <h4>Application Status</h4>
+      <div class="wf-status"><span class="wf-dot done"></span> Application Submitted</div>
+      <div class="wf-status"><span class="wf-dot done"></span> Application Accepted</div>
+      <div class="wf-status"><span class="wf-dot"></span> Scheduled for Exam — July 22, 2026, 8:00 AM</div>
+      <div class="wf-status"><span class="wf-dot pending"></span> Exam — Pending</div>
+      <div class="wf-status"><span class="wf-dot pending"></span> Scores — Pending</div>
+      <div class="wf-status"><span class="wf-dot pending"></span> Results Released — Pending</div>
+    </div>
+
+    <div class="wf-box">
+      <h4>Notifications</h4>
+      <div style="font-size:12px">📧 Your exam is scheduled for July 22, 8:00 AM at Room 201</div>
+      <div style="font-size:12px;margin-top:4px">📧 Application accepted. Please review your admission slip.</div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <span class="wf-btn" style="width:auto;font-size:11px;padding:6px 12px">📄 Admission Slip</span>
+      <span class="wf-btn" style="width:auto;font-size:11px;padding:6px 12px;background:#fff;color:#5c7cfa">💬 Ask Chatbot</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: CHATBOT -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Assistant</span></div>
+  <div class="wf-content">
+    <div class="wf-page-title">💬 Admission Assistant</div>
+    <div class="wf-note" style="text-align:left;margin-bottom:12px">Ask me about: deadlines, requirements, exam schedules, campus info. I cannot recommend courses — please consult Guidance Office for course advice.</div>
+    
+    <div class="wf-box" style="background:#eef1ff;border-color:#d0d8ff">
+      <div style="font-size:12px"><strong>You:</strong> What are the requirements for BSIT?</div>
+    </div>
+    <div class="wf-box" style="background:#f5f5f5">
+      <div style="font-size:12px"><strong>Assistant:</strong> BSIT requires: Form 138 (Report Card), Certificate of Good Moral Character, 2×2 ID photo, PSA Birth Certificate. Application fee: ₱150. Deadline: August 15, 2026. For course recommendations, please visit the Guidance Office.</div>
+    </div>
+    
+    <div class="wf-box" style="background:#eef1ff;border-color:#d0d8ff">
+      <div style="font-size:12px"><strong>You:</strong> Which course should I take?</div>
+    </div>
+    <div class="wf-box" style="background:#fff5f5;border-color:#fcc">
+      <div style="font-size:12px"><strong>Assistant:</strong> I don't provide course recommendations. Please visit the Guidance Office for personalized counseling based on your exam results. They can help you find the right program.</div>
+    </div>
+
+    <input class="wf-input" type="text" placeholder="Type your question...">
+    <button class="wf-btn">Send</button>
+  </div>
+</div>
+
+<!-- SCREEN 4: ADMISSION SLIP -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Admission Slip</span></div>
+  <div class="wf-content">
+    <div class="wf-page-title">Admission Slip</div>
+    <div class="wf-box">
+      <div style="font-size:12px;line-height:2">
+        <strong>ISPSC Tagudin Campus</strong><br>
+        Applicant: <strong>Juan Dela Cruz</strong><br>
+        ID: APP-2026-0451<br>
+        Program: BS Information Technology<br>
+        Exam Date: <strong>July 22, 2026 · 8:00 AM</strong><br>
+        Room: <strong>201</strong><br>
+        Proctor: TBA<br><br>
+        <em>Bring this slip and a valid ID.</em>
+      </div>
+    </div>
+    <button class="wf-btn">Download PDF</button>
+  </div>
+</div>
+
+</body></html>

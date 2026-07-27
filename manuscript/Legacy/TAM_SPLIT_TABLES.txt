@@ -1,0 +1,132 @@
+# NEXIAM — Registrar & Guidance TAM Split (Mirrored + Unique)
+# ===================================================================
+# Design rule: 2 items mirrored (shared concern), 2 items office-specific
+# Mirrored items for PU: visibility (PU-3) and inter-office coordination (PU-4)
+# Mirrored items for PEOU: clarity/understandability (PEOU-4) and ease of learning (PEOU-2)
+# Mirrored for ATU: satisfaction (ATU-4) and general attitude (ATU-1)
+# Mirrored for BIU: overall intention (BIU-4) and recommendation (BIU-2)
+# ===================================================================
+
+# ===================================================================
+# PERCEIVED USEFULNESS (PU)
+# ===================================================================
+
+**Table 3.1a. TAM Indicators for Perceived Usefulness (PU) of Registrar Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | The current manual process allows me to process admissions efficiently. | NEXIAM allows me to process admissions efficiently. |
+| 2 | The current manual process helps me complete admission-related tasks faster. | NEXIAM helps me complete admission-related tasks faster. |
+| 3 | The current manual process gives me sufficient visibility into an applicant's status when needed. | NEXIAM gives me sufficient visibility into an applicant's status when needed. |
+| 4 | The current manual process reduces my overall workload when coordinating with the Guidance Office. | NEXIAM reduces my overall workload when coordinating with the Guidance Office. |
+
+
+**Table 3.1b. TAM Indicators for Perceived Usefulness (PU) of Guidance Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | I currently have limited tools to profile applicants based on their exam performance. | NEXIAM's decision-support triage helps me evaluate applicant readiness for placement. |
+| 2 | The current manual review of exam scores is adequate for my counseling sessions. | NEXIAM's triage output provides useful profiles for counseling sessions. |
+| 3 | The current manual process gives me sufficient visibility into an applicant's status when needed. | NEXIAM gives me sufficient visibility into an applicant's status when needed. |
+| 4 | The current manual process reduces my overall workload when coordinating with the Registrar Office. | NEXIAM reduces my overall workload when coordinating with the Registrar Office. |
+
+>>> Mirror: Items 3 and 4 (visibility + inter-office coordination)
+>>> Unique: Items 1 and 2 (Registrar = efficiency/speed, Guidance = triage/profiling)
+
+
+# ===================================================================
+# PERCEIVED EASE OF USE (PEOU)
+# ===================================================================
+
+**Table 4.1a. TAM Indicators for Perceived Ease of Use (PEOU) of Registrar Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | It is easy to navigate the current manual scheduling and stencil scoring. | It is easy to navigate the AI-assisted scheduling and automated OMR scoring. |
+| 2 | Learning how to carry out the current admission procedures took little effort. | Learning how to use NEXIAM took little effort. |
+| 3 | It is easy for me to correct mistakes when using the current manual process. | It is easy for me to correct mistakes when using NEXIAM. |
+| 4 | Interacting with the current process is generally clear and understandable. | Interacting with NEXIAM is generally clear and understandable. |
+
+
+**Table 4.1b. TAM Indicators for Perceived Ease of Use (PEOU) of Guidance Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | Reviewing exam scores manually for placement decisions is straightforward. | Navigating the decision-support triage in NEXIAM is straightforward. |
+| 2 | Learning how to carry out the current admission procedures took little effort. | Learning how to use NEXIAM took little effort. |
+| 3 | It is easy to manually correlate applicant scores with program requirements. | It is easy to read and interpret the triage profiles in NEXIAM. |
+| 4 | Interacting with the current process is generally clear and understandable. | Interacting with NEXIAM is generally clear and understandable. |
+
+>>> Mirror: Items 2 and 4 (learning ease + clarity/understandability)
+>>> Unique: Items 1 and 3 (Registrar = scheduling/OMR, Guidance = triage/profiles)
+
+
+# ===================================================================
+# ATTITUDE TOWARD USE (ATU)
+# ===================================================================
+
+**Table 5.1a. TAM Indicators for Attitude Toward Use (ATU) of Registrar Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | I have a favorable attitude toward the current manual admission workflow. | I have a favorable attitude toward using the NEXIAM platform. |
+| 2 | Using the current manual process is a good idea for managing admissions. | Using NEXIAM is a good idea for managing admissions. |
+| 3 | I find the current manual process to be a pleasant way of getting work done. | I find NEXIAM to be a pleasant way of getting work done. |
+| 4 | Overall, I am satisfied with the current manual process. | Overall, I am satisfied with NEXIAM. |
+
+
+**Table 5.1b. TAM Indicators for Attitude Toward Use (ATU) of Guidance Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | I have a favorable attitude toward the current manual admission workflow. | I have a favorable attitude toward using the NEXIAM platform. |
+| 2 | Using manual methods to advise applicants on placement is a good approach. | Using NEXIAM to advise applicants on placement is a good approach. |
+| 3 | I find manual profiling to be a pleasant part of my counseling work. | I find NEXIAM's triage dashboard to be a pleasant part of my counseling work. |
+| 4 | Overall, I am satisfied with the current manual process. | Overall, I am satisfied with NEXIAM. |
+
+>>> Mirror: Items 1 and 4 (general attitude + overall satisfaction)
+>>> Unique: Items 2 and 3 (Registrar = admission management, Guidance = placement/profiling)
+
+
+# ===================================================================
+# BEHAVIORAL INTENTION TO USE (BIU)
+# ===================================================================
+
+**Table 6.1a. TAM Indicators for Behavioral Intention to Use (BIU) of Registrar Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | I would prefer to keep using the manual process for future academic cycles. | I intend to use NEXIAM for future academic admission cycles. |
+| 2 | I would recommend continuing the current manual process to colleagues in other offices. | I would recommend NEXIAM to colleagues in other offices. |
+| 3 | I plan to keep relying on the current process for upcoming admission cycles. | I plan to rely on NEXIAM for upcoming admission cycles. |
+| 4 | Given the choice, I would continue using the current manual process. | Given the choice, I would continue using NEXIAM. |
+
+
+**Table 6.1b. TAM Indicators for Behavioral Intention to Use (BIU) of Guidance Personnel**
+
+| **Item** | **Pre-Test Indicator** | **Post-Test Indicator** |
+| :-: | :-: | :-: |
+| 1 | I would prefer to continue manual profiling for future admission cycles. | I intend to use NEXIAM's triage for future admission counseling cycles. |
+| 2 | I would recommend continuing the current manual process to colleagues in other offices. | I would recommend NEXIAM to colleagues in other offices. |
+| 3 | I plan to keep relying on manual profiling for upcoming admissions. | I plan to rely on NEXIAM for upcoming admissions counseling. |
+| 4 | Given the choice, I would continue using the current manual process. | Given the choice, I would continue using NEXIAM. |
+
+>>> Mirror: Items 2 and 4 (recommendation + choice to continue)
+>>> Unique: Items 1 and 3 (Registrar = admission cycles, Guidance = profiling/counseling)
+
+
+# ===================================================================
+# SUMMARY: Mirror Pattern
+# ===================================================================
+#
+# Construct  | Mirrored Items               | Unique Items
+# -----------|------------------------------|-----------------------------
+# PU         | 3 (visibility) + 4 (coord)   | 1+2 (Reg=eff/speed, Gui=triage)
+# PEOU       | 2 (learning) + 4 (clarity)   | 1+3 (Reg=sched/OMR, Gui=triage)
+# ATU        | 1 (attitude) + 4 (satisfy)   | 2+3 (Reg=admission, Gui=placement)
+# BIU        | 2 (recommend) + 4 (continue) | 1+3 (Reg=cycles, Gui=profiling)
+#
+# Total: 16 items (4 groups x 4 constructs)
+# Groups: Registrar, Guidance, Applicant, Program Head
+# IT Expert: outside TAM (technical walkthrough)
+# Total evaluators: 47 (46 TAM + 1 IT Expert)

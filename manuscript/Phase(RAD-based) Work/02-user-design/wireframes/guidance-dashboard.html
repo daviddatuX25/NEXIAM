@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Guidance Office</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: system-ui, sans-serif; background: #e8ecf1; color: #333; }
+  .wf { max-width: 1000px; margin: 24px auto; background: #fff; border: 2px solid #d0d0d0; border-radius: 8px; overflow: hidden; }
+  .wf-topbar { background: #f5f5f5; border-bottom: 1px solid #ddd; padding: 12px 16px; display: flex; gap: 16px; align-items: center; font-size: 13px; }
+  .wf-topbar .logo { font-weight: 700; color: #444; } .wf-topbar span { color: #999; }
+  .wf-content { display: flex; min-height: 500px; }
+  .wf-sidebar { width: 200px; background: #fafafa; border-right: 1px solid #ddd; padding: 12px 0; }
+  .wf-sidebar .item { padding: 8px 16px; font-size: 12px; color: #555; border-left: 3px solid transparent; cursor: pointer; }
+  .wf-sidebar .item.active { background: #eef1ff; color: #5c7cfa; border-left-color: #5c7cfa; font-weight: 600; }
+  .wf-main { flex:1; padding: 20px; }
+  .wf-label { font-size: 10px; text-transform: uppercase; color: #999; letter-spacing: 1px; margin-bottom: 4px; }
+  .wf-box { border: 1.5px dashed #ccc; border-radius: 6px; padding: 14px; margin-bottom: 14px; background: #fcfcfc; }
+  .wf-box h4 { font-size: 13px; color: #444; margin-bottom: 8px; }
+  .wf-row { display: flex; gap: 14px; margin-bottom: 14px; }
+  .wf-col { flex:1; }
+  .wf-placeholder { background: #eee; border: 1px dashed #ccc; border-radius: 4px; min-height: 40px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999; }
+  .wf-placeholder.chart { min-height: 200px; }
+  .wf-btn { display: inline-block; padding: 6px 14px; border: 1.5px solid #ccc; border-radius: 4px; font-size: 11px; color: #555; background: #fff; cursor: pointer; margin-right: 6px; }
+  .wf-btn.primary { border-color: #5c7cfa; color: #5c7cfa; background: #eef1ff; }
+  .wf-note { font-size: 10px; color: #aaa; font-style: italic; margin-top: 4px; text-align: center; }
+  .wf-page-title { font-size: 16px; font-weight: 700; color: #222; margin-bottom: 16px; }
+  .wf-tag { display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-right: 4px; background: #eee; color: #666; }
+  .nav-row { display: flex; gap: 6px; margin-bottom: 16px; }
+  .nav-row a { font-size: 11px; color: #5c7cfa; text-decoration: none; }
+</style></head>
+<body>
+
+<!-- SCREEN 1: TRIAGE DASHBOARD -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Guidance Office · Triage Dashboard</span><span style="margin-left:auto;font-size:11px">Logged in as: Guidance Counselor</span></div>
+  <div class="wf-content">
+    <div class="wf-sidebar">
+      <div class="item active">Triage Dashboard</div>
+      <div class="item">OMR Scoring</div>
+      <div class="item">Exam Scheduling</div>
+      <div class="item">Result Release</div>
+      <div class="item">Consultation Notes</div>
+      <div class="item">Proctoring</div>
+    </div>
+    <div class="wf-main">
+      <div class="nav-row"><a href="index.html">← All Roles</a></div>
+      <div class="wf-page-title">Triage Dashboard — Applicant: Juan Dela Cruz <span class="wf-tag">ID: APP-2026-0451</span></div>
+      
+      <div class="wf-row">
+        <div class="wf-col">
+          <div class="wf-box">
+            <div class="wf-label">Engine: Yukee Cluster v1</div>
+            <h4>🎯 Aptitude Profile</h4>
+            <div class="wf-placeholder chart">[ Scatter Plot — Applicant position shown as star among cluster points ]</div>
+            <div style="margin-top:8px"><strong>Cluster:</strong> Math-Dominant (Confidence: 0.89)</div>
+            <div style="margin-top:4px"><strong>Recommended Programs:</strong></div>
+            <div style="font-size:12px;margin-top:4px">• BS Information Technology<br>• BS Computer Engineering<br>• BS Mathematics</div>
+          </div>
+        </div>
+        <div class="wf-col">
+          <div class="wf-box">
+            <div class="wf-label">Engine: BGE Interest v1</div>
+            <h4>💙 Interest Match</h4>
+            <div class="wf-placeholder">[ Horizontal Bar Chart — Programs ranked by similarity score ]</div>
+            <div style="font-size:12px;margin-top:8px">
+              BSIT ████████████ 0.92<br>
+              BSCE ██████████░░ 0.87<br>
+              BSENT ██████░░░░░░ 0.65<br>
+              BSEd Eng ██░░░░░░░░░░ 0.22
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-box">
+        <h4>Program Quota Status</h4>
+        <div style="font-size:12px">
+          BSIT — 🟢 42/60 seats &nbsp; BSCE — 🟡 55/60 &nbsp; BSENT — 🟢 30/40
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:12px">
+        <span class="wf-btn primary">Approve (BSIT)</span>
+        <span class="wf-btn">Modify</span>
+        <span class="wf-btn">Override</span>
+        <span class="wf-btn">Defer</span>
+      </div>
+      <div class="wf-note">Every action logged with HMAC-SHA256 audit trail · Engine version recorded</div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2: OMR SCORING -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Guidance Office · OMR Scoring</span></div>
+  <div class="wf-content">
+    <div class="wf-sidebar">
+      <div class="item">Triage Dashboard</div>
+      <div class="item active">OMR Scoring</div>
+      <div class="item">Exam Scheduling</div>
+      <div class="item">Result Release</div>
+      <div class="item">Consultation Notes</div>
+    </div>
+    <div class="wf-main">
+      <div class="wf-page-title">OMR Scoring — Batch #3 (July 2026) <span class="wf-tag">42 sheets</span></div>
+
+      <div class="wf-box">
+        <h4>Upload Answer Sheets</h4>
+        <div class="wf-placeholder" style="min-height:80px">[ Drag & drop scanned sheets here, or click to upload ]<br>Accepts: JPG, PNG, PDF · Recommended: 300 DPI grayscale</div>
+      </div>
+
+      <div class="wf-box">
+        <h4>Scoring Results</h4>
+        <div class="wf-placeholder" style="min-height:60px">
+          [ Table: Applicant ID | Math | Logic | Reading | Subject | Status | Actions ]<br>
+          APP-0451 | 85% | 72% | 90% | 68% | ✅ Scored | [View] [Flag]<br>
+          APP-0452 | 62% | 55% | 78% | 80% | ⚠️ 1 uncertain | [Review]
+        </div>
+      </div>
+
+      <div class="wf-box">
+        <h4>Flagged for Review (1 item)</h4>
+        <div class="wf-placeholder" style="min-height:50px">
+          [ Zoomed bubble grid — APP-0452, Question 14 — smudge detected ]<br>
+          <span class="wf-btn primary">Accept (B)</span><span class="wf-btn">Override (C)</span><span class="wf-btn">Skip</span>
+        </div>
+      </div>
+
+      <span class="wf-btn primary">Publish Scores</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: CONSULTATION -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Guidance Office · Consultation Notes</span></div>
+  <div class="wf-content">
+    <div class="wf-sidebar">
+      <div class="item">Triage Dashboard</div><div class="item">OMR Scoring</div>
+      <div class="item">Exam Scheduling</div><div class="item">Result Release</div>
+      <div class="item active">Consultation Notes</div>
+    </div>
+    <div class="wf-main">
+      <div class="wf-page-title">Consultation — Juan Dela Cruz <span class="wf-tag">APP-0451</span></div>
+      <div class="wf-box">
+        <h4>Counselor Notes</h4>
+        <div class="wf-placeholder" style="min-height:100px">[ Text area for counselor notes ]<br>Applicant prefers BSIT. Aptitude cluster = Math-Dominant matches. Interest score 0.92 confirms. Recommended placement: BSIT, 1st year. Discussed quota and enrollment timeline.</div>
+      </div>
+      <span class="wf-btn primary">Save & Confirm Placement</span>
+      <div class="wf-note">Placement decision logged with engine name + counselor identity</div>
+    </div>
+  </div>
+</div>
+
+</body></html>

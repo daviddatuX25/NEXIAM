@@ -1,0 +1,105 @@
+================================================================================
+NEXIAM MANUSCRIPT (NEXIAM.txt / ODT) — COPY-PASTE EDIT CHEAT SHEET
+================================================================================
+Copy each line below, find the matching text in your ODT, replace with the fix.
+NOTE: n=47 with 1 IT expert is CONFIRMED. No change needed.
+================================================================================
+
+--- FIX 1: Proctor Role (2 locations in body text + glossary already fixed in txt) ---
+
+FIND: the Proctor is one of the seven defined user roles, with access rights scoped to the proctoring interface
+REPLACE: the Proctor is a duty overlay assignable to any existing staff role at administrative discretion, with access rights scoped to the proctoring interface
+
+FIND: NEXIAM supports seven distinct user roles: Applicant, Proctor, Guidance Counselor, Guidance Administrator, Registrar Staff, Registrar Administrator, and System IT Administrator.
+REPLACE: NEXIAM supports seven distinct user roles: Applicant, Program Head, Guidance Counselor, Guidance Administrator, Registrar Staff, Registrar Administrator, and System IT Administrator. An eighth actor, Proctor, is a duty overlay assignable to any existing staff role.
+
+FIND: Super Admin
+REPLACE: System IT Administrator   (in Appendix B only — line 405 area)
+
+--- FIX 3: Typos ---
+
+FIND: optiomization
+REPLACE: optimization
+
+FIND: Glosary
+REPLACE: Glossary
+
+FIND: concering
+REPLACE: concerning
+
+FIND: in replacement to
+REPLACE: in replacement of
+
+FIND: data driven
+REPLACE: data-driven   (2 occurrences — do both)
+
+FIND: under utilized
+REPLACE: under-utilized
+
+FIND: personel
+REPLACE: personnel
+
+FIND: forApplicant
+REPLACE: for Applicant   (with space)
+
+--- FIX 4: Grammar / Word-Level ---
+
+FIND: researcher's background
+REPLACE: researchers' background
+
+FIND: measurable evidences
+REPLACE: measurable evidence
+
+FIND: prove if
+REPLACE: prove whether
+
+FIND: In hindsight,
+REPLACE: Compounding this,
+
+FIND: The input serves as variables that covers campus data like applicant profiles
+REPLACE: The input consists of variables covering campus data — applicant profiles
+
+FIND: outweighed by drawbacks such as heightened student anxiety
+REPLACE: accompanied by drawbacks such as heightened student anxiety
+
+--- FIX 5: Sentence Fragments ---
+
+FIND: Rooting from the Republic Act No. 10931 (2017) which increased admission volumes after removing tuition fees in public higher education, putting more pressure on staff and infrastructure.
+REPLACE: Republic Act No. 10931 (2017) removed tuition fees in public higher education, increasing admission volumes and putting more pressure on staff and infrastructure.
+
+FIND: Therefore, a unified, role-governed admission testing system is the gap that surfaces from these literature reviews and contemporary necessities.  A platform that can integrate applicant registration,  streamlined testing operations, automated scoring, decision-support with AI advisory services, and result delivery into one admission ecosystem serving the Guidance Office, Registrar, and other institutional stakeholders.
+REPLACE: Therefore, the gap that surfaces from these reviews is the absence of a unified, role-governed admission testing platform — one that integrates applicant registration, streamlined testing operations, automated scoring, decision-support with AI advisory services, and result delivery into a single ecosystem serving the Guidance Office, Registrar, and other institutional stakeholders.
+
+--- FIX 6: TAM Items ---
+
+FIND: The current manual process reduces my overall workload when coordinating with the guidance personnel.
+REPLACE: The current process reduces my overall workload when coordinating with the guidance personnel.
+
+FIND: It is easy for me to correct mistakes when using the current manual process.
+REPLACE: It is easy for me to correct mistakes when using the current process.
+
+--- FIX 7: Add Cohen (1988) citation ---
+
+FIND: Effect size is reported as Cohen's d when the paired t-test is used
+REPLACE: Effect size is reported as Cohen's d (Cohen, 1988) when the paired t-test is used
+
+--- FIX 8: Peng et al. citation ---
+
+FIND: to prevent architectural debt and align with productivity gains documented in recent AI software engineering studies (Peng et al., 2023)
+REPLACE: to ensure code quality. This AI-augmented workflow aligns with productivity gains documented in recent software engineering studies (Peng et al., 2023)
+
+--- FIX 9: TAM Guidance non-parallel items (optional) ---
+
+If you want to fix the Guidance PU items 1-2 non-parallelism, refer to the
+separate TAM fix discussion above in the revision guide. This is content
+rewriting, not find/replace. Consider whether to fix or acknowledge as limitation.
+
+--- FIX 10: Acronym in Glossary ---
+
+FIND: Next-generation Examination and Intelligent Admission Management platform
+REPLACE: Next-Generation Examinations and X(Cross)-Role Intelligent Admissions Management
+(OR vice versa — pick ONE and align with your presentation slide)
+
+================================================================================
+END OF CHEAT SHEET
+================================================================================

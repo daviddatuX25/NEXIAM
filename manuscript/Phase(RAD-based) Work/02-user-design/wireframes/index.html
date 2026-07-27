@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXIAM Wireframes — Interview Reference</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f2f5; padding: 24px; }
+  .wf-header { max-width: 1100px; margin: 0 auto 24px; }
+  h1 { font-size: 22px; color: #1a1a2e; } h1 span { color: #5c7cfa; }
+  p.sub { color: #666; font-size: 13px; margin-top: 4px; }
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 16px; max-width: 1100px; margin: 0 auto; }
+  .role-card { background: #fff; border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; cursor: pointer; transition: all .2s; }
+  .role-card:hover { border-color: #5c7cfa; box-shadow: 0 4px 16px rgba(92,124,250,.15); transform: translateY(-2px); }
+  .role-card h3 { font-size: 15px; color: #1a1a2e; margin-bottom: 8px; }
+  .role-card .count { font-size: 12px; color: #888; margin-bottom: 8px; }
+  .role-card .screens { font-size: 11px; color: #555; line-height: 1.7; }
+  .role-card .screens span { background: #eef1ff; color: #5c7cfa; padding: 1px 6px; border-radius: 3px; margin-right: 4px; white-space: nowrap; }
+</style></head>
+<body>
+<div class="wf-header">
+  <h1>NEXIAM <span>Wireframes</span></h1>
+  <p class="sub">Interview Reference — July 15, 2026 · Built from SecureCAT v2 codebase</p>
+</div>
+<div class="role-grid">
+  <a href="applicant-portal.html" class="role-card" style="text-decoration:none;color:inherit">
+    <h3>📋 Applicant Portal</h3>
+    <div class="count">5 screens · Student-facing</div>
+    <div class="screens"><span>Login</span><span>Dashboard</span><span>Application</span><span>Admission Slip</span><span>Chatbot</span></div>
+  </a>
+  <a href="guidance-dashboard.html" class="role-card" style="text-decoration:none;color:inherit">
+    <h3>🧠 Guidance Office</h3>
+    <div class="count">6 screens · Counselor + Admin</div>
+    <div class="screens"><span>Triage Dashboard</span><span>OMR Scoring</span><span>Scheduling</span><span>Result Release</span><span>Consultation</span><span>Proctoring</span></div>
+  </a>
+  <a href="registrar-dashboard.html" class="role-card" style="text-decoration:none;color:inherit">
+    <h3>📁 Registrar Office</h3>
+    <div class="count">5 screens · Staff + Admin</div>
+    <div class="screens"><span>Applications</span><span>Import</span><span>Processing</span><span>Reports</span><span>Setup</span></div>
+  </a>
+  <a href="program-head-dashboard.html" class="role-card" style="text-decoration:none;color:inherit">
+    <h3>🎓 Program Heads</h3>
+    <div class="count">3 screens · Per-program views</div>
+    <div class="screens"><span>Quota Pipeline</span><span>Pre-enrollment Slate</span><span>Program Reports</span></div>
+  </a>
+  <a href="admin-panel.html" class="role-card" style="text-decoration:none;color:inherit">
+    <h3>⚙️ System IT Admin</h3>
+    <div class="count">4 screens · Governance</div>
+    <div class="screens"><span>User Mgmt</span><span>Audit Logs</span><span>Engine Registry</span><span>Settings</span></div>
+  </a>
+</div>
+</body></html>

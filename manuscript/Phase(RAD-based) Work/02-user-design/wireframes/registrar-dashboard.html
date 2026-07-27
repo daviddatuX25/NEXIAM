@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe — Registrar Office</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:system-ui,sans-serif;background:#e8ecf1;color:#333}
+  .wf{max-width:1000px;margin:24px auto;background:#fff;border:2px solid #d0d0d0;border-radius:8px;overflow:hidden}
+  .wf-topbar{background:#f5f5f5;border-bottom:1px solid #ddd;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .wf-topbar .logo{font-weight:700;color:#444}.wf-topbar span{color:#999}
+  .wf-content{display:flex;min-height:400px}
+  .wf-sidebar{width:200px;background:#fafafa;border-right:1px solid #ddd;padding:12px 0}
+  .wf-sidebar .item{padding:8px 16px;font-size:12px;color:#555;border-left:3px solid transparent;cursor:pointer}
+  .wf-sidebar .item.active{background:#eef1ff;color:#5c7cfa;border-left-color:#5c7cfa;font-weight:600}
+  .wf-main{flex:1;padding:20px}
+  .wf-page-title{font-size:16px;font-weight:700;color:#222;margin-bottom:16px}
+  .wf-label{font-size:10px;text-transform:uppercase;color:#999;letter-spacing:1px;margin-bottom:4px}
+  .wf-box{border:1.5px dashed #ccc;border-radius:6px;padding:14px;margin-bottom:14px;background:#fcfcfc}
+  .wf-box h4{font-size:13px;color:#444;margin-bottom:8px}
+  .wf-row{display:flex;gap:14px;margin-bottom:14px}
+  .wf-placeholder{background:#eee;border:1px dashed #ccc;border-radius:4px;min-height:40px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#999;text-align:center}
+  .wf-table{width:100%;font-size:11px;border-collapse:collapse}
+  .wf-table th{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd;color:#666;font-weight:600}
+  .wf-table td{padding:6px 8px;border-bottom:1px solid #eee;font-size:11px}
+  .wf-btn{display:inline-block;padding:6px 12px;border:1.5px solid #ccc;border-radius:4px;font-size:11px;color:#555;background:#fff;cursor:pointer;margin-right:4px}
+  .wf-btn.primary{border-color:#5c7cfa;color:#fff;background:#5c7cfa}
+  .wf-tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;background:#eef1ff;color:#5c7cfa}
+  .wf-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px}
+  .wf-badge.green{background:#dcfce7;color:#166534}.wf-badge.amber{background:#fef3c7;color:#92400e}
+  .nav-row{display:flex;gap:6px;margin-bottom:16px}
+  .nav-row a{font-size:11px;color:#5c7cfa;text-decoration:none}
+</style></head>
+<body>
+
+<!-- SCREEN 1: APPLICATIONS LIST -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Registrar Office · Applications</span></div>
+  <div class="wf-content">
+    <div class="wf-sidebar">
+      <div class="item active">Applications</div>
+      <div class="item">Import</div>
+      <div class="item">Processing</div>
+      <div class="item">Reports</div>
+      <div class="item">Setup</div>
+    </div>
+    <div class="wf-main">
+      <div class="nav-row"><a href="index.html">← All Roles</a></div>
+      <div class="wf-page-title">Applications — 2026 Cycle <span class="wf-tag">487 total</span></div>
+      
+      <div class="wf-row" style="margin-bottom:12px">
+        <input style="padding:6px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:12px;flex:1" placeholder="Search name or ID...">
+        <span class="wf-btn">Filter</span>
+        <span class="wf-btn primary">+ New</span>
+      </div>
+
+      <table class="wf-table">
+        <tr><th>ID</th><th>Name</th><th>Program</th><th>Status</th><th>Actions</th></tr>
+        <tr><td>APP-0451</td><td>Juan Dela Cruz</td><td>BSIT</td><td><span class="wf-badge green">Accepted</span></td><td><span class="wf-btn">View</span><span class="wf-btn">Edit</span></td></tr>
+        <tr><td>APP-0452</td><td>Maria Santos</td><td>BSCE</td><td><span class="wf-badge green">Accepted</span></td><td><span class="wf-btn">View</span></td></tr>
+        <tr><td>APP-0453</td><td>Pedro Reyes</td><td>BSENT</td><td><span class="wf-badge amber">Pending</span></td><td><span class="wf-btn">View</span><span class="wf-btn primary">Accept</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2: IMPORT -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Registrar Office · Import</span></div>
+  <div class="wf-content">
+    <div class="wf-sidebar">
+      <div class="item">Applications</div>
+      <div class="item active">Import</div>
+      <div class="item">Processing</div>
+      <div class="item">Reports</div>
+    </div>
+    <div class="wf-main">
+      <div class="wf-page-title">Bulk Applicant Import</div>
+      <div class="wf-box">
+        <h4>Upload CSV</h4>
+        <div class="wf-placeholder" style="min-height:60px">[ Drop CSV file here or click to select ]<br>Template: applicants_template.csv</div>
+        <div style="margin-top:8px"><span class="wf-btn">Download Template</span></div>
+      </div>
+      <div class="wf-box">
+        <h4>Preview (3 records detected)</h4>
+        <table class="wf-table">
+          <tr><th>Name</th><th>Program</th><th>Municipality</th><th>Valid?</th></tr>
+          <tr><td>Ana Lopez</td><td>BSIT</td><td>Tagudin</td><td>✅</td></tr>
+          <tr><td>Ben Cruz</td><td>BSCE</td><td>Bangar</td><td>✅</td></tr>
+          <tr><td>—</td><td>BSED</td><td>—</td><td>❌ Missing name</td></tr>
+        </table>
+      </div>
+      <span class="wf-btn primary">Import Valid (2 records)</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: PROCESSING / DIRECT ASSESSMENT -->
+<div class="wf">
+  <div class="wf-topbar"><span class="logo">NEXIAM</span><span>|</span><span>Registrar Office · Walk-in Processing</span></div>
+  <div class="wf-content">
+    <div class="wf-sidebar">
+      <div class="item">Applications</div><div class="item">Import</div>
+      <div class="item active">Processing</div><div class="item">Reports</div>
+    </div>
+    <div class="wf-main">
+      <div class="wf-page-title">Direct Assessment — Walk-in Applicant</div>
+      <div class="wf-row">
+        <div class="wf-box" style="flex:1">
+          <h4>Applicant Info</h4>
+          <div style="font-size:12px;line-height:2">
+            Name: [___________]<br>Program: [BSIT ▼]<br>Municipality: [Tagudin ▼]<br>SHS Strand: [STEM ▼]
+          </div>
+        </div>
+        <div class="wf-box" style="flex:1">
+          <h4>Quick Actions</h4>
+          <div class="wf-btn primary" style="display:block;margin-bottom:6px;text-align:center">Register & Schedule</div>
+          <div class="wf-btn" style="display:block;margin-bottom:6px;text-align:center">Assign to Batch</div>
+          <div class="wf-btn" style="display:block;text-align:center">Print Admission Slip</div>
+        </div>
+      </div>
+      <div class="wf-note" style="text-align:left">Walk-in flow: register → assign to open batch → print slip → done. One-go import pipeline speeds up bulk registrations.</div>
+    </div>
+  </div>
+</div>
+
+</body></html>

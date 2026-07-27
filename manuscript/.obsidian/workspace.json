@@ -1,0 +1,195 @@
+{
+  "main": {
+    "id": "4303d7ea9290c9b7",
+    "type": "split",
+    "children": [
+      {
+        "id": "3842a93786ef5115",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "156c7d457304a72d",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "NEXIAM_Phase3_Revised_Manuscript.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "NEXIAM_Phase3_Revised_Manuscript"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "237dcd5cc551c44d",
+    "type": "split",
+    "children": [
+      {
+        "id": "f59f5a19bf7993fb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "53dca40692c7193a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "9b851df8c8d92474",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "153896140cf1a4ef",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "63c49df5b073fb77",
+    "type": "split",
+    "children": [
+      {
+        "id": "19d6b4ddceb5d425",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ed9504b888e78c41",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "NEXIAM_Phase3_Revised_Manuscript.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": false
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for NEXIAM_Phase3_Revised_Manuscript"
+            }
+          },
+          {
+            "id": "11dfda749b6fea6a",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "NEXIAM_Phase3_Revised_Manuscript.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from NEXIAM_Phase3_Revised_Manuscript"
+            }
+          },
+          {
+            "id": "2e4953568cd007d7",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "407b2529ca186ff6",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "611d0f057b809343",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "NEXIAM_Phase3_Revised_Manuscript.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of NEXIAM_Phase3_Revised_Manuscript"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "156c7d457304a72d",
+  "lastOpenFiles": [
+    "NEXIAM_Phase2_Corrected_Manuscript.md",
+    "NEXIAM_Phase3_Revised_Manuscript.md",
+    "Original IPO Diagram in text form.md",
+    "NEXIAM.txt",
+    "lu30619221bfm0w.tmp"
+  ]
+}

@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>NEXIAM Defense — Mobile Q&A</title>
+<style>
+  /* ═══════════════ RESET & BASE ═══════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #111;
+    background: #fff;
+    max-width: 100%;
+    padding: 8px 10px;
+    overflow-x: hidden;
+  }
+
+  /* ═══════════════ COVER ═══════════════ */
+  .cover { text-align: center; border-bottom: 3px solid #222; padding-bottom: 12px; margin-bottom: 12px; }
+  .cover .title { font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+  .cover .subtitle { font-size: 13px; font-weight: 600; margin-bottom: 1px; }
+  .cover .meta { font-size: 11px; color: #444; }
+
+  /* ═══════════════ SLIDE SECTIONS ═══════════════ */
+  .slide-section { border: 1px solid #bbb; margin-bottom: 10px; border-radius: 4px; overflow: hidden; }
+  .slide-header {
+    background: #222; color: #fff; padding: 6px 10px;
+    font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; flex-wrap: wrap;
+  }
+  .slide-header .presenter { font-weight: 400; font-size: 11px; opacity: 0.9; }
+  .slide-body { padding: 8px 10px; }
+
+  /* ═══════════════ SCRIPT BLOCK ═══════════════ */
+  .script-block {
+    background: #f8f8f8; border-left: 4px solid #555; padding: 8px 10px;
+    margin-bottom: 8px; font-size: 13px; line-height: 1.4;
+  }
+  .script-block .speaker { font-weight: 700; color: #111; }
+  .script-block .click { color: #666; font-style: italic; font-size: 11px; }
+  .script-block .anchor { color: #555; font-size: 9px; margin-top: 4px; padding-top: 4px; border-top: 1px dotted #bbb; }
+
+  /* ═══════════════ Q&A ═══════════════ */
+  .qa-header {
+    font-size: 11px; font-weight: 800; background: #eee; padding: 5px 10px;
+    margin: 8px -10px; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;
+  }
+  .qa-item { margin-bottom: 8px; }
+  .qa-q { font-weight: 700; font-size: 11px; color: #222; margin-bottom: 2px; }
+  .qa-one { font-size: 10.5px; color: #222; font-weight: 600; margin-bottom: 2px; }
+  .qa-bullets { font-size: 10px; line-height: 1.25; color: #333; padding-left: 12px; }
+  .qa-bullets b { color: #900; }
+
+  /* ═══════════════ REFERENCE BLOCKS ═══════════════ */
+  .ref-block {
+    margin-top: 6px; padding-top: 5px; border-top: 1.5px solid #ccc;
+    font-size: 9px; color: #444; line-height: 1.25;
+  }
+  .ref-block .ref-label { font-weight: 700; color: #222; display: block; margin-bottom: 2px; }
+  .ref-block span { display: inline-block; margin-right: 4px; margin-bottom: 1px; background: #f4f4f4; padding: 1px 3px; border-radius: 2px; }
+  .ref-block span b { color: #222; }
+
+  /* ═══════════════ APPENDIX ═══════════════ */
+  .appendix { border: 1px solid #999; margin-bottom: 10px; border-radius: 4px; overflow: hidden; }
+  .appendix-header { background: #555; color: #fff; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+  .appendix-body { padding: 8px 12px 8px 14px; font-size: 10px; line-height: 1.3; }
+
+  /* ═══════════════ REFERENCE MASTER LIST ═══════════════ */
+  .ref-master { font-size: 9px; line-height: 1.3; }
+  .ref-master ol { padding-left: 14px; margin-left: 0; }
+  .ref-master li { margin-bottom: 3px; padding-left: 2px; }
+
+  /* ═══════════════ HIGHLIGHTS ═══════════════ */
+  .trap-id { font-size: 8px; color: #999; font-weight: 400; margin-right: 2px; }
+  .critical-tag { font-size: 8px; color: #fff; background: #900; padding: 1px 4px; border-radius: 2px; font-weight: 700; }
+  .hl { color: #900; font-weight: 700; }
+
+  /* ═══════════════ SEARCH MARK ═══════════════ */
+  .search-highlight { background: #ffeb3b; padding: 0 1px; border-radius: 1px; }
+
+  /* ═══════════════ FLOATING SEARCH BUTTON ═══════════════ */
+  #searchToggle {
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    width: 48px; height: 48px; border-radius: 50%; border: none;
+    background: #222; color: #fff; font-size: 22px; cursor: pointer;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+    transition: transform 0.15s;
+  }
+  #searchToggle:active { transform: scale(0.92); }
+
+  /* ═══════════════ SEARCH PANEL ═══════════════ */
+  #searchPanel {
+    position: fixed; bottom: 80px; right: 20px; z-index: 9998;
+    width: calc(100vw - 40px); max-width: 360px; max-height: 70vh;
+    background: #fff; border: 1px solid #ccc; border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); display: none; flex-direction: column;
+    overflow: hidden;
+  }
+  #searchPanel.open { display: flex; }
+  #searchInput {
+    width: 100%; border: none; border-bottom: 1px solid #ddd;
+    padding: 12px 14px; font-size: 15px; font-family: inherit;
+    outline: none; background: #fafafa;
+  }
+  #searchStats { font-size: 10px; color: #888; padding: 6px 14px; border-bottom: 1px solid #eee; display: none; }
+  #searchResults { overflow-y: auto; flex: 1; padding: 4px 0; }
+  .search-hit {
+    display: block; padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+    font-size: 11px; line-height: 1.3; color: #333; text-decoration: none;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .search-hit:active { background: #f5f5f5; }
+  .search-hit .hit-slide { font-weight: 700; font-size: 9px; color: #888; margin-bottom: 1px; }
+  .search-hit .hit-q { font-weight: 600; color: #222; margin-bottom: 2px; }
+  .search-hit .hit-snippet { font-size: 10px; color: #555; }
+  .search-hit .hit-snippet b { color: #900; }
+  #searchNone { padding: 20px 14px; text-align: center; color: #999; font-size: 12px; display: none; }
+
+  /* ═══════════════ OVERLAY ═══════════════ */
+  #searchOverlay {
+    position: fixed; inset: 0; z-index: 9997; background: rgba(0,0,0,0.25);
+    display: none;
+  }
+  #searchOverlay.open { display: block; }
+
+  /* ═══════════════ SCROLL-TO TARGET ═══════════════ */
+  .scroll-target {
+    scroll-margin-top: 20px;
+    animation: flash 1.2s ease-out;
+  }
+  @keyframes flash {
+    0% { background: #fff8c4; }
+    100% { background: transparent; }
+  }
+
+  /* ═══════════════ RESPONSIVE: VERY SMALL ═══════════════ */
+  @media (max-width: 380px) {
+    body { font-size: 12px; padding: 4px 6px; }
+    .slide-header { font-size: 11px; padding: 5px 8px; }
+    .slide-header .presenter { font-size: 9px; }
+    .script-block { font-size: 11px; padding: 6px 8px; }
+    .qa-q { font-size: 10px; }
+    .qa-one { font-size: 9.5px; }
+    .qa-bullets { font-size: 9px; padding-left: 8px; }
+    #searchPanel { max-width: calc(100vw - 24px); right: 12px; bottom: 72px; }
+    #searchToggle { bottom: 16px; right: 16px; width: 42px; height: 42px; font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover no-break">
+  <div class="title">NEXIAM</div>
+  <div class="subtitle">Proposal Defense — Mobile Q&amp;A Companion</div>
+  <div class="subtitle" style="font-weight:400;font-size:12px;">Script + Compact Q&amp;A + References — Slide-by-Slide</div>
+  <div class="meta">Sarmiento, D. D. · Pagaduan, J. G. · Lopez, C. M.<br>BSIT — ISPSC Tagudin | Adviser: Dr. Zeus Vincent Mendoza | July 2026</div>
+</div>
+
+<!-- ═══ SLIDE 1: TITLE ═══ -->
+<div class="slide-section no-break" id="slide1">
+<div class="slide-header">SLIDE 1 — Title Slide <span class="presenter">David</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">David:</div>
+"Good morning, respected members of the panel. We are presenting NEXIAM: A Role-Based College Admission Testing System. Let's start immediately with why this system is necessary."
+<div class="anchor">⌛ Leave on screen while panel settles. After introductions, immediately take the floor.</div>
+</div>
+<div style="font-size:10px;color:#999;font-style:italic;">No Q&A — procedural slide only.</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 2: PROBLEM GLOBAL ═══ -->
+<div class="slide-section" id="slide2">
+<div class="slide-header">SLIDE 2 — The Problem: Global &amp; National <span class="presenter">David · ~1:10</span></div>
+<div class="slide-body">
+
+<div class="script-block">
+<div class="speaker">David:</div>
+"Manual, paper-based admission testing creates a compounding bottleneck. Every downstream decision — course placement, scholarship, enrollment planning — waits on a process built for a different era. The process itself is the bottleneck."<br><br>
+<span class="click">(Click 1)</span> "Globally, higher education is shifting to AI-assisted, cloud-based admission platforms. <b>Lira et al.</b>, publishing in <b>Science Advances</b>, demonstrated that machine learning models can assess applicant qualities with outcomes tied to long-term success. The AI-admissions space is validated at the highest level."<br><br>
+<span class="click">(Click 2)</span> "Here in the Philippines, <b>RA 10931</b> — the Free Higher Education Act — pushed public college applications up nationwide. <b>Adwan et al.</b> proved that unified admission platforms work across multiple institutions with 97% usability. The integration model itself is proven."<br><br>
+<span class="click">(Click 3)</span> "<b>RA 10173</b> — the Data Privacy Act — makes protecting applicant data a legal duty. That regulatory floor governs everything we build."
+<div class="anchor">⚓ DEFENSE ANCHOR: Three-part foundation — (1) AI in admissions is validated science, (2) unified platforms are proven to work, (3) Philippine law mandates digitization. The panel cannot call this speculative.</div>
+</div>
+
+<div class="qa-header">Q&amp;A — Background, Gap, Legal, Precedents</div>
+
+<div class="qa-item" id="t1">
+<div class="qa-q"><span class="trap-id">T1</span> "What exactly is the research gap? Aren't there already admission systems?"</div>
+<div class="qa-one">The gap is integration, not invention — every component is proven independently in published literature; what does not exist is one governed RBAC pipeline running them together during an admission season.</div>
+<div class="qa-bullets">· Gap is <b>integration</b>, not invention · <b>Dayata &amp; Yap</b> (IEEE COMNETSAT): RAG chatbot · <b>Cuerdo</b>: low-cost OMR in PH schools · <b>Tan</b> (ACM): K-Means course selection · <b>Yukee</b>: K-Means on ISPSC ICAT data · <b>Dash et al.</b> stopped at design → gap is <b class="hl">deployment/governance</b></div>
+</div>
+
+<div class="qa-item" id="t4">
+<div class="qa-q"><span class="trap-id">T4</span> "Lira assessed essays, not admission testing. How does that apply?"</div>
+<div class="qa-one">Lira proves the high-water mark — AI-based applicant assessment is validated at Science Advances; we apply AI to the operational infrastructure layer, not the psychometric layer.</div>
+<div class="qa-bullets">· <b>Science Advances</b> = highest peer-review level · AI in admissions is <b>non-speculative</b> · We apply AI to <b>operational layer</b> (scoring, scheduling, classification)</div>
+</div>
+
+<div class="qa-item" id="t5">
+<div class="qa-q"><span class="trap-id">T5</span> "Van Busum &amp; Fang says AI is biased. Why build with AI?"</div>
+<div class="qa-one">We designed NEXIAM around that finding, not against it — three safeguards: RAG restricted to policy docs, K-Means for counselor review only, and human-gated approval on every AI output.</div>
+<div class="qa-bullets">· <b>RAG → policy docs only</b> (below threshold = declines to answer) · <b>K-Means → counselor review</b> (algorithm proposes, counselor disposes) · <b>Human-gated approval</b> on every AI output · Bias finding = <b>design requirement</b></div>
+</div>
+
+<div class="qa-item" id="t7">
+<div class="qa-q"><span class="trap-id">T7</span> "Local studies all from ISPSC. Circular reasoning?"</div>
+<div class="qa-one">Site-specific validation — Yukee validated K-Means on ISPSC's own ICAT data; global studies prove it works in general, local studies prove it works here.</div>
+<div class="qa-bullets">· <b class="hl">Site-specific validation</b>, not circular · Yukee: K-Means on <b>ISPSC's own ICAT data</b> · Multiple <b>independent</b> capstone studies, different years/teams</div>
+</div>
+
+<div class="qa-item" id="t8">
+<div class="qa-q"><span class="trap-id">T8</span> "Adwan is GCC — relevant to Philippine provincial college?"</div>
+<div class="qa-one">The relevance is architectural, not contextual — Adwan proved unified platforms work across institutions with 97% usability; the integration model is deployable regardless of geography.</div>
+<div class="qa-bullets">· Relevance is <b>architectural</b>, not contextual · <b>97% usability</b> under Nielsen heuristics · Integration model = <b>technically deployable</b> across contexts</div>
+</div>
+
+<div class="qa-item" id="t9">
+<div class="qa-q"><span class="trap-id">T9</span> "Which CHED policy mandates NEXIAM?"</div>
+<div class="qa-one">CHED's 2022-2028 Strategic Plan directs SUCs toward digital transformation; RA 10931's tuition removal increased volumes, creating operational strain the paper process cannot absorb.</div>
+<div class="qa-bullets">· <b>CHED Strategic Plan 2022-2028</b> → digital transformation directive · <b>RA 10931</b> → volume pressure + paper process = strain · CHED creates imperative; NEXIAM provides technical response</div>
+</div>
+
+<div class="qa-item" id="t10">
+<div class="qa-q"><span class="trap-id">T10</span> "Slade &amp; Prinsloo is learning analytics. Why cite for admissions?"</div>
+<div class="qa-one">Their three ethical principles — transparency, duty to protect data, and the obligation not to reduce students to profiles — apply beyond learning analytics and directly shaped our human-in-the-loop architecture.</div>
+<div class="qa-bullets">· 3 principles: <b>transparency</b>, <b>data protection duty</b>, <b>don't reduce to profiles</b> · All three <b>shaped NEXIAM's design</b></div>
+</div>
+
+<div class="qa-item" id="t22">
+<div class="qa-q"><span class="trap-id">T22</span> "Esquivel is enrollment prediction, not admissions. Why?"</div>
+<div class="qa-one">Enrollment predictability proves quotas are forecasts, not static — Program Heads need applicant-volume visibility during the cycle, which is what NEXIAM's pre-enrollment slate provides.</div>
+<div class="qa-bullets">· Quotas = <b>forecasts</b>, not static numbers · Program Heads need <b>visibility during cycle</b> · Justifies IPO's <b>pre-enrollment slate</b> output</div>
+</div>
+
+<div class="qa-item" id="t23">
+<div class="qa-q"><span class="trap-id">T23</span> "Ruffalo Noel Levitz is marketing. Why cite?"</div>
+<div class="qa-one">Practitioner evidence — their industry data shows processing speed directly affects applicant yield; academic weight comes from French, Sánchez-Mendiola, and Liu.</div>
+<div class="qa-bullets">· <b>Practitioner evidence</b>: speed → applicant yield · Academic weight: <b>French, Sánchez-Mendiola, Liu</b> · Both theoretical + operational dimensions</div>
+</div>
+
+<div class="qa-item" id="t25">
+<div class="qa-q"><span class="trap-id">T25</span> "Citation circle? Yukee, Ballesteros, Angala, Cenezan — all ISPSC."</div>
+<div class="qa-one">Independent studies from different years and teams converging on the same need — the campus has research precedent and capability; what's missing is integration.</div>
+<div class="qa-bullets">· <b>Independent capstone studies</b>, different years/teams · Proves <b>research precedent + capability</b> at ISPSC · Lacking: <b>integration</b> into one pipeline</div>
+</div>
+
+<div class="qa-item" id="t26">
+<div class="qa-q"><span class="trap-id">T26</span> "Dayata, Tan — peer-reviewed? How reputable?"</div>
+<div class="qa-one">All carry independent peer-review validation — Dayata at IEEE COMNETSAT (IEEE Xplore), Tan at ACM conference (ACM Digital Library), Cuerdo in a peer-reviewed journal, Lira in Science Advances.</div>
+<div class="qa-bullets">· Dayata: <b>IEEE COMNETSAT</b> → IEEE Xplore · Tan: <b>ACM conference</b> → ACM DL · Cuerdo: <b>Peer-reviewed journal</b> · Lira: <b>Science Advances (AAAS)</b></div>
+</div>
+
+<div class="qa-item" id="t6">
+<div class="qa-q"><span class="trap-id">T6</span> <span class="critical-tag">CRITICAL</span> "RA 10173 compliance — how specifically? Why no NPC certification?"</div>
+<div class="qa-one">Three mechanisms: RBAC-enforced data isolation, HMAC-SHA256 cryptographic audit trails, and RAG drawing only from institutional documents — formal NPC certification is outside scope, identified as future work.</div>
+<div class="qa-bullets">· <b>RBAC data isolation</b> (role-level access) · <b>HMAC-SHA256 audit chain</b> (tamper-evident) · <b>RAG → institutional docs only</b> (no external leakage) · NPC cert + PIA = <b>outside scope</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES CITED IN THIS SECTION:</span>
+<span><b>Lira et al. (2023)</b> — Science Advances (AAAS). → Establishes AI in admissions as non-speculative.</span>
+<span><b>Adwan et al. (2023)</b> — J. Computing Theories &amp; Applications. → Proves integration model is deployable.</span>
+<span><b>Dayata &amp; Yap (2024)</b> — IEEE COMNETSAT. → Closest PH precedent; architecture directly replicable.</span>
+<span><b>Cuerdo et al. (2021)</b> — Int'l J. Theory &amp; Application. → Proves low-cost OMR works.</span>
+<span><b>Tan (2025)</b> — ACM. → Same algorithm/domain. Direct precedent.</span>
+<span><b>Yukee et al.</b> — ISPSC Capstone. → Site-specific: algorithm works on NEXIAM's actual population.</span>
+<span><b>Dash et al. (2024)</b> — Design-stage only. → Confirms gap = deployment/governance.</span>
+<span><b>Van Busum &amp; Fang (2025)</b> — Neural Computing &amp; Applications. → Design requirement: human-in-the-loop.</span>
+<span><b>Slade &amp; Prinsloo (2013)</b> — American Behavioral Scientist. → 3 ethical principles shaped design.</span>
+<span><b>RA 10931</b> — Free Higher Education Act. → Volume pressure driver.</span>
+<span><b>RA 10173</b> — Data Privacy Act of 2012. → Legal duty.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 3: PROBLEM LOCAL ═══ -->
+<div class="slide-section" id="slide3">
+<div class="slide-header">SLIDE 3 — The Problem at ISPSC Tagudin <span class="presenter">David · ~1:10</span></div>
+<div class="slide-body">
+
+<div class="script-block">
+<div class="speaker">David:</div>
+"At ISPSC Tagudin specifically, we process 700 to 1,000 applicants every year — entirely on paper. Here is the operational cost of that:"<br><br>
+<span class="click">(Click 1)</span> "Hand-scoring takes five days, sometimes up to two full weeks per cycle."<br><br>
+<span class="click">(Click 2)</span> "Results are posted on a Facebook page, forcing applicants to monitor or inquire during office hours only."<br><br>
+<span class="click">(Click 3)</span> "Inter-office coordination runs on unstructured text messages. There is no shared system or visibility between Guidance and Registrar."<br><br>
+<span class="click">(Click 4)</span> "And here is the gap. Each component NEXIAM needs is already proven independently. <b>Dayata &amp; Yap</b> deployed a RAG chatbot at USC, published at <b>IEEE COMNETSAT</b>. <b>Cuerdo</b> proved low-cost OMR works in Philippine public schools. <b>Tan</b> validated K-Means for student course selection at an <b>ACM conference</b>. These pieces exist — they just do not run together as one governed pipeline. That is the gap NEXIAM fills."
+<div class="anchor">⚓ DEFENSE ANCHOR: The "gap" is an INTEGRATION gap, not an invention gap. Each component borrowed from proven independent studies (IEEE, ACM).</div>
+</div>
+
+<div class="qa-header">Q&amp;A — Feature Justification, AI Components, Algorithm Design</div>
+
+<div class="qa-item" id="t2">
+<div class="qa-q"><span class="trap-id">T2</span> <span class="critical-tag">CRITICAL</span> "Why so many features?"</div>
+<div class="qa-one">Each feature maps to a documented operational failure — OMR addresses the scoring delay, the Portal addresses Facebook-only result posting, RBAC addresses unstructured text coordination, and audit trails address RA 10173 compliance that paper cannot provide. The contribution is integration under one governed pipeline; the scope is explicitly bounded to admission testing.</div>
+<div class="qa-bullets">· <b>A — Feature→Failure:</b> OMR→scoring delay, Portal→Facebook posting, RBAC→text coordination, Audit→RA 10173. <b>Remove any = failure persists</b><br>· <b>B — Contribution:</b> integration under one RBAC pipeline. SO4 proves it empirically<br>· <b>C — Scope:</b> enrollment, tuition, records <b>explicitly excluded</b></div>
+</div>
+
+<div class="qa-item" id="t3">
+<div class="qa-q"><span class="trap-id">T3</span> <span class="critical-tag">CRITICAL</span> "Graduate-level work for undergrads?"</div>
+<div class="qa-one">We are borrowing published, replicable implementations — Cuerdo's OMR, Dayata's RAG, Yukee's K-Means — not inventing new algorithms; AI-augmented RAD handles boilerplate while the team focuses on architecture and integration, with a mandatory human Review gate.</div>
+<div class="qa-bullets">· <b>Borrowing published implementations</b>, not inventing · <b>AI-augmented RAD</b>: AI = boilerplate; team = architecture + integration · <b>Human Review gate</b> — AI writes, human ships</div>
+</div>
+
+<div class="qa-item" id="t11">
+<div class="qa-q"><span class="trap-id">T11</span> "How does RAG prevent hallucinations?"</div>
+<div class="qa-one">A RAG chatbot searches a curated knowledge base of ISPSC policy documents first — if it finds relevant text, that becomes ground truth for the response; if no document matches above the confidence threshold, it states it does not have the information rather than guessing.</div>
+<div class="qa-bullets">· Standard LLM → training data (stale/wrong). RAG → <b>search KB first</b> · Match → <b>ground truth</b>. No match → <b>"I don't have that information"</b> · <b>Retrieval anchors every response</b> to institutional documents</div>
+</div>
+
+<div class="qa-item" id="t12">
+<div class="qa-q"><span class="trap-id">T12</span> "Why RAG vs fine-tuning?"</div>
+<div class="qa-one">Fine-tuning is static and expensive — every policy change requires retraining; with RAG, updating a document in the vector database gives the chatbot the new information immediately, with zero retraining overhead.</div>
+<div class="qa-bullets">· Fine-tuning = <b>static + expensive</b> (retrain per change) · RAG = <b>update vector DB text</b> → immediate · <b>Real-time accuracy</b> without training overhead</div>
+</div>
+
+<div class="qa-item" id="t17">
+<div class="qa-q"><span class="trap-id">T17</span> "How is K defined? What features?"</div>
+<div class="qa-one">K represents ISPSC's program categories — STEM, Business, Arts, Education — set by the institution's academic structure; features are sub-test scores from the admission exam, and the K-Means engine is swappable via the Model Adapter pattern.</div>
+<div class="qa-bullets">· K = <b>ISPSC program categories</b> (STEM, Business, Arts, Education) · Features: <b>sub-test scores</b> (Math, Logic, Reading Comp, subject sections) · <b>Model Adapter</b> → K-Means swappable without system changes</div>
+</div>
+
+<div class="qa-item" id="t18">
+<div class="qa-q"><span class="trap-id">T18</span> <span class="critical-tag">CRITICAL</span> "AI making admission decisions — dangerous?"</div>
+<div class="qa-one">K-Means is strictly descriptive, not prescriptive — it surfaces aptitude patterns for counselor review but does not admit or reject anyone; every placement requires manual counselor confirmation recorded in the audit log.</div>
+<div class="qa-bullets">· <b class="hl">Descriptive, not prescriptive</b> — does NOT admit/reject · Counselor = <b>final human call</b> · 2 safeguards: <b>manual confirmation</b> + <b>HMAC-SHA256 audit log</b></div>
+</div>
+
+<div class="qa-item" id="t24">
+<div class="qa-q"><span class="trap-id">T24</span> "Dash stopped at design. Why will you succeed?"</div>
+<div class="qa-one">Dash validated the concept with traditional development; we advance with AI-augmented RAD and benefit from published implementations of every component that Dash did not have access to.</div>
+<div class="qa-bullets">· Dash: concept proven. Us: <b>methodology advanced</b> · Traditional dev vs <b>AI-augmented RAD</b> · Every component now has <b>published implementation</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES CITED IN THIS SECTION:</span>
+<span><b>Dayata &amp; Yap (2024)</b> — IEEE COMNETSAT. RAG for USC policies.</span>
+<span><b>Cuerdo et al. (2021)</b> — Int'l J. Theory &amp; Application. EvalBee OMR.</span>
+<span><b>Tan (2025)</b> — ACM. K-Means course selection.</span>
+<span><b>Yukee et al.</b> — ISPSC Capstone. K-Means on ICAT data.</span>
+<span><b>Dash et al. (2024)</b> — Design-stage only.</span>
+<span><b>Van Busum &amp; Fang (2025)</b> — Neural Computing &amp; Applications.</span>
+<span><b>Lewis et al. (2020)</b> — NeurIPS. RAG foundation.</span>
+<span><b>RA 10173</b> — Data Privacy Act.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 4: OBJECTIVES ═══ -->
+<div class="slide-section" id="slide4">
+<div class="slide-header">SLIDE 4 — Objectives of the Study <span class="presenter">David · ~0:30</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">David:</div>
+"Our general objective is to develop NEXIAM — a web-based, role-governed platform. Four specific objectives sit underneath this as a dependency chain."<br><br>
+<span class="click">(Click 1)</span> "<b>SO1:</b> Analyze the existing admission process and pinpoint its gaps."<br>
+<span class="click">(Click 2)</span> "<b>SO2:</b> Determine the exact system requirements those gaps demand."<br>
+<span class="click">(Click 3)</span> "<b>SO3:</b> Evaluate user acceptance of NEXIAM using the Technology Acceptance Model."<br>
+<span class="click">(Click 4)</span> "<b>SO4:</b> Test statistically whether NEXIAM performs measurably better than the manual process."
+</div>
+<div class="qa-header">Q&amp;A — Objectives</div>
+
+<!-- Existing -->
+<div class="qa-item">
+<div class="qa-q">"How do the four objectives justify the feature set?"</div>
+<div class="qa-one">The SOs form a dependency chain — diagnose (SO1), specify requirements (SO2), build, then measure acceptance (SO3) and prove improvement (SO4); each feature traces to a gap found in SO1 and a requirement specified in SO2.</div>
+<div class="qa-bullets">· <b>Dependency chain</b>: SO1→SO2→SO3→SO4 · Each feature <b>traces to SO1 gap + SO2 requirement</b> — evidence-driven</div>
+</div>
+
+<!-- Extended -->
+<div class="qa-item" id="t67">
+<div class="qa-q"><span class="trap-id">T67</span> "SO3 measures acceptance, SO4 measures improvement. Aren't they the same?"</div>
+<div class="qa-one">No — SO3 asks 'is NEXIAM acceptable?' (absolute), SO4 asks 'is NEXIAM better than manual?' (relative). SO3 could pass while SO4 fails if the manual process is already well-regarded; SO4 could pass while SO3 is marginal if the baseline is low. They answer different questions and require different statistical treatment.</div>
+<div class="qa-bullets">· SO3 = <b>absolute acceptance</b> (mean &gt; 4.0) · SO4 = <b>relative improvement</b> (paired delta) · <b>Independently informative</b></div>
+</div>
+
+<div class="qa-item" id="t27">
+<div class="qa-q"><span class="trap-id">T27</span> <span class="critical-tag">CRITICAL</span> "85% of devs use AI, 41% code is AI-generated — where in manuscript?"</div>
+<div class="qa-one">From Osmani's 2026 Google whitepaper cited in Software Model — manuscript describes paradigm qualitatively, slide provides quantitative anchor. Peng et al. (2023) carries peer-reviewed evidence in body.</div>
+<div class="qa-bullets">· <b>Osmani (2026)</b> Google whitepaper · Manuscript = qualitative; slide = quantitative · <b>Peng (2023)</b> = peer-reviewed weight</div>
+</div>
+
+<div class="qa-item" id="t68">
+<div class="qa-q"><span class="trap-id">T68</span> "How do you know SO1 gaps are real and not just anecdotal complaints?"</div>
+<div class="qa-one">Triangulation — every gap confirmed through field observation with pre-defined event categories AND stakeholder verification where extracted themes are brought back to Guidance and Registrar. Only confirmed themes become requirements.</div>
+<div class="qa-bullets">· <b>Triangulation</b>: field observation + stakeholder confirmation · <b>Pre-defined categories</b> — measurable, not impressions</div>
+</div>
+
+<div class="qa-item" id="t69">
+<div class="qa-q"><span class="trap-id">T69</span> "SO4 uses paired t-test. What if the data isn't normal?"</div>
+<div class="qa-one">Shapiro-Wilk gates — if normality holds, paired t-test; if fails, Wilcoxon signed-rank. Both pre-specified before data collection to prevent test shopping.</div>
+<div class="qa-bullets">· <b>Shapiro-Wilk</b> → parametric/non-parametric gate · <b>Wilcoxon</b> = distribution-free fallback · <b>Pre-specified</b> — no post-hoc selection</div>
+</div>
+
+<div class="qa-item" id="t70">
+<div class="qa-q"><span class="trap-id">T70</span> "Your objectives don't mention deployment. Is this just a prototype?"</div>
+<div class="qa-one">SO3 and SO4 evaluate a system deployed on Dokploy-managed VPS — not localhost. Production deployment with real browser access, RBAC enforcement, and database operations.</div>
+<div class="qa-bullets">· <b>Production VPS</b>, not localhost · <b>Dokploy</b> → containerized, SSL, monitoring · Evaluators access <b>real running system</b></div>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 5: IPO ═══ -->
+<div class="slide-section" id="slide5">
+<div class="slide-header">SLIDE 5 — Conceptual Framework (IPO) <span class="presenter">David · ~0:35</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">David:</div>
+"Here is how those objectives map into a single Input-Process-Output framework."<br><br>
+<span class="click">(Click 1)</span> "<b>Input</b> covers campus data — applicant profiles, exam scores, and manual workflow data."<br><br>
+<span class="click">(Click 2)</span> "<b>Process</b> follows the Rapid Application Development model — from requirements planning through rapid construction and cutover. Integrated within this process is the TAM evaluation: a paired pre-test and post-test that turns system use into measurable evidence."<br><br>
+<span class="click">(Click 3)</span> "<b>Output</b> has two connected parts. First is the NEXIAM platform itself — the functional system. Second is the research results from the paired TAM measures. Together, they prove whether NEXIAM outperforms the manual method with statistical backing."
+<div class="anchor">⚓ DEFENSE ANCHOR: No layers to defend. IPO is standard descriptive-developmental framework matching established methodology.</div>
+</div>
+
+<div class="qa-header">Q&amp;A — Framework, Architecture, RBAC</div>
+
+<div class="qa-item" id="t14">
+<div class="qa-q"><span class="trap-id">T14</span> "Where is RBAC in the IPO model?"</div>
+<div class="qa-one">RBAC is an architectural substrate, not a data input — it lives in Process (where the authorization matrix is defined during RAD) and Output (where every deliverable is RBAC-governed).</div>
+<div class="qa-bullets">· RBAC = <b>architectural substrate</b>, not data input · In <b>Process</b> (matrix defined) + <b>Output</b> (every output governed)</div>
+</div>
+
+<div class="qa-item" id="t15">
+<div class="qa-q"><span class="trap-id">T15</span> "Why IPO, not CIPP?"</div>
+<div class="qa-one">IPO aligns with descriptive-developmental design, cleanly separating diagnostic, intervention, and outcome stages; CIPP adds evaluation layers that duplicate what TAM already covers in Chapter 3.</div>
+<div class="qa-bullets">· IPO aligns with <b>descriptive-developmental</b> (Frey 2022) · CIPP overlaps with Ch3's TAM → <b>duplication</b></div>
+</div>
+
+<div class="qa-item" id="t16">
+<div class="qa-q"><span class="trap-id">T16</span> "TAM in Process, not Output?"</div>
+<div class="qa-one">TAM administration — the pre-test, simulation, and post-test data collection — is the act of measuring (Process); TAM results — the acceptance scores and statistical findings — are what the measurement found (Output).</div>
+<div class="qa-bullets">· <b>Administration</b> (measuring) → Process. <b>Results</b> (findings) → Output · Act vs outcome</div>
+</div>
+
+<div class="qa-item" id="t13">
+<div class="qa-q"><span class="trap-id">T13</span> "7 roles or 8 actors including Proctor?"</div>
+<div class="qa-one">Seven distinct RBAC roles; the Proctor is a duty overlay assignable to any existing staff role — it has distinct system interactions but architecturally sits on top of the seven-role structure.</div>
+<div class="qa-bullets">· <b>7 RBAC roles</b> + <b>Proctor = duty overlay</b>, not independent role · Distinct interactions, same architecture</div>
+</div>
+
+<div class="qa-item" id="t19">
+<div class="qa-q"><span class="trap-id">T19</span> "Counselor blindly follows K-Means?"</div>
+<div class="qa-one">The audit log creates individual accountability, and the dashboard displays multiple clusters with confidence boundaries — forcing active interpretation rather than passive acceptance of a single recommendation.</div>
+<div class="qa-bullets">· <b>Audit log</b> → accountability (who, when) · <b>Multiple clusters w/ confidence</b> → forces active interpretation</div>
+</div>
+
+<div class="qa-item" id="t20">
+<div class="qa-q"><span class="trap-id">T20</span> "Cross-role data isolation?"</div>
+<div class="qa-one">RBAC is enforced at the API middleware layer, not the UI — Guidance endpoints structurally lack Update/Delete permissions on Registrar-owned tables; the restriction cannot be bypassed by calling the API directly.</div>
+<div class="qa-bullets">· <b class="hl">API-layer RBAC</b>, not UI cosmetics · Guidance endpoints <b>lack Update/Delete on Registrar tables</b></div>
+</div>
+
+<div class="qa-item" id="t21">
+<div class="qa-q"><span class="trap-id">T21</span> "HMAC-SHA256: real crypto or just logging?"</div>
+<div class="qa-one">Real cryptographic chaining — each event hash includes the previous event's hash as input; tampering with any entry breaks the chain, making modification structurally detectable.</div>
+<div class="qa-bullets">· <b class="hl">Real cryptographic chaining</b>: each hash includes <b>previous event's hash</b> · Tamper → chain breaks → <b>structurally detectable</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES:</span>
+<span><b>Frey (2022)</b> — SAGE Encyclopedia. Descriptive-developmental.</span>
+<span><b>Davis (1989)</b> — MIS Quarterly. TAM instrument.</span>
+<span><b>Van Busum &amp; Fang (2025)</b> — AI bias safeguards.</span>
+<span><b>HMAC-SHA256</b> — NIST FIPS 198-1.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 6: SCOPE ═══ -->
+<div class="slide-section" id="slide6">
+<div class="slide-header">SLIDE 6 — Scope and Limitation <span class="presenter">Jaypee · ~1:15</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Jaypee:</div>
+"Thank you, David. Let us be very precise about our project boundaries."<br><br>
+<span class="click">(Click 1)</span> "<b>In scope:</b> We cover the admission testing workflow only, operating across seven user roles. We target 95% or better OMR scoring accuracy, with our AI scheduling, Chatbot, and K-Means dashboard fully active."<br><br>
+<span class="click">(Click 2)</span> "<b>Our limitations:</b> We do not touch enrollment or tuition records. The system is cloud-hosted overall, but the proctoring interface alone keeps offline resilience via service-worker caching, because exam venues lose connectivity. Finally, we claim application-layer data protection aligned with RA 10173, but we do not claim formal NPC certification."
+<div class="anchor">⚓ DEFENSE ANCHOR: Confidently address offline/cloud nuance and privacy claims before the panel can attack them.</div>
+</div>
+
+<div class="qa-header">Q&amp;A — Timeline, Infrastructure, OMR, Offline Resilience</div>
+
+<div class="qa-item" id="t28">
+<div class="qa-q"><span class="trap-id">T28</span> <span class="critical-tag">CRITICAL</span> "4 months, 3 people — realistic?"</div>
+<div class="qa-one">Four enablers make it achievable: published components (not from scratch), AI-augmented RAD for routine code, an eight-week construction block, and cross-functional team roles — scope is prioritized, core functionality first.</div>
+<div class="qa-bullets">· <b>Published components</b> · <b>AI-augmented RAD</b> · <b>8-week construction block</b> · <b>Cross-functional roles</b> · <b class="hl">Scope prioritized</b></div>
+</div>
+
+<div class="qa-item" id="t29">
+<div class="qa-q"><span class="trap-id">T29</span> <span class="critical-tag">CRITICAL</span> "Cloud + offline = contradiction?"</div>
+<div class="qa-one">They serve different operational realities — offices have reliable connectivity (cloud), exam venues may not (offline); only the proctoring interface uses service-worker caching, syncing when connection restores.</div>
+<div class="qa-bullets">· Offices = connected, venues = intermittent · <b>Proctoring only</b> uses SW cache → sync on reconnect · <b class="hl">Design response to documented infrastructure reality</b></div>
+</div>
+
+<div class="qa-item" id="t30">
+<div class="qa-q"><span class="trap-id">T30</span> "Browser crash during offline exam?"</div>
+<div class="qa-one">Service-worker cache persists across browser sessions — state serializes on every change; on restart, the last saved state is restored, with at most one interaction's worth of data loss.</div>
+<div class="qa-bullets">· SW cache <b>persists across sessions</b> · Serializes on <b>every state change</b> → max loss = one interaction</div>
+</div>
+
+<div class="qa-item" id="t31">
+<div class="qa-q"><span class="trap-id">T31</span> "Student hacks offline cache?"</div>
+<div class="qa-one">The cache is scoped exclusively to the Proctor's authenticated session — students never interact with the proctoring interface; sync uses a secure token payload validated by the server.</div>
+<div class="qa-bullets">· Cache = <b>Proctor's session only</b> · Students never touch proctoring UI · Sync via <b>secure token payload</b></div>
+</div>
+
+<div class="qa-item" id="t32">
+<div class="qa-q"><span class="trap-id">T32</span> "Free-tier API rate limit?"</div>
+<div class="qa-one">Graceful degradation — chatbot shows fallback directing to Guidance Office, scheduler switches to manual mode; core functions (OMR, RBAC, portal, audit) are unaffected as they do not depend on external APIs.</div>
+<div class="qa-bullets">· <b class="hl">Graceful degradation</b>: chatbot→"contact Guidance", scheduler→manual · <b>Core functions unaffected</b> (no external API dependency)</div>
+</div>
+
+<div class="qa-item" id="t35">
+<div class="qa-q"><span class="trap-id">T35</span> "Why cloud, not on-prem?"</div>
+<div class="qa-one">ISPSC has no dedicated server infrastructure for app hosting; Dokploy-managed VPS gives production-grade deployment with automated SSL and health monitoring at a fraction of on-premises cost and timeline.</div>
+<div class="qa-bullets">· ISPSC: <b>no dedicated server infra</b> · Dokploy VPS → production-grade at <b>fraction of on-prem cost</b></div>
+</div>
+
+<div class="qa-item" id="t38">
+<div class="qa-q"><span class="trap-id">T38</span> "Scanner skew misaligns bubbles?"</div>
+<div class="qa-one">We run perspective correction first — detect four anchor corners, warp the skewed image to a flat rectangle, then apply contour detection — based on Cuerdo's validated methodology for Philippine scanner variability.</div>
+<div class="qa-bullets">· <b>Perspective correction first</b>: detect anchors → warp → then read · <b>Cuerdo's validated methodology</b> for PH settings</div>
+</div>
+
+<div class="qa-item" id="t39">
+<div class="qa-q"><span class="trap-id">T39</span> "Rural applicants, no laptops?"</div>
+<div class="qa-one">NEXIAM's frontend is mobile-first with responsive design — smartphone plus mobile data gives full portal access, directly addressing the equity gap of repeat physical campus trips.</div>
+<div class="qa-bullets">· <b>Mobile-first, responsive</b> → smartphone + data = full access · Directly addresses <b>equity gap</b></div>
+</div>
+
+<div class="qa-item" id="t40">
+<div class="qa-q"><span class="trap-id">T40</span> "SW cache storage limits?"</div>
+<div class="qa-one">Designed for single-session resilience — one exam session's attendance data is measured in kilobytes, not megabytes; the use case is intermittent outages of minutes to hours, not prolonged disconnection.</div>
+<div class="qa-bullets">· <b>Single-session resilience</b> (KB, not MB) · Intermittent outages, not prolonged disconnection</div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES:</span>
+<span><b>Cuerdo et al. (2021)</b> — EvalBee OMR pipeline.</span>
+<span><b>Dayata &amp; Yap (2024)</b> — RAG architecture.</span>
+<span><b>Tan (2025)</b> — K-Means dashboard.</span>
+<span><b>Dokploy</b> — Containerized deployment.</span>
+<span><b>Service Worker API (W3C)</b> — Offline resilience.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 7: BENEFICIARIES ═══ -->
+<div class="slide-section" id="slide7">
+<div class="slide-header">SLIDE 7 — Beneficiaries <span class="presenter">Jaypee · ~0:40</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Jaypee:</div>
+"Thank you, David. This scoped architecture directly benefits three groups."<br><br>
+<span class="click">(Click 1)</span> "<b>The Institution</b> gains a faster, legally compliant admission process."<br>
+<span class="click">(Click 2)</span> "<b>Applicants</b> gain a 24/7 portal, closing the equity gap of repeat physical trips to campus."<br>
+<span class="click">(Click 3)</span> "And the <b>Research Community</b> gains a deployable blueprint for regional state colleges."
+</div>
+<div class="qa-header">Q&amp;A — Beneficiaries</div>
+
+<!-- Existing -->
+<div class="qa-item">
+<div class="qa-q">"Are benefits correctly scoped given limitations?"</div>
+<div class="qa-one">Each group maps to a specific, scoped output — Institution benefits from OMR speed + audit compliance, Applicants from mobile-first portal access, Research Community from the documented architecture and empirical TAM results.</div>
+<div class="qa-bullets">· Institution → OMR + audit + RBAC · Applicants → 24/7 mobile portal · Research → documented architecture + TAM results</div>
+</div>
+
+<!-- Extended -->
+<div class="qa-item" id="t71">
+<div class="qa-q"><span class="trap-id">T71</span> "Research community benefits — isn't this just a school project?"</div>
+<div class="qa-one">The research community is regional SUCs facing the same RA 10931 volume pressure. NEXIAM ships a deployable blueprint — documented architecture, validated methodology, empirical TAM results. A capstone that deploys and measures is a contribution.</div>
+<div class="qa-bullets">· Beneficiary = <b>regional SUCs</b> with same problem · Deliverable = <b>deployable blueprint</b> · Dash stopped at design; NEXIAM <b>advances to deployment</b></div>
+</div>
+
+<div class="qa-item" id="t72">
+<div class="qa-q"><span class="trap-id">T72</span> "Applicants benefit from 24/7 portal. But most rural applicants don't have internet."</div>
+<div class="qa-one">The portal is mobile-first — smartphone plus basic mobile data gives full access. The equity gap we close is repeat physical trips to campus, not home broadband.</div>
+<div class="qa-bullets">· <b>Mobile-first</b> → smartphone + data = full access · Closes <b>repeat-trip equity gap</b> · Same device they <b>already use for Facebook</b></div>
+</div>
+
+<div class="qa-item" id="t73">
+<div class="qa-q"><span class="trap-id">T73</span> "Institution gets 'legally compliant' — but no NPC certification."</div>
+<div class="qa-one">We claim app-layer RA 10173 alignment — RBAC isolation, HMAC-SHA256 audit, doc-only RAG. Paper structurally cannot provide these. Full NPC cert is the institution's next step.</div>
+<div class="qa-bullets">· Claim = <b>app-layer alignment</b>, not NPC cert · Paper <b>structurally cannot</b> provide audit/RBAC · Our step = <b>compliance-ready architecture</b></div>
+</div>
+
+<div class="qa-item" id="t74">
+<div class="qa-q"><span class="trap-id">T74</span> "What if K-Means gives bad triage? That's a cost, not a benefit."</div>
+<div class="qa-one">Program Heads currently get unstructured text messages with zero aptitude data. NEXIAM gives structured slates with confidence boundaries — strictly more information, and the Program Head makes the final routing call.</div>
+<div class="qa-bullets">· Current = <b>zero aptitude data</b> · NEXIAM = <b>structured slates + confidence</b> · <b>Strictly more information</b> · Program Head = <b>final routing call</b></div>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 8: METHODOLOGY ═══ -->
+<div class="slide-section" id="slide8">
+<div class="slide-header">SLIDE 8 — Research Design &amp; Methodology <span class="presenter">Jaypee · ~1:15</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Jaypee:</div>
+"Our methodology is a dependency chain. We classified the study as <b>Descriptive-Developmental</b> under Frey — <b>diagnose first, build second</b>."<br><br>
+<span class="click">(Layer 2)</span> "The Descriptive Phase uses interviews and field observation to map the current process, then thematic analysis to extract verified gaps. Only gaps confirmed through triangulation graduate to requirements."<br><br>
+<span class="click">(Layer 3)</span> "With requirements set, we construct NEXIAM via AI-Augmented RAD — four phases with a mandatory human review gate on every module. AI writes boilerplate; the team decides what ships."<br><br>
+<span class="click">(Layer 4)</span> "Finally, we evaluate using paired TAM — pre-test on manual, post-test after simulation — to measure whether NEXIAM is statistically better than the baseline. Paired t-test or Wilcoxon, gated by Shapiro-Wilk. The data decides."
+</div>
+
+<div class="qa-header">Q&amp;A — Research Design, Methodology Justification</div>
+
+<div class="qa-item" id="t61">
+<div class="qa-q"><span class="trap-id">T61</span> <span class="critical-tag">CRITICAL</span> "Why not just Descriptive? Or just Developmental?"</div>
+<div class="qa-one">Either alone truncates the study — descriptive-only maps without solving; developmental-only builds without requirements. Descriptive-Developmental is necessary because the outcome is a tested system, not a diagnosis or a prototype alone (Frey, 2022).</div>
+<div class="qa-bullets">· Descriptive-only = <b>maps, doesn't solve</b> · Developmental-only = <b>builds without requirements</b> · Both = <b>tested system</b></div>
+</div>
+
+<div class="qa-item" id="t62">
+<div class="qa-q"><span class="trap-id">T62</span> "Your layers just restate the SOs. Redundant?"</div>
+<div class="qa-one">SOs state what; the methodology explains why that order — you cannot build before diagnosis, and you cannot claim improvement without testing.</div>
+<div class="qa-bullets">· SOs = <b>what</b>; Methodology = <b>why that order</b> · Enforces: <b>no diagnosis → no build → no claim</b></div>
+</div>
+
+<div class="qa-item" id="t63">
+<div class="qa-q"><span class="trap-id">T63</span> "Pre/post test = quasi-experimental. Why descriptive-developmental?"</div>
+<div class="qa-one">Classified by primary activity — describe, develop, evaluate (Frey). The paired TAM is an evaluation tool within the developmental phase, not an experiment — no random assignment, no IV manipulation.</div>
+<div class="qa-bullets">· <b>Primary activity</b> = describe → develop → evaluate · Pre/post = <b>evaluation tool</b> · <b class="hl">No random assignment → not quasi-experimental</b></div>
+</div>
+
+<div class="qa-item" id="t64">
+<div class="qa-q"><span class="trap-id">T64</span> "Thematic analysis in a capstone timeline — realistic?"</div>
+<div class="qa-one">Targeted dataset — 5–7 interviews across two offices, validated through field observation triangulation. Goal is operational requirement extraction, not theoretical saturation (Braun &amp; Clarke, 2006).</div>
+<div class="qa-bullets">· <b>Targeted</b> (5–7 interviews) · <b>Triangulation</b> via field observation · Goal = <b>operational requirements</b></div>
+</div>
+
+<div class="qa-item" id="t65">
+<div class="qa-q"><span class="trap-id">T65</span> "Field observation — observer bias?"</div>
+<div class="qa-one">Structured protocol with pre-defined event categories (scoring time, posting method, communication channel) recorded on a standardized form. Targets measurable process data, not subjective impressions.</div>
+<div class="qa-bullets">· <b>Pre-defined event categories</b> + standardized form · <b>Measurable data</b>, not subjective impressions</div>
+</div>
+
+<div class="qa-item" id="t66">
+<div class="qa-q"><span class="trap-id">T66</span> "AI hallucination during RAD construction — how prevent?"</div>
+<div class="qa-one">Human Review gate — static analysis, integration tests, and peer review on every module before it enters main branch. Same process as catching logic errors, applied to AI output.</div>
+<div class="qa-bullets">· <b>Human Review gate</b>: static analysis + tests + peer review · Same discipline as <b>any code review</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES:</span>
+<span><b>Frey (2022)</b> — SAGE Encyclopedia.</span>
+<span><b>Braun &amp; Clarke (2006)</b> — Thematic analysis.</span>
+<span><b>Olipas (2020)</b> — RAD for PH HEI.</span>
+<span><b>Melendres &amp; Aranda (2024)</b> — Independent RAD validation.</span>
+<span><b>Osmani (2026)</b> — Google Whitepaper. AI-augmented.</span>
+<span><b>Peng et al. (2023)</b> — AI productivity evidence.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 9: SOFTWARE MODEL ═══ -->
+<div class="slide-section no-break">
+<div class="slide-header">SLIDE 9 — Software Model (AI-Augmented RAD) <span class="presenter">Jaypee · ~0:30</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Jaypee:</div>
+"For our software model, we utilize AI-Augmented Rapid Application Development."<br><br>
+<span class="click">(Click 1)</span> "Osmani's 2026 Google whitepaper confirms that <b>85% of professional developers</b> now use AI coding agents regularly, and <b>41% of new code industry-wide</b> is AI-generated. We are building at the modern industry standard."<br><br>
+<span class="click">(Click 2)</span> "Crucially, AI generates code, but it routes through a mandatory human <b>Review and Integrate</b> gate. If a module fails static analysis or peer review, it loops back to generation. AI writes — a human decides what ships."
+<div class="anchor">⚓ DEFENSE ANCHOR: AI = accelerator, not decision-maker. Every line passes a human gate.</div>
+</div>
+
+<div class="qa-header">Q&amp;A — AI-Augmented RAD, Industry Standard</div>
+
+<div class="qa-item">
+<div class="qa-q"><span class="trap-id">T86</span> "85% and 41% — practitioner evidence, not peer-reviewed. Why trust it?"</div>
+<div class="qa-one">Osmani provides the industry-adoption snapshot — what developers actually do. Peng et al. (2023) carries the peer-reviewed productivity evidence in the manuscript body. The two sources together establish both real-world prevalence and academic rigor.</div>
+<div class="qa-bullets">· Osmani = <b>industry adoption data</b> (what devs do) · Peng (2023) = <b>peer-reviewed productivity</b> (academic weight) · Together = <b>both dimensions validated</b></div>
+</div>
+
+<div class="qa-item">
+<div class="qa-q"><span class="trap-id">T87</span> "How do you know AI-generated code isn't introducing security holes?"</div>
+<div class="qa-one">Three gates: static analysis catches injection, XSS, and unsafe patterns; Christine's integration tests verify RBAC enforcement at the API layer; peer review on every module ensures logic integrity. Same discipline as any code review — applied to AI output.</div>
+<div class="qa-bullets">· <b>Static analysis</b> → injection, XSS, unsafe patterns · <b>Integration tests</b> → API-layer RBAC · <b>Peer review</b> → logic integrity · Process = <b>same as manual code review</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES CITED IN THIS SECTION:</span>
+<span><b>Osmani (2026)</b> — <i>Google Whitepaper</i>. 85% devs use AI, 41% code AI-generated. → Establishes AI-augmented development as industry standard.</span>
+<span><b>Peng et al. (2023)</b> — <i>arXiv</i>. Peer-reviewed AI productivity evidence. → Academic weight: AI assistance measurably speeds development.</span>
+<span><b>Olipas (2020)</b> — RAD for PH HEI student info system. → Validates RAD in NEXIAM's deployment context.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 10: TIMELINE ═══ -->
+<div class="slide-section" id="slide10">
+<div class="slide-header">SLIDE 10 — Project Plan (Timeline) <span class="presenter">Jaypee · ~0:30</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Jaypee:</div>
+"This is our four-phase timeline running from June through September 2026. We are currently on track with Requirements Planning and moving into User Design."
+</div>
+<div class="qa-header">Q&amp;A — Timeline, RAD Methodology, Team Capacity</div>
+
+<div class="qa-item" id="t28b">
+<div class="qa-q"><span class="trap-id">T28</span> <span class="critical-tag">CRITICAL</span> "4 months, 3 people — realistic?"</div>
+<div class="qa-one">Four enablers: published components, AI-augmented RAD, 8-week construction block, cross-functional roles — scope prioritized, core first.</div>
+<div class="qa-bullets">· <b>Published components</b> · <b>AI-augmented RAD</b> · <b>8-week block</b> · <b class="hl">Scope prioritized</b></div>
+</div>
+
+<div class="qa-item" id="t33">
+<div class="qa-q"><span class="trap-id">T33</span> "Why RAD instead of Scrum or Agile? Isn't RAD outdated?"</div>
+<div class="qa-one">RAD validated for Philippine SUCs — Olipas (2020), Melendres &amp; Aranda (2024). Four-phase RAD maps to descriptive-developmental design. Agile's continuous iteration complicates phase-to-objective mapping for capstone documentation.</div>
+<div class="qa-bullets">· <b>Validated for PH SUCs</b>: Olipas, Melendres · 4-phase RAD → <b>maps SO1→SO4</b> · Agile = continuous → <b>breaks capstone structure</b></div>
+</div>
+
+<div class="qa-item" id="t34">
+<div class="qa-q"><span class="trap-id">T34</span> <span class="critical-tag">CRITICAL</span> "If AI generates most code, what's your contribution?"</div>
+<div class="qa-one">Team does 5 things AI cannot: define architecture, write specifications, peer code reviews, build integration layers (OMR→DB, RAG→docs, K-Means→dashboard), and test against staff feedback. AI-augmented, not AI-replaced.</div>
+<div class="qa-bullets">· AI = <b>boilerplate</b>; Team = <b>5 things AI can't</b> · <b>Human Review gate</b> on every module · <b class="hl">AI-augmented, not AI-replaced</b></div>
+</div>
+
+<div class="qa-item" id="t37">
+<div class="qa-q"><span class="trap-id">T37</span> "Team of 3 — how is code review independent?"</div>
+<div class="qa-one">Christine = QA only (no production code). Every module gets ≥2 reviewers. QA structurally separated from construction — strongest feasible for 3-person team.</div>
+<div class="qa-bullets">· <b>Christine = QA only</b> · Every module: <b>≥2 reviewers</b> · <b>QA isolated from construction</b></div>
+</div>
+
+<div class="qa-item" id="t75">
+<div class="qa-q"><span class="trap-id">T75</span> "Gantt shows overlap between User Design and Construction. Isn't that Agile?"</div>
+<div class="qa-one">RAD explicitly includes Design↔Construction iteration — that IS the methodology. RAD has defined boundaries + cutover; Agile has no fixed endpoint. Controlled iteration, not open-ended sprints.</div>
+<div class="qa-bullets">· RAD <b>includes</b> Design↔Construction iteration · RAD = <b>defined boundaries</b>; Agile = <b>no endpoint</b></div>
+</div>
+
+<div class="qa-item" id="t76">
+<div class="qa-q"><span class="trap-id">T76</span> "What if you don't finish in 4 months? Fallback?"</div>
+<div class="qa-one">Core ships first (OMR, RBAC, portal, audit). AI features are modular, stageable. Model Adapter → K-Means stub doesn't break pipeline. Fallback = core + partial AI, not nothing.</div>
+<div class="qa-bullets">· <b>Core ships first</b> · AI features = <b>modular, stageable</b> · Fallback = <b>core + partial AI</b></div>
+</div>
+
+<div class="qa-item" id="t77">
+<div class="qa-q"><span class="trap-id">T77</span> "Who maintains NEXIAM after you graduate?"</div>
+<div class="qa-one">Full documentation for handover (architecture, RBAC, API, deployment). Dokploy → low-burden maintenance for IT staff. Manuscript = technical reference. Maintenance designed low-burden.</div>
+<div class="qa-bullets">· <b>Full documentation</b> for handover · <b>Dokploy</b> → low-burden maintenance · Manuscript = <b>technical reference</b></div>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 11: POPULATION ═══ -->
+<div class="slide-section" id="slide11">
+<div class="slide-header">SLIDE 11 — Population and Locale <span class="presenter">Christine · ~1:00</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Christine:</div>
+"Thank you, Jaypee. To evaluate the system in September, we will use 47 evaluators."<br><br>
+<span class="click">(Click 1)</span> "This breaks down into students, program heads, registrar staff, guidance, and IT experts."<br><br>
+<span class="click">(Click 2)</span> "Because our evaluation happens in September — which has no active admission cycle — these are simulated evaluators drawn through purposive sampling, simulating real-world scenarios they know from direct experience."<br><br>
+<span class="click">(Click 3)</span> "Notice we split the 47 into two distinct panels: An Operational Panel of 46 simulates the admission use cases, while a Technical Panel of 1 IT expert specifically evaluates backend architecture and security."
+</div>
+
+<div class="qa-header">Q&amp;A — Sampling, Sample Size, Evaluation Validity</div>
+
+<div class="qa-item" id="t42">
+<div class="qa-q"><span class="trap-id">T42</span> <span class="critical-tag">CRITICAL</span> "Why no control group?"</div>
+<div class="qa-one">Structurally impossible — Guidance has 2 staff, Registrar 3; splitting gives n=1-2 with zero power. Within-subjects paired design is correct: each evaluator serves as their own control.</div>
+<div class="qa-bullets">· <b class="hl">Structurally impossible</b>: split = n=1-2 · System replaces <b>entire workflow</b> · <b class="hl">Within-subjects = correct tool</b></div>
+</div>
+
+<div class="qa-item" id="t45">
+<div class="qa-q"><span class="trap-id">T45</span> "n=46 underpowered?"</div>
+<div class="qa-one">30-per-group rule = independent samples, not paired. n=46 pairs, medium effect → power &gt; 0.90. Shapiro-Wilk gates normality, Wilcoxon is fallback.</div>
+<div class="qa-bullets">· 30-per-group = <b>independent</b>, not paired · n=46 pairs, medium effect → <b>power &gt; 0.90</b></div>
+</div>
+
+<div class="qa-item" id="t46">
+<div class="qa-q"><span class="trap-id">T46</span> "Purposive sampling = selection bias?"</div>
+<div class="qa-one">Not convenience — evaluators selected for operational relevance, including complete Guidance and Registrar complements. Pre-test baseline accounts for individual response tendencies.</div>
+<div class="qa-bullets">· <b>Not convenience</b>: operational relevance · Pre-test = <b>individual baseline</b></div>
+</div>
+
+<div class="qa-item" id="t36">
+<div class="qa-q"><span class="trap-id">T36</span> "September — no real applicants. Valid?"</div>
+<div class="qa-one">We claim acceptability to operators, not live-cycle validation. Same stakeholders who manage real admissions, first-years with fresh memory. Live validation = future work.</div>
+<div class="qa-bullets">· Claim: <b>acceptable to operators</b> · <b>Same stakeholders</b> · Fresh-memory first-years · Live validation = future work</div>
+</div>
+
+<div class="qa-item" id="t49">
+<div class="qa-q"><span class="trap-id">T49</span> "IT expert excluded from TAM?"</div>
+<div class="qa-one">TAM measures end-user acceptance — doesn't fit technical evaluation. IT expert conducts structured technical walkthrough: architecture, security, privacy, maintainability (qualitative, n=1).</div>
+<div class="qa-bullets">· TAM = <b>end-user acceptance</b> · IT expert → <b>structured technical walkthrough</b></div>
+</div>
+
+<div class="qa-item" id="t55">
+<div class="qa-q"><span class="trap-id">T55</span> "First-years already admitted — invalid?"</div>
+<div class="qa-one">They have fresh institutional memory of the real admission process — trips, Facebook monitoring, waiting. More valuable than hypothetical applicant who never experienced any process.</div>
+<div class="qa-bullets">· <b>Fresh institutional memory</b> · Know exact pain points: trips, Facebook, waiting</div>
+</div>
+
+<div class="qa-item" id="t56">
+<div class="qa-q"><span class="trap-id">T56</span> "What do 11 Program Heads evaluate?"</div>
+<div class="qa-one">Two specific outputs: pre-enrollment slates showing applicant volume per program with aptitude patterns, and decision-support triage for program qualification standards and mismatch routing.</div>
+<div class="qa-bullets">· <b>Pre-enrollment slates</b> (volume + aptitude) · <b>Decision-support triage</b> (qualifications, routing)</div>
+</div>
+
+<div class="qa-item" id="t57">
+<div class="qa-q"><span class="trap-id">T57</span> "Hawthorne effect — evaluators rate high to be nice?"</div>
+<div class="qa-one">Mitigated by anonymized TAM questionnaires and pre-simulation framing as critical stress-test — evaluators told to find flaws, not praise.</div>
+<div class="qa-bullets">· <b>Anonymized</b> TAM · Framed as <b>critical stress-test</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES:</span>
+<span><b>Frey (2022)</b> — Descriptive-developmental.</span>
+<span><b>Cohen (1988)</b> — Statistical Power Analysis.</span>
+<span><b>Shapiro &amp; Wilk (1965)</b> — Normality test.</span>
+<span><b>Wilcoxon (1945)</b> — Signed-rank fallback.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 12: TAM ═══ -->
+<div class="slide-section" id="slide12">
+<div class="slide-header">SLIDE 12 — Research Instrument (TAM) <span class="presenter">Christine · ~0:45</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Christine:</div>
+"We measure their acceptance using <b>Davis's Technology Acceptance Model</b> across four constructs: Usefulness, Ease of Use, Attitude, and Intention."<br><br>
+<span class="click">(Click 1)</span> "Our 16-item instrument features <b>role-adapted phrasing</b>, meaning an applicant and a Registrar answer questions tailored to their specific interface and workflow."<br><br>
+<span class="click">(Click 2)</span> "Crucially, we administer this on a <b>7-point Likert scale</b> as a Pre-Test <em>and</em> a Post-Test. We are measuring the actual <em>shift</em> in perception after using NEXIAM, not just a single snapshot of opinion."
+</div>
+
+<div class="qa-header">Q&amp;A — TAM Design, Instrument Validity, Model Choice</div>
+
+<div class="qa-item" id="t43">
+<div class="qa-q"><span class="trap-id">T43</span> <span class="critical-tag">CRITICAL</span> "Manual vs NEXIAM = apples to oranges?"</div>
+<div class="qa-one">That IS the point — NEXIAM replaces manual. Only meaningful comparison. Same 4 TAM constructs, same 7-point scale, paired design gives relative improvement.</div>
+<div class="qa-bullets">· <b class="hl">That IS the point</b> — only meaningful comparison · Same <b>4 constructs, 7-point</b> · Paired = <b class="hl">relative improvement</b></div>
+</div>
+
+<div class="qa-item" id="t44">
+<div class="qa-q"><span class="trap-id">T44</span> "TAM pre-test breaks Davis protocol?"</div>
+<div class="qa-one">Pre-test measures manual process (experienced), not NEXIAM. Davis's post-use condition satisfied for the referent. Paired delta captures shift from manual to automated.</div>
+<div class="qa-bullets">· Pre-test = <b>manual process</b> (experienced) · Paired delta = <b>shift from manual to automated</b></div>
+</div>
+
+<div class="qa-item" id="t47">
+<div class="qa-q"><span class="trap-id">T47</span> "7-point vs 5-point Likert?"</div>
+<div class="qa-one">7-point = greater variance, finer granularity for moderate shifts, less midpoint clustering. Davis originally used 7-point for TAM validation.</div>
+<div class="qa-bullets">· 7-point → <b>greater variance</b> · <b>Davis originally used 7-point</b></div>
+</div>
+
+<div class="qa-item" id="t48">
+<div class="qa-q"><span class="trap-id">T48</span> "16 items or 64 phrasings?"</div>
+<div class="qa-one">16 items (4 constructs × 4). Role-adapted phrasing tailors wording to each group's operational reality while preserving the underlying construct and psychometric properties.</div>
+<div class="qa-bullets">· <b>16 items</b> (4 constructs × 4) · <b>Role-adapted phrasing only</b>, same construct</div>
+</div>
+
+<div class="qa-item" id="t58">
+<div class="qa-q"><span class="trap-id">T58</span> "Why TAM, not SUS or ISO 25010?"</div>
+<div class="qa-one">Primary hurdle is institutional adoption, not just usability. TAM's Perceived Usefulness + Behavioral Intention predict actual use. SUS = subset. ISO = IT expert covers via walkthrough.</div>
+<div class="qa-bullets">· Hurdle = <b>institutional adoption</b> · TAM → <b>PU + BIU</b> predict use · SUS = subset; ISO = IT expert covers</div>
+</div>
+
+<div class="qa-item" id="t59">
+<div class="qa-q"><span class="trap-id">T59</span> "Ceiling effect if pre-test already high?"</div>
+<div class="qa-one">A ceiling effect would be informative — problem not perceived as severe. However, documented 5-to-14-day delays strongly suggest low pre-test scores.</div>
+<div class="qa-bullets">· Would be <b>informative</b> (finding) · Background data → <b>low pre-test more likely</b></div>
+</div>
+
+<div class="qa-item" id="t60">
+<div class="qa-q"><span class="trap-id">T60</span> "How measure integration vs individual features?"</div>
+<div class="qa-one">Evaluators use the complete integrated system during simulation. TAM items like inter-office coordination (PU-4) and status visibility (PU-3) specifically probe integration value.</div>
+<div class="qa-bullets">· Evaluators use <b>complete integrated system</b> · TAM items → <b>probe integration value</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES:</span>
+<span><b>Davis (1989)</b> — MIS Quarterly. TAM gold-standard.</span>
+<span><b>Brooke (1996)</b> — SUS.</span>
+<span><b>ISO 25010:2011</b> — SQuaRE.</span>
+<span><b>Delone &amp; McLean</b> — IS Success Model.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 13: DATA ANALYSIS ═══ -->
+<div class="slide-section" id="slide13">
+<div class="slide-header">SLIDE 13 — Data Analysis Techniques <span class="presenter">Christine · ~1:00</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">Christine:</div>
+"Finally, our data analysis maps directly back to our specific objectives."<br><br>
+<span class="click">(Click 1)</span> "<b>SO1</b> uses thematic analysis to extract pain points from interviews and field observations."<br>
+<span class="click">(Click 2)</span> "<b>SO2</b> uses iterative validation with staff to confirm system requirements against real workflow."<br>
+<span class="click">(Click 3)</span> "<b>SO3</b> uses pooled TAM means — per construct, per role — checked against established acceptance benchmarks."<br>
+<span class="click">(Click 4)</span> "<b>SO4</b> starts with a Shapiro-Wilk normality check. If the data is normal, we use a paired t-test; if not, a Wilcoxon signed-rank test. The data decides the statistical path, not us."
+</div>
+
+<div class="qa-header">Q&amp;A — Statistics, Analysis Validity</div>
+
+<div class="qa-item" id="t50">
+<div class="qa-q"><span class="trap-id">T50</span> "Shapiro-Wilk low power at n=46?"</div>
+<div class="qa-one">Detects gross departures reliably. Two safeguards: report exact W + p-values, report effect size (distribution-robust). Can default to Wilcoxon as primary.</div>
+<div class="qa-bullets">· Detects <b>gross departures</b> · 2 safeguards: <b>exact W+p</b>, <b>effect size</b> · Option: <b>default to Wilcoxon</b></div>
+</div>
+
+<div class="qa-item" id="t51">
+<div class="qa-q"><span class="trap-id">T51</span> "Why effect size + p-value?"</div>
+<div class="qa-one">p = difference exists? d = how big? n=46 can produce significant p for trivial shift. Cohen's d quantifies practical meaning. APA 7th requires both.</div>
+<div class="qa-bullets">· p = <b>difference exists?</b> | d = <b>how big?</b> · n=46 → significant p possible for trivial shift · <b>APA 7th standard</b></div>
+</div>
+
+<div class="qa-item" id="t52">
+<div class="qa-q"><span class="trap-id">T52</span> "Thematic analysis — how validate themes?"</div>
+<div class="qa-one">Triangulation against field observation notes and stakeholder confirmation — extracted themes brought back to Guidance and Registrar for verification. Only confirmed → requirements.</div>
+<div class="qa-bullets">· <b>Triangulation</b>: observation + <b>stakeholder confirmation</b> · <b>Only confirmed → requirements</b></div>
+</div>
+
+<div class="qa-item" id="t53">
+<div class="qa-q"><span class="trap-id">T53</span> "TAM mean &gt; 4.0 = acceptance? Barely neutral."</div>
+<div class="qa-one">4.0 = scale midpoint — standard TAM interpretive benchmark. Report exact means + SD per construct per role. Paired test answers: is it better, not just acceptable?</div>
+<div class="qa-bullets">· 4.0 = <b>scale midpoint</b> (TAM standard) · Report <b>exact means + SD per role</b> · Paired: <b>is it better?</b></div>
+</div>
+
+<div class="qa-item" id="t54">
+<div class="qa-q"><span class="trap-id">T54</span> "Why only PU + PEOU hypotheses?"</div>
+<div class="qa-one">PU and PEOU are core formative constructs (Davis 1989). ATU and BIU are downstream mediators. Testing all 4 → familywise error α ≈ .19.</div>
+<div class="qa-bullets">· PU + PEOU = <b>core constructs</b> · ATU + BIU = <b>downstream</b> · Testing all 4 → <b>α ≈ .19</b></div>
+</div>
+
+<div class="ref-block">
+<span class="ref-label">REFERENCES:</span>
+<span><b>Shapiro &amp; Wilk (1965)</b> — Normality test.</span>
+<span><b>Wilcoxon (1945)</b> — Distribution-free fallback.</span>
+<span><b>Cohen (1988)</b> — Effect size conventions.</span>
+<span><b>Davis (1989)</b> — TAM core constructs.</span>
+<span><b>APA 7th</b> — Reporting standards.</span>
+</div>
+</div>
+</div>
+
+<!-- ═══ SLIDE 14: CLOSING ═══ -->
+<div class="slide-section" id="slide14">
+<div class="slide-header">SLIDE 14 — Closing <span class="presenter">David · ~0:10</span></div>
+<div class="slide-body">
+<div class="script-block">
+<div class="speaker">David:</div>
+"That concludes our proposal for NEXIAM. Thank you for your time and expertise. We are now ready for your questions."
+</div>
+<div class="qa-header">Q&amp;A — Open Floor: Integrative, Comparative, Big-Picture</div>
+
+<div class="qa-item" id="t78">
+<div class="qa-q"><span class="trap-id">T78</span> <span class="critical-tag">CRITICAL</span> "If your panel had to reject this proposal in one sentence, what is the strongest reason?"</div>
+<div class="qa-one">"The evaluation uses simulated evaluators outside a live admission cycle, so results establish acceptability to operators, not live-cycle validation." That is our weakest point — and we name it before the panel can. Bounded, acknowledged, future work. Everything else is defensible.</div>
+<div class="qa-bullets">· <b class="hl">Name weak point first</b> · Weakest = simulated evaluation · <b>Bounded + acknowledged + future work</b></div>
+</div>
+
+<div class="qa-item" id="t79">
+<div class="qa-q"><span class="trap-id">T79</span> "What is the single strongest evidence NEXIAM is not just feasible but needed?"</div>
+<div class="qa-one">700–1,000 applicants/year on paper. 5–14 day scoring. Facebook results. Text-message coordination. RA 10931 increasing volumes. Need is documented, measured, ongoing.</div>
+<div class="qa-bullets">· <b>700–1,000 applicants on paper</b> · <b>5–14 day delay</b> · <b>Facebook = results</b> · Need is <b>documented</b></div>
+</div>
+
+<div class="qa-item" id="t80">
+<div class="qa-q"><span class="trap-id">T80</span> "If you could only keep five references, which five?"</div>
+<div class="qa-one">Davis (1989) — TAM instrument. Frey (2022) — design classification. Cuerdo (2021) — OMR pipeline. Dayata &amp; Yap (2024) — RAG architecture. Tan (2025) — K-Means approach.</div>
+<div class="qa-bullets">· <b>Davis</b> → TAM · <b>Frey</b> → design · <b>Cuerdo</b> → OMR · <b>Dayata</b> → RAG · <b>Tan</b> → K-Means</div>
+</div>
+
+<div class="qa-item" id="t81">
+<div class="qa-q"><span class="trap-id">T81</span> "What's the kill condition? What would make you abandon this project?"</div>
+<div class="qa-one">SO4 shows no statistically significant improvement over manual — paired t-test/Wilcoxon returns no significant delta. Built into study design. Data decides.</div>
+<div class="qa-bullets">· Kill condition = <b>SO4 shows no improvement</b> · <b>Not building to prove, building to measure</b> · <b class="hl">Data decides</b></div>
+</div>
+
+<div class="qa-item" id="t82">
+<div class="qa-q"><span class="trap-id">T82</span> "How is NEXIAM different from buying off-the-shelf?"</div>
+<div class="qa-one">Generic systems lack ISPSC-specific RBAC, ICAT-validated K-Means, policy-doc RAG, and IPO outputs (pre-enrollment slate, decision-support triage). Purpose-built, not configurable template.</div>
+<div class="qa-bullets">· Generic lacks <b>ISPSC-specific RBAC</b> + <b>ICAT K-Means</b> + <b>policy RAG</b> · <b>Purpose-built</b></div>
+</div>
+
+<div class="qa-item" id="t83">
+<div class="qa-q"><span class="trap-id">T83</span> "You say data decides. But you designed the TAM instrument. Referee and player?"</div>
+<div class="qa-one">TAM uses Davis's (1989) validated constructs — we adopted, not designed. Pre-specified analysis path locked before data collection. We control instrument; instrument doesn't control outcome.</div>
+<div class="qa-bullets">· <b>Davis (1989) validated constructs</b> · <b>Pre-specified path</b> · Instrument ≠ outcome</div>
+</div>
+
+<div class="qa-item" id="t84">
+<div class="qa-q"><span class="trap-id">T84</span> "What's the one question you hope the panel does not ask?"</div>
+<div class="qa-one">"Why didn't you validate with real applicants during a live cycle?" — September has no cycle. Mitigated with same stakeholders, fresh-memory first-years. Bounded, not hidden.</div>
+<div class="qa-bullets">· Hardest: <b>"Why not live validation?"</b> · <b>September = no cycle</b> · <b>Bounded, acknowledged</b></div>
+</div>
+
+<div class="qa-item" id="t85">
+<div class="qa-q"><span class="trap-id">T85</span> "Summarize NEXIAM in one sentence for a non-technical panelist."</div>
+<div class="qa-one">NEXIAM replaces paper-based admission testing at ISPSC Tagudin with a role-governed web platform that scores exams automatically, guides applicants through a portal, and helps counselors place students using data — all under audit-tracked privacy compliance.</div>
+<div class="qa-bullets">· <b>One sentence</b>: paper → platform, with roles, automation, data, compliance</div>
+</div>
+</div>
+</div>
+
+<!-- ═══ APPENDICES ═══ -->
+<div class="appendix">
+<div class="appendix-header">APPENDIX A — Cross-Domain Pass-Off Phrases</div>
+<div class="appendix-body">
+<b>D→C:</b> "For the statistical methodology, I defer to Christine, QA Tester &amp; Data Analyst."<br>
+<b>C→J:</b> "For the technical architecture, I defer to Jaypee, Lead Developer."<br>
+<b>J→D:</b> "For the legal and policy framework, I defer to David, Project Manager."<br>
+<b>→Adviser:</b> "Reviewed and approved under Dr. Zeus Vincent Mendoza."
+</div>
+</div>
+
+<div class="appendix">
+<div class="appendix-header">APPENDIX B — Acknowledged Weak Points</div>
+<div class="appendix-body">
+1. Simulated evaluators → "Bounded by simulated conditions. Live validation = future work."<br>
+2. No NPC → "Outside scope. App-layer RA 10173 only."<br>
+3. Free-tier AI → "Paid capacity = production recommendation."<br>
+4. Osmani whitepaper → "Practitioner evidence. Peng (2023) = peer-reviewed."<br>
+5. n=46/n=1 → "Sample relatively small. IT expert = qualitative."<br>
+6. September = no cycle → "Same stakeholders, fresh memory."<br>
+7. Woelert duplicate → "Formatting — will correct."<br>
+8. Dash venue → "Pivot to Cuerdo, Dayata, Tan — all indexed."
+</div>
+</div>
+
+<div class="appendix">
+<div class="appendix-header">APPENDIX C — Presentation Time Budget</div>
+<div class="appendix-body">
+S2: David ~1:10 | S3: David ~1:10 | S4: David ~0:30 | S5: David ~0:35 | S6: Jaypee ~1:15 | S7: Jaypee ~0:40 | S8: Jaypee ~1:15 | S9: Jaypee ~0:30 | S10: Jaypee ~0:30 | S11: Christine ~1:00 | S12: Christine ~0:45 | S13: Christine ~1:00 | S14: David ~0:10<br>
+<b>TOTAL: ~9:10 | Buffer: ~0:50 | David: ~3:35 | Jaypee: ~4:10 | Christine: ~2:45</b>
+</div>
+</div>
+
+<div class="appendix">
+<div class="appendix-header">APPENDIX D — Master Reference List (APA 7th)</div>
+<div class="appendix-body ref-master">
+<ol>
+<li>Adwan, E. J., Al-Aradi, Y., Essa, M., &amp; Malabari, H. (2023). A comprehensive study and development of unified mobile-based admission system for GCC universities. <i>J. Computing Theories and Applications</i>, <i>1</i>(2), 212–230.</li>
+<li>Angala, J. — Document management system, ISPSC (Capstone).</li>
+<li>APA 7th Edition — <i>Publication Manual of the American Psychological Association</i> (7th ed.).</li>
+<li>Ballesteros — Student clustering analysis, ISPSC (Capstone).</li>
+<li>Braun, V., &amp; Clarke, V. (2006). Using thematic analysis in psychology. <i>Qualitative Research in Psychology</i>, <i>3</i>(2), 77–101.</li>
+<li>Brooke, J. (1996). SUS: A "quick and dirty" usability scale. In Jordan et al. (Eds.), <i>Usability Evaluation in Industry</i> (pp. 189–194).</li>
+<li>Calfoforo, J. C., &amp; Raga, R. C. (2024). Unleashing AI in education. <i>2024 ITHET</i>, 1–6.</li>
+<li>Catalan, J. A. (2017). Automated multiple-choice exam scoring with digital image processing. <i>DLSU Research Congress 2017</i>, 1–6.</li>
+<li>Cenezan — Records management system, ISPSC (Capstone).</li>
+<li>CHED Strategic Plan 2022–2028 — Commission on Higher Education, Republic of the Philippines.</li>
+<li>Cohen, J. (1988). <i>Statistical power analysis for the behavioral sciences</i> (2nd ed.). Lawrence Erlbaum.</li>
+<li>Cuerdo, R., Ison, M. J. B., &amp; Oñate, C. D. T. (2021). Effectiveness of automation in evaluating test results using EvalBee. <i>Int'l J. Theory and Application in Elem. and Sec. School Education</i>, <i>3</i>(1), 71–85.</li>
+<li>Dash, P. P., et al. (2024). A unified AI-assisted platform for college discovery and application. [Unpublished/preprint].</li>
+<li>Davis, F. D. (1989). Perceived usefulness, perceived ease of use, and user acceptance of information technology. <i>MIS Quarterly</i>, <i>13</i>(3), 319–340.</li>
+<li>Dayata, W. M. A., &amp; Yap, S. Y. C. (2024). Carolinian chatbot via retrieval augmented generation. <i>2024 IEEE COMNETSAT</i>, 145–152.</li>
+<li>Delone, W. H., &amp; McLean, E. R. — Information Systems Success Model.</li>
+<li>Esquivel &amp; Esquivel — Enrollment prediction from admission-stage data, Philippine university.</li>
+<li>Eustaquio — Digital administrative platform, ISPSC (Capstone).</li>
+<li>French et al. — Admission systems and processing efficiency.</li>
+<li>Frey, B. B. (2022). <i>The SAGE encyclopedia of research design</i> (2nd ed.). SAGE Publications.</li>
+<li>HMAC-SHA256 — NIST FIPS 198-1.</li>
+<li>Ilagan, J. B., et al. (2025). A virtual support agent for university students. <i>HCII 2025, LNCS</i>, 238–247.</li>
+<li>ISO 25010:2011 — <i>Systems and software Quality Requirements and Evaluation (SQuaRE)</i>.</li>
+<li>Lewis, P., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. <i>NeurIPS</i>, <i>33</i>, 9459–9474.</li>
+<li>Lira, B., et al. (2023). Using artificial intelligence to assess personal qualities in college admissions. <i>Science Advances</i>, <i>9</i>(41), eadg9405.</li>
+<li>Liu et al. — Admission processing and efficiency.</li>
+<li>Melendres &amp; Aranda (2024). Web-based resident information system using RAD. [PH HEI].</li>
+<li>Mittal, S., &amp; Malhotra, I. (2026). Recent advancements in course recommendation systems. <i>IEEE Access</i>, <i>13</i>, 41365–41398.</li>
+<li>Nafrees, A. C. M., &amp; Kariapper, R. K. A. R. (2020). Online MIS for examination department, Sri Lanka. <i>J. Critical Reviews</i>, <i>7</i>(12), 758–762.</li>
+<li>Neupane, S., et al. (2024). Building an informed chatbot for university resources. <i>2024 IEEE FIE</i>, 1–9.</li>
+<li>Nielsen, J. — Usability heuristics for user interface design.</li>
+<li>NPC — National Privacy Commission, Republic of the Philippines.</li>
+<li>Olipas, C. N. (2020). Student information system using RAD: Functional suitability evaluation. [PH HEI].</li>
+<li>Osmani, A. (2026). Agentic engineering: How AI is reshaping software development. <i>Google Whitepaper</i>.</li>
+<li>Peng, S., et al. (2023). The impact of AI on developer productivity: Evidence from GitHub Copilot. <i>arXiv</i>.</li>
+<li>RA 10173 — Data Privacy Act of 2012. Republic of the Philippines.</li>
+<li>RA 10931 — Universal Access to Quality Tertiary Education Act. Republic of the Philippines.</li>
+<li>Ruffalo Noel Levitz — Student behavior and applicant yield. [Industry report].</li>
+<li>Rutvik, K., et al. (2024). Web based college admission system. <i>IJTSRD</i>, <i>8</i>(3), 1190–1194.</li>
+<li>Sánchez-Mendiola, M., et al. — Admission process evaluation.</li>
+<li>Shapiro, S. S., &amp; Wilk, M. B. (1965). An analysis of variance test for normality. <i>Biometrika</i>, <i>52</i>(3/4), 591–611.</li>
+<li>Slade, S., &amp; Prinsloo, P. (2013). Learning analytics: Ethical issues and dilemmas. <i>American Behavioral Scientist</i>, <i>57</i>(10), 1510–1529.</li>
+<li>Tamascelli, M., et al. (2025). Academic advising chatbot powered with AI agent. <i>ACM Southeast Conference</i>, 182–189.</li>
+<li>Tan, Z. (2025). Modeling student course selection preferences using K-Means. <i>ACM Int'l Conf. Intelligent Education</i>, 432–438.</li>
+<li>Van Busum, K., &amp; Fang, S. (2025). Bias analysis of AI models for undergraduate admissions. <i>Neural Computing &amp; Applications</i>, <i>36</i>(12), 6675–6683.</li>
+<li>Van Deventer, H., et al. (2024). LLM approach to course recommendations. <i>arXiv</i>, 2412.19312.</li>
+<li>Wilcoxon, F. (1945). Individual comparisons by ranking methods. <i>Biometrics Bulletin</i>, <i>1</i>(6), 80–83.</li>
+<li>Woelert, P. (2023). [Duplicate — remove from manuscript.]</li>
+<li>Yukee et al. — K-Means clustering on ISPSC ICAT data (Capstone).</li>
+</ol>
+</div>
+</div>
+
+<!-- ═══════════════ FLOATING SEARCH UI ═══════════════ -->
+<div id="searchOverlay"></div>
+<button id="searchToggle" aria-label="Search Q&A" title="Search Q&A">🔍</button>
+<div id="searchPanel">
+  <input type="text" id="searchInput" placeholder="Search Q&A questions and answers…" autocomplete="off">
+  <div id="searchStats"></div>
+  <div id="searchResults"></div>
+  <div id="searchNone">No matches found.</div>
+</div>
+
+<script>
+(function() {
+  const toggle = document.getElementById('searchToggle');
+  const panel = document.getElementById('searchPanel');
+  const overlay = document.getElementById('searchOverlay');
+  const input = document.getElementById('searchInput');
+  const results = document.getElementById('searchResults');
+  const stats = document.getElementById('searchStats');
+  const none = document.getElementById('searchNone');
+  const body = document.body;
+
+  let open = false;
+  let index = [];
+
+  // Build index from all .qa-item elements
+  function buildIndex() {
+    const items = document.querySelectorAll('.qa-item');
+    index = [];
+    items.forEach(function(item) {
+      const slideSection = item.closest('.slide-section');
+      if (!slideSection) return;
+      const header = slideSection.querySelector('.slide-header');
+      const slideName = header ? header.textContent.trim() : 'Unknown';
+      const qEl = item.querySelector('.qa-q');
+      const oneEl = item.querySelector('.qa-one');
+      const bulletsEl = item.querySelector('.qa-bullets');
+      const qText = qEl ? qEl.textContent.trim() : '';
+      const oneText = oneEl ? oneEl.textContent.trim() : '';
+      const bulletsText = bulletsEl ? bulletsEl.textContent.trim() : '';
+      const allText = (qText + ' ' + oneText + ' ' + bulletsText).toLowerCase();
+
+      index.push({
+        element: item,
+        slideName: slideName,
+        qText: qText,
+        oneText: oneText,
+        bulletsText: bulletsText,
+        allText: allText
+      });
+    });
+  }
+  buildIndex();
+
+  function openPanel() {
+    open = true;
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    toggle.textContent = '✕';
+    input.value = '';
+    input.focus();
+    results.innerHTML = '';
+    stats.style.display = 'none';
+    none.style.display = 'none';
+    body.style.overflow = 'hidden';
+  }
+
+  function closePanel() {
+    open = false;
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+    toggle.textContent = '🔍';
+    body.style.overflow = '';
+  }
+
+  toggle.addEventListener('click', function() {
+    if (open) closePanel();
+    else openPanel();
+  });
+
+  overlay.addEventListener('click', closePanel);
+
+  function highlightText(text, query) {
+    const regex = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    return text.replace(regex, '<b>$1</b>');
+  }
+
+  function truncate(text, maxLen) {
+    if (text.length <= maxLen) return text;
+    return text.substring(0, maxLen) + '…';
+  }
+
+  input.addEventListener('input', function() {
+    const query = input.value.trim().toLowerCase();
+    if (!query || query.length < 2) {
+      results.innerHTML = '';
+      stats.style.display = 'none';
+      none.style.display = 'none';
+      return;
+    }
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+    const matches = [];
+    for (var i = 0; i < index.length; i++) {
+      var entry = index[i];
+      var match = true;
+      for (var j = 0; j < tokens.length; j++) {
+        if (entry.allText.indexOf(tokens[j]) === -1) { match = false; break; }
+      }
+      if (match) matches.push(entry);
+    }
+
+    stats.style.display = 'block';
+    stats.textContent = matches.length + ' match' + (matches.length !== 1 ? 'es' : '');
+
+    if (matches.length === 0) {
+      results.innerHTML = '';
+      none.style.display = 'block';
+    } else {
+      none.style.display = 'none';
+      results.innerHTML = matches.map(function(m) {
+        var snippet = m.oneText || m.bulletsText || '';
+        return '<a class="search-hit" href="#' + m.element.id + '">' +
+          '<div class="hit-slide">' + m.slideName + '</div>' +
+          '<div class="hit-q">' + highlightText(m.qText, query) + '</div>' +
+          (snippet ? '<div class="hit-snippet">' + highlightText(truncate(snippet, 140), query) + '</div>' : '') +
+          '</a>';
+      }).join('');
+    }
+  });
+
+  // Click on search result — scroll to element and flash
+  results.addEventListener('click', function(e) {
+    var hit = e.target.closest('.search-hit');
+    if (!hit) return;
+    var href = hit.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    var id = href.substring(1);
+    var target = document.getElementById(id);
+    if (!target) return;
+    closePanel();
+    target.classList.add('scroll-target');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function() { target.classList.remove('scroll-target'); }, 1500);
+  });
+
+  // Keyboard: Escape to close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && open) {
+      closePanel();
+    }
+  });
+
+  // Keyboard: Ctrl+K or / to open search when not focused on input
+  document.addEventListener('keydown', function(e) {
+    if (open) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    if (e.key === '/' || (e.key === 'k' && (e.ctrlKey || e.metaKey))) {
+      e.preventDefault();
+      openPanel();
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
