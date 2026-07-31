@@ -144,7 +144,7 @@
 </script>
 
 <svelte:head>
-  <title>Print bulk - {applicants.length} result sheets - SecureCAT</title>
+  <title>Print bulk - {applicants.length} result sheets - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout breadcrumbs={breadcrumbs}>

@@ -20,8 +20,8 @@
   const roles = $derived(user?.roles?.map((r) => r.name) ?? []);
   const headTitle = $derived(
     breadcrumbs.length > 0
-      ? `${breadcrumbs[breadcrumbs.length - 1].label} - SecureCAT`
-      : 'SecureCAT'
+      ? `${breadcrumbs[breadcrumbs.length - 1].label} - NEXIAM`
+      : 'NEXIAM'
   );
   let sidebarOpen = $state(false);
   let breadcrumbOpen = $state(false);
@@ -145,8 +145,8 @@
     <div class="flex flex-col h-full overflow-hidden">
       <div class="h-20 flex items-center px-6 border-b border-border/50 shrink-0">
         <Link href="/dashboard" class="flex items-center gap-3" onclick={closeDropdowns}>
-          <img src="/img/securecat-logo.png" alt="SecureCAT" class="w-10 h-10 rounded-xl shadow-lg shadow-primary/30" />
-          <span class="font-bold text-xl tracking-tight text-foreground">SecureCAT</span>
+          <img src="/img/nexiam-logo.png" alt="NEXIAM" class="w-10 h-10 rounded-xl shadow-lg shadow-primary/30" />
+          <span class="font-bold text-xl tracking-tight text-foreground">NEXIAM</span>
         </Link>
         <Button variant="ghost" size="icon" class="md:hidden ml-auto" onclick={() => (sidebarOpen = !sidebarOpen)} aria-label="Close menu">
           <Menu class="h-5 w-5" />
@@ -269,7 +269,7 @@
           <Menu class="h-5 w-5" />
         </Button>
         {#if breadcrumbs.length === 0}
-          <span class="text-2xl font-semibold tracking-tight text-foreground">SecureCAT</span>
+          <span class="text-2xl font-semibold tracking-tight text-foreground">NEXIAM</span>
         {:else if breadcrumbs.length === 1}
           <h1 class="text-2xl font-semibold tracking-tight text-foreground">{breadcrumbs[0].label}</h1>
         {:else}

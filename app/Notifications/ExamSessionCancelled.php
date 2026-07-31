@@ -27,7 +27,7 @@ class ExamSessionCancelled extends Notification implements ShouldQueue
         $applicantName = $application?->first_name ?? 'Applicant';
 
         return (new MailMessage)
-            ->subject('SecureCAT — Exam Session Cancelled')
+            ->subject('NEXIAM — Exam Session Cancelled')
             ->view('emails.exam-session-cancelled', [
                 'applicantName' => $applicantName,
                 'sessionDate' => $this->session->scheduled_at?->format('F j, Y') ?? $this->session->date?->format('F j, Y') ?? 'TBA',

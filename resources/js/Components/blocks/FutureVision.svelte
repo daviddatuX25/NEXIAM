@@ -36,7 +36,7 @@
         Future Vision
       </h2>
       <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
-        SecureCAT will grow to support deeper analytics, MIS/SIS integration, and long-term monitoring
+        NEXIAM will grow to support deeper analytics, MIS/SIS integration, and long-term monitoring
       </p>
     </div>
 

@@ -25,8 +25,8 @@ class ApplicantResetPasswordMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'SecureCAT — Reset Your Applicant Portal Password',
-            from: config('mail.from.address', 'noreply@securecat.local'),
+            subject: 'NEXIAM — Reset Your Applicant Portal Password',
+            from: config('mail.from.address', 'noreply@nexiam.local'),
         );
     }
 

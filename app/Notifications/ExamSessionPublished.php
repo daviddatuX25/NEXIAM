@@ -25,7 +25,7 @@ class ExamSessionPublished extends Notification implements ShouldQueue
         $applicantName = $application?->first_name ?? 'Applicant';
 
         return (new MailMessage)
-            ->subject('SecureCAT — Your Exam Has Been Scheduled')
+            ->subject('NEXIAM — Your Exam Has Been Scheduled')
             ->view('emails.exam-session-published', [
                 'applicantName' => $applicantName,
                 'sessionDate' => $this->session->scheduled_at?->format('F j, Y') ?? $this->session->date?->format('F j, Y') ?? 'TBA',

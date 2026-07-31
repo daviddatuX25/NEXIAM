@@ -4,8 +4,8 @@
 from pathlib import Path
 import subprocess
 
-CAPSTONE_DIR = Path("/home/user/Projects/SecureCAT-v2/capstone")
-OUTPUT_PATH = Path("/home/user/Projects/SecureCAT-v2/capstone.md")
+CAPSTONE_DIR = Path("/home/user/Projects/NEXIAM/capstone")
+OUTPUT_PATH = Path("/home/user/Projects/NEXIAM/capstone.md")
 
 # Define file structure
 FILES = [
@@ -50,9 +50,9 @@ FILES = [
     ]),
 ]
 
-HEADER = """# SecureCAT-v2 Capstone Project - Complete Documentation
+HEADER = """# NEXIAM Capstone Project - Complete Documentation
 
-> **Generated:** June 2, 2026  |  **Project:** BSIT Capstone - SecureCAT-v2  |  **Team:** David (Team Lead), Christine, Jaypee
+> **Generated:** June 2, 2026  |  **Project:** BSIT Capstone - NEXIAM  |  **Team:** David (Team Lead), Christine, Jaypee
 
 ---
 
@@ -96,13 +96,13 @@ The Gantt chart displays project timeline with daily granularity, showing task b
 ### 📄 Template Documents
 
 - **BSIT Capstone Template.docx**: Official BSIT capstone manuscript template
-- **SecureCAT Letter.docx**: Project documentation/letter
+- **NEXIAM Letter.docx**: Project documentation/letter
 
 *Note: Binary files (.docx) and the interactive HTML dashboard are referenced for context but not included in this markdown compilation.*
 
 ---
 
-**End of SecureCAT-v2 Capstone Documentation Compilation**
+**End of NEXIAM Capstone Documentation Compilation**
 """
 
 

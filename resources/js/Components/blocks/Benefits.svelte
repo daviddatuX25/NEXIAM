@@ -6,13 +6,13 @@
   <div class="mx-auto max-w-6xl px-4 py-16 space-y-10">
     <div class="mx-auto max-w-2xl space-y-4 text-center">
       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:text-sm">
-        Why SecureCAT
+        Why NEXIAM
       </p>
       <h2 class="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
         End-to-end admission and testing in one place
       </h2>
       <p class="text-sm text-muted-foreground sm:text-base md:text-lg">
-        From online application to examination, grading, and post‑exam consultation, SecureCAT keeps
+        From online application to examination, grading, and post‑exam consultation, NEXIAM keeps
         everything in a single, auditable workflow for both applicants and staff.
       </p>
     </div>

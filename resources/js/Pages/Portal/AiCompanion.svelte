@@ -94,7 +94,7 @@
 </script>
 
 <svelte:head>
-  <title>Cat-Bot - SecureCAT</title>
+  <title>Cat-Bot - NEXIAM</title>
 </svelte:head>
 
 <PortalLayout>

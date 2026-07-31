@@ -1,4 +1,4 @@
-@include('emails.partials.header', ['title' => 'Application Update — SecureCAT'])
+@include('emails.partials.header', ['title' => 'Application Update — NEXIAM'])
 
                             <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.3;">
                                 Application Status Update
@@ -47,7 +47,7 @@
                             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
 
                             <p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.5;">
-                                This is an update regarding your application to SecureCAT.
+                                This is an update regarding your application to NEXIAM.
                             </p>
 
 @include('emails.partials.footer')

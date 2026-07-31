@@ -47,15 +47,15 @@
 </script>
 
 <svelte:head>
-  <title>Portal - SecureCAT</title>
+  <title>Portal - NEXIAM</title>
 </svelte:head>
 
 <div class="min-h-screen flex flex-col">
   <header class="sticky top-0 z-50 glass-panel border-b">
     <div class="container flex h-14 items-center justify-between px-4">
       <Link href="/portal" class="flex items-center gap-2 font-semibold text-foreground no-underline hover:text-primary">
-        <img src="/img/securecat-logo.png" alt="SecureCAT" class="w-7 h-7 rounded-lg" />
-        SecureCAT <span class="text-muted-foreground font-normal">Portal</span>
+        <img src="/img/nexiam-logo.png" alt="NEXIAM" class="w-7 h-7 rounded-lg" />
+        NEXIAM <span class="text-muted-foreground font-normal">Portal</span>
       </Link>
       <div class="flex items-center gap-2">
         <Button variant="ghost" size="icon" onclick={toggleTheme} aria-label="Toggle theme" class="rounded-full min-h-[44px] min-w-[44px]">
@@ -134,7 +134,7 @@
 
   <footer class="border-t bg-muted/40 py-6 mt-auto">
     <div class="flex items-center justify-center container px-4 text-center text-sm text-muted-foreground">
-      <p>&copy; {new Date().getFullYear()} SecureCAT. All rights reserved.</p>
+      <p>&copy; {new Date().getFullYear()} NEXIAM. All rights reserved.</p>
     </div>
   </footer>
 

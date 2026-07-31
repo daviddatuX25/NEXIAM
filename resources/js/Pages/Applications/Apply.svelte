@@ -107,7 +107,7 @@
 </script>
 
 <svelte:head>
-  <title>Apply - SecureCAT</title>
+  <title>Apply - NEXIAM</title>
 </svelte:head>
 
 <GuestLayout>

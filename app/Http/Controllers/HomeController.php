@@ -18,14 +18,14 @@ class HomeController extends Controller
                 'application_start' => $activeAcademicYear->application_start_date ? Carbon::parse($activeAcademicYear->application_start_date)->format('M d, Y') : null,
                 'application_end' => $activeAcademicYear->application_end_date ? Carbon::parse($activeAcademicYear->application_end_date)->format('M d, Y') : null,
             ] : null,
-            'systemName' => 'SecureCAT',
+            'systemName' => 'NEXIAM',
         ]);
     }
 
     public function about()
     {
         return Inertia::render('Home/About', [
-            'systemName' => 'SecureCAT',
+            'systemName' => 'NEXIAM',
         ]);
     }
 }

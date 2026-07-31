@@ -30,7 +30,7 @@
     <body class="font-sans antialiased">
         <noscript>
             <div style="padding: 2rem; text-align: center; font-family: sans-serif;">
-                <p><strong>SecureCAT</strong> requires JavaScript. Please enable it and reload.</p>
+                <p><strong>NEXIAM</strong> requires JavaScript. Please enable it and reload.</p>
             </div>
         </noscript>
         @inertia

@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-  <title>{title} - SecureCAT</title>
+  <title>{title} - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout>

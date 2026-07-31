@@ -7,12 +7,12 @@
   import FutureVision from '@/Components/blocks/FutureVision.svelte';
 
   // Data passed from controller
-  let { systemName = 'SecureCAT' } = $props();
+  let { systemName = 'NEXIAM' } = $props();
 </script>
 
 <svelte:head>
   <title>About {systemName} - Computerized Admission & Testing</title>
-  <meta name="description" content="Discover SecureCAT. From application to consultation, digitizing the complete student admission lifecycle." />
+  <meta name="description" content="Discover NEXIAM. From application to consultation, digitizing the complete student admission lifecycle." />
 </svelte:head>
 
 <HomeLayout>
@@ -21,7 +21,7 @@
     <div class="max-w-4xl mx-auto text-center">
       <Badge class="mb-4 bg-primary/10 text-primary hover:bg-primary/20 border-transparent shadow-sm">About The System</Badge>
       <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-6">
-        SecureCAT Architecture
+        NEXIAM Architecture
       </h1>
       <p class="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
         From application to consultation—digitizing the complete student admission lifecycle. Information Assurance and Security Academic Project.

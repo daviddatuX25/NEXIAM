@@ -25,7 +25,7 @@ class ResultReleasedF2F extends Notification implements ShouldQueue
         $applicantName = $application?->first_name ?? 'Applicant';
 
         return (new MailMessage)
-            ->subject('SecureCAT — Results Available for Consultation')
+            ->subject('NEXIAM — Results Available for Consultation')
             ->view('emails.result-released-f2f', [
                 'applicantName' => $applicantName,
             ]);

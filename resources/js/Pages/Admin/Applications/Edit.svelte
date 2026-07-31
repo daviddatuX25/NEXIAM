@@ -82,7 +82,7 @@
 </script>
 
 <svelte:head>
-  <title>Edit Application - SecureCAT</title>
+  <title>Edit Application - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout {breadcrumbs}>

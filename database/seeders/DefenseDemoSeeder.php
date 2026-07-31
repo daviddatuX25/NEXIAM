@@ -77,11 +77,11 @@ class DefenseDemoSeeder extends Seeder
     private function seedUsers(): array
     {
         return [
-            'super_admin' => $this->upsertUserWithRole('admin@securecat.local', 'Ricardo Dela Cruz', 'super_admin'),
-            'registrar_admin' => $this->upsertUserWithRole('josefina@securecat.local', 'Josefina Gaerlan', 'registrar_administrator'),
-            'staff' => $this->upsertUserWithRole('maria@securecat.local', 'Maria Corpuz', 'staff'),
-            'proctor' => $this->upsertUserWithRole('eduardo@securecat.local', 'Eduardo Fariñas', 'proctor'),
-            'test_admin' => $this->upsertUserWithRole('analiza@securecat.local', 'Analiza Barroga', 'test_administrator'),
+            'super_admin' => $this->upsertUserWithRole('admin@nexiam.local', 'Ricardo Dela Cruz', 'super_admin'),
+            'registrar_admin' => $this->upsertUserWithRole('josefina@nexiam.local', 'Josefina Gaerlan', 'registrar_administrator'),
+            'staff' => $this->upsertUserWithRole('maria@nexiam.local', 'Maria Corpuz', 'staff'),
+            'proctor' => $this->upsertUserWithRole('eduardo@nexiam.local', 'Eduardo Fariñas', 'proctor'),
+            'test_admin' => $this->upsertUserWithRole('analiza@nexiam.local', 'Analiza Barroga', 'test_administrator'),
         ];
     }
 

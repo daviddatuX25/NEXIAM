@@ -15,7 +15,7 @@
 <div class="min-h-screen flex items-center justify-center bg-background p-4">
   <Card class="w-full max-w-md">
     <CardHeader>
-      <CardTitle class="text-2xl">Welcome to SecureCAT</CardTitle>
+      <CardTitle class="text-2xl">Welcome to NEXIAM</CardTitle>
       <CardDescription>
         Inertia.js v2 + Svelte 5 + TailwindCSS 4 + shadcn-svelte
       </CardDescription>

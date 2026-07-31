@@ -16,8 +16,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center gap-2">
-          <img src="/img/securecat-logo.png" alt="SecureCAT" class="w-8 h-8 rounded-lg shadow-sm" />
-          <span class="font-bold text-lg tracking-tight text-foreground hidden sm:block">SecureCAT</span>
+          <img src="/img/nexiam-logo.png" alt="NEXIAM" class="w-8 h-8 rounded-lg shadow-sm" />
+          <span class="font-bold text-lg tracking-tight text-foreground hidden sm:block">NEXIAM</span>
         </div>
         
         <nav class="flex items-center gap-4 sm:gap-6 text-sm font-medium">
@@ -49,7 +49,7 @@
     <div class="max-w-7xl mx-auto px-4 text-center">
       <p class="text-muted-foreground text-sm">
         &copy; {new Date().getFullYear()} Ilocos Sur Polytechnic State College - Tagudin Campus.<br/>
-        <span class="text-muted-foreground/60">Powered by SecureCAT.</span>
+        <span class="text-muted-foreground/60">Powered by NEXIAM.</span>
       </p>
     </div>
   </footer>

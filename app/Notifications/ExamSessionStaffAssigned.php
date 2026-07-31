@@ -26,7 +26,7 @@ class ExamSessionStaffAssigned extends Notification implements ShouldQueue
         $applicantCount = $this->session->applicants()->count();
 
         return (new MailMessage)
-            ->subject('SecureCAT — Exam Session Assignment')
+            ->subject('NEXIAM — Exam Session Assignment')
             ->view('emails.exam-session-staff-assigned', [
                 'staffName' => $staffName,
                 'sessionDate' => $this->session->scheduled_at?->format('F j, Y') ?? $this->session->date?->format('F j, Y') ?? 'TBA',

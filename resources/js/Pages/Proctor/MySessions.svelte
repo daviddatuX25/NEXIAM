@@ -119,7 +119,7 @@
 </script>
 
 <svelte:head>
-  <title>My Sessions - SecureCAT</title>
+  <title>My Sessions - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout {breadcrumbs}>

@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-  <title>Application Submitted - SecureCAT</title>
+  <title>Application Submitted - NEXIAM</title>
 </svelte:head>
 
 <GuestLayout>

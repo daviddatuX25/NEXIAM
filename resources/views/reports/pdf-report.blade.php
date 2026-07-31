@@ -156,7 +156,7 @@
 <body>
     <div class="header">
         <h1>{{ $title }}</h1>
-        <div class="subtitle">SecureCAT &mdash; Admission & Assessment System</div>
+        <div class="subtitle">NEXIAM &mdash; Admission & Assessment System</div>
     </div>
 
     <div class="meta-bar">
@@ -231,7 +231,7 @@
     </div>
 
     <div class="footer">
-        {{ $title }} &mdash; {{ $academicYear }} &mdash; Generated {{ $generatedAt }} &mdash; SecureCAT
+        {{ $title }} &mdash; {{ $academicYear }} &mdash; Generated {{ $generatedAt }} &mdash; NEXIAM
     </div>
 </body>
 </html>

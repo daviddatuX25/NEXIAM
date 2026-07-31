@@ -35,7 +35,7 @@
         For Applicants
       </h2>
       <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
-        What SecureCAT does for you—apply, track, and receive your results in one place
+        What NEXIAM does for you—apply, track, and receive your results in one place
       </p>
     </div>
 

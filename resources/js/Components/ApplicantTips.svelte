@@ -6,7 +6,7 @@
 
   const tips = [
     { type: 'Tip', text: 'Check your applicant portal regularly for updates on your exam schedule.' },
-    { type: 'Trivia', text: 'SecureCAT processes over 10,000 applicants per admission season!' },
+    { type: 'Trivia', text: 'NEXIAM processes over 10,000 applicants per admission season!' },
     { type: 'Tip', text: 'Make sure to bring your printed admission slip and a valid ID on exam day.' },
     { type: 'Trivia', text: 'The university main building was established in 1948 and is a heritage site.' },
     { type: 'Tip', text: 'You can use the AI Companion later to get course recommendations based on your scores.' },

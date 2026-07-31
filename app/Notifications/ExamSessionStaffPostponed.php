@@ -24,7 +24,7 @@ class ExamSessionStaffPostponed extends Notification implements ShouldQueue
         $staffName = $notifiable->name ?? 'Staff';
 
         return (new MailMessage)
-            ->subject('SecureCAT — Exam Session Postponed')
+            ->subject('NEXIAM — Exam Session Postponed')
             ->view('emails.exam-session-staff-postponed', [
                 'staffName' => $staffName,
                 'sessionDate' => $this->session->scheduled_at?->format('F j, Y') ?? $this->session->date?->format('F j, Y') ?? 'TBA',

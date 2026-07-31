@@ -26,7 +26,7 @@
 </script>
 
 <svelte:head>
-  <title>Admission slip - {applicant.name ?? applicant.reference} - SecureCAT</title>
+  <title>Admission slip - {applicant.name ?? applicant.reference} - NEXIAM</title>
 </svelte:head>
 
 <div class="print:hidden p-4 space-y-4">

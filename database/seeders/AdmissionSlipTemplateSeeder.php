@@ -12,7 +12,7 @@ class AdmissionSlipTemplateSeeder extends Seeder
         $content = <<<'HTML'
 <div class="border border-foreground/20 rounded p-4 space-y-3" style="font-size: 0.875rem;">
   <div class="text-center">
-    <h1 class="text-base font-bold">SecureCAT — Computerized Admission &amp; Testing</h1>
+    <h1 class="text-base font-bold">NEXIAM — Computerized Admission &amp; Testing</h1>
     <p class="text-xs text-muted-foreground mt-0.5">ADMISSION SLIP</p>
   </div>
   <table class="w-full text-sm border-collapse">

@@ -1,6 +1,6 @@
-# SecureCAT — Installation Guide
+# NEXIAM — Installation Guide
 
-> **SecureCAT v2** — Secure Computerized Admission Testing System
+> **NEXIAM** — Secure Computerized Admission Testing System
 > For Windows deployment using **Laragon**
 
 ---
@@ -11,7 +11,7 @@
 2. [Install Laragon](#2-install-laragon)
 3. [Install Node.js](#3-install-nodejs)
 4. [Install Google Chrome](#4-install-google-chrome)
-5. [Extract SecureCAT](#5-extract-securecat)
+5. [Extract NEXIAM](#5-extract-nexiam)
 6. [Configure Environment](#6-configure-environment)
 7. [Create Database](#7-create-database)
 8. [Install Dependencies](#8-install-dependencies)
@@ -107,16 +107,16 @@ Required for PDF generation (result sheets, admission slips).
 
 ---
 
-## 5. Extract SecureCAT
+## 5. Extract NEXIAM
 
-1. Extract the SecureCAT ZIP file to Laragon's web directory:
+1. Extract the NEXIAM ZIP file to Laragon's web directory:
    ```
-   C:\laragon\www\securecat
+   C:\laragon\www\nexiam
    ```
 
 2. After extraction, the folder structure should look like:
    ```
-   C:\laragon\www\securecat\
+   C:\laragon\www\nexiam\
    ├── app\
    ├── database\
    ├── public\
@@ -127,9 +127,9 @@ Required for PDF generation (result sheets, admission slips).
    └── ...
    ```
 
-3. Laragon will automatically create the URL **http://securecat.test** for this folder.
+3. Laragon will automatically create the URL **http://nexiam.test** for this folder.
 
-> **Important:** Make sure the folder is named exactly `securecat` (lowercase) so the URL works as `securecat.test`.
+> **Important:** Make sure the folder is named exactly `nexiam` (lowercase) so the URL works as `nexiam.test`.
 
 ---
 
@@ -140,7 +140,7 @@ Required for PDF generation (result sheets, admission slips).
 Open **Laragon Terminal** and run:
 
 ```
-cd C:\laragon\www\securecat
+cd C:\laragon\www\nexiam
 copy .env.production .env
 ```
 
@@ -198,14 +198,14 @@ If Chrome is installed elsewhere, update this path.
 1. In Laragon, click **"Database"** button
 2. HeidiSQL opens → connect to your local MySQL
 3. Right-click in the left panel → **Create New** → **Database**
-4. Name: `securecat`
+4. Name: `nexiam`
 5. Collation: `utf8mb4_unicode_ci`
 6. Click **OK**
 
 ### Option B: Using Laragon Terminal
 
 ```
-mysql -u root -e "CREATE DATABASE securecat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -e "CREATE DATABASE nexiam CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 ---
@@ -215,7 +215,7 @@ mysql -u root -e "CREATE DATABASE securecat CHARACTER SET utf8mb4 COLLATE utf8mb
 Open **Laragon Terminal** and run these commands one at a time:
 
 ```bash
-cd C:\laragon\www\securecat
+cd C:\laragon\www\nexiam
 
 # Install PHP dependencies
 composer install --no-dev --optimize-autoloader
@@ -261,8 +261,8 @@ This will:
 ## 10. Verify Installation
 
 1. Make sure Laragon is running (Apache + MySQL started)
-2. Open your browser and go to: **http://securecat.test**
-3. You should see the SecureCAT login page
+2. Open your browser and go to: **http://nexiam.test**
+3. You should see the NEXIAM login page
 4. Log in with the credentials you set in Step 6.2
 5. After login, you'll see the Admin Dashboard
 
@@ -311,7 +311,7 @@ After verifying the installation works, configure these in the admin UI:
 
 ## 12. Optional: AI Features
 
-SecureCAT has two AI-powered features that require API keys. Both are **optional** — the system works fully without them.
+NEXIAM has two AI-powered features that require API keys. Both are **optional** — the system works fully without them.
 
 ### AI Exam Scheduling Assistant
 
@@ -345,7 +345,7 @@ Uses Mixedbread for RAG-powered chatbot that answers applicant questions.
 
 ## 13. Optional: Email Setup
 
-By default, SecureCAT is configured to use Laragon's local mail catcher on port 1025.
+By default, NEXIAM is configured to use Laragon's local mail catcher on port 1025.
 Emails will be captured but not actually sent to real recipients.
 
 ### For Real Email Delivery
@@ -377,7 +377,7 @@ You can use any SMTP provider. Example with Gmail:
 
 ## 14. Optional: Task Scheduler
 
-SecureCAT has automated background tasks:
+NEXIAM has automated background tasks:
 
 | Task | What It Does |
 |------|-------------|
@@ -390,12 +390,12 @@ SecureCAT has automated background tasks:
 
 1. Open **Task Scheduler** (search "Task Scheduler" in Start menu)
 2. Click **Create Basic Task**
-3. Name: `SecureCAT Scheduler`
+3. Name: `NEXIAM Scheduler`
 4. Trigger: **Daily**, repeat every **1 minute**
 5. Action: **Start a program**
    - Program: `C:\laragon\bin\php\php-8.4.x\php.exe` (adjust to your PHP path)
    - Arguments: `artisan schedule:run`
-   - Start in: `C:\laragon\www\securecat`
+   - Start in: `C:\laragon\www\nexiam`
 6. Under Settings → check "Run whether user is logged on or not"
 
 ### Verify
@@ -409,14 +409,14 @@ php artisan schedule:list
 
 ## 15. Troubleshooting
 
-### "Page not found" at securecat.test
+### "Page not found" at nexiam.test
 
 - Make sure Laragon is running (Apache started)
-- Check that the folder is at `C:\laragon\www\securecat`
-- In Laragon, click Menu → Apache → `sites-enabled/auto.securecat.test.conf` should exist
+- Check that the folder is at `C:\laragon\www\nexiam`
+- In Laragon, click Menu → Apache → `sites-enabled/auto.nexiam.test.conf` should exist
 - Try: Laragon Menu → Apache → Reload
 
-### "SQLSTATE: Unknown database 'securecat'"
+### "SQLSTATE: Unknown database 'nexiam'"
 
 - You forgot to create the database. See [Step 7](#7-create-database).
 
@@ -453,13 +453,13 @@ php artisan schedule:list
 ## Quick Reference Card
 
 ```
-URL:        http://securecat.test
+URL:        http://nexiam.test
 Admin:      [your configured email] / [your configured password]
-Database:   securecat (MySQL, root, no password)
-Project:    C:\laragon\www\securecat
+Database:   nexiam (MySQL, root, no password)
+Project:    C:\laragon\www\nexiam
 
 # Useful commands (run in Laragon Terminal):
-cd C:\laragon\www\securecat
+cd C:\laragon\www\nexiam
 php artisan config:clear        # After .env changes
 php artisan cache:clear         # Clear all caches
 php artisan migrate             # Run new migrations

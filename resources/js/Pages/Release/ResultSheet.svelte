@@ -41,7 +41,7 @@
 </script>
 
 <svelte:head>
-  <title>Result sheet - {applicant.name} - SecureCAT</title>
+  <title>Result sheet - {applicant.name} - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout breadcrumbs={breadcrumbs}>

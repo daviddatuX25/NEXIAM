@@ -3,7 +3,7 @@
   
   let {
     title = 'Ready to streamline your admission process?',
-    description = 'Join the digital transformation of student admissions with SecureCAT',
+    description = 'Join the digital transformation of student admissions with NEXIAM',
     actions = [
       { label: 'Staff Portal', href: '#', variant: 'default' },
       { label: 'Applicant Portal', href: '#', variant: 'outline' }

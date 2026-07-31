@@ -39,7 +39,7 @@ class ApplicationStatusChanged extends Notification implements ShouldQueue
         ];
 
         return (new MailMessage)
-            ->subject('SecureCAT — Application Update')
+            ->subject('NEXIAM — Application Update')
             ->view('emails.application-status-changed', [
                 'applicantName' => $this->application->first_name ?? 'Applicant',
                 'referenceNumber' => $this->application->reference_number,

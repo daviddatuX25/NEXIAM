@@ -25,7 +25,7 @@ class ResultReleased extends Notification implements ShouldQueue
         $applicantName = $application?->first_name ?? 'Applicant';
 
         return (new MailMessage)
-            ->subject('SecureCAT — Your Exam Results Are Available')
+            ->subject('NEXIAM — Your Exam Results Are Available')
             ->view('emails.result-released', [
                 'applicantName' => $applicantName,
                 'portalUrl' => url('/portal'),

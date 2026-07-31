@@ -5,10 +5,10 @@ console.log('Starting Clean CTXPKG Packaging Script (Project Identity Only)...')
 // Clean project identity fact
 const category = 'guidelines';
 const key = 'project-identity';
-const value = `# SecureCAT-v2 Project Conventions
+const value = `# NEXIAM Project Conventions
 
 ## Project Identity & Purpose
-- **Project Name:** SecureCAT-v2
+- **Project Name:** NEXIAM
 - **Type:** BSIT Capstone Project (Exam Management & Proctoring System)
 - **Roadmap & Guidelines:** Located in the \`capstone/\` directory (refer to \`capstone/README.md\`)
 
@@ -56,14 +56,14 @@ if (graphResult.status !== 0) {
 }
 
 console.log('Creating Context Package...');
-const packResult = spawnSync('lean-ctx', ['pack', 'create', '--name', 'securecat-conventions'], { stdio: 'inherit' });
+const packResult = spawnSync('lean-ctx', ['pack', 'create', '--name', 'nexiam-conventions'], { stdio: 'inherit' });
 if (packResult.status !== 0) {
   console.error('Failed to create pack');
   process.exit(1);
 }
 
 console.log('Exporting Context Package...');
-const exportResult = spawnSync('lean-ctx', ['pack', 'export', 'securecat-conventions'], { stdio: 'inherit' });
+const exportResult = spawnSync('lean-ctx', ['pack', 'export', 'nexiam-conventions'], { stdio: 'inherit' });
 if (exportResult.status !== 0) {
   console.error('Failed to export pack');
   process.exit(1);

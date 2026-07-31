@@ -1,6 +1,6 @@
 # NEXIAM Architecture Audit and Refactor Blueprint
 
-**Purpose:** the authoritative map for deciding what to preserve, what to refactor, what to replace, and how to add the capstone features without compounding inherited SecureCAT debt.
+**Purpose:** the authoritative map for deciding what to preserve, what to refactor, what to replace, and how to add the capstone features without compounding inherited NEXIAM debt.
 
 **Method:** source inspection, call-path tracing, live quality-tool execution, dependency audit, migration/model review, requirement-to-code comparison, and Laravel 12 documentation. Findings are tagged as **Observed**, **Measured**, **Requirement**, or **Decision needed** so that opinions do not become facts by repetition.
 

@@ -405,7 +405,7 @@ class ApplicantImportService
             if (empty($email)) {
                 $safeFirstName = preg_replace('/[^a-z0-9]/', '', strtolower($record['first_name']));
                 $safeLastName = preg_replace('/[^a-z0-9]/', '', strtolower($record['last_name']));
-                $email = "{$safeFirstName}.{$safeLastName}.{$referenceNumber}@securecat.local";
+                $email = "{$safeFirstName}.{$safeLastName}.{$referenceNumber}@nexiam.local";
             }
 
             // Check for duplicate email in same academic year

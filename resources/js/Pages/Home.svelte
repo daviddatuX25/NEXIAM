@@ -9,7 +9,7 @@
   import CallToAction from '@/Components/blocks/CallToAction.svelte';
 
   // Data passed from controller
-  let { systemName = 'SecureCAT' } = $props();
+  let { systemName = 'NEXIAM' } = $props();
 </script>
 
 <svelte:head>
@@ -19,7 +19,7 @@
 
 <main class="min-h-screen">
   <Hero
-    title="SecureCAT: Computerized Admission & Testing"
+    title="NEXIAM: Computerized Admission & Testing"
     subtitle="From application to consultation—for students: apply and track your progress. For staff: manage admissions end-to-end."
     primaryAction={{ label: 'Apply Online', href: '/apply' }}
     secondaryAction={{ label: 'Staff Login', href: '/login' }}
@@ -49,7 +49,7 @@
 <footer class="bg-card border-t border-border py-8 px-4">
   <div class="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
     <p class="mb-2">
-      <span class="font-semibold text-foreground">SecureCAT</span> - Computerized Admission & Testing System
+      <span class="font-semibold text-foreground">NEXIAM</span> - Computerized Admission & Testing System
     </p>
     <p class="mb-2">
       Information Assurance and Security Academic Project

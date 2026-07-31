@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-  <title>Session Roster - SecureCAT</title>
+  <title>Session Roster - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout breadcrumbs={breadcrumbs}>

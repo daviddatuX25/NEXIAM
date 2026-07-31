@@ -40,7 +40,7 @@ class DemoSetupCommand extends Command
 
         $fresh = ! $this->option('no-fresh');
 
-        $this->info('SecureCAT — Defense Demo Setup');
+        $this->info('NEXIAM — Defense Demo Setup');
         $this->line('─────────────────────────────────────────');
 
         // ── Step 1: migrate:fresh (optional) ─────────────────────────────────
@@ -112,11 +112,11 @@ class DemoSetupCommand extends Command
         $this->table(
             ['Role', 'Email'],
             [
-                ['super_admin',       'admin@securecat.local'],
-                ['registrar_administrator', 'josefina@securecat.local'],
-                ['staff',             'maria@securecat.local'],
-                ['proctor',           'eduardo@securecat.local'],
-                ['test_administrator',      'analiza@securecat.local'],
+                ['super_admin',       'admin@nexiam.local'],
+                ['registrar_administrator', 'josefina@nexiam.local'],
+                ['staff',             'maria@nexiam.local'],
+                ['proctor',           'eduardo@nexiam.local'],
+                ['test_administrator',      'analiza@nexiam.local'],
             ]
         );
 

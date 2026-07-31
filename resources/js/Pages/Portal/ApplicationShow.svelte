@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-  <title>My Application - SecureCAT</title>
+  <title>My Application - NEXIAM</title>
 </svelte:head>
 
 <PortalLayout>

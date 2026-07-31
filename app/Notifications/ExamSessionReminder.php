@@ -31,7 +31,7 @@ class ExamSessionReminder extends Notification implements ShouldQueue
         $daysLabel = $this->daysUntil === 1 ? 'day' : 'days';
 
         return (new MailMessage)
-            ->subject("SecureCAT — Reminder: Your exam is {$this->daysUntil} {$daysLabel} away")
+            ->subject("NEXIAM — Reminder: Your exam is {$this->daysUntil} {$daysLabel} away")
             ->view('emails.exam-session-reminder', [
                 'applicantName' => $applicantName,
                 'daysUntil' => $this->daysUntil,

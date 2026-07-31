@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-  <title>Applicant Portal - SecureCAT</title>
+  <title>Applicant Portal - NEXIAM</title>
 </svelte:head>
 
 <ToastManager />
@@ -24,7 +24,7 @@
     <Moon class="h-5 w-5 hidden dark:block" />
   </Button>
   <Link href="/" class="mb-8 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground no-underline hover:text-primary transition-colors">
-    <span class="text-primary">SecureCAT</span>
+    <span class="text-primary">NEXIAM</span>
     <span class="text-muted-foreground text-base font-normal">Applicant Portal</span>
   </Link>
 

@@ -3,7 +3,7 @@
   import { Check } from 'lucide-svelte';
   
   let { 
-    title = 'SecureCAT: Computerized Admission & Testing',
+    title = 'NEXIAM: Computerized Admission & Testing',
     subtitle = 'Digitizing the complete student admission lifecycle from application to consultation',
     primaryAction = null,
     secondaryAction = null

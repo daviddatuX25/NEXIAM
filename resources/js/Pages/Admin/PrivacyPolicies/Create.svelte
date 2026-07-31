@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-  <title>Create Privacy Policy - SecureCAT</title>
+  <title>Create Privacy Policy - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout {breadcrumbs}>

@@ -41,8 +41,8 @@ class ApplicantSetupMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'SecureCAT — Application Accepted: Set Up Your Portal',
-            from: config('mail.from.address', 'noreply@securecat.local'),
+            subject: 'NEXIAM — Application Accepted: Set Up Your Portal',
+            from: config('mail.from.address', 'noreply@nexiam.local'),
         );
     }
 

@@ -10,7 +10,7 @@
         Designed for applicants, staff, and leadership
       </h2>
       <p class="text-sm text-muted-foreground sm:text-base">
-        SecureCAT keeps the same source of truth but lets each role see what matters to them—from
+        NEXIAM keeps the same source of truth but lets each role see what matters to them—from
         filling out an application to monitoring capacity and audit trails.
       </p>
     </header>

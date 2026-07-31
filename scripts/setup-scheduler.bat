@@ -1,13 +1,13 @@
 @echo off
 :: ============================================================
-:: SecureCAT — Task Scheduler Setup
+:: NEXIAM — Task Scheduler Setup
 :: Run this script as Administrator (right-click → Run as admin)
 :: Creates a Windows Scheduled Task that runs Laravel's
 :: scheduler every minute, surviving reboots automatically.
 :: ============================================================
 
 echo.
-echo   SecureCAT — Task Scheduler Setup
+echo   NEXIAM — Task Scheduler Setup
 echo   =================================
 echo.
 
@@ -38,12 +38,12 @@ echo   Project: %PROJECT_PATH%
 echo.
 
 :: Delete existing task if it exists (for re-runs)
-schtasks /delete /tn "SecureCAT Laravel Scheduler" /f >nul 2>&1
+schtasks /delete /tn "NEXIAM Laravel Scheduler" /f >nul 2>&1
 
 :: Create the scheduled task
 :: Runs every minute, starts on boot, runs whether user is logged in or not
 schtasks /create ^
-    /tn "SecureCAT Laravel Scheduler" ^
+    /tn "NEXIAM Laravel Scheduler" ^
     /tr "\"%PHP_PATH%\" \"%PROJECT_PATH%artisan\" schedule:run --no-ansi" ^
     /sc minute /mo 1 ^
     /f ^

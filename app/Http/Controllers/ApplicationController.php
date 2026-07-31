@@ -290,7 +290,7 @@ class ApplicationController extends Controller
         if (empty($email)) {
             $safeFirstName = preg_replace('/[^a-z0-9]/', '', strtolower($validated['first_name']));
             $safeLastName = preg_replace('/[^a-z0-9]/', '', strtolower($validated['last_name']));
-            $email = "{$safeFirstName}.{$safeLastName}.{$referenceNumber}@securecat.local";
+            $email = "{$safeFirstName}.{$safeLastName}.{$referenceNumber}@nexiam.local";
         }
 
         $fallbackCourseId = Course::where('is_active', true)->first()?->id ?? Course::first()?->id;
@@ -496,7 +496,7 @@ class ApplicationController extends Controller
         if (empty($email)) {
             $safeFirstName = preg_replace('/[^a-z0-9]/', '', strtolower($validated['first_name']));
             $safeLastName = preg_replace('/[^a-z0-9]/', '', strtolower($validated['last_name']));
-            $email = "{$safeFirstName}.{$safeLastName}.{$referenceNumber}@securecat.local";
+            $email = "{$safeFirstName}.{$safeLastName}.{$referenceNumber}@nexiam.local";
         }
 
         $fallbackCourseId = Course::where('is_active', true)->first()?->id ?? Course::first()?->id;

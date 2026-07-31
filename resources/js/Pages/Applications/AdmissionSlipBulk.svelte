@@ -90,7 +90,7 @@
 </script>
 
 <svelte:head>
-  <title>Print bulk - {applicants.length} admission slips - SecureCAT</title>
+  <title>Print bulk - {applicants.length} admission slips - NEXIAM</title>
 </svelte:head>
 
 <div class="print:hidden p-4 space-y-4">

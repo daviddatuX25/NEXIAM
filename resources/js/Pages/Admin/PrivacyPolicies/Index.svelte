@@ -53,7 +53,7 @@
 </script>
 
 <svelte:head>
-  <title>Privacy Policies - SecureCAT</title>
+  <title>Privacy Policies - NEXIAM</title>
 </svelte:head>
 
 <AuthenticatedLayout {breadcrumbs}>

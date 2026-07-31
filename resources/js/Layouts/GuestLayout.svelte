@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-  <title>SecureCAT - Staff Login</title>
+  <title>NEXIAM - Staff Login</title>
 </svelte:head>
 
 <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative">
@@ -23,8 +23,8 @@
   </Button>
   <!-- Logo / Brand -->
   <Link href="/" class="mb-8 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground no-underline hover:text-primary transition-colors">
-    <img src="/img/securecat-logo.png" alt="SecureCAT" class="w-10 h-10 rounded-lg" />
-    <span class="text-primary">SecureCAT</span>
+    <img src="/img/nexiam-logo.png" alt="NEXIAM" class="w-10 h-10 rounded-lg" />
+    <span class="text-primary">NEXIAM</span>
   </Link>
 
   <!-- Centered card -->

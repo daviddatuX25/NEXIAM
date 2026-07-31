@@ -19,7 +19,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>SecureCAT — Computerized Admission & Testing</h1>
+        <h1>NEXIAM — Computerized Admission & Testing</h1>
         <p style="margin: 8px 0 0;">ADMISSION SLIP</p>
     </div>
 

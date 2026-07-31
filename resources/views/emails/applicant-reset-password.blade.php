@@ -1,4 +1,4 @@
-@include('emails.partials.header', ['title' => 'Reset Your Password — SecureCAT'])
+@include('emails.partials.header', ['title' => 'Reset Your Password — NEXIAM'])
 
                             <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.3;">
                                 Password Reset Request

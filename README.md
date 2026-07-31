@@ -1,4 +1,4 @@
-# 🛡️ SecureCAT-v2: Role-Based College Admission Testing System
+# 🛡️ NEXIAM: Role-Based College Admission Testing System
 
 [![Laravel 12](https://img.shields.io/badge/Laravel-12.x-red.svg)](https://laravel.com)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5.x-orange.svg)](https://svelte.dev)
@@ -6,7 +6,7 @@
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8.svg)](https://tailwindcss.com)
 [![PHP 8.4](https://img.shields.io/badge/PHP-8.4-777bb4.svg)](https://php.net)
 
-SecureCAT-v2 is a comprehensive, zero-trust web application specifically engineered to streamline the college admission testing pipeline for the **Guidance and Registrar Offices at the Ilocos Sur Polytechnic State College (ISPSC) Tagudin Campus**. The system handles the entire applicant lifecycle—from registration and dynamic room scheduling to proctor monitoring, automated scoring, result sheet generation, and AI-assisted counseling.
+NEXIAM is a comprehensive, zero-trust web application specifically engineered to streamline the college admission testing pipeline for the **Guidance and Registrar Offices at the Ilocos Sur Polytechnic State College (ISPSC) Tagudin Campus**. The system handles the entire applicant lifecycle—from registration and dynamic room scheduling to proctor monitoring, automated scoring, result sheet generation, and AI-assisted counseling.
 
 ---
 
@@ -16,7 +16,7 @@ SecureCAT-v2 is a comprehensive, zero-trust web application specifically enginee
 - [🔮 Planned Advanced Capstone Features (Future Roadmap)](#-planned-advanced-capstone-features-future-roadmap)
 - [💾 Database Architecture \& ERD](#-database-architecture--erd)
 - [💻 Technology Stack \& Environment](#-technology-stack--environment)
-- [🚢 SecureCAT (NEXIAM) — Dokploy Deployment Guide](#-securecat-nexiam--dokploy-deployment-guide)
+- [🚢 NEXIAM (NEXIAM) — Dokploy Deployment Guide](#-nexiam-nexiam--dokploy-deployment-guide)
 - [🧭 Architecture Learning Guide](./docs/nexiam-architecture-learning-guide.md)
 - [📐 Evidence-Based Architecture Audit](./docs/master-architecture-picture.md)
 
@@ -35,7 +35,7 @@ The evidence-backed audit and staged refactor plan are available here:
 
 ## 🏢 System Overview & Architecture
 
-SecureCAT transitionally automates manual admission processes into a secured digital workflow. The core engine models a strict status pipeline for applicants.
+NEXIAM transitionally automates manual admission processes into a secured digital workflow. The core engine models a strict status pipeline for applicants.
 
 ```mermaid
 graph TD
@@ -148,7 +148,7 @@ The core data structures are designed around the following models:
 
 
 
-## 🚢 SecureCAT (NEXIAM) — Dokploy Deployment Guide
+## 🚢 NEXIAM (NEXIAM) — Dokploy Deployment Guide
 
 > Minimal deployment: App Container + MySQL. No Redis needed for demo.
 > Everything is automated — migrations, seeders, and storage symlink all run on first boot.
@@ -168,7 +168,7 @@ In the Compose service's **Environment** tab, paste the contents of [`.env.dokpl
 
 | Variable | What to put |
 |---|---|
-| `APP_URL` | Your public domain (e.g. `https://securecat.yourdomain.com`) |
+| `APP_URL` | Your public domain (e.g. `https://nexiam.yourdomain.com`) |
 | `APP_KEY` | Generate with `php artisan key:generate --show` and paste the output |
 | `DB_PASSWORD` | Any strong password for your MySQL root user |
 | `SUPER_ADMIN_PASSWORD` | Your desired admin login password |

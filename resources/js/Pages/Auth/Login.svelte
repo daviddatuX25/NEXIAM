@@ -51,7 +51,7 @@
 </script>
 
 <svelte:head>
-  <title>Login - SecureCAT</title>
+  <title>Login - NEXIAM</title>
 </svelte:head>
 
 <HomeLayout>
