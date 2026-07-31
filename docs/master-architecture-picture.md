@@ -1,278 +1,558 @@
-# NEXIAM — Master Architecture Picture
-## The Full View: What Exists · What's Broken · What Best Looks Like
+# NEXIAM Architecture Audit and Refactor Blueprint
 
-**Compiled:** 2026-07-30
-**Sources:** Architecture Audit (#1) + Access Control Inventory (#2) + Controller Audit (#3)
-**Purpose:** One place to see the whole system, so refactoring decisions have a single reference.
+**Purpose:** the authoritative map for deciding what to preserve, what to refactor, what to replace, and how to add the capstone features without compounding inherited SecureCAT debt.
 
----
+**Method:** source inspection, call-path tracing, live quality-tool execution, dependency audit, migration/model review, requirement-to-code comparison, and Laravel 12 documentation. Findings are tagged as **Observed**, **Measured**, **Requirement**, or **Decision needed** so that opinions do not become facts by repetition.
 
-## PART 0 — THE SYSTEM AT A GLANCE
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  NEXIAM — College Admission Testing System (ISPSC Tagudin)      │
-│  Predecessor: SecureCAT-v2 (working system, polished, reused)   │
-├─────────────────────────────────────────────────────────────────┤
-│  STACK                                                          │
-│  PHP 8.4 · Laravel 12 · Inertia 2 · Svelte 5 · Tailwind 4       │
-│  shadcn-svelte UI kit (50+ components)                          │
-├─────────────────────────────────────────────────────────────────┤
-│  SCALE                                                          │
-│  41 controllers (9,122 lines) · 34 services (8,500 lines)       │
-│  25 models · 81 Svelte pages (~25,000 lines) · 50+ migrations   │
-│  100+ routes · ~220 controller methods                          │
-│  Tests: 0 (no tests/ directory exists)                          │
-├─────────────────────────────────────────────────────────────────┤
-│  CURRENT ROLES (5):  super_admin, registrar_administrator,      │
-│  test_administrator, staff, proctor                             │
-│  TARGET ROLES (9+overlay):  system_it_admin, registrar_admin,   │
-│  registrar_clerk, registrar_support_staff, guidance_counselor,  │
-│  guidance_clerk, guidance_support_staff, program_head,          │
-│  proctor (duty overlay), applicant                              │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Operating order:** **specifications → P0 safety/refactors → P1 features → P2 builds**. Do not scaffold a replacement application until the audit and architecture decisions are accepted.
 
 ---
 
-## PART 1 — HOW THE APP ACTUALLY WORKS TODAY (Current Map)
+## 1. Executive verdict
 
-```
-                        ┌──────────────────────────┐
-                        │      routes/web.php      │
-                        │  328 lines, 12 role      │
-                        │  middleware groups       │
-                        └───────────┬──────────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              │                     │                     │
-   ┌──────────▼──────────┐  ┌───────▼────────┐  ┌────────▼─────────┐
-   │   STAFF SIDE        │  │  PORTAL SIDE   │  │   PUBLIC SIDE    │
-   │  Auth:web guard     │  │ Auth:applicant │  │  (no auth)       │
-   │  AuthController     │  │ guard          │  │  HomeController  │
-   │  (email+password)   │  │ PortalAuthCtrl │  │  Application::   │
-   │                     │  │ (email+pass,   │  │  create/store    │
-   │  41 controllers     │  │  token setup)  │  │                  │
-   │  2 GOD CONTROLLERS  │  │                │  │  GoogleAuth      │
-   └──────────┬──────────┘  └───────┬────────┘  └──────────────────┘
-              │                     │
-              ▼                     ▼
-   ┌──────────────────────────────────────────────┐
-   │               SERVICE LAYER (34)             │
-   │  Deep & good: ApplicationPipelineService     │
-   │  (10-state state machine), AuditService      │
-   │  (100+ events, redaction), ExamScheduling    │
-   │  Assistant, GradingSessionService            │
-   │                                              │
-   │  Shallow/needs work: DashboardService,       │
-   │  AiCompanionService (hardcoded AI fallback)  │
-   └──────────────────────────────────────────────┘
-              │
-              ▼
-   ┌──────────────────────────────────────────────┐
-   │               DATABASE (25 models)           │
-   │  Roles: DB-driven (extensible ✅)            │
-   │  FKs: inconsistently defined ⚠️              │
-   │  Bandaid migrations: nullable fixes ⚠️       │
-   └──────────────────────────────────────────────┘
-```
+NEXIAM should **not** be treated as either a clean greenfield application or a hopeless legacy rewrite.
+
+It is a working Laravel monolith with substantial reusable admissions, scheduling, proctoring, grading, release, document-generation, notification, and RAG infrastructure. Its main risk is that important workflows are distributed across large controllers, large services, model hooks, direct queries, notifications, and role checks without characterization tests. Adding OMR, admission-support engines, a triage dashboard, Program Head access, messaging, identifier-key authentication, and chained auditing directly onto those seams would make the capstone harder to verify and harder to defend.
+
+The recommended strategy is a **strangler-style modernization inside the existing Laravel application**:
+
+1. preserve the database and working user journeys;
+2. characterize stable behavior with tests;
+3. establish explicit use-case and query boundaries one workflow at a time;
+4. replace only the subsystems whose requirements genuinely changed;
+5. add one small Python inference sidecar/worker for CV and embedding workloads instead of fragmenting the whole product into microservices;
+6. require every touched or new module to be green even while inherited debt remains baselined.
+
+A full rewrite is justified only if a later proof shows that preserving a subsystem costs more than replacing it. The present evidence does **not** justify rewriting the whole product.
 
 ---
 
-## PART 2 — EVERYTHING THAT'S WRONG (Consolidated, Deduplicated)
+## 2. Corrections to earlier audit claims
 
-All findings from all 3 audits, grouped by system layer. **22 distinct issues.**
+The first three audits were useful reconnaissance, but several conclusions were too absolute or factually stale. The refactor plan must use these corrected statements.
 
-### A. TESTING & VERIFICATION (the biggest gap)
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| A1 | **Zero automated tests.** 41 controllers, 34 services, 100+ routes, 0 tests. No tests/ directory. | 🔴 | Arch §8 |
-| A2 | No regression safety → every refactor is a leap of faith. Minimum suite: ~42 tests before P0 work. | 🔴 | Arch §8 |
-
-### B. CONTROLLER LAYER
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| B1 | **ApplicationController god class** — 1245 lines, 30 methods, 5+ responsibilities (CRUD + workflow + portal + slips + public apply). Split plan exists but never executed. | 🔴 | Arch §4, Ctrl §1 |
-| B2 | **ExamSessionController god class** — 1012 lines, 34 methods, 4+ responsibilities (CRUD + workflow + roster + monitoring). Split plan exists but never executed. | 🔴 | Arch §4, Ctrl §2 |
-| B3 | **37 N+1 queries** in ExamSessionController; 16 in ApplicationController; 14 in ReleasePrintController. | 🔴 | Arch §6 |
-| B4 | 9 controllers use `app(Service::class)` service locator instead of constructor DI (Application, ExamSession, PortalAuth, Release, SessionRoster, Grading, DirectAssessment, Setup, Auth). | 🟡 | Ctrl §9 |
-| B5 | **27 of 41 controllers (66%) have zero service dependencies** — model queries inline in controller methods. | 🟡 | Ctrl §8 |
-| B6 | PortalAuthController mixes 3 concerns: auth (9 methods) + dashboard (3) + admission slip (2) in 501 lines. | 🔴 | Ctrl §4 |
-| B7 | SetupController: 599 lines of 11 identical `checkX()` health methods — should be SystemHealthService. | 🔴 | Ctrl §3 |
-| B8 | SessionRosterController: 487 lines, only 8 methods, but each method 60-80 lines of inline logic. | 🟡 | Ctrl §6 |
-| B9 | Missing return types on many methods despite PHP 8.4. | 🟡 | Arch §10.3 |
-
-### C. AUTH & AUTHORIZATION
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| C1 | **Dual auth guards** (web for staff, applicant for portal) — duplication of login/logout/reset/setup across two controllers. Should share a base. | 🔴 | Arch §1 |
-| C2 | **Proctor as permanent role, not duty overlay.** Checked via `role:...,proctor,...` middleware in 5 route groups. NEXIAM requires session-scoped assignment via `exam_session_user` pivot + Policy. | 🔴 | Arch §2.2, AC §5 |
-| C3 | **12 separate role middleware groups** in routes/web.php with overlapping role lists — hard to reason about who-can-access-what. | 🟡 | Arch §3 |
-| C4 | Role naming confusion: 3+ renames in history (test_administrator → registrar_administrator → back), current names don't match NEXIAM terminology. | 🟡 | Arch §2.3 |
-| C5 | Portal token setup expiry enforced only in controller, not at DB level (`expires_at` column missing). | 🟡 | Arch §1.2 |
-| C6 | **test_administrator is one merged role** covering both clerk + counselor functions — must split per settled model. | 🔴 | AC §5 |
-| C7 | registrar_support_staff, guidance_support_staff, program_head roles completely absent (role, routes, policies, screens). | 🔴 | AC §5 |
-
-### D. SERVICE LAYER
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| D1 | Hardcoded AI model fallback: `AiCompanionService` line 251 falls back to `openrouter/free` silently — fail-loud instead. | 🔴 | Arch §5 |
-| D2 | `DB::table()` bypass in AiCompanionService::resolveCourseName() — skips Eloquent model behavior. | 🟡 | Arch §6.2 |
-| D3 | Several shallow services — DashboardService, AiCompanionService — thin pass-throughs or mixed concerns. | 🟡 | Arch §5, Ctrl §8 |
-
-### E. DATABASE
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| E1 | Foreign key constraints inconsistently defined (e.g. exam_session_applicant). Orphan risk. | 🟡 | Arch §7.2 |
-| E2 | Bandaid migrations (`make_scores_nullable`, `make_room_nullable`) — schema corrections after the fact. | 🟡 | Arch §7.3 |
-| E3 | Missing columns for NEXIAM scope: `audit_logs.chain_hash`, `applicants.identifier_key`. | 🟡 | Plan §5 |
-
-### F. FRONTEND
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| F1 | **806-line Release/Index.svelte** monster component; 708-line Applications/Index.svelte; 5 components >600 lines. | 🔴 | Arch §9.1 |
-| F2 | Create/Edit duplication: 10+ near-identical form page pairs (e.g. AptitudeAreas 660/659 lines). Should be shared `<Form mode="create|edit">`. | 🟡 | Arch §9.2 |
-
-### G. SECURITY & COMPLIANCE (NEXIAM-scope items)
-
-| # | Issue | Severity | Source |
-|---|---|---|---|
-| G1 | **No HMAC-SHA256 chaining on audit logs** — required by NEXIAM scope, currently flat log. | 🟡 | Arch §10.1 |
-| G2 | No rate limiting, no API versioning, no error monitoring. | 🟡 | Arch exec |
-| G3 | Applicant auth is email+password — NEXIAM requires **identifier key** login. | 🔴 | Plan decisions |
+| Earlier claim | Corrected finding |
+|---|---|
+| `app(Service::class)` is an anti-pattern and equivalent to constructor injection | Laravel supports manual container resolution, but its documentation says most objects should receive dependencies through automatic injection. `app()` is valid for dynamic/framework-edge resolution; repeatedly using it for mandatory controller dependencies hides the dependency graph and complicates isolated tests. It is a secondary smell, not the main disease. |
+| Every controller should have a service and all business logic belongs in services | Simple resource reads may use Eloquent directly. Extract a use-case/action when there is a workflow, invariant, transaction, side effect, reusable rule, authorization-sensitive operation, or external integration. Do not create ceremonial one-line wrappers. |
+| DashboardController is the gold standard | Its HTTP method is thin and uses constructor injection, which is good. However, it calls thirteen query methods across `DashboardService` (265 lines) and `DashboardAnalyticsService` (645 lines). Those services repeat role checks, issue many independent queries, contain DB-driver/schema fallbacks, and even reference Spatie's `model_has_roles` although the application uses `role_user`. It is a useful thin-adapter example, not yet a good whole-module example. |
+| Dual staff/applicant guards are a critical duplication bug | Separate guards/providers are a legitimate boundary between staff and applicant identities. The real problems are the 501-line mixed-concern `PortalAuthController`, custom reset/setup implementation, and the unresolved identifier-key design. Share primitives where safe; do not collapse distinct identities merely to remove duplication. |
+| No rate limiting | Staff login, portal login/forgot-password, and AI companion routes are rate-limited. Coverage and production tuning still need tests. |
+| Applicant setup-token expiry column is missing | `applicants.setup_token_expires_at` exists, but setup and applicant-reset tokens are stored and queried in plaintext. Token hashing and atomic one-time use are named P0 security work, not merely characterization. |
+| `exam_session_applicant` lacks foreign keys | Its session/applicant foreign keys are constrained with cascade deletion; actor fields added later are constrained and null on deletion. A more serious question is the global unique constraint on `applicant_id`, which permits only one exam-session assignment for an applicant across all time. |
+| Email notifications are not built | Eleven notification classes exist; schedule, status, staff-assignment, and result notifications already use mail and/or database channels and are invoked by current workflows. Preference management, delivery guarantees, after-commit behavior, and end-to-end tests are incomplete. |
+| Zero tests because no `tests/` directory exists | Pest is now scaffolded with two example tests, but there are still **zero meaningful domain/feature tests**. The risk conclusion remains; the file-system claim was stale. |
+| 3,200 ESLint errors describe source debt | The repository-wide command incorrectly lints compiled `public/build` assets. Source-only lint reports **309 errors in 94 files**. The generated bundle accounts for most of the inflated count and must be ignored in ESLint config. |
+| Database “bandaid” migrations are current schema defects | Historical corrective migrations are not automatically defects. Do not rewrite applied migration history. Verify the resulting schema; optionally squash only when creating a fresh, controlled baseline. |
+| No API versioning is an architecture defect | NEXIAM is primarily a server-rendered Inertia application. API versioning is needed only for a supported external/mobile API contract, not as a generic quality badge. |
 
 ---
 
-## PART 3 — WHAT'S ALREADY GOOD (Protect These)
+## 3. Measured system map
 
-| # | Good Pattern | Why It Matters |
+### 3.1 Code size
+
+| Area | Measured state |
+|---|---:|
+| Controllers | 41 files, 9,123 lines |
+| Services | 35 PHP files (34 top-level + 1 legacy Concern), 9,456 lines |
+| Models | 25 files, 1,720 lines |
+| Policies | 10 files, 494 lines |
+| Form Requests | 46 files, 1,464 lines |
+| Migrations | 86 files, 2,817 lines |
+| Svelte source | 199 components/pages, 26,203 lines |
+| Inertia pages | 85 page files |
+| Meaningful automated tests | 0 |
+
+Line count is a navigation signal, not a design rule. Cohesion, dependency direction, transaction ownership, and change coupling determine whether a module should split.
+
+### 3.2 Runtime shape today
+
+```text
+Public / Staff / Applicant browsers
+                │
+        Laravel web routes (328 lines)
+                │
+     auth guard + role middleware
+                │
+      Controllers + Form Requests
+       │          │            │
+       │          │            └── direct Eloquent / DB queries
+       │          └── policies and inline role checks
+       └── services resolved by DI or app()
+                     │
+        ┌────────────┼─────────────────────────┐
+        │            │                         │
+   MariaDB/SQLite  queued notifications   external/process adapters
+                                     OpenRouter, Mixedbread,
+                                     DOCX/ODT/PDF, spreadsheet I/O
+```
+
+### 3.3 Business capabilities already present
+
+- staff and applicant authentication, plus a new Google OAuth staff-login/account-linking path that requires explicit security characterization;
+- public/staff application intake and bulk imports;
+- applicant portal, application editing, status tracking, admission slips;
+- exam scheduling, staff/proctor assignment, attendance, submissions, monitoring;
+- grading sessions, manual scores, spreadsheet score import;
+- consultation summaries, release/unrelease, result-sheet generation;
+- queued database/mail notifications;
+- audit event recording and redaction;
+- knowledge-document ingestion and a Mixedbread-backed AI companion;
+- reports, settings, institutional setup, rooms, courses, academic years.
+
+These are assets to characterize and selectively retain—not evidence that every implementation is correct.
+
+---
+
+## 4. Quality and security ledgers
+
+### 4.1 Current reproducible baselines
+
+| Ledger | Measured result | Correct interpretation |
+|---|---:|---|
+| PHPStan level 6 baseline | 743 ignore rules suppressing **988 occurrences**; current baseline-backed run reports 0 unsuppressed errors | 450 in `app/Http`, 325 in `app/Services`, 95 in `app/Models`; this is a module-risk ranking, not permission to add errors. |
+| ESLint, repository-wide | 3,200 errors | Inflated by compiled `public/build` assets. |
+| ESLint, source-only | **309 errors / 94 files** | 122 `no-unused-vars`, 112 missing Svelte each keys, then smaller correctness/reactivity groups. This is the actionable frontend ledger. |
+| Svelte check | **1,073 errors + 206 warnings / 123 files** | 961 contain the dominant `$$ComponentProps`/prop-inference class; 113 error lines fall outside that class and require individual review. Do not label all 1,073 equally. |
+| Prettier, source-only | **232 files** | Formatting debt; format in an isolated commit before semantic frontend refactors. |
+| Pest | **2 example tests pass / 2 assertions**; no domain tests | Tooling and boot path work; business behavior is not protected. |
+| npm production audit | 0 known vulnerabilities | Green at audit time. |
+| Composer audit | **9 advisories in PhpSpreadsheet 4.5.0** | 1 critical, 6 high, 2 medium. Current advisories affect releases through 5.8.0; target 5.9+ and test imports. |
+
+### 4.2 No-growth quality contract
+
+Until inherited debt is retired:
+
+1. no pull request may increase any scoped baseline;
+2. source and generated assets must be measured separately;
+3. touched PHP files must pass PHPStan without adding baseline entries;
+4. new/touched Svelte code must be TypeScript and pass ESLint + `svelte-check`;
+5. new use cases require tests before merge;
+6. architecture violations use an explicit allowlist/baseline—never a permanently red CI job;
+7. each refactor must shrink at least one ledger or remove an allowlisted architecture violation;
+8. the eventual clean baseline is zero, and the old baseline is deleted only after verified reduction.
+
+Architecture tests should encode dependency direction, not superficial size limits. Start with audit-mode/allowlisted checks such as:
+
+```php
+arch('models do not depend on HTTP delivery')
+    ->expect('App\\Models')
+    ->not->toUse('App\\Http');
+
+arch('application modules do not render responses')
+    ->expect(['App\\Actions', 'App\\Queries', 'App\\Services'])
+    ->not->toUse(['Inertia\\Inertia', 'Illuminate\\Http\\RedirectResponse']);
+
+```
+
+Pest's class-dependency assertions should not be assumed to detect global `app()` / `resolve()` function calls. Track those call sites with a verified static search or a custom architecture expectation, baseline the legacy list, and fail CI only when it grows. Controller `DB` use and other legacy seams may follow the same explicit violation-list pattern. Do not write a permanently failing architecture suite or force harmless direct Eloquent reads into shallow wrappers.
+
+### 4.3 Immediate security stop-ship
+
+**Upgrade `phpoffice/phpspreadsheet` from 4.5.0 to 5.9+ before treating spreadsheet uploads as safe.** Applicant and score-import requests accept CSV/XLS/XLSX files up to 10 MB, and `SpreadsheetParser` passes uploaded Excel paths to `IOFactory::load()`. The current advisory set includes an `IOFactory::load` SSRF/RCE issue and several resource-exhaustion/SSRF/XSS issues. This is reachable application exposure, not an abstract dependency warning.
+
+Upgrade acceptance must include malicious/oversized fixture tests, row/cell/workbook limits, formula/external-link disabling where supported, time/memory limits, and confirmation that all import/preview paths use the hardened shared parser.
+
+---
+
+## 5. Architectural findings
+
+### 5.1 P0 — fix or specify before major feature work
+
+#### P0.1 No behavioral oracle
+
+The application has mature workflows but no meaningful tests. Large-scale splitting without characterization tests risks preserving the wrong behavior or breaking hidden invariants.
+
+Pin stable flows first:
+
+1. public application submission and unique reference generation;
+2. application acceptance, applicant account setup, and status notification;
+3. exam publish/assignment, assigned-proctor authorization, attendance, and submission;
+4. score entry/import, grading finalization, and pipeline progression;
+5. consultation/result release, notification, and document generation.
+
+Do not characterize requirements that are intentionally being replaced, such as course-recommendation AI behavior or CSV-as-OMR.
+
+#### P0.2 Workflow ownership is fragmented
+
+`ApplicationController` (1,245 lines), `Admin/ExamSessionController` (1,012), `SessionRosterController` (488), grading controllers, and `ReleaseController` jointly mutate application/exam/grading/release state, write audits, and send notifications. `ApplicationPipelineService` is called from 12 files, including controllers, services, a model, and a command. The pipeline is useful, but ownership is diffuse.
+
+Target one command/use-case owner per transition:
+
+- `AcceptApplication`
+- `PublishExamSession`
+- `AssignApplicantsToSession`
+- `RecordAttendance`
+- `RecordSubmission`
+- `FinalizeGrading`
+- `ReleaseResult`
+
+Each command owns validation beyond FormRequest shape, transaction boundaries, audit write, state projection update, and after-commit event dispatch. This is not hypothetical: current exam publish and result release update base state, then notify, then advance pipeline, then audit without one transaction; a mid-flow failure can leave contradictory state. Application acceptance does use a transaction, but it queues notification work from inside that transaction while every configured queue connection currently has `after_commit => false`.
+
+#### P0.3 Authorization model contradicts the capstone model
+
+Current code requires a user to hold a permanent `proctor` role **and** be assigned through `exam_session_user`. The manuscript describes proctoring as a session-scoped duty overlay. Route middleware can reject an assigned staff member before `ExamSessionPolicy` gets the chance to verify the assignment.
+
+There are three divergent catalogs: live-code roles such as `super_admin`, `registrar_administrator`, `test_administrator`, and `proctor`; the manuscript's System IT/Registrar/Guidance terminology; and the expanded access-control inventory with clerk/support/Program Head variants. Do not migrate roles until one authoritative catalog, permission matrix, and legacy mapping are approved.
+
+Target:
+
+- permanent organizational role/permission grants;
+- applicant as a separate authenticated actor, not a staff role;
+- proctor capability granted by session assignment and evaluated in policy;
+- permissions for coarse capabilities;
+- policies for resource scope and state;
+- identifier-key authentication is required by the capstone but undefined. An identifier is a username, not a secure bearer credential. Specify identifier + password/passkey/OTP, recovery, rotation, rate limiting, and audit behavior;
+- applicant setup and password-reset tokens are currently stored and queried in plaintext. Keep only a one-way hash server-side, compare the hash of the presented token, invalidate atomically on use, and test expiry/reuse/race behavior;
+- the new Google OAuth callback automatically attaches a Google identity to an existing staff account by normalized email, without an explicit verified-email/domain policy, audit event, or route throttle; the callback also sits outside the `guest` group. Before merging/enabling it, specify trusted domains/account-linking consent, verify provider claims, constrain guest/link flows, handle credential races, rate-limit failures, and test account-switch/takeover scenarios;
+- no hard-coded role lists repeated across routes, services, pages, and policies.
+
+Spatie Permission is a reasonable implementation, but adopting it does not solve an unsettled role model. Specify permissions and scopes first.
+
+#### P0.4 Data integrity/concurrency risks
+
+- `Application::nextReferenceNumber()` uses `COUNT + 1` inside a transaction without a locked counter; concurrent submissions can generate the same unique reference and one request will fail. The same application flow performs an identity duplicate read and later inserts without a database uniqueness rule, so concurrent duplicate submissions can both pass.
+- Appointment booking validates only that the row exists, then increments/decrements `booked_count` separately from application writes. It does not atomically require `is_active` or `booked_count < max_slots`, so concurrent submissions can overbook and failed/missed updates can drift the counter. Treat booking as a locked transaction or derive occupancy from applications.
+- `exam_session_applicant` has a global unique index on `applicant_id`. That forbids retakes or another session in a later cycle unless the same applicant record is never reused. Confirm the domain invariant; otherwise scope uniqueness to the admission attempt/cycle.
+- The model declares `Application::hasOne(Applicant::class)`, but `applicants.application_id` is nullable and not unique, so the database does not enforce that one-to-one relationship. More fundamentally, decide whether `Applicant` is a durable person/login and `Application` is a repeatable admission attempt; if so, the current ownership direction must evolve before multi-cycle scaling.
+- audits without a subject use `auditable_type = ''` and `auditable_id = 0`; use nullable subject columns or an explicit event subject model instead of sentinel polymorphic IDs.
+- state is represented across base status, pipeline status, pivot flags, grading status, and summaries. Transition commands must define the source of truth and update projections atomically.
+
+#### P0.5 PhpSpreadsheet exposure
+
+See §4.3. Upgrade and harden before additional import work or OMR-adjacent uploads.
+
+#### P0.6 Audit truth is insufficient for the stated threat model
+
+Current `AuditService` is a useful event vocabulary/redaction layer, but it is not tamper-evident. A simple `hash_hmac(event + previous_hash)` is also insufficient by itself:
+
+- concurrent inserts need serialization/sequence handling;
+- canonical payload encoding must be specified;
+- deletion of the tail may not be detectable;
+- anyone with both DB and HMAC key access can rewrite the chain;
+- key rotation and historical verification must be defined.
+
+The OpenSpec must define sequence, previous hash, canonical JSON, dedicated audit key/version, transaction/locking, verification, periodic external checkpoints, append-only DB privileges, and failure behavior. This is a security design, not merely a new column.
+
+### 5.2 P1 — architecture needed for safe scaling
+
+#### P1.1 God controllers and god services
+
+Moving code from controllers into generic services is not enough. The service layer already contains large mixed modules:
+
+- `ResultSheetTemplateService` — 1,254 lines / 17 public operations;
+- `ReportExportService` — 837 lines;
+- `DashboardAnalyticsService` — 645 lines / 11 query operations;
+- `ApplicantImportService` — 515 lines;
+- `SpreadsheetParser` — 457 lines;
+- document renderers/converters across overlapping services.
+
+Split by cohesive capability and stable interface, not arbitrary line limits. Good boundaries include template validation, placeholder compilation, applicant data projection, format-specific rendering, conversion, and delivery.
+
+#### P1.2 Dashboard is query orchestration, not domain behavior
+
+The controller is thin, but it invokes roughly a dozen separate query methods and each service embeds role checks. Introduce a single role/scope-aware dashboard query facade that returns a typed view model. Internally compose focused read queries and cache only where measurement justifies it. Authorization determines the allowed projection; role names should not be repeated in every chart method.
+
+#### P1.3 Hidden dependencies and inconsistent resolution
+
+Use constructor/method injection for required application dependencies. Keep Laravel facades where they improve conventional framework code. Reserve `app()` for genuinely dynamic/optional resolution or framework bootstrapping. The rule is dependency visibility and testability—not ideological prohibition.
+
+#### P1.4 Side effects occur inline and inconsistently
+
+Notifications, audit writes, pipeline updates, and document work are triggered from multiple controllers; some notification failures are swallowed manually. Command handlers should commit core state and mandatory audit data synchronously, then dispatch idempotent queued listeners **after commit** for email, expensive document work, and integrations. Retry behavior and dead-letter/failed-job visibility become explicit.
+
+#### P1.5 RAG scope is internally contradictory and must be specified
+
+The current AI companion already retrieves institutional documents through Mixedbread and has guardrails, but its prompt includes applicant details and all available courses and tells the model to give advice. Meanwhile, the manuscript explicitly requires applicant-specific retrieval of the user's own results, schedule, and AI-optimized assignments in addition to institutional documents. That is broader than “policy-only RAG” and recommendation-adjacent, so the audit must not silently delete it.
+
+Reconcile the boundary in OpenSpec: authenticated read-only retrieval may expose the applicant's own results/schedule/approved assignments; institutional answers require citations and confidence refusal; placement/course recommendations remain a separate versioned decision-support capability with counselor oversight. Preserve suitable ingestion/retrieval adapters, but replace the use-case contract, prompt, evidence, citations, refusal path, and applicant-to-staff fallback. “Prompt-injection keyword detection” is defense in depth, not a security boundary.
+
+#### P1.6 Frontend debt is concentrated and measurable
+
+Largest pages include Release/Index (807 lines), Applications/Index (709), and near-identical AptitudeAreas Create/Edit pages (660/659, 97.8% line similarity). Several form pairs exceed 80–94% similarity. Extract shared form components only where the fields and validation lifecycle are genuinely common.
+
+Adopt TypeScript for all new/touched Svelte modules and migrate feature-by-feature. Do not spend the capstone schedule mechanically translating every untouched component. The target is typed page props, form data, events, component props, and external payloads at boundaries.
+
+### 5.3 P2 — cleanup/operability
+
+- Make ESLint ignore `public/build` and other generated output.
+- Narrow `jsconfig.json` / `svelte-check` scope to maintained frontend source; a broad run currently discovers Laravel's vendor exception-renderer `vite.config.js` and fails before checking NEXIAM. Exclude `vendor`, `public/build`, `storage`, caches, and archived legacy code.
+- Commit Pint/Prettier formatting separately from semantic changes.
+- Remove or justify unused adapters such as `OpenRouterChatService` after container-binding verification.
+- Replace schema/table-existence fallbacks in normal application queries with deterministic migrations and setup health checks.
+- Add structured error monitoring, queue/failed-job observability, import metrics, audit verification health, and integration health checks.
+- Consider migration squashing only for a controlled fresh baseline; preserve production migration history otherwise.
+
+---
+
+## 6. What to preserve
+
+1. Laravel 12 + Inertia 2 + Svelte 5 modular monolith.
+2. Separate staff and applicant auth providers, subject to identifier-key redesign.
+3. Eloquent models, current database, and working admission/exam/grading/release data.
+4. `ApplicationPipelineService` transition vocabulary and reconciliation concept, while centralizing who invokes transitions.
+5. `AuditService` event catalog and secret redaction, while replacing storage integrity mechanics.
+6. FormRequest adoption and existing policy foundation.
+7. Analyze → preview → confirm import UX.
+8. Existing notification classes and queue infrastructure.
+9. Mixedbread knowledge-document ingestion/retrieval adapter where it satisfies the new RAG contract.
+10. Existing DOCX/ODT/PDF capabilities, after splitting and characterization.
+11. shadcn-svelte component base, after fixing prop contracts/types.
+
+Preserve behavior because it is verified and required—not merely because code already exists.
+
+---
+
+## 7. Target architecture
+
+### 7.1 Pragmatic Laravel shape
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ Delivery: routes, middleware, FormRequests, controllers, Inertia    │
+│   - authenticate, authorize, validate transport, invoke one use case│
+├─────────────────────────────────────────────────────────────────────┤
+│ Application commands/actions             Read queries/view models   │
+│ AcceptApplication                        BuildStaffDashboard         │
+│ PublishExamSession                       ListApplications            │
+│ RecordAttendance                         BuildSessionRoster          │
+│ FinalizeGrading                          BuildTriageDashboard        │
+│ ReleaseResult                            BuildProgramHeadDashboard   │
+│   - transaction + invariants + mandatory audit                     │
+├─────────────────────────────────────────────────────────────────────┤
+│ Domain model: Eloquent entities, value objects, transition rules    │
+│ Admissions | Examinations | Assessment | Release | Identity         │
+├─────────────────────────────────────────────────────────────────────┤
+│ Async/application events: mail, messaging, integrations, documents │
+├─────────────────────────────────────────────────────────────────────┤
+│ Infrastructure adapters: MariaDB, queue, mail, object/file storage, │
+│ Mixedbread/LLM, Office conversion, Python inference worker          │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.2 Capability map
+
+| Capability | Owns | Must not own |
 |---|---|---|
-| ✅1 | **DB-driven roles** (`roles` table + `role_user` pivot + `firstOrCreate`) — new NEXIAM roles need no code changes, just seed data. | Saves the whole RBAC refactor. |
-| ✅2 | **ApplicationPipelineService** — proper 10-state state machine with forward-only guard, well-documented. The model for all services. | Already the "deep module" ideal. |
-| ✅3 | **AuditService** — 100+ labeled events, secret redaction, polymorphic actors, auto-summary. Just needs HMAC chaining. | Foundation for G1. |
-| ✅4 | **AI Companion security guards** — blocks code-gen, prompt injection, unsafe content. | Defense-in-depth done right. |
-| ✅5 | **shadcn-svelte UI kit** — 50+ organized components. | Frontend consistency. |
-| ✅6 | **DashboardController** — 47 lines, constructor DI, 2 services, all logic in services. The gold standard to replicate. | The target shape of every controller. |
-| ✅7 | **Import controllers** (ScoreImport, ApplicationImport) — proper DI, analyze → preview → confirm workflow. | The pattern for new features. |
-| ✅8 | **FormRequest classes** used widely — validation out of controllers. | Correct Laravel practice. |
-| ✅9 | **Legacy split plans** for both god controllers exist with TDD steps (May 2026). | Refactor is already designed. |
+| Identity & Access | staff/applicant auth, permissions, office scope, proctor assignment policy | admissions workflow |
+| Admissions | application/attempt, acceptance, portal status, admission slip | exam attendance, scoring |
+| Examination Operations | sessions, rooms, assignments, proctor duty, attendance/submission | score interpretation |
+| Assessment & Grading | answer ingestion, OMR review, scores, grading lifecycle | result communication |
+| Consultation & Release | summary, counselor decision, release/unrelease, result documents | authentication |
+| Communications | notification preferences, mail/database notifications, inquiry threads | core state transitions |
+| Audit & Compliance | canonical append-only event, chain/checkpoints, verification | business decision-making |
+| Knowledge & RAG | institutional corpus plus authorized retrieval of the applicant's own results, schedule, and approved assignments; citations and confidence/refusal | generating placement recommendations or autonomous decisions |
+| Admission Decision Support | engine registry, inference results, triage decision, provenance | autonomous admission decisions |
+| Reporting & Documents | read models, exports, template rendering, conversion | mutation of domain state |
+
+### 7.3 Rules with judgment, not dogma
+
+- Controllers are HTTP adapters; no fixed 15-line or 150-line law.
+- Direct Eloquent is acceptable for a simple, local read. Complex/reused/scoped reads become query objects.
+- Use-case commands own workflows and transactions.
+- Eloquent models own relationships, casts, local invariants, and useful scopes—not multi-system orchestration.
+- Repositories are not mandatory around Eloquent. Introduce interfaces for external providers, multiple implementations, or a seam that tests genuinely need.
+- Events/listeners are for decoupled side effects; do not hide essential synchronous invariants in asynchronous listeners.
+- Audit writes that prove a state change belong in the same transaction; email and integrations run after commit.
+- New modules are typed and green from birth.
 
 ---
 
-## PART 4 — WHAT "BEST" LOOKS LIKE (Target Architecture)
+## 8. Capstone feature architecture
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                     TARGET: NEXIAM                             │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ROUTES  →  thin, 3-4 auth groups only ("authenticated")       │
-│            authorization via Policies (per-object), not        │
-│            role lists in middleware                            │
-│                                                                │
-│  CONTROLLERS → all ≤ 150 lines, ≤ 8 methods                    │
-│            constructor DI (no app() in controllers)            │
-│            one responsibility per class                        │
-│                                                                │
-│  SERVICES   → deep modules, small interfaces                   │
-│            ALL business logic lives here                       │
-│            domain workflows as state machines                  │
-│                                                                │
-│  POLICIES   → per-resource: ExamSessionPolicy,                 │
-│            ApplicationPolicy, GradingSessionPolicy,            │
-│            ProctorPolicy (session-scoped via pivot)            │
-│                                                                │
-│  PERMISSIONS → Spatie, permission set = test_admin (not role)  │
-│            role ↔ permission mapping in admin UI               │
-│                                                                │
-│  AUDIT      → HMAC-SHA256 chained, verification endpoint       │
-│                                                                │
-│  TESTS      → ~42 minimum: 24 feature, 9 policy, 9 unit        │
-│            pyramid: unit (services) > feature (workflows)      │
-│            > e2e (5-10 Playwright journeys)                    │
-│                                                                │
-│  FRONTEND   → shared form components (no Create/Edit dupe)     │
-│            no component > 400 lines                            │
-│                                                                │
-│  AUTH       → shared auth base, two guards kept,               │
-│            applicant login by identifier key                   │
-│                                                                │
-│  ROLES      → 9 permanent + 2 seasonal + proctor overlay       │
-│            program_head dashboard built                        │
-│            guidance_counselor = inherent test_admin perms      │
-└────────────────────────────────────────────────────────────────┘
-```
+| Feature | Actual starting point | Architecture direction |
+|---|---|---|
+| Identifier-key login | email/password + expiring setup/reset tokens | First specify whether the key is a public username or secret credential. Recommended: opaque applicant identifier as login name plus password/recovery; never rely on a predictable identifier alone. |
+| Email notifications | substantially present | add preferences, event/after-commit dispatch, idempotency, templates, delivery tests, and operational visibility. |
+| Applicant-context RAG | partial AI companion with unresolved scope | keep safe ingestion/retrieval pieces; permit authorized own-result/schedule/approved-assignment retrieval; require cited institutional answers, confidence refusal, and messaging fallback; keep placement recommendation in the separate decision-support module. |
+| OMR CV | absent; CSV score import exists | Python/OpenCV queued worker, object storage, template/version record, confidence per bubble, human-review queue, idempotent import into grading. Never process large scans synchronously in the HTTP request. |
+| Engine registry | absent | versioned manifest/schema, adapter contract, health/status, immutable inference provenance, sandbox/active lifecycle. Do not make arbitrary manifests executable. |
+| Yukee aptitude engine | absent | deterministic/versioned engine behind the same contract, with validated mapping data and reproducible inputs. |
+| BGE interest engine | absent | deploy in the same Python inference sidecar initially; precompute program embeddings and version model/corpus. Split service only when operational evidence demands it. |
+| Triage dashboard | absent | read model combining independent aptitude and interest signals; counselor records approve/modify/override/defer with rationale and engine versions. No autonomous final decision. |
+| Program Head dashboard | absent | read-only, program-scoped query model and policy; quota and pipeline definitions must be specified. |
+| In-app messaging | absent | bounded inquiry/thread model, office assignment, unread state, retention/access policy, RAG refusal handoff. |
+| HMAC audit chain | absent storage integrity; event catalog exists | dedicated cryptographic design described in §5.1; include external checkpoints and verification operations. |
+| Offline proctoring | absent | defer until workflow tests and conflict rules exist; use an outbox/sync protocol, not cache-only PWA claims. |
 
 ---
 
-## PART 5 — THE GAP: CURRENT → TARGET (What Must Happen)
+## 9. Refactor-versus-rewrite decision
 
-```
-CURRENT STATE                     TARGET STATE
-──────────────────────────────    ──────────────────────────────
-2 god controllers (2200+ lines)   ~9 focused controllers (~1600 total)
-12 role middleware groups         3-4 auth groups + Policies
-5 roles, proctor-as-role          9 roles + overlay, proctor-as-duty
-0 tests                           ~42 tests minimum
-email+password portal auth        identifier key auth
-flat audit log                   HMAC-SHA256 chained audit
-app() service locator (9 ctrls)   constructor DI everywhere
-27 ctrls w/ no services           services behind every controller
-Create/Edit page duplication      shared form components
-5 monster Svelte components       none > 400 lines
-test_administrator merged role    split: counselor + clerk perms
-no program_head anything          role + routes + policies + dashboard
-```
+| Subsystem | Recommendation | Reason |
+|---|---|---|
+| Whole Laravel application | Refactor in place | working breadth, database, integrations, and screens make a greenfield rewrite high-risk. |
+| Application/exam controllers | Replace incrementally behind characterization tests | responsibilities and workflows changed enough to justify new use-case boundaries. |
+| Role/authorization layer | Planned migration | terminology and duty-overlay requirements conflict with current role checks. |
+| Applicant auth UI/use case | Replace flow, keep separate guard/provider | new identifier semantics; identity boundary remains valid. |
+| AI companion | Replace application contract, reuse vetted adapters | current prompt, manuscript applicant-context requirement, and separate recommendation engine need one explicit boundary. |
+| Imports | Keep UX; harden/upgrade parser | valuable workflow with immediate dependency risk. |
+| Document pipeline | Refactor/decompose, do not rewrite blindly | complex and working; high regression risk. |
+| Svelte frontend | Incremental TypeScript modernization | wholesale translation delays capstone features and yields weak value. |
+| OMR/embedding inference | New Python sidecar/worker | libraries and resource profile differ from Laravel; asynchronous boundary is natural. |
 
 ---
 
-## PART 6 — THE ROADMAP (Post-Audit Sequence)
+## 10. OpenSpec program
 
-```
-PHASE B — SPECS
-  • Spatie permission catalog (per settled access-control matrix)
-  • ADRs for: roles, proctor overlay, identifier auth, HMAC chain
-  • Refactor scope document (this picture → actionable tickets)
+Do not create one unreviewable “rewrite everything” change. Use an umbrella program with dependency-ordered changes:
 
-PHASE C — P0 REFACTORS (foundation)
-  C1. Tests FIRST: ~42 tests (lifecycle, auth, policy, pipeline)
-  C2. Split ApplicationController → 5 controllers (plan exists)
-  C3. Split ExamSessionController → 4 controllers (plan exists)
-  C4. N+1 fixes: eager loading + withCount
-  C5. Proctor middleware fix → Policy-based, pivot-scoped
-  C6. Role migration: rename/split to settled NEXIAM roles
-  C7. Constructor DI across the 9 service-locator controllers
+### Foundation changes
 
-PHASE D — P1 FEATURES
-  D1. HMAC audit chain (chain_hash + verify endpoint)
-  D2. Identifier key auth for applicants
-  D3. Email notifications (schedule, results, status)
-  D4. In-app messaging
+1. `quality-ledgers-and-generated-asset-scope`
+2. `characterize-critical-admission-lifecycle`
+3. `characterize-exam-grading-release-lifecycle`
+4. `upgrade-and-harden-spreadsheet-imports`
+5. `harden-applicant-setup-and-reset-token-lifecycle`
+6. `secure-google-oauth-account-linking`
+7. `settle-role-permission-and-proctor-duty-model`
+8. `define-applicant-identifier-auth-semantics`
+9. `define-audit-chain-threat-model`
 
-PHASE E — P2 NEW BUILDS
-  E1. OMR engine (computer-vision scoring)
-  E2. RAG chatbot (policy-only, existing guards reused)
-  E3. Admission support engines (Yukee cluster, BGE interest)
-  E4. Triage Dashboard (dual-panel counselor view)
-  E5. Program Head dashboard
+### Refactor changes
 
-PHASE F — DELIVERY
-  F1. Fresh GitHub repo (daviddatuX25/NEXIAM), clean history
-  F2. E2E journeys, deployment docs, defense materials
-```
+10. `centralize-application-command-workflows`
+11. `centralize-exam-session-command-workflows`
+12. `centralize-grading-and-release-workflows`
+13. `introduce-scoped-read-models-and-dashboard-query`
+14. `decompose-document-and-report-rendering`
+15. `typed-svelte-boundaries-for-touched-features`
 
----
+### Feature changes
 
-## PART 7 — ONE-LINE SUMMARY
+16. `applicant-context-rag-with-confidence-and-fallback`
+17. `omr-ingestion-review-and-score-import`
+18. `admission-engine-registry-and-provenance`
+19. `yukee-and-bge-engine-adapters`
+20. `counselor-triage-dashboard`
+21. `program-head-scoped-dashboard`
+22. `applicant-and-interoffice-messaging`
+23. `offline-proctor-sync` (only after conflict semantics are approved)
 
-> **NEXIAM is a working, feature-rich system with a solid domain core (pipeline state machine, audit service, DB-driven roles) wrapped in a crust of god controllers, inline queries, zero tests, and role-middleware spaghetti. The refactor is not a rebuild — it's carving the existing good core into clean layers: thin controllers → deep services → policy-based authorization → tested everything.**
+Each OpenSpec change must include current behavior, desired behavior, invariants, authorization matrix, data migration, failure/retry behavior, observability, test scenarios, rollout/rollback, and ledger impact.
 
 ---
 
-*Compiled from docs/architecture-audit.md, docs/access-control-inventory.md, docs/audit-controllers.md. Updates as audits #4-8 complete.*
+## 11. Execution roadmap
+
+### Gate 0 — clean audit inputs
+
+- preserve the current uncommitted tooling work;
+- fix measurement scope (`public/build` ignored by ESLint);
+- run Pint + Prettier and commit formatting alone;
+- keep the current untracked `quality.yml` draft disabled/unmerged until formatting is landed and each red checker has a deliberate no-growth baseline or touched-code gate; then capture reproducible reports in CI artifacts;
+- decide and document the authoritative role catalog and identifier semantics.
+
+This intentionally overrides `features.md`'s compressed P0 schedule, which places OMR, RBAC, identifier auth, and notifications together in Weeks 1–3. Safety, characterization, and role/auth specifications must precede OMR and broad feature construction; the reason for the reorder is dependency risk, not reduced capstone priority.
+
+### Gate 1 — stop-ship safety
+
+- upgrade PhpSpreadsheet to 5.9+ and harden imports;
+- create factories/fixtures for critical flows;
+- add characterization and policy tests;
+- add architecture tests in audit/baselined mode;
+- verify fresh migration and seed from zero.
+
+### Gate 2 — P0 architecture seams
+
+- introduce command handlers for admissions, exam, grading, and release transitions;
+- move transactions/audit/state progression into those handlers;
+- refactor proctor access to assignment-based policy;
+- migrate required controller dependencies to visible injection;
+- keep routes and UI stable while internals move.
+
+### Gate 3 — P1 capstone foundations
+
+- implement approved role/permission migration;
+- implement identifier-key login semantics;
+- implement cryptographically specified audit chain;
+- finish notification preferences/delivery guarantees;
+- replace the AI companion contract with the approved applicant-context RAG boundary, confidence refusal, and messaging fallback.
+
+### Gate 4 — P2 research contribution
+
+- build OMR worker and human-review flow;
+- build engine registry/provenance;
+- add Yukee and BGE adapters;
+- add triage and Program Head dashboards.
+
+### Gate 5 — polish and delivery
+
+- messaging and offline sync;
+- reduce legacy baselines in retained code;
+- E2E defense journeys;
+- performance/security/backup-restore tests;
+- fresh repository/history only after specs and migration path are locked.
+
+---
+
+## 12. Verification gates
+
+A phase is not complete because code was moved.
+
+- **Behavior:** characterization and feature tests pass.
+- **Authorization:** policy matrix tests prove allowed and denied paths, including cross-program/session access.
+- **Data:** fresh migration/seed passes; upgrade migration is rehearsed against a sanitized copy; constraints and rollback are checked.
+- **Quality:** no ledger grows; touched/new modules are green.
+- **Security:** dependency audits green; upload abuse tests pass; secrets are not logged; audit verification is tested.
+- **Operations:** queued work is idempotent; failed jobs are visible/retryable; health checks cover integrations.
+- **Traceability:** every architecture decision maps to OpenSpec scenarios and downstream implementation/tests.
+
+---
+
+## 13. Decisions that must not be hidden as implementation details
+
+1. **Authoritative permanent role catalog:** live code, manuscript, and access-control inventory currently expose three different catalogs; approve the target and an explicit legacy mapping.
+2. **Identifier key:** username-like identifier, one-time setup token, or bearer secret? Recommendation: identifier + password, with recovery and rate limiting.
+3. **Applicant lifetime:** can one person apply or test across multiple academic years? This decides whether applicant/session uniqueness is valid.
+4. **Pipeline source of truth:** stored projection versus purely derived state, and who may force/backtrack it.
+5. **Audit threat model:** which attacker is the HMAC chain intended to detect, where are checkpoints stored, and who holds the key?
+6. **OMR operational input:** scanner/camera formats, sheet template, batch size, confidence threshold, and human-review SLA.
+7. **Program scope/quota meaning:** required for Program Head policy and dashboard.
+8. **RAG scope and confidence contract:** authorized applicant-specific data, recommendation boundary, retrieval metric, threshold, citation behavior, corpus ownership, and escalation destination.
+9. **Deployment shape:** recommended Laravel Compose stack plus one Python inference worker—not independent microservices per engine at capstone scale.
+10. **Rewrite trigger:** define measurable criteria; do not choose rewrite because current files are large.
+
+---
+
+## 14. Bottom line
+
+> NEXIAM's best path is not “put every query in a service” and not “start over.” It is to preserve verified behavior, make critical workflows explicit and transactional, settle identity and authorization semantics, turn quality debt into no-growth ledgers, and add the research features through small typed modules with reproducible provenance and human control.
+
+This document supersedes the earlier “thin controller → service behind everything” picture. It remains a living audit: future evidence should amend measured findings, while architecture decisions change only through reviewed ADR/OpenSpec updates.
+
+---
+
+## 15. Evidence provenance and reproduction
+
+Primary project evidence:
+
+- `docs/architecture-audit.md`
+- `docs/access-control-inventory.md`
+- `docs/audit-controllers.md`
+- `docs/audit-refactor-plan.md`
+- `manuscript/NEXIAM_Manuscript_Working_Sections.md`
+- `manuscript/Phase(RAD-based) Work/features.md`
+- current `app/`, `routes/`, `database/migrations/`, `resources/js/`, tests, dependency locks, and quality configs.
+
+Key reproducible commands (run from the project root):
+
+```bash
+npm run check -- --output human
+npx eslint resources/js vite.config.js scripts --format json
+npx prettier --check resources/js vite.config.js scripts
+npm audit --omit=dev --json
+composer audit --locked --no-dev --format=json
+```
+
+PHPStan debt is calculated by summing each `count:` in `phpstan-baseline.neon`, not by counting only baseline blocks. Source metrics are recomputed from the working tree, so they may change as the current uncommitted quality-tooling work is completed.
+
+Laravel-practice correction was checked against the Laravel 12 service-container and authorization documentation:
+
+- <https://laravel.com/docs/12.x/container>
+- <https://laravel.com/docs/12.x/authorization>
+
+An independent source-backed adversarial review was completed on 2026-07-31. Its blocking and minor corrections were applied before the audit was marked verified.
+
+No credential values are part of this audit.

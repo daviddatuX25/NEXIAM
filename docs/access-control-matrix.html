@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXIAM Access Control Matrix</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; font-size: 11px; }
+  h2 { color: #fff; margin-bottom: 0.25rem; }
+  .subtitle { color: #64748b; margin-top: 0; margin-bottom: 1.5rem; }
+  table { border-collapse: collapse; width: max-content; min-width: 100%; margin-bottom: 2rem; }
+  th { background: #1e293b; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; padding: 8px 4px; border: 1px solid #334155; white-space: nowrap; position: sticky; top: 0; text-align: left; }
+  td { padding: 4px 5px; border: 1px solid #1e293b; white-space: nowrap; }
+  tr:hover { background: rgba(30,41,59,0.6); }
+  .built-yes { color: #4ade80; font-weight: 500; }
+  .built-no { color: #ef4444; }
+  .notbuilt-yes { color: #fbbf24; font-weight: 500; }
+  .notbuilt-no { color: #64748b; }
+  .status-stays { color: #4ade80; font-size: 10px; background: rgba(74,222,128,0.1); padding: 2px 6px; border-radius: 3px; }
+  .status-changed { color: #fbbf24; font-size: 10px; background: rgba(251,191,36,0.1); padding: 2px 6px; border-radius: 3px; }
+  .status-new { color: #60a5fa; font-size: 10px; background: rgba(96,165,250,0.1); padding: 2px 6px; border-radius: 3px; }
+  .status-notbuilt { color: #64748b; font-size: 10px; background: rgba(100,116,139,0.1); padding: 2px 6px; border-radius: 3px; }
+  .section-i { border-left: 3px solid #818cf8; } .section-r { border-left: 3px solid #34d399; }
+  .section-g { border-left: 3px solid #fbbf24; } .section-e { border-left: 3px solid #f472b6; }
+  .section-a { border-left: 3px solid #60a5fa; } .section-f { border-left: 3px solid #64748b; }
+  .legend { display: flex; gap: 2rem; color: #94a3b8; font-size: 11px; margin-top: 1rem; flex-wrap: wrap; }
+  .decision-warning { max-width: 1100px; margin: 0 0 1.5rem; padding: 0.75rem 1rem; color: #fde68a; background: rgba(245,158,11,0.12); border: 1px solid #92400e; border-radius: 6px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<h2>NEXIAM Access Control Matrix — 41 Use Cases × 11 Actors</h2>
+<p class="subtitle">10 Staff Roles + Applicant | Proposed Target — 2026-07-29</p>
+<p class="decision-warning"><strong>Decision status: not settled.</strong> Reconcile this proposal with the live-code role catalog and manuscript terminology before any role migration. The governing ADR/OpenSpec must approve the target roles, permissions, temporary-duty model, and legacy-role mapping.</p>
+<table>
+<thead><tr>
+<th>#</th><th>Use Case</th>
+<th>sys_it</th><th>reg_adm</th><th>reg_clk</th><th>reg_sup</th>
+<th>gdn_cns</th><th>gdn_clk</th><th>gdn_sup</th><th>prg_hd</th><th>proctor</th><th>applicant</th><th>Status</th>
+</tr></thead>
+<tbody>
+
+<tr class="section-i"><td>1</td><td>Manage user accounts, assign permanent roles</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-i"><td>2</td><td>Configure system-wide settings</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-i"><td>3</td><td>Customize institution name, logo, visual identity</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-i"><td>4</td><td>Define scoring rubrics and rating scale thresholds</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-i"><td>5</td><td>View and export admission pipeline reports</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-r"><td>6</td><td>Create and manage academic year periods</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-r"><td>7</td><td>Create and manage academic programs/courses</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-r"><td>8</td><td>Create and manage exam rooms and venues</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-r"><td>9</td><td>Draft, publish, archive privacy policy documents</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="notbuilt-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-r"><td>10</td><td>Process new applications, review/edit applicant records</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="notbuilt-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-r"><td>11</td><td>Bulk import applicants from CSV with validation preview</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="notbuilt-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-r"><td>12</td><td>Generate admission slips (single, bulk, PDF print)</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="notbuilt-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-g"><td>13</td><td>Define aptitude sub-tests and score formulas</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>14</td><td>Conduct walk-in direct assessments</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>15</td><td>Oversee grading dashboard, manage session workflow</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>16</td><td>Input exam scores (manual entry + CSV import)</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>17</td><td>Release/unrelease consultation summaries and result sheets</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>18</td><td>Print individual and bulk result sheets (PDF/DOCX)</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>19</td><td>OMR scanning: upload and process scanned answer sheets</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-g"><td>20</td><td>Setup exam scheduling configuration, manage venues+dates</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>21</td><td>Grade exams, manage grading sessions (test_admin)</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>22</td><td>Input scores manually or via CSV (test_admin)</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>23</td><td>Record attendance, manage session roster (test_admin)</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-g"><td>24</td><td>Collect and manage answer sheets</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-g"><td>25</td><td>Release results and print result sheets (test_admin)</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-e"><td>26</td><td>Schedule exam sessions (create, assign, publish, cancel)</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-e"><td>27</td><td>AI-assisted schedule optimization (propose→confirm)</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-e"><td>28</td><td>Monitor live exam sessions in real-time dashboard</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-e"><td>29</td><td>View proctor's assigned exam sessions list</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-no">✗</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-e"><td>30</td><td>Manage session roster (attendance, submissions, start/close)</td>
+<td class="built-yes">✓</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="notbuilt-no">✗</td><td class="built-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="built-no">✗</td><td class="built-yes">✓</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-a"><td>31</td><td>Review system audit logs with event filtering and export</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-changed">Changed</td></tr>
+
+<tr class="section-a"><td>32</td><td>Manage AI companion persona, knowledge base, sync status</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-a"><td>33</td><td>Upload, edit, organize institutional knowledge documents</td>
+<td class="built-yes">✓</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="built-no">✗</td><td class="status-stays">Stays</td></tr>
+
+<tr class="section-a"><td>34</td><td>Map permissions to roles (Spatie RBAC admin panel)</td>
+<td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-new">New</td></tr>
+
+<tr class="section-f"><td>35</td><td>Answer applicant questions using ISPSC policy docs (RAG chatbot)</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-f"><td>36</td><td>Display aptitude clusters and interest matches (Triage Dashboard)</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-f"><td>37</td><td>View program applicant pipeline, quotas, pre-enrolment lists</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-f"><td>38</td><td>Automatically email exam schedules, results, status updates</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-f"><td>39</td><td>Send messages between offices and applicant fallback inquiries</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-f"><td>40</td><td>Cryptographically chain audit events with HMAC-SHA256</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-notbuilt">Not built</td></tr>
+
+<tr class="section-f"><td>41</td><td>Surface aptitude profiles and preference matches (Admission Engines)</td>
+<td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-yes">✓</td><td class="notbuilt-yes">✓</td><td class="notbuilt-no">✗</td><td class="notbuilt-no">✗</td><td class="status-notbuilt">Not built</td></tr>
+
+</tbody></table>
+<div class="legend">
+<span style="color:#4ade80;font-weight:bold;">✓ Built</span> = feature exists, role has access &nbsp;|&nbsp;
+<span style="color:#ef4444;">✗ Built</span> = feature exists, role blocked &nbsp;|&nbsp;
+<span style="color:#fbbf24;font-weight:bold;">✓ Not built</span> = WILL have access once built &nbsp;|&nbsp;
+<span style="color:#64748b;">✗ Not built</span> = will NOT have access
+</div>
+<div style="color:#64748b;margin-top:0.5rem;font-size:10px;">
+All cells are Built unless tagged <span style="color:#fbbf24;">Not built</span>. Color border: ■ Institutional ■ Registrar ■ Guidance ■ Exams ■ Audit ■ Features
+</div>
+</body>
+</html>
