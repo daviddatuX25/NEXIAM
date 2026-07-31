@@ -17,6 +17,19 @@ SecureCAT-v2 is a comprehensive, zero-trust web application specifically enginee
 - [💾 Database Architecture \& ERD](#-database-architecture--erd)
 - [💻 Technology Stack \& Environment](#-technology-stack--environment)
 - [🚢 SecureCAT (NEXIAM) — Dokploy Deployment Guide](#-securecat-nexiam--dokploy-deployment-guide)
+- [🧭 Architecture Learning Guide](./docs/nexiam-architecture-learning-guide.md)
+- [📐 Evidence-Based Architecture Audit](./docs/master-architecture-picture.md)
+
+---
+
+## 🧭 Architecture Learning Guide
+
+If you are learning the system before contributing code, start with the [NEXIAM Architecture Learning Guide](./docs/nexiam-architecture-learning-guide.md). It explains the current system, architectural problems, database and authorization reasoning, frontend trust boundaries, capstone sequencing, and how to review changes from junior implementation toward senior project oversight.
+
+The evidence-backed audit and staged refactor plan are available here:
+
+- [Master Architecture Audit and Refactor Blueprint](./docs/master-architecture-picture.md)
+- [Audit-to-OpenSpec Mission Plan](./docs/audit-refactor-plan.md)
 
 ---
 
