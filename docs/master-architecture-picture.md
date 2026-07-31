@@ -127,7 +127,7 @@ Until inherited debt is retired:
 1. no pull request may increase any scoped baseline;
 2. source and generated assets must be measured separately;
 3. touched PHP files must pass PHPStan without adding baseline entries;
-4. new/touched Svelte code must be TypeScript and pass ESLint + `svelte-check`;
+4. new or substantially rebuilt Svelte modules must be TypeScript; small retained-JS edits may use explicit JSDoc contracts, but every touched module must pass scoped ESLint + `svelte-check` without new suppressions;
 5. new use cases require tests before merge;
 6. architecture violations use an explicit allowlist/baseline—never a permanently red CI job;
 7. each refactor must shrink at least one ledger or remove an allowlisted architecture violation;
@@ -152,7 +152,13 @@ Pest's class-dependency assertions should not be assumed to detect global `app()
 
 **Upgrade `phpoffice/phpspreadsheet` from 4.5.0 to 5.9+ before treating spreadsheet uploads as safe.** Applicant and score-import requests accept CSV/XLS/XLSX files up to 10 MB, and `SpreadsheetParser` passes uploaded Excel paths to `IOFactory::load()`. The current advisory set includes an `IOFactory::load` SSRF/RCE issue and several resource-exhaustion/SSRF/XSS issues. This is reachable application exposure, not an abstract dependency warning.
 
-Upgrade acceptance must include malicious/oversized fixture tests, row/cell/workbook limits, formula/external-link disabling where supported, time/memory limits, and confirmation that all import/preview paths use the hardened shared parser.
+Upgrade acceptance must include malicious/oversized fixture tests, row/cell/workbook/decompression limits, formula/external-link disabling where supported, time/memory limits, abandoned-preview cleanup, and confirmation that all import/preview paths use the hardened shared parser. Exports also require spreadsheet/CSV formula neutralization: imported and public-form strings are stored raw, while `ReportExportService` writes them through `setCellValue`, so values beginning with formula-control characters can become active formulas in a staff-opened workbook.
+
+**Rendered admission-slip HTML is a second reachable stop-ship.** Public application names and other applicant-controlled text are inserted by raw `str_replace` into an HTML template, then rendered with Svelte `{@html}` in the staff-facing single and bulk admission-slip pages. Escape text placeholders by context, keep only explicitly typed/trusted structural placeholders such as generated QR SVG raw, add abuse fixtures, and use CSP as defense in depth. The result-sheet `srcdoc` iframe currently omits `allow-scripts`, which reduces that specific sink's script risk, but its replacement contract still needs explicit trust typing.
+
+### 4.4 Immediate functional stop-ship
+
+The primary “Start session” buttons on both `Admin/TestAdmin/Index.svelte` and `Proctor/MySessions.svelte` call undefined `startSession(...)` at four call sites. Both pages actually define `initiateStart(...)`; clicking the shipped button raises a `ReferenceError` before the confirmation/post flow. Repair and characterize this core proctor path before adding new proctoring or offline features.
 
 ---
 
@@ -216,12 +222,18 @@ Spatie Permission is a reasonable implementation, but adopting it does not solve
 - Appointment booking validates only that the row exists, then increments/decrements `booked_count` separately from application writes. It does not atomically require `is_active` or `booked_count < max_slots`, so concurrent submissions can overbook and failed/missed updates can drift the counter. Treat booking as a locked transaction or derive occupancy from applications.
 - `exam_session_applicant` has a global unique index on `applicant_id`. That forbids retakes or another session in a later cycle unless the same applicant record is never reused. Confirm the domain invariant; otherwise scope uniqueness to the admission attempt/cycle.
 - The model declares `Application::hasOne(Applicant::class)`, but `applicants.application_id` is nullable and not unique, so the database does not enforce that one-to-one relationship. More fundamentally, decide whether `Applicant` is a durable person/login and `Application` is a repeatable admission attempt; if so, the current ownership direction must evolve before multi-cycle scaling.
+- Reopen and bulk-reopen hard-delete the accepted application's applicant record without a transaction or lifecycle-stage guard. Applicant deletion cascades through exam assignments, scores, grading pivots, consultation summaries, and AI messages; a late reopen can therefore erase the admission history it is supposed to revise. Conversely, hard-deleting an application sets `applicants.application_id` to null, leaving an orphan identity. Specify archive/reopen/delete semantics and preserve immutable assessment history.
+- A fresh migration succeeds on disposable SQLite, but the resulting `applicant_scores` schema has no FK/index from nullable `aptitude_area_id` to `aptitude_areas`: the edited create migration defines only an integer and the later rename migration early-returns. Fresh and upgraded installations can diverge. The nullable three-column unique also allows duplicate “no area” score rows.
+- Fresh schema inspection also confirms `exam_sessions.room_id` remains `CASCADE` despite later becoming nullable; `applications.course_preference_1` cascades while preferences 2/3 null; and `grading_sessions.exam_session_id` is indexed but not unique. Align destructive actions with retention policy and enforce one grading session per exam session if that is the domain invariant.
+- Web and bulk-import application references use different formats and independent read-next sequences. Define one generator and one uniqueness/retry contract for every intake path.
+- Direct-assessment reconciliation marks an applicant `scored` when the direct session has **zero** scores. Pipeline transitions also merge milestones with an unlocked read-modify-write, so concurrent transitions can regress state or lose milestone metadata. Fix the inverted rule and serialize authoritative transitions.
+- “One active academic year,” non-overlapping room booking, and one grading session per exam session are enforced only by racy application checks/updates. Use a locked singleton/activation command, transactional room-slot strategy, and unique grading-session constraint where the agreed invariants require them.
 - audits without a subject use `auditable_type = ''` and `auditable_id = 0`; use nullable subject columns or an explicit event subject model instead of sentinel polymorphic IDs.
 - state is represented across base status, pipeline status, pivot flags, grading status, and summaries. Transition commands must define the source of truth and update projections atomically.
 
 #### P0.5 PhpSpreadsheet exposure
 
-See §4.3. Upgrade and harden before additional import work or OMR-adjacent uploads.
+See §4.3. Upgrade and harden before additional import work or OMR-adjacent uploads. Centralize reader selection and limits, parse once per workflow, neutralize formula-capable cells at every spreadsheet/CSV export boundary, and expire abandoned preview files.
 
 #### P0.6 Audit truth is insufficient for the stated threat model
 
@@ -234,6 +246,14 @@ Current `AuditService` is a useful event vocabulary/redaction layer, but it is n
 - key rotation and historical verification must be defined.
 
 The OpenSpec must define sequence, previous hash, canonical JSON, dedicated audit key/version, transaction/locking, verification, periodic external checkpoints, append-only DB privileges, and failure behavior. This is a security design, not merely a new column.
+
+#### P0.7 Rendered-document trust boundary is missing
+
+Admission-slip and result-sheet modules currently mix trusted template markup, applicant-controlled text, generated SVG/row fragments, and office-authored comments in untyped replacement arrays. Introduce placeholder metadata (`escaped_text`, `trusted_html`, `document_text`, `table_rows`), context-specific encoders, template validation, CSP, and malicious-value characterization. Never solve this by escaping the entire finished document or by trusting every placeholder because the template itself is administrative.
+
+#### P0.8 Shipped core frontend actions are not behaviorally protected
+
+The undefined Start-session handler is the most severe example, but direct inspection also found six calls to nonexistent Inertia Svelte `form.setData`, 24 assignments to dead `$form.onFinish` properties, notification read actions dereferencing `usePage()` without `$page`, and non-reactive public-nav URL checks. These are live runtime/API-contract defects hidden inside the larger lint ledger. Gate 1 needs targeted browser/feature characterization, not only bulk diagnostic reduction.
 
 ### 5.2 P1 — architecture needed for safe scaling
 
@@ -270,9 +290,9 @@ Reconcile the boundary in OpenSpec: authenticated read-only retrieval may expose
 
 #### P1.6 Frontend debt is concentrated and measurable
 
-Largest pages include Release/Index (807 lines), Applications/Index (709), and near-identical AptitudeAreas Create/Edit pages (660/659, 97.8% line similarity). Several form pairs exceed 80–94% similarity. Extract shared form components only where the fields and validation lifecycle are genuinely common.
+Largest pages include Release/Index (806 lines), Applications/Index (708), and near-identical AptitudeAreas Create/Edit pages (660/659, 97.8% line similarity). Several form pairs exceed 80–94% similarity. The copied forms have also copied obsolete Inertia API assumptions (`setData`, assigned `onFinish`) into many pages. Extract shared form modules only where fields, lifecycle, and adapter contract are genuinely common.
 
-Adopt TypeScript for all new/touched Svelte modules and migrate feature-by-feature. Do not spend the capstone schedule mechanically translating every untouched component. The target is typed page props, form data, events, component props, and external payloads at boundaries.
+The 961 `$$ComponentProps` diagnostics concentrate at page call sites but originate largely in roughly twenty untyped UI primitives; type those leverage points before editing hundreds of callers. The current bridge already has `checkJs: true`, only a small TypeScript beachhead, and no shared `PageProps` declaration. Require TypeScript for new/substantially rebuilt modules, permit explicit JSDoc for small retained-JS changes, and migrate feature-by-feature. The target is typed page props, form data, events, component props, and external payloads at boundaries. Track the remaining approximate warning groups as separate ledgers: about 91 local-state/reactivity warnings and about 57 accessibility warnings.
 
 ### 5.3 P2 — cleanup/operability
 
@@ -404,31 +424,32 @@ Do not create one unreviewable “rewrite everything” change. Use an umbrella 
 2. `characterize-critical-admission-lifecycle`
 3. `characterize-exam-grading-release-lifecycle`
 4. `upgrade-and-harden-spreadsheet-imports`
-5. `harden-applicant-setup-and-reset-token-lifecycle`
-6. `secure-google-oauth-account-linking`
-7. `settle-role-permission-and-proctor-duty-model`
-8. `define-applicant-identifier-auth-semantics`
-9. `define-audit-chain-threat-model`
+5. `harden-rendered-templates-and-tabular-exports`
+6. `harden-applicant-setup-and-reset-token-lifecycle`
+7. `secure-google-oauth-account-linking`
+8. `settle-role-permission-and-proctor-duty-model`
+9. `define-applicant-identifier-auth-semantics`
+10. `define-audit-chain-threat-model`
 
 ### Refactor changes
 
-10. `centralize-application-command-workflows`
-11. `centralize-exam-session-command-workflows`
-12. `centralize-grading-and-release-workflows`
-13. `introduce-scoped-read-models-and-dashboard-query`
-14. `decompose-document-and-report-rendering`
-15. `typed-svelte-boundaries-for-touched-features`
+11. `centralize-application-command-workflows`
+12. `centralize-exam-session-command-workflows`
+13. `centralize-grading-and-release-workflows`
+14. `introduce-scoped-read-models-and-dashboard-query`
+15. `decompose-document-and-report-rendering`
+16. `typed-svelte-boundaries-for-touched-features`
 
 ### Feature changes
 
-16. `applicant-context-rag-with-confidence-and-fallback`
-17. `omr-ingestion-review-and-score-import`
-18. `admission-engine-registry-and-provenance`
-19. `yukee-and-bge-engine-adapters`
-20. `counselor-triage-dashboard`
-21. `program-head-scoped-dashboard`
-22. `applicant-and-interoffice-messaging`
-23. `offline-proctor-sync` (only after conflict semantics are approved)
+17. `applicant-context-rag-with-confidence-and-fallback`
+18. `omr-ingestion-review-and-score-import`
+19. `admission-engine-registry-and-provenance`
+20. `yukee-and-bge-engine-adapters`
+21. `counselor-triage-dashboard`
+22. `program-head-scoped-dashboard`
+23. `applicant-and-interoffice-messaging`
+24. `offline-proctor-sync` (only after conflict semantics are approved)
 
 Each OpenSpec change must include current behavior, desired behavior, invariants, authorization matrix, data migration, failure/retry behavior, observability, test scenarios, rollout/rollback, and ledger impact.
 
@@ -449,10 +470,13 @@ This intentionally overrides `features.md`'s compressed P0 schedule, which place
 ### Gate 1 — stop-ship safety
 
 - upgrade PhpSpreadsheet to 5.9+ and harden imports;
+- escape applicant-controlled document placeholders and neutralize formula-capable spreadsheet/CSV cells;
+- repair and characterize the broken Start-session buttons and verified Inertia runtime API misuse;
+- preserve applicant/exam/grading history across reopen/delete operations;
 - create factories/fixtures for critical flows;
 - add characterization and policy tests;
 - add architecture tests in audit/baselined mode;
-- verify fresh migration and seed from zero.
+- verify fresh migration and seed from zero on both SQLite/test and the production database engine; reconcile fresh-versus-upgraded FK/index/delete-action drift.
 
 ### Gate 2 — P0 architecture seams
 
@@ -513,6 +537,7 @@ A phase is not complete because code was moved.
 8. **RAG scope and confidence contract:** authorized applicant-specific data, recommendation boundary, retrieval metric, threshold, citation behavior, corpus ownership, and escalation destination.
 9. **Deployment shape:** recommended Laravel Compose stack plus one Python inference worker—not independent microservices per engine at capstone scale.
 10. **Rewrite trigger:** define measurable criteria; do not choose rewrite because current files are large.
+11. **Retention and reversal:** decide what reopen, application deletion, applicant deletion, and reassignment mean after exam history exists; destructive cascade behavior must not be an accidental implementation detail.
 
 ---
 
@@ -553,6 +578,6 @@ Laravel-practice correction was checked against the Laravel 12 service-container
 - <https://laravel.com/docs/12.x/container>
 - <https://laravel.com/docs/12.x/authorization>
 
-An independent source-backed adversarial review was completed on 2026-07-31. Its blocking and minor corrections were applied before the audit was marked verified.
+An independent source-backed adversarial review plus focused database and frontend reviews were completed on 2026-07-31. The focused findings were rechecked against live source before inclusion. A read-only-mounted `composer:2` container also completed all 86 migrations against disposable SQLite with exit 0; post-migration `PRAGMA` inspection confirmed the documented missing aptitude-area FK/index and the current room/course/grading constraint behavior. Production-engine migration rehearsal remains a Gate 1 requirement.
 
 No credential values are part of this audit.

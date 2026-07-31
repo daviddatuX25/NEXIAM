@@ -61,6 +61,7 @@ These are **not settled** merely because an older document called them settled.
 9. RAG scope—including authorized own-result/schedule/assignment retrieval versus separate recommendation—and its confidence/citation/refusal contract and fallback office.
 10. Program Head scope/quota definitions.
 11. Deployment target: recommended Laravel Compose stack plus one Python inference worker/sidecar.
+12. Retention/reversal semantics for reopen, application deletion, applicant deletion, and reassignment after exam history exists.
 
 Resolve these as ADRs/OpenSpec requirements before schema or role migrations.
 
@@ -83,11 +84,14 @@ This sequence intentionally overrides the compressed `features.md` P0 ordering: 
 ### Gate 1 — stop-ship safety and characterization
 
 - upgrade/harden PhpSpreadsheet;
+- escape applicant-controlled document placeholders and neutralize spreadsheet/CSV formulas;
+- repair and characterize the broken Start-session buttons plus verified Inertia runtime API misuse;
+- preserve applicant/exam/grading history across reopen/delete operations;
 - create factories and stable fixtures;
 - characterize application, exam/proctor, grading/release, and document flows;
 - add policy matrix tests;
 - add baselined/no-growth architecture tests;
-- rehearse fresh migration/seed and upgrade migration.
+- rehearse fresh migration/seed and upgrade migration, then reconcile fresh-versus-upgraded FK/index/delete-action drift.
 
 ### Gate 2 — P0 architecture seams
 
@@ -133,31 +137,32 @@ Foundation:
 2. `characterize-critical-admission-lifecycle`
 3. `characterize-exam-grading-release-lifecycle`
 4. `upgrade-and-harden-spreadsheet-imports`
-5. `harden-applicant-setup-and-reset-token-lifecycle`
-6. `secure-google-oauth-account-linking`
-7. `settle-role-permission-and-proctor-duty-model`
-8. `define-applicant-identifier-auth-semantics`
-9. `define-audit-chain-threat-model`
+5. `harden-rendered-templates-and-tabular-exports`
+6. `harden-applicant-setup-and-reset-token-lifecycle`
+7. `secure-google-oauth-account-linking`
+8. `settle-role-permission-and-proctor-duty-model`
+9. `define-applicant-identifier-auth-semantics`
+10. `define-audit-chain-threat-model`
 
 Refactors:
 
-10. `centralize-application-command-workflows`
-11. `centralize-exam-session-command-workflows`
-12. `centralize-grading-and-release-workflows`
-13. `introduce-scoped-read-models-and-dashboard-query`
-14. `decompose-document-and-report-rendering`
-15. `typed-svelte-boundaries-for-touched-features`
+11. `centralize-application-command-workflows`
+12. `centralize-exam-session-command-workflows`
+13. `centralize-grading-and-release-workflows`
+14. `introduce-scoped-read-models-and-dashboard-query`
+15. `decompose-document-and-report-rendering`
+16. `typed-svelte-boundaries-for-touched-features`
 
 Features:
 
-16. `applicant-context-rag-with-confidence-and-fallback`
-17. `omr-ingestion-review-and-score-import`
-18. `admission-engine-registry-and-provenance`
-19. `yukee-and-bge-engine-adapters`
-20. `counselor-triage-dashboard`
-21. `program-head-scoped-dashboard`
-22. `applicant-and-interoffice-messaging`
-23. `offline-proctor-sync`
+17. `applicant-context-rag-with-confidence-and-fallback`
+18. `omr-ingestion-review-and-score-import`
+19. `admission-engine-registry-and-provenance`
+20. `yukee-and-bge-engine-adapters`
+21. `counselor-triage-dashboard`
+22. `program-head-scoped-dashboard`
+23. `applicant-and-interoffice-messaging`
+24. `offline-proctor-sync`
 
 No umbrella “rewrite everything” implementation change. Each change must define current behavior, desired behavior, invariants, authorization, schema migration, failure/retry behavior, observability, tests, rollout/rollback, and ledger impact.
 
@@ -175,4 +180,4 @@ No umbrella “rewrite everything” implementation change. Each change must def
 
 After those criteria, review `docs/master-architecture-picture.md` section by section before creating the first OpenSpec change.
 
-Independent adversarial review completed on 2026-07-31. Its blockers and corrections—plaintext applicant tokens, Google OAuth account-linking risk, three-way role-catalog divergence, red-draft CI sequencing, RAG/manuscript scope, quality-count drift, and the vacuous global-function architecture-test example—were incorporated before this status was advanced.
+Independent adversarial review plus focused database/frontend audits completed on 2026-07-31. Their corrections include plaintext applicant tokens, Google OAuth account-linking risk, three-way role-catalog divergence, red-draft CI sequencing, RAG/manuscript scope, rendered-template XSS, spreadsheet formula injection, destructive reopen behavior, fresh-schema drift, broken proctor Start actions, Inertia API misuse, quality-count drift, and the vacuous global-function architecture-test example.
