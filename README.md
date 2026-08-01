@@ -10,28 +10,36 @@ NEXIAM is a comprehensive, zero-trust web application specifically engineered to
 
 ---
 
-## 📌 Table of Contents
-- [🏢 System Overview \& Architecture](#-system-overview--architecture)
-- [🛠️ Existing System Features (V2 Baseline)](#️-existing-system-features-v2-baseline)
-- [🔮 Planned Advanced Capstone Features (Future Roadmap)](#-planned-advanced-capstone-features-future-roadmap)
-- [💾 Database Architecture \& ERD](#-database-architecture--erd)
-- [💻 Technology Stack \& Environment](#-technology-stack--environment)
-- [🚢 NEXIAM (NEXIAM) — Dokploy Deployment Guide](#-nexiam-nexiam--dokploy-deployment-guide)
-- [🧭 Architecture Learning Guide](./docs/nexiam-architecture-learning-guide.md)
-- [📐 Evidence-Based Architecture Audit](./docs/master-architecture-picture.md)
+## Table of Contents
+- [Architecture and Greenfield Plan](#architecture-and-greenfield-plan)
+- [System Overview and Architecture](#system-overview--architecture)
+- [Existing System Features (V2 Baseline)](#existing-system-features-v2-baseline)
+- [Planned Advanced Capstone Features (Future Roadmap)](#planned-advanced-capstone-features-future-roadmap)
+- [Database Architecture and ERD](#database-architecture--erd)
+- [Technology Stack and Environment](#technology-stack--environment)
+- [NEXIAM Dokploy Deployment Guide](#nexiam--dokploy-deployment-guide)
+- [Project Identity and Naming Policy](./docs/project-identity.md)
 
 ---
 
-## 🧭 Architecture Learning Guide
+## Architecture and Greenfield Plan
 
-If you are learning the system before contributing code, start with the [NEXIAM Architecture Learning Guide](./docs/nexiam-architecture-learning-guide.md). It explains the current system, architectural problems, database and authorization reasoning, frontend trust boundaries, capstone sequencing, and how to review changes from junior implementation toward senior project oversight.
+> **Strategic pivot (2026-08-01):** NEXIAM is being rebuilt as a clean-slate greenfield project. The legacy codebase in this repository is a read-only domain reference, not the execution target.
 
-The evidence-backed audit and staged refactor plan are available here:
+Start here and read in order:
 
-- [Master Architecture Audit and Refactor Blueprint](./docs/master-architecture-picture.md)
-- [Audit-to-OpenSpec Mission Plan](./docs/audit-refactor-plan.md)
+| # | Document | Purpose |
+|---|---|---|
+| 1 | [Architecture Learning Guide](./docs/nexiam-architecture-learning-guide.md) | Understand the domain: admission lifecycle, architectural vocabulary, database/auth/frontend reasoning, and how to evaluate changes with senior oversight. Start here. |
+| 2 | [Greenfield Architecture Plan](./docs/greenfield-architecture-plan.md) | The execution authority: strategic pivot rationale, technology decisions, capability boundaries, architectural rules, quality contract, and decision gates. |
+| 3 | [Greenfield Implementation Order](./docs/greenfield-implementation-order.md) | Concrete 14-phase build sequence: every step traced to the specific audit finding (P0.x, P1.x) it addresses, with dependency graph and decision-gate resolution order. |
+| 4 | [Master Architecture Audit Blueprint](./docs/master-architecture-picture.md) | Deep technical findings from the legacy codebase: measured system map, P0/P1/P2 findings, data integrity risks, security ledgers, target architecture, and capstone feature directions. |
+| 5 | [Audit-to-Greenfield Mission Plan](./docs/audit-refactor-plan.md) | Decision gate tracker and OpenSpec change vocabulary. |
+| 6 | [Controller Audit](./docs/audit-controllers.md) | Legacy controller responsibilities and workflow mapping (reference). |
+| 7 | [Access-Control Inventory](./docs/access-control-inventory.md) | Role/permission requirements and the three-way catalog divergence (reference). |
+| 8 | [Architecture Audit](./docs/architecture-audit.md) | Historical reconnaissance (reference; corrections in the master blueprint take precedence). |
 
----
+Documents 1-3 are the path from understanding to execution. Documents 4-8 are the evidence base.
 
 ## 🏢 System Overview & Architecture
 
@@ -148,7 +156,7 @@ The core data structures are designed around the following models:
 
 
 
-## 🚢 NEXIAM (NEXIAM) — Dokploy Deployment Guide
+## 🚢 NEXIAM — Dokploy Deployment Guide
 
 > Minimal deployment: App Container + MySQL. No Redis needed for demo.
 > Everything is automated — migrations, seeders, and storage symlink all run on first boot.

@@ -1,8 +1,9 @@
-# NEXIAM Audit → Architecture → OpenSpec Mission Plan
+# NEXIAM Audit → Architecture → Greenfield Mission Plan
 
 **Authoritative synthesis:** `docs/master-architecture-picture.md`
-**Current phase:** source-backed audit verified; section-by-section human decision review is next
-**Operating doctrine:** specifications → P0 safety/refactors → P1 features → P2 builds
+**Greenfield execution plan:** `docs/greenfield-architecture-plan.md`
+**Current phase:** audit complete; greenfield scaffold is next
+**Strategic pivot (2026-08-01):** strangler-style modernization replaced by clean-slate greenfield rebuild. Legacy codebase is a read-only reference, not the execution target.
 
 ---
 
@@ -69,7 +70,9 @@ Resolve these as ADRs/OpenSpec requirements before schema or role migrations.
 
 ## 4. Gate sequence
 
-### Gate 0 — preserve and measure
+> **Superseded 2026-08-01.** The gates below were designed for strangler-style modernization of the legacy codebase. The greenfield gate sequence is defined in `docs/greenfield-architecture-plan.md` section 5. These legacy gates are preserved for reference only — they document what the audit found needed fixing and remain useful as a checklist of domain concerns the greenfield build must address correctly from the start.
+
+### Legacy Gate 0 — preserve and measure (reference only)
 
 - protect the current uncommitted tooling work;
 - correct ESLint generated-file scope;
@@ -79,9 +82,7 @@ Resolve these as ADRs/OpenSpec requirements before schema or role migrations.
 - publish ledger reports as CI artifacts after those gates are valid;
 - review and accept the master blueprint.
 
-This sequence intentionally overrides the compressed `features.md` P0 ordering: hardening, characterization, and role/auth specification are prerequisites for OMR and broader feature construction.
-
-### Gate 1 — stop-ship safety and characterization
+### Legacy Gate 1 — stop-ship safety and characterization (reference only)
 
 - upgrade/harden PhpSpreadsheet;
 - escape applicant-controlled document placeholders and neutralize spreadsheet/CSV formulas;
@@ -93,67 +94,36 @@ This sequence intentionally overrides the compressed `features.md` P0 ordering: 
 - add baselined/no-growth architecture tests;
 - rehearse fresh migration/seed and upgrade migration, then reconcile fresh-versus-upgraded FK/index/delete-action drift.
 
-### Gate 2 — P0 architecture seams
+### Legacy Gates 2–5 (reference only)
 
-- centralize application commands;
-- centralize exam/proctor commands;
-- centralize grading/release commands;
-- make transaction/audit/projection ownership explicit;
-- implement assignment-scoped proctor policy;
-- introduce scoped read models/dashboard query facade;
-- expose mandatory dependencies through injection.
-
-### Gate 3 — P1 capstone foundations
-
-- approved permission/role migration;
-- identifier-key login flow;
-- specified chained audit storage and verifier;
-- notification preferences, idempotency, after-commit delivery;
-- approved applicant-context RAG boundary with confidence refusal and messaging fallback; placement recommendation remains a separate decision-support capability.
-
-### Gate 4 — P2 research contribution
-
-- asynchronous OMR ingestion, CV worker, and human review;
-- admission-support engine registry and immutable inference provenance;
-- Yukee and BGE adapters;
-- counselor triage dashboard;
-- Program Head scoped dashboard.
-
-### Gate 5 — polish/delivery
-
-- messaging and offline sync;
-- retained-code ledger reduction;
-- E2E defense journeys;
-- performance, security, queue failure, backup/restore tests;
-- clean repository/history only after specifications and migration plan are locked.
-
+See the original gate details in version control history. The greenfield plan carries forward the domain concerns (command centralization, role migration, audit chain, RAG scope, OMR, dashboards) as clean-build gates rather than refactoring gates.
 ---
 
 ## 5. OpenSpec change train
 
-Foundation:
+> **Adapted 2026-08-01.** Under the greenfield pivot, the "Foundation" changes (characterization, hardening of legacy code) are no longer needed — those problems are solved by not carrying the legacy code. The "Refactor" changes become part of the initial greenfield architecture. The "Feature" changes remain as build targets. The OpenSpec change names below are preserved as a vocabulary for tracking which domain concerns have been addressed.
 
-1. `quality-ledgers-and-generated-asset-scope`
-2. `characterize-critical-admission-lifecycle`
-3. `characterize-exam-grading-release-lifecycle`
-4. `upgrade-and-harden-spreadsheet-imports`
-5. `harden-rendered-templates-and-tabular-exports`
-6. `harden-applicant-setup-and-reset-token-lifecycle`
-7. `secure-google-oauth-account-linking`
-8. `settle-role-permission-and-proctor-duty-model`
-9. `define-applicant-identifier-auth-semantics`
-10. `define-audit-chain-threat-model`
+Legacy-only (solved by greenfield — no longer needed):
 
-Refactors:
+1. ~~`quality-ledgers-and-generated-asset-scope`~~ — greenfield starts at zero
+2. ~~`characterize-critical-admission-lifecycle`~~ — built from requirements, not characterized
+3. ~~`characterize-exam-grading-release-lifecycle`~~ — built from requirements, not characterized
+4. ~~`upgrade-and-harden-spreadsheet-imports`~~ — greenfield uses latest dependencies from the start
+5. ~~`harden-rendered-templates-and-tabular-exports`~~ — greenfield builds typed placeholder system from scratch
+6. ~~`harden-applicant-setup-and-reset-token-lifecycle`~~ — greenfield implements hashed tokens from the start
 
-11. `centralize-application-command-workflows`
-12. `centralize-exam-session-command-workflows`
-13. `centralize-grading-and-release-workflows`
-14. `introduce-scoped-read-models-and-dashboard-query`
-15. `decompose-document-and-report-rendering`
-16. `typed-svelte-boundaries-for-touched-features`
+Specification work (still required as ADRs before building):
 
-Features:
+7. `secure-google-oauth-account-linking` — trust/linking/audit policy must be settled
+8. `settle-role-permission-and-proctor-duty-model` — authoritative catalog required
+9. `define-applicant-identifier-auth-semantics` — identifier + password design required
+10. `define-audit-chain-threat-model` — cryptographic design required
+
+Built into greenfield architecture (no separate refactor changes):
+
+11–16. Command centralization, read models, document decomposition, typed Svelte — these are the **default architecture** of the greenfield build, not separate refactoring efforts.
+
+Feature builds (greenfield implementation):
 
 17. `applicant-context-rag-with-confidence-and-fallback`
 18. `omr-ingestion-review-and-score-import`
@@ -164,20 +134,18 @@ Features:
 23. `applicant-and-interoffice-messaging`
 24. `offline-proctor-sync`
 
-No umbrella “rewrite everything” implementation change. Each change must define current behavior, desired behavior, invariants, authorization, schema migration, failure/retry behavior, observability, tests, rollout/rollback, and ledger impact.
+Each feature change still requires: desired behavior, invariants, authorization matrix, schema, failure/retry, observability, tests, and rollout plan.
 
 ---
 
 ## 6. Completion criteria for the audit phase
 
-- master blueprint passes source-backed adversarial review;
-- all reproduced metrics and commands are recorded;
-- factual corrections to audits #1–#3 are accepted;
-- decision gates are visible and not mislabeled as settled;
-- rewrite versus refactor recommendation is explicit by subsystem;
-- OpenSpec changes are dependency ordered;
-- no application source has been semantically refactored during the audit.
+- master blueprint passes source-backed adversarial review; **done**
+- all reproduced metrics and commands are recorded; **done**
+- factual corrections to audits #1–#3 are accepted; **done**
+- decision gates are visible and not mislabeled as settled; **done**
+- rewrite versus refactor recommendation is explicit by subsystem; **superseded by greenfield pivot**
+- OpenSpec changes are dependency ordered; **done (adapted for greenfield)**
+- no application source has been semantically refactored during the audit. **done**
 
-After those criteria, review `docs/master-architecture-picture.md` section by section before creating the first OpenSpec change.
-
-Independent adversarial review plus focused database/frontend audits completed on 2026-07-31. Their corrections include plaintext applicant tokens, Google OAuth account-linking risk, three-way role-catalog divergence, red-draft CI sequencing, RAG/manuscript scope, rendered-template XSS, spreadsheet formula injection, destructive reopen behavior, fresh-schema drift, broken proctor Start actions, Inertia API misuse, quality-count drift, and the vacuous global-function architecture-test example.
+The audit phase is complete. Independent adversarial review plus focused database/frontend audits were completed on 2026-07-31. The strategic pivot to greenfield was decided on 2026-08-01. Next step: scaffold the clean project per `docs/greenfield-architecture-plan.md`.

@@ -2,7 +2,9 @@
 
 ## From junior implementer to senior project oversight
 
-This guide is a study companion for the NEXIAM architecture audit. It is written for a developer who wants to understand not only what code should change, but why the change matters, how to review it, and how to protect the capstone from becoming a fragile collection of features.
+> **Context update (2026-08-01):** NEXIAM is being rebuilt as a clean-slate greenfield project. The legacy codebase is a read-only reference, not a refactoring target. This learning guide remains valuable — the domain model, workflow invariants, architectural judgment, and capability boundaries it teaches apply directly to the greenfield build. Where the guide says "what code should change," read it as "what the new code must get right." See `docs/greenfield-architecture-plan.md` for the execution plan.
+
+This guide is a study companion for the NEXIAM architecture audit. It is written for a developer who wants to understand the domain, why architectural decisions matter, how to review them, and how to protect the capstone from becoming a fragile collection of features.
 
 The goal is not to memorize architecture vocabulary. The goal is to develop judgment:
 
@@ -11,8 +13,8 @@ The goal is not to memorize architecture vocabulary. The goal is to develop judg
 - Which rule must be protected by the database?
 - Which rule belongs in authorization policy?
 - Which work must be transactional?
-- Which code is safe to preserve?
-- Which new feature must wait until a foundation is repaired?
+- Which domain patterns from the legacy code are worth preserving as design input?
+- Which new feature must wait until a foundation decision is settled?
 
 This guide is based on the verified audit documents in this repository. It is a learning guide, not a replacement for the evidence-backed audit.
 
@@ -21,13 +23,15 @@ This guide is based on the verified audit documents in this repository. It is a 
 Read the documents in this order:
 
 1. [This learning guide](./nexiam-architecture-learning-guide.md)
-2. [Master Architecture Audit and Refactor Blueprint](./master-architecture-picture.md)
-3. [Audit-to-OpenSpec Mission Plan](./audit-refactor-plan.md)
-4. [Controller Audit](./audit-controllers.md)
-5. [Access-Control Inventory](./access-control-inventory.md)
-6. [Architecture Audit](./architecture-audit.md)
+2. [Greenfield Architecture Plan](./greenfield-architecture-plan.md) — the execution plan
+3. [Greenfield Implementation Order](./greenfield-implementation-order.md) — concrete build sequence with audit-finding traceability
+4. [Master Architecture Audit and Refactor Blueprint](./master-architecture-picture.md) — domain and requirements reference (the deep technical findings)
+5. [Audit-to-Greenfield Mission Plan](./audit-refactor-plan.md) — decision gates and OpenSpec tracking
+6. [Controller Audit](./audit-controllers.md) — legacy workflow mapping (reference)
+7. [Access-Control Inventory](./access-control-inventory.md) — role/permission requirements (reference)
+8. [Architecture Audit](./architecture-audit.md) — historical reconnaissance (reference)
 
-The master blueprint is the source of truth for findings and decisions. This guide explains how to digest it.
+The greenfield plan is the execution authority. The master blueprint is the domain and requirements reference. This guide explains how to digest both.
 
 ---
 
@@ -250,27 +254,21 @@ Do not queue work that assumes committed data while the queue configuration allo
 
 ---
 
-## 3. What NEXIAM is good at today
+## 3. What NEXIAM's legacy codebase teaches us
 
-The audit is not a declaration that everything is bad. The existing system contains valuable behavior and useful foundations:
+The audit is not a declaration that everything was bad. The legacy system contains valuable domain knowledge and proven patterns worth carrying into the greenfield build:
 
-- Laravel 12 provides a coherent application platform;
-- staff and applicant identities are separated conceptually;
-- Form Requests are already used for transport validation;
-- policies exist and can be deepened;
-- the admission, exam, grading, release, reporting, notification, and audit workflows exist;
-- `ApplicationPipelineService` contains useful transition vocabulary;
-- the analyze/preview/confirm import flow is a good operational pattern;
-- the current application database contains real workflow history;
-- a separate Python worker is a reasonable future seam for OMR and inference workloads;
-- the existing audit event vocabulary and redaction behavior are worth preserving while storage integrity is improved.
+- Laravel 12 + Inertia + Svelte 5 is a coherent stack (retained for the rebuild);
+- staff and applicant identities are separated conceptually (separate guards/providers);
+- Form Requests are already used for transport validation (adopt this pattern from day one);
+- policies exist and can be deepened (build them correctly from the start);
+- the admission, exam, grading, release, reporting, notification, and audit workflows exist (these are the domain specification);
+- `ApplicationPipelineService` contains useful transition vocabulary (use it as a state-machine design reference);
+- the analyze/preview/confirm import flow is a good operational pattern (preserve this UX);
+- a separate Python worker is a reasonable seam for OMR and inference workloads;
+- the existing audit event vocabulary and redaction behavior are worth preserving as a design input.
 
-The recommendation is therefore not “delete NEXIAM and start again.” It is:
-
-> Preserve working behavior, characterize it, move consequential ownership behind deep modules, and replace only the parts whose requirements or safety model have changed.
-
-This is called staged or strangler modernization.
-
+> **Greenfield context:** The legacy code is a domain reference, not a codebase to port. Every module is written fresh, but the domain workflows, invariants, and integration patterns documented above inform the design. The deep technical findings in `master-architecture-picture.md` sections 3-8 are the specification source. The concrete build sequence is in `greenfield-implementation-order.md`.
 ---
 
 ## 4. The central architectural problem: ownership is fragmented
@@ -908,56 +906,76 @@ Use these questions during Jaypee, Christine, Prince John, and future team discu
 
 ## 14. The implementation sequence in plain language
 
-Do not begin with OMR, dashboards, or a rewrite.
+> **Updated 2026-08-01.** The greenfield build replaces the legacy gate sequence. The full detailed implementation order with audit-finding traceability is in [`greenfield-implementation-order.md`](./greenfield-implementation-order.md). Below is a plain-language summary of the major phases.
 
-### Gate 0 — make the measurements trustworthy
+Do not begin with OMR, dashboards, or capstone features. Build the foundation first.
 
-- separate source from generated output;
-- preserve checker exit codes;
-- establish no-growth ledgers;
-- isolate formatting work;
-- settle the authoritative role and authentication decisions.
+### Phase 0 — scaffold and tooling
 
-### Gate 1 — stop unsafe and unprotected behavior
+- clean Laravel + Inertia + Svelte 5 (TypeScript) project;
+- all quality tools at zero tolerance from commit 1;
+- CI pipeline that is green and stays green.
 
-- upgrade and harden spreadsheet handling;
-- fix rendered-document escaping and export formulas;
-- repair Start-session and Inertia runtime defects;
-- preserve admission history;
-- characterize stable workflows;
-- verify fresh and upgraded schemas.
+### Phase 1 — domain model foundation
 
-### Gate 2 — create safe architecture seams
+- core tables with database-enforced constraints (not application-only checks);
+- locked academic-year activation (not racy updates);
+- transactional room booking (not drifting counters);
+- audit event table with nullable subjects (not sentinel IDs);
+- architecture tests from day one.
 
-- centralize admissions, exam, grading, and release commands;
-- move transaction ownership into those commands;
-- centralize audit and state projection behavior;
-- implement assignment-scoped proctor policy;
-- introduce scoped read models for dashboards.
+### Phase 2 — identity and access
 
-### Gate 3 — implement capstone foundations
+- settle the authoritative role catalog, proctor model, identifier auth, and OAuth policy;
+- staff and applicant authentication with separate guards;
+- hashed tokens with atomic one-time use;
+- proctor as session-assignment duty, not permanent role;
+- policy base classes for each capability boundary.
 
-- approved permission/role migration;
-- explicit identifier authentication;
-- specified audit-chain storage and verification;
-- after-commit notification guarantees;
-- authorized applicant-context RAG and fallback messaging.
+### Phase 3 — admissions core
 
-### Gate 4 — implement research contributions
+- application submission with safe reference generation (DB sequence, not COUNT + 1);
+- pipeline state machine with single source of truth;
+- acceptance, rejection, and reopen with archive semantics (no hard-delete of history);
+- atomic appointment booking.
 
-- OMR worker and human-review flow;
-- engine registry and inference provenance;
-- Yukee and BGE adapters;
-- counselor and Program Head dashboards.
+### Phase 4 — examination and proctoring
 
-### Gate 5 — polish and delivery
+- exam sessions with scoped uniqueness (not global applicant constraint);
+- assignment-based proctor access evaluated in policy;
+- transactional attendance and submission recording.
 
-- messaging and offline sync;
-- reduction of retained-code debt;
-- end-to-end defense journeys;
-- performance, security, queue, and backup/restore testing.
+### Phase 5 — assessment and grading
 
-The order is not bureaucracy. It prevents a new feature from depending on an unsafe or undefined foundation.
+- hardened spreadsheet import (latest dependencies, formula neutralization, size limits);
+- unique grading session per exam session (enforced by database);
+- atomic pipeline progression on finalization.
+
+### Phase 6 — consultation, release, and documents
+
+- typed placeholder system for document templates (not raw string replacement);
+- context-specific escapers per placeholder type;
+- formula neutralization on every export boundary.
+
+### Phases 7-8 — audit chain and notifications (parallel)
+
+- tamper-evident append-only audit chain with external checkpoints;
+- notification preferences, idempotency, and after-commit delivery.
+
+### Phases 9-10 — RAG and capstone research features
+
+- scoped RAG with confidence/citation/refusal contract;
+- OMR worker, engine registry, Yukee/BGE adapters;
+- counselor triage and Program Head dashboards.
+
+### Phases 11-13 — dashboards, messaging, hardening
+
+- role-scoped dashboard query facade;
+- in-app messaging with RAG handoff;
+- offline proctor sync (only after conflict semantics approved);
+- E2E defense journeys, security audit, deployment.
+
+The order is not bureaucracy. It prevents a capstone feature from depending on an unsafe or undefined foundation. Each phase in the [detailed implementation order](./greenfield-implementation-order.md) traces back to the specific audit finding it addresses.
 
 ---
 
@@ -980,8 +998,7 @@ A senior architect is not the person who creates the most abstractions. It is th
 
 For NEXIAM, the guiding sentence is:
 
-> Keep the working admission platform, make consequential behavior owned by deep modules, enforce important invariants at the correct seams, and let every capstone feature arrive with evidence, authorization, tests, and a reversible migration path.
-
+> Build clean modules with deep interfaces, enforce important invariants at the correct seams, and let every capstone feature arrive with evidence, authorization, tests, and a reversible migration path.
 ---
 
 ## 16. Quick glossary
@@ -1001,7 +1018,7 @@ For NEXIAM, the guiding sentence is:
 | Projection | Stored or computed data derived from authoritative state |
 | Query module | A module that owns a composed read model or read operation |
 | Seam | A location where behavior can change without editing all callers |
-| Strangler modernization | Replacing parts of an existing system gradually instead of rewriting all at once |
+| Strangler modernization | Replacing parts of an existing system gradually instead of rewriting all at once (the legacy strategy; NEXIAM now uses a greenfield rebuild instead) |
 | Trust boundary | A point where data changes from untrusted to trusted or enters a new execution context |
 
 ---
@@ -1010,15 +1027,17 @@ For NEXIAM, the guiding sentence is:
 
 Before moving into concrete implementation, you should be able to explain in your own words:
 
-1. Why NEXIAM should be modernized in stages rather than rewritten immediately.
+1. Why the audit findings justify a greenfield rebuild rather than in-place refactoring, and what the legacy codebase contributes as a reference.
 2. Why not every Eloquent query needs a service wrapper.
 3. Why a command is appropriate for accepting an application or releasing a result.
 4. Why a transaction alone does not fix `COUNT + 1` or appointment overbooking.
 5. Why permanent roles and proctor session assignments are different.
 6. Why applicant text must be escaped differently in HTML, DOCX, PDF, and spreadsheet contexts.
 7. Why RAG policy answers and applicant-specific retrieval need separate authorization contracts.
-8. Why characterization tests must come before large workflow refactors.
-9. Why new capstone features must wait for the Gate 1 safety foundation.
-10. How an OpenSpec requirement connects to an invariant, implementation seam, test, and capstone evidence.
+8. Why the 12 decision gates must be resolved before (not during) building the affected module.
+9. Why the build sequence starts with identity and admissions core, not with OMR or dashboards.
+10. How an audit finding (P0.x, P1.x) maps through the greenfield implementation order to a specific build step, and how that step connects to a capstone evidence claim.
 
-If you can explain those ten points and defend the answers using the master blueprint, you are ready to participate in the concrete change phase with senior-level oversight.
+If you can explain those ten points and defend the answers using the master blueprint and greenfield plan, you are ready to participate in the concrete build phase with senior-level oversight.
+
+**Next step:** open [`greenfield-implementation-order.md`](./greenfield-implementation-order.md) and identify which decision gates must be resolved first, then begin Phase 0 (scaffold and tooling).

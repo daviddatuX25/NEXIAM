@@ -1,30 +1,27 @@
 # NEXIAM Architecture Audit and Refactor Blueprint
 
-**Purpose:** the authoritative map for deciding what to preserve, what to refactor, what to replace, and how to add the capstone features without compounding inherited NEXIAM debt.
+**Purpose:** the authoritative domain and requirements reference for the NEXIAM greenfield rebuild. This document records source-backed findings from the legacy codebase; it is no longer a refactoring plan for that codebase.
 
 **Method:** source inspection, call-path tracing, live quality-tool execution, dependency audit, migration/model review, requirement-to-code comparison, and Laravel 12 documentation. Findings are tagged as **Observed**, **Measured**, **Requirement**, or **Decision needed** so that opinions do not become facts by repetition.
 
-**Operating order:** **specifications → P0 safety/refactors → P1 features → P2 builds**. Do not scaffold a replacement application until the audit and architecture decisions are accepted.
+**Strategic pivot (2026-08-01):** The original strangler-style modernization strategy has been superseded. NEXIAM will be rebuilt as a clean-slate project. The legacy codebase serves as a read-only reference for domain workflows, data models, access control intent, and integration contracts. See `docs/greenfield-architecture-plan.md` for the execution plan.
 
 ---
 
 ## 1. Executive verdict
 
-NEXIAM should **not** be treated as either a clean greenfield application or a hopeless legacy rewrite.
+> **Superseded 2026-08-01.** The original verdict recommended strangler-style modernization inside the existing Laravel application. After completing all eight audit lenses, the project owner decided on a **clean-slate greenfield rebuild** instead. The audit findings below remain authoritative as a domain and requirements reference; the implementation strategy is now governed by `docs/greenfield-architecture-plan.md`.
 
-It is a working Laravel monolith with substantial reusable admissions, scheduling, proctoring, grading, release, document-generation, notification, and RAG infrastructure. Its main risk is that important workflows are distributed across large controllers, large services, model hooks, direct queries, notifications, and role checks without characterization tests. Adding OMR, admission-support engines, a triage dashboard, Program Head access, messaging, identifier-key authentication, and chained auditing directly onto those seams would make the capstone harder to verify and harder to defend.
+The legacy codebase is a working Laravel monolith with substantial admissions, scheduling, proctoring, grading, release, document-generation, notification, and RAG infrastructure. The audit proved it also carries:
 
-The recommended strategy is a **strangler-style modernization inside the existing Laravel application**:
+- fragmented workflow ownership across 41 controllers, 35 services, and model hooks;
+- three divergent role catalogs with no authoritative source;
+- zero meaningful tests and zero characterization coverage;
+- concurrency/integrity bugs in core flows (reference generation, booking, pipeline transitions);
+- plaintext tokens, unescaped template injection, and vulnerable dependencies;
+- 86 migrations with fresh-versus-upgraded schema drift.
 
-1. preserve the database and working user journeys;
-2. characterize stable behavior with tests;
-3. establish explicit use-case and query boundaries one workflow at a time;
-4. replace only the subsystems whose requirements genuinely changed;
-5. add one small Python inference sidecar/worker for CV and embedding workloads instead of fragmenting the whole product into microservices;
-6. require every touched or new module to be green even while inherited debt remains baselined.
-
-A full rewrite is justified only if a later proof shows that preserving a subsystem costs more than replacing it. The present evidence does **not** justify rewriting the whole product.
-
+Rather than characterize, baseline, and incrementally strangle each subsystem, the project will use this audit as a specification source and build clean modules from requirements. The domain model, workflow invariants, data relationships, and integration contracts documented below are the assets carried forward — not the code.
 ---
 
 ## 2. Corrections to earlier audit claims
@@ -400,18 +397,19 @@ Preserve behavior because it is verified and required—not merely because code 
 
 ## 9. Refactor-versus-rewrite decision
 
-| Subsystem | Recommendation | Reason |
-|---|---|---|
-| Whole Laravel application | Refactor in place | working breadth, database, integrations, and screens make a greenfield rewrite high-risk. |
-| Application/exam controllers | Replace incrementally behind characterization tests | responsibilities and workflows changed enough to justify new use-case boundaries. |
-| Role/authorization layer | Planned migration | terminology and duty-overlay requirements conflict with current role checks. |
-| Applicant auth UI/use case | Replace flow, keep separate guard/provider | new identifier semantics; identity boundary remains valid. |
-| AI companion | Replace application contract, reuse vetted adapters | current prompt, manuscript applicant-context requirement, and separate recommendation engine need one explicit boundary. |
-| Imports | Keep UX; harden/upgrade parser | valuable workflow with immediate dependency risk. |
-| Document pipeline | Refactor/decompose, do not rewrite blindly | complex and working; high regression risk. |
-| Svelte frontend | Incremental TypeScript modernization | wholesale translation delays capstone features and yields weak value. |
-| OMR/embedding inference | New Python sidecar/worker | libraries and resource profile differ from Laravel; asynchronous boundary is natural. |
+> **Superseded 2026-08-01.** The per-subsystem refactor/rewrite table below was written under the strangler-style strategy. Under the greenfield pivot, every subsystem is built fresh. The "Reason" column remains useful as a reference for what domain behavior each subsystem must preserve in the new build.
 
+| Subsystem | Legacy recommendation | Greenfield implication |
+|---|---|---|
+| Whole Laravel application | Was: refactor in place | Now: clean-slate rebuild; legacy is reference only |
+| Application/exam controllers | Was: replace incrementally | Now: build clean command/action boundaries from the start |
+| Role/authorization layer | Was: planned migration | Now: settle the authoritative catalog, then implement fresh |
+| Applicant auth UI/use case | Was: replace flow, keep guard | Now: clean identity module with identifier + password from day one |
+| AI companion | Was: replace contract, reuse adapters | Now: build scoped RAG with explicit confidence/citation/refusal contract |
+| Imports | Was: keep UX, harden parser | Now: rebuild with hardened parser and the analyze-preview-confirm UX pattern |
+| Document pipeline | Was: refactor/decompose | Now: build with typed placeholder system and trust boundaries from the start |
+| Svelte frontend | Was: incremental TS modernization | Now: TypeScript from commit 1; no JS-to-TS migration period |
+| OMR/embedding inference | Was: new Python sidecar | Now: same — Python sidecar/worker is the correct boundary |
 ---
 
 ## 10. OpenSpec program
@@ -543,9 +541,11 @@ A phase is not complete because code was moved.
 
 ## 14. Bottom line
 
-> NEXIAM's best path is not “put every query in a service” and not “start over.” It is to preserve verified behavior, make critical workflows explicit and transactional, settle identity and authorization semantics, turn quality debt into no-growth ledgers, and add the research features through small typed modules with reproducible provenance and human control.
+> **Updated 2026-08-01.** The original bottom line recommended preserving verified behavior and modernizing in place. The project now restarts as a greenfield build using the audit as its specification source.
 
-This document supersedes the earlier “thin controller → service behind everything” picture. It remains a living audit: future evidence should amend measured findings, while architecture decisions change only through reviewed ADR/OpenSpec updates.
+NEXIAM's audit phase is complete. The eight audit lenses, measured quality baselines, domain workflow maps, capability boundaries, data integrity findings, and unsettled decision gates documented here form the requirements reference for the greenfield rebuild. No legacy code is ported; every module is written fresh against the domain model and invariants recorded in this document and the greenfield architecture plan.
+
+This document remains a living reference: future evidence should amend measured findings, while architecture decisions change only through reviewed ADR/OpenSpec updates. The execution plan lives in `docs/greenfield-architecture-plan.md`.
 
 ---
 
