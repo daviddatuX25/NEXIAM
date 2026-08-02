@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 class CsvToNarrativeService
@@ -15,6 +16,7 @@ class CsvToNarrativeService
      * Metadata is provided by the admin and defines the document; it is not inferred from CSV.
      *
      * @return array{content: string, row_count: int, headers: array}
+     *
      * @throws \InvalidArgumentException on invalid/empty CSV
      */
     public function convert(string $csvContent): array
@@ -62,13 +64,14 @@ class CsvToNarrativeService
             if ($val === '') {
                 continue;
             }
-            $label = $header !== '' ? $header : "Column " . ($i + 1);
+            $label = $header !== '' ? $header : 'Column '.($i + 1);
             $pairs[] = "{$label}: {$val}";
         }
         if ($pairs === []) {
             return '';
         }
-        return "Row {$rowNum}: " . implode('; ', $pairs) . '.';
+
+        return "Row {$rowNum}: ".implode('; ', $pairs).'.';
     }
 
     /**
@@ -100,7 +103,7 @@ class CsvToNarrativeService
     /**
      * Validate file: size and basic encoding.
      */
-    public function validateFile(\Illuminate\Http\UploadedFile $file): void
+    public function validateFile(UploadedFile $file): void
     {
         if ($file->getSize() > self::MAX_FILE_SIZE_BYTES) {
             throw new \InvalidArgumentException('CSV file too large. Maximum size is 2MB.');

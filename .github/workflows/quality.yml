@@ -1,0 +1,52 @@
+name: Quality
+
+on:
+    push:
+    pull_request:
+
+jobs:
+    quality:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4'
+                  extensions: mbstring, dom, gd, zip, sqlite3
+                  coverage: none
+
+            - name: Install PHP dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Check code style (Pint)
+              run: ./vendor/bin/pint --test
+
+            - name: Static analysis (PHPStan + Larastan)
+              run: ./vendor/bin/phpstan analyse --no-progress
+
+            - name: Security audit (composer)
+              run: composer audit --no-dev
+
+            - name: Run tests (Pest)
+              run: ./vendor/bin/pest --parallel
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  cache: npm
+
+            - name: Install frontend dependencies
+              run: npm ci
+
+            - name: Svelte check
+              run: npm run check
+
+            - name: Lint (ESLint)
+              run: npm run lint
+
+            - name: Format check (Prettier)
+              run: npm run format:check

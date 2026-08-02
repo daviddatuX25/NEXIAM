@@ -666,7 +666,8 @@ class ExamSessionController extends Controller
 
     /**
      * Cancel an in-progress exam session.
-     */    public function cancel(ExamSession $exam_session): RedirectResponse
+     */
+    public function cancel(ExamSession $exam_session): RedirectResponse
     {
         if ($exam_session->status !== ExamSession::STATUS_IN_PROGRESS) {
             return redirect()->route('admin.exam-scheduling.show', $exam_session)
@@ -701,7 +702,6 @@ class ExamSessionController extends Controller
 
         return redirect()->route('admin.exam-scheduling.index')->with('success', 'Session cancelled.');
     }
-
 
     public function start(ExamSession $exam_session): RedirectResponse
     {

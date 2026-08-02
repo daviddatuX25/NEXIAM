@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Applicant;
 use App\Models\ConsultationSummary;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +13,6 @@ class ConsultationSummaryService
     public function __construct(
         private AuditService $auditService
     ) {}
-
 
     public function getOrCreateForApplicant(int $applicantId): ConsultationSummary
     {

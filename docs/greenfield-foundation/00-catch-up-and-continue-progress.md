@@ -96,7 +96,7 @@ No code should be called canonical merely because it exists. A competing impleme
 
 The minimum defensible vertical slice is:
 
-`public or staff intake → ApplicantIdentity/AdmissionAttempt → authorized review → acceptance/account activation → scheduling → exam assignment → attendance/proctoring → manual grading → consultation/release → applicant retrieval → notification/document/audit verification`
+`public or staff intake → ApplicantIdentity/AdmissionAttempt → Applicant No/Reference + post-submission access challenge → authorized review → acceptance/dismissal as an independent Registrar decision → scheduling → exam assignment → attendance/proctoring → manual grading → consultation/release → applicant retrieval → notification/document/audit verification`
 
 The slice must also prove:
 

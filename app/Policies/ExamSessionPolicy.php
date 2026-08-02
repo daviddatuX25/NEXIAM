@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\ExamSession;
+use App\Models\GradingSession;
 use App\Models\User;
 
 /**
@@ -55,7 +56,7 @@ class ExamSessionPolicy
         }
 
         $gradingSession = $examSession->gradingSession;
-        if ($gradingSession && $gradingSession->status === \App\Models\GradingSession::STATUS_FINALIZED) {
+        if ($gradingSession && $gradingSession->status === GradingSession::STATUS_FINALIZED) {
             return false;
         }
 

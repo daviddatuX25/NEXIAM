@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Application;
-use App\Models\ExamSession;
 use App\Models\ConsultationSummary;
+use App\Models\ExamSession;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 

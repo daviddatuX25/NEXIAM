@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('score_cutoff', 5, 2)->nullable()->comment('Minimum score threshold');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->index('department_id');
         });
     }

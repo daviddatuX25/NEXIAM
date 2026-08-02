@@ -87,7 +87,7 @@ ADR-001 Greenfield workspace
 
 - **Status:** proposed
 - **Upstream:** D-024, D-027–D-035, D-073, D-074
-- **Candidate decision:** Durable ApplicantIdentity owns repeatable AdmissionAttempts; an optional Portal Account authenticates that identity after approved activation; all examination/scoring/release records attach to an attempt.
+- **Candidate decision:** Durable ApplicantIdentity owns repeatable AdmissionAttempts; a post-submission access challenge may establish an optional Portal Account that authenticates that identity independently of acceptance; all examination/scoring/release records attach to an attempt.
 - **Rationale:** Resolves legacy applicant/application relinking ambiguity, reopen deletion, and future-cycle/retake constraints.
 - **Consequences:** Duplicate-resolution, identity merge/restriction, retention, and historical account access require explicit policy.
 - **Alternative:** One Applicant record per attempt. Rejected by default because it duplicates identity and obscures longitudinal ownership.

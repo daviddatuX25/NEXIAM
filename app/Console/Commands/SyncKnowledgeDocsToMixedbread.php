@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class SyncKnowledgeDocsToMixedbread extends Command
 {
     protected $signature = 'ai:sync-knowledge-docs {--force : Re-sync all docs, including already-indexed}';
+
     protected $description = 'Sync pending/failed knowledge documents to Mixedbread Stores for semantic search.';
 
     public function handle(MixedbreadService $mixedbread): int
@@ -16,18 +17,20 @@ class SyncKnowledgeDocsToMixedbread extends Command
         $storeId = config('services.mixedbread.store_id', '');
         if (empty($storeId)) {
             $this->error('MIXEDBREAD_STORE_ID is not configured. Aborting.');
+
             return Command::FAILURE;
         }
 
         $query = KnowledgeDocument::query()->active();
-        if (!$this->option('force')) {
+        if (! $this->option('force')) {
             $query->whereIn('mxb_sync_status', [KnowledgeDocument::SYNC_PENDING, KnowledgeDocument::SYNC_FAILED]);
         }
-        $docs  = $query->get();
+        $docs = $query->get();
         $total = $docs->count();
 
         if ($total === 0) {
             $this->info('No documents to sync.');
+
             return Command::SUCCESS;
         }
 
@@ -43,9 +46,9 @@ class SyncKnowledgeDocsToMixedbread extends Command
             try {
                 $result = $mixedbread->uploadDocument($storeId, $doc->content, $doc->title, array_filter((array) $doc->metadata));
                 $doc->update([
-                    'mxb_file_id'     => $result['id'] ?? null,
+                    'mxb_file_id' => $result['id'] ?? null,
                     'mxb_sync_status' => KnowledgeDocument::SYNC_INDEXED,
-                    'mxb_synced_at'   => now(),
+                    'mxb_synced_at' => now(),
                 ]);
                 $synced++;
             } catch (\Throwable $e) {

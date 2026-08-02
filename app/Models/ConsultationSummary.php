@@ -9,8 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ConsultationSummary extends Model
 {
     use HasFactory;
+
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_RELEASED = 'released';
 
     protected $fillable = [

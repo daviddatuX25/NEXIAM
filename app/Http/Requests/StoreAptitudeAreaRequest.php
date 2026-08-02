@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\SystemSetting;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAptitudeAreaRequest extends FormRequest
@@ -13,7 +14,7 @@ class StoreAptitudeAreaRequest extends FormRequest
 
     public function rules(): array
     {
-        $autoCompute = \App\Models\SystemSetting::enableNormalizedScores();
+        $autoCompute = SystemSetting::enableNormalizedScores();
 
         return [
             'name' => ['required', 'string', 'max:100'],

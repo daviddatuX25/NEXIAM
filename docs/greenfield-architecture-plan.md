@@ -69,10 +69,10 @@ Derived from `master-architecture-picture.md` section 7.2, now enforced structur
 | Capability | Owns | Must not own |
 |---|---|---|
 | **Identity & Access** | Staff/applicant auth, permissions, office scope, proctor-assignment policy | Admissions workflow |
-| **Admissions** | Application/attempt, acceptance, portal status, admission slip | Exam attendance, scoring |
+| **Admissions** | Application/attempt, Applicant No/Reference, acceptance, portal status | Exam attendance, scoring, admission-slip-dependent identity |
 | **Examination** | Sessions, rooms, assignments, proctor duty, attendance/submission | Score interpretation |
 | **Assessment** | Answer ingestion, OMR review, scores, grading lifecycle | Result communication |
-| **Consultation & Release** | Summary, counselor decision, release/unrelease, result documents | Authentication |
+| **Consultation & Release** | Summary, counselor/Test Administrator decision evidence, F2F/online consultation availability, result preparation/printing, release/unrelease, result documents | Authentication |
 | **Communications** | Notification preferences, mail/database notifications, inquiry threads | Core state transitions |
 | **Audit & Compliance** | Append-only event chain, checkpoints, verification | Business decisions |
 | **Knowledge & RAG** | Institutional corpus, authorized own-data retrieval, citations, confidence/refusal | Placement recommendations |

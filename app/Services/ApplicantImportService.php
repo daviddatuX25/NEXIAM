@@ -374,9 +374,9 @@ class ApplicantImportService
         $v = strtolower(trim($value ?? ''));
 
         return match ($v) {
-            'male', 'm'   => 'male',
+            'male', 'm' => 'male',
             'female', 'f' => 'female',
-            default       => null,
+            default => null,
         };
     }
 
@@ -441,33 +441,33 @@ class ApplicantImportService
             }
 
             Application::create([
-                'academic_year_id'    => $academicYearId,
-                'reference_number'    => $referenceNumber,
-                'first_name'          => $record['first_name'],
-                'middle_name'         => $middleName,
-                'last_name'           => $record['last_name'],
-                'suffix'              => $record['suffix'] ?? null,
-                'birthdate'           => $birthdate,
-                'age'                 => $age ?? 0,
-                'sex'                 => $sex ?? 'male',
-                'applicant_type'      => in_array(strtolower(trim($record['applicant_type'] ?? 'new')), ['new', 'transferee'], true) ? strtolower(trim($record['applicant_type'] ?? 'new')) : 'new',
-                'last_school_enrolled'=> $record['last_school_enrolled'] ?? null,
-                'strand'              => $record['strand'] ?? null,
-                'email'               => $email,
-                'phone'               => $record['phone'] ?? null,
-                'address_line'        => $record['address_line'] ?? null,
-                'city'                => $record['city'] ?? null,
-                'province'            => $record['province'] ?? null,
-                'zip_code'            => $record['zip_code'] ?? null,
-                'gwa'                 => isset($record['gwa']) && is_numeric($record['gwa']) ? (float) $record['gwa'] : null,
+                'academic_year_id' => $academicYearId,
+                'reference_number' => $referenceNumber,
+                'first_name' => $record['first_name'],
+                'middle_name' => $middleName,
+                'last_name' => $record['last_name'],
+                'suffix' => $record['suffix'] ?? null,
+                'birthdate' => $birthdate,
+                'age' => $age ?? 0,
+                'sex' => $sex ?? 'male',
+                'applicant_type' => in_array(strtolower(trim($record['applicant_type'] ?? 'new')), ['new', 'transferee'], true) ? strtolower(trim($record['applicant_type'] ?? 'new')) : 'new',
+                'last_school_enrolled' => $record['last_school_enrolled'] ?? null,
+                'strand' => $record['strand'] ?? null,
+                'email' => $email,
+                'phone' => $record['phone'] ?? null,
+                'address_line' => $record['address_line'] ?? null,
+                'city' => $record['city'] ?? null,
+                'province' => $record['province'] ?? null,
+                'zip_code' => $record['zip_code'] ?? null,
+                'gwa' => isset($record['gwa']) && is_numeric($record['gwa']) ? (float) $record['gwa'] : null,
                 'course_preference_1' => $coursePref1['resolved'] ?? $fallbackCourseId,
                 'course_preference_2' => $coursePref2['resolved'],
                 'course_preference_3' => $coursePref3['resolved'],
-                'status'              => 'pending',
-                'pipeline_status'     => 'pending',
-                'processed_by'        => $importerId,
-                'processed_at'        => now(),
-                'submitted_at'        => now(),
+                'status' => 'pending',
+                'pipeline_status' => 'pending',
+                'processed_by' => $importerId,
+                'processed_at' => now(),
+                'submitted_at' => now(),
             ]);
 
             return ['success' => true];

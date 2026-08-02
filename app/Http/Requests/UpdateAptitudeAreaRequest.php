@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\SystemSetting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +16,7 @@ class UpdateAptitudeAreaRequest extends FormRequest
     public function rules(): array
     {
         $aptitudeArea = $this->route('aptitude_area');
-        $autoCompute = \App\Models\SystemSetting::enableNormalizedScores();
+        $autoCompute = SystemSetting::enableNormalizedScores();
 
         return [
             'name' => ['required', 'string', 'max:100'],

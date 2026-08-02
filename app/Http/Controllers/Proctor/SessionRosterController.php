@@ -13,6 +13,7 @@ use App\Notifications\ExamSessionCompleted;
 use App\Notifications\ExamSessionStarted;
 use App\Services\ApplicationPipelineService;
 use App\Services\AuditService;
+use App\Services\GradingSessionService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -402,7 +403,7 @@ class SessionRosterController extends Controller
         // Auto-open a grading session if one doesn't already exist
         $exam_session->load('applicants');
         $gradingSession = $exam_session->gradingSession
-            ?? app(\App\Services\GradingSessionService::class)->openForExamSession($exam_session, auth()->user());
+            ?? app(GradingSessionService::class)->openForExamSession($exam_session, auth()->user());
 
         return redirect()->route('admin.grading.sessions.show', $gradingSession->id)
             ->with('success', 'Session closed. Grading session is ready.');

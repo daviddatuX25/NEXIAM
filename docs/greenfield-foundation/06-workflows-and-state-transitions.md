@@ -18,18 +18,19 @@
 
 ```text
 Admission attempt submitted
+  -> Applicant No/Reference assigned and one-time applicant access challenge issued
   -> Registrar review
      -> dismissed (terminal unless explicitly reconsidered)
      -> accepted
-        -> applicant credential setup
         -> Guidance scheduling eligibility
         -> exam assignment
         -> contextual Proctor assignment
         -> exam attendance/submission
         -> grading open
         -> scores complete and finalized
-        -> counselor consultation decision
-        -> result released
+        -> Guidance result preparation/printing as required by mode
+        -> F2F consultation batch or online release/consultation availability
+        -> result released through the approved mode
         -> applicant retrieval and program-scoped aggregate projection
 ```
 
@@ -51,11 +52,11 @@ A separate correction/reconsideration event history is preferred over multiplyin
 
 | From | Command → To | Proposed actor/scope | Preconditions | Atomic effects | After commit | Failure/recovery |
 |---|---|---|---|---|---|---|
-| none | `SubmitAdmissionAttempt` → pending | unauthenticated public applicant under bounded intake policy, or authorized Registrar OFFICE | active cycle/window; valid identity/contact/preferences; duplicate/appointment rules pass | create/link ApplicantIdentity and attempt/reference; reserve appointment if used; append audit | acknowledgement | duplicate/capacity conflict returns typed correction/reselection path |
+| none | `SubmitAdmissionAttempt` → pending | unauthenticated public applicant under bounded intake policy, or authorized Registrar OFFICE | active cycle/window; valid identity/contact/preferences; duplicate/appointment rules pass | create/link ApplicantIdentity and AdmissionAttempt; generate stable Applicant No/Reference; reserve appointment if used; append audit | acknowledgement plus after-commit one-time setup/access challenge through the approved channel | duplicate/capacity conflict returns typed correction/reselection path; challenge delivery failure remains retryable |
 | pending | `RequestApplicationCorrection` → needs_correction | authorized Registrar OFFICE | missing/invalid evidence uses approved correction reason rather than dismissal | correction request/history and audit | applicant correction notice/instructions | exact documents/fields and deadline follow D-074 |
 | needs_correction | `ResubmitApplicationCorrection` → pending | public/identified applicant under protected correction link or Applicant OWN, or Registrar OFFICE | only requested fields/evidence; correction link/account authorization valid | versioned correction and resubmission event; audit | Registrar queue update | expired/invalid correction access fails closed |
 | pending | `CorrectAdmissionAttempt` → pending | Applicant OWN before freeze; Registrar OFFICE within capability | editable fields; no forbidden downstream dependency | versioned field correction; audit diff | optional correction notice | stale version/conflict requires refresh; no partial field mutation |
-| pending | `AcceptAdmissionAttempt` → accepted | Registrar Administrator OFFICE; delegated staff only if approved | decision window/override; completeness; real approved setup/recovery channel; no conflicting active identity/attempt | acceptance, explicit Portal Account link/provisioning, workflow milestone, audit | setup challenge and acceptance notice | delivery failure does not roll back acceptance; retry is observable; no fabricated email |
+| pending | `AcceptAdmissionAttempt` → accepted | Registrar Administrator OFFICE; delegated staff only if approved | decision window/override; completeness; no conflicting active identity/attempt | acceptance decision, workflow milestone, and audit; no new applicant credential gate | acceptance notice where approved | delivery failure does not roll back acceptance; access challenge was already issued after submission; no fabricated email |
 | pending | `DismissAdmissionAttempt` → dismissed | Registrar Administrator OFFICE | decision authority; reason/rationale policy | dismissal and reason; audit | dismissal notice if approved | delivery retry; record remains historical |
 | accepted/dismissed | `ReconsiderAdmissionAttempt` → pending or superseded/new attempt | authorized Registrar with reason; Guidance only if explicitly approved | approved reconsideration rule; no destructive cascade | preserve prior decision/history; create reversal/version/new attempt as approved; audit | notices/reconciliation jobs | HOLD pending Registrar policy |
 | pending/accepted/dismissed | `ArchiveAdmissionAttempt` → archived | authorized Registrar/System process under retention rule | no illegal active workflow or explicit cancellation plan | archive visibility; preserve dependent history; audit | index/storage cleanup only if approved | restore/unarchive requires explicit command |
@@ -65,16 +66,17 @@ A separate correction/reconsideration event history is preferred over multiplyin
 Candidate milestone order:
 
 1. `submitted`
-2. `accepted`
-3. `draft_scheduled`
-4. `scheduled`
-5. `admission_document_generated_or_printed` where operationally meaningful
+2. `applicant_access_issued`
+3. `accepted`
+4. `draft_scheduled`
+5. `scheduled`
 6. `attended`
 7. `answer_submitted`
 8. `scoring_complete`
 9. `grading_finalized`
-10. `consultation_confirmed`
-11. `result_released`
+10. `result_prepared_or_printed` where required by the selected mode
+11. `consultation_available_or_scheduled`
+12. `result_released`
 
 Projection rules:
 
@@ -88,10 +90,10 @@ Projection rules:
 
 | State | Event/command | Rule |
 |---|---|---|
-| no account/link | acceptance establishes or links ApplicantAccount | Durable identity/cardinality follows D-024 |
-| setup_pending | setup challenge issued | Store hash only; expiry; delivery after commit |
-| setup_pending | setup completed → active | Atomic compare/consume; set credential; rotate session; audit |
-| setup_pending | challenge expired/replaced | Old challenge unusable; new request throttled and audited |
+| no account/link | submission creates or links ApplicantIdentity/AdmissionAttempt and issues access challenge | Applicant No/Reference is assigned at submission; durable identity/cardinality follows D-024 |
+| access_pending | setup/access challenge issued after submission | Store hash only; expiry; atomic one-time use; delivery after commit |
+| access_pending | challenge completed → optional ApplicantAccount active | Set credential; rotate session; audit; account remains optional but history remains durable |
+| access_pending | challenge expired/replaced | Old challenge unusable; new request throttled and audited |
 | active | reset requested | Non-enumerating response; short-lived hashed challenge |
 | active | credential reset | One-time atomic consumption; revoke/rotate sessions as approved |
 | active | deactivated/restricted | New access denied; historical ownership preserved |
@@ -187,12 +189,41 @@ Proposed states:
 
 | From | Command → To | Actor | Preconditions | Effects |
 |---|---|---|---|---|
-| none/draft | `RecordConsultationDraft` → draft | Guidance Counselor OFFICE | finalized scoring; authorized attempt; available signal provenance recorded | draft rationale/action; audit as policy requires |
-| draft | `ConfirmConsultationDecision` → confirmed | Guidance Counselor | approve/modify/override action; required rationale complete | human-owned confirmed version; audit |
+| none/draft | `RecordConsultationDraft` → draft | Guidance Counselor OFFICE or authorized Guidance Test Administrator CAPSET | finalized scoring; authorized attempt; available signal provenance recorded; suggested program/course and Applicant selection are separate fields | draft rationale/action and separate choice evidence; audit as policy requires |
+| draft | `ConfirmConsultationDecision` → confirmed | Guidance Counselor | approve/modify/override action; required rationale complete; Applicant selection and counselor decision remain attributable | human-owned confirmed version; audit |
 | draft | `DeferConsultationDecision` → deferred | Guidance Counselor | approved reason/follow-up | defer reason and next action; audit |
 | confirmed/deferred | `ReviseConsultationDecision` → new draft/confirmed version; prior superseded | authorized Counselor with reason | approved correction; release impact reconciled | version history; audit; release reconciliation |
 
 Inference/model output cannot execute any row in this table.
+
+### 8.1 Consultation mode and reservation workflow
+
+`ConsultationPlan` is a Guidance-owned publication aggregate separate from `ConsultationDecision` and `ResultRelease`.
+
+Default mode is face-to-face (F2F):
+
+- Guidance/Test Administrator publishes consultation batches or office dates;
+- applicants are assigned to a batch by an authorized Test Administrator;
+- printed result sheets prepared by Guidance are used during the consultation;
+- the schedule is published/announced and each assignment is auditable;
+- consultation notes, suggested programs/courses, applicant-selected choices, and final counselor decision are stored separately.
+
+Online mode:
+
+- Guidance publishes an office-owned availability window or schedule;
+- the applicant may reserve an available slot on a first-come, first-served basis when enabled;
+- the office is not required to punch every applicant into a manual batch schedule;
+- approved result artifacts may be released online while consultation remains open;
+- later consultation reservations and decisions remain linked to the same AdmissionAttempt and are not overwritten by the release.
+
+Both modes require:
+
+- a versioned plan and availability state;
+- capacity/concurrency protection;
+- cancellation/rebooking history;
+- actor/source (`staff_assigned` or `applicant_reserved`);
+- audit events for publish, announce, assign, reserve, cancel, and complete;
+- immutable separation between Test Administrator suggestions and the Applicant’s selected program/course.
 
 ## 9. ResultRelease lifecycle
 
@@ -200,11 +231,11 @@ Model release as versioned events with current visibility rather than forcing a 
 
 | Current projection | Command | Actor/scope | Preconditions | Atomic effects | After commit | Recovery |
 |---|---|---|---|---|---|---|
-| unreleased | `ReleaseResult` → released | approved Guidance actor | finalized scores; approved consultation/mode requirements; authorized recipient/data | ResultRelease version, current visibility, artifact metadata, audit | generate/deliver if generation is safely after commit or prevalidated per ADR | delivery failure retries; release remains explicit |
+| unreleased | `ReleaseResult` → released | approved Guidance actor | finalized scores; result artifact prepared/printed where required; F2F consultation prerequisites or online availability/release prerequisites; authorized recipient/data | ResultRelease version, current visibility, artifact metadata, mode, and audit | generate/deliver if generation is safely after commit or prevalidated per ADR | delivery failure retries; release remains explicit; online consultation may remain open |
 | released | `UnreleaseResult` → unreleased/review | privileged Guidance with reason | approved reversal condition; dependent portal/document behavior defined | reversal event, current visibility update, audit; preserve prior artifact | correction notice/reconciliation | no destructive deletion |
 | unreleased after correction | `ReleaseCorrectedResult` → released new version | approved Guidance actor | corrected grading/consultation finalized | new release/document version and audit | delivery with new idempotency key | prior release remains historical |
 
-Exact online/F2F note and notification differences remain HOLD under D-044/D-045.
+F2F is the default mode: printed result preparation precedes published batch consultation handling. Online release is a separate branch: the approved digital result may be released while the Guidance office keeps consultation availability open. Both branches preserve the later ConsultationReservation and ConsultationDecision history.
 
 ## 10. Applicant portal journey
 
@@ -213,7 +244,7 @@ Applicant can:
 - authenticate through approved credential flow;
 - view own current admission status and actionable next step;
 - view own published schedule/assignment details;
-- retrieve approved admission document;
+- view or reserve approved consultation availability when enabled;
 - view own released result/current release version;
 - submit approved institutional/personal-data RAG inquiry if D-008/D-051 pass;
 - use approved recovery and staff fallback.
@@ -230,8 +261,8 @@ Institutional policy RAG access and own-result context are separate gates: polic
 
 ## 11. Document preview and publication workflow
 
-- Admission-slip generation/distribution requires an accepted attempt and one approved versioned template authority.
-- `generated`, `downloaded/distributed`, and `physically_printed` are separate evidence; a download timestamp is not proof of physical printing.
+- Admission slips are not required for answer-sheet identity in the target flow; Applicant No/Reference binds answer-sheet receipt/import. Legacy admission-slip generation/routes remain historical cleanup items.
+- Result-sheet `generated`, `downloaded/distributed`, and `physically_printed` evidence are separate; a download timestamp is not proof of physical printing.
 - Result-sheet internal preview may exist only as an explicitly authorized, watermarked, audited operation.
 - Applicant/external result download, print, or export requires finalized grading, approved consultation prerequisites, and the current released result version.
 - Large generation/export batches are observable jobs with actor, selection, template version, status, failures, retry, and audit evidence.
@@ -243,6 +274,7 @@ Proposed first-slice behavior:
 - authenticate as assigned Program Head;
 - select/receive only assigned program projection;
 - view approved aggregate applicant/release/recommendation counts;
+- view authorized consultation history, program notes, model/inference provenance, Test Administrator suggestions, and Applicant-selected program/course values within program scope;
 - see freshness/source/definition for each metric;
 - receive no raw scores or counseling notes by default;
 - cannot modify quotas, admission decisions, model outputs, or releases unless a later approved capability row says otherwise.

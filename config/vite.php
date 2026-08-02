@@ -32,4 +32,3 @@ return [
 
     'build_path' => 'build',
 ];
-

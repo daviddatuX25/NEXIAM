@@ -29,4 +29,3 @@ class DemoAccountSeeder extends Seeder
         }
     }
 }
-

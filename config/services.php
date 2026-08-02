@@ -36,9 +36,9 @@ return [
     ],
 
     'google' => [
-        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect'      => env('GOOGLE_REDIRECT_URI'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
     'openrouter' => [
@@ -47,7 +47,7 @@ return [
     ],
 
     'mixedbread' => [
-        'api_key'  => env('MIXEDBREAD_API_KEY'),
+        'api_key' => env('MIXEDBREAD_API_KEY'),
         'store_id' => env('MIXEDBREAD_STORE_ID'),
         'base_url' => env('MIXEDBREAD_BASE_URL', 'https://api.mixedbread.com/v1'),
     ],

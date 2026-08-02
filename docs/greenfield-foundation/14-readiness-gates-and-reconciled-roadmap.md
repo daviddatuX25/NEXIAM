@@ -24,6 +24,8 @@ R0 Preserve evidence and isolate greenfield workspace
 
 Novel capstone risk is moved before full parity reconstruction. Production hardening is not falsely required to call a bounded capstone demonstration coherent, but baseline security/quality/integrity is never deferred.
 
+**D-004 founder direction:** The previous greenfield architecture and implementation-order plans are inputs to a compound merge, not standalone execution authority. Their useful frontend, backend, architecture, and phase details must be reconciled into the stronger canonical requirements/HLD/LLD/domain/ADR/implementation chain before implementation. Conflicting standalone plans are then marked historical or superseded.
+
 ## 2. Recovery phases
 
 ### R0 — Evidence preservation and workspace isolation
@@ -143,7 +145,7 @@ Exit: clean install, boot, build, tests, checks, migration/seed, and Compose hea
 
 ### E1 — Identity, access, and reference foundation
 
-- Staff authentication plus ApplicantIdentity/optional ApplicantAccount activation;
+- Staff authentication plus ApplicantIdentity/optional ApplicantAccount establishment after submission;
 - hashed setup/reset challenges;
 - roles/capabilities/scopes and duty assignments;
 - AcademicCycle and reference data;

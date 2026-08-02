@@ -78,8 +78,8 @@ class UserController extends Controller
         $user->load('roles:id,name,display_name');
 
         return Inertia::render('Admin/Users/Edit', [
-            'user'         => $user,
-            'roles'        => Role::orderBy('name')->get(['id', 'name', 'display_name']),
+            'user' => $user,
+            'roles' => Role::orderBy('name')->get(['id', 'name', 'display_name']),
             'googleLinked' => $user->hasGoogleLinked(),
         ]);
     }

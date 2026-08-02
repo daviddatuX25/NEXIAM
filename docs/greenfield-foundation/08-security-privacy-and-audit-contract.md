@@ -36,14 +36,42 @@
 
 Proposed default:
 
-- institution-issued or generated identifier is a username/reference, not a bearer secret;
-- applicant establishes a password after a short-lived one-time setup challenge;
-- public intake may precede account activation, but activation requires a real approved delivery/recovery channel and never a fabricated fallback address;
+- Applicant No/Applicant Reference is an identifier, not a bearer secret;
+- successful public submission may issue a short-lived one-time setup/access challenge immediately, before Registrar acceptance;
+- the challenge may establish a password or other approved credential, but result access remains gated by the authoritative ResultRelease;
+- account/access provisioning requires a real approved delivery/recovery channel and never a fabricated fallback address;
 - setup/reset challenge is stored only as a hash, expires, and is consumed atomically;
 - failed attempts are rate-limited by account/identifier, IP/network signal, and challenge as appropriate;
 - recovery does not disclose whether arbitrary personal data exists beyond an approved response contract;
+- birthday or another personal fact may support assisted recovery only as an additional verification signal, never as the sole authenticator;
 - sessions rotate on authentication and privilege change;
 - sensitive actions require recent authentication where justified.
+
+### Applicant access-challenge implementation direction (research-backed)
+
+The greenfield implementation should use a dedicated applicant-access challenge record, or Laravel’s password-broker primitives only where the ApplicantAccount contract genuinely matches the broker contract. The design is based on Laravel 12’s password-reset implementation and OWASP’s Forgot Password and Authentication guidance:
+
+- generate a high-entropy random challenge in application memory;
+- store only a verifier/hash, never the raw challenge;
+- bind the challenge to the ApplicantIdentity and, for initial setup, the submitted AdmissionAttempt;
+- include purpose (`initial_setup` or `recovery`), issued time, expiry, delivery channel/reference, consumed time, and an idempotency/request reference;
+- consume it atomically so a race cannot use it twice;
+- expire it and run cleanup; Laravel’s password broker exposes configurable expiry/throttle behavior and an expired-token cleanup command;
+- throttle challenge issuance per ApplicantIdentity/identifier and delivery channel, and use generic/non-enumerating responses;
+- do not use Applicant No/Reference or birthday as the challenge; Applicant No is a lookup/binding identifier only;
+- a Laravel temporary signed URL may protect URL integrity and expiry, but it is not sufficient by itself for one-time use; a consumed challenge record remains required;
+- issue the initial challenge in an after-commit effect after public submission, not after Registrar acceptance; delivery failure leaves the submission durable and creates a retry/recovery state;
+- after successful setup, establish an optional durable ApplicantAccount/password or another approved credential; released-result visibility still requires ResultRelease authorization;
+- use Referrer-Policy protection and HTTPS for challenge URLs, do not log challenge values, and provide a bounded staff-assisted recovery path when the approved delivery channel is unavailable;
+- personal facts such as birthday may be an additional assisted-recovery check, never the sole reset mechanism.
+
+Research sources:
+
+- Laravel 12 password reset documentation: `https://raw.githubusercontent.com/laravel/docs/12.x/passwords.md`
+- Laravel 12 `DatabaseTokenRepository`: `https://raw.githubusercontent.com/laravel/framework/12.x/src/Illuminate/Auth/Passwords/DatabaseTokenRepository.php`
+- Laravel 12 temporary signed URLs: `https://raw.githubusercontent.com/laravel/docs/12.x/urls.md`
+- OWASP Forgot Password Cheat Sheet: `https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Forgot_Password_Cheat_Sheet.md`
+- OWASP Authentication Cheat Sheet: `https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/Authentication_Cheat_Sheet.md`
 
 ### Staff
 
@@ -71,6 +99,7 @@ If Super Admin is retained:
 - Program Head access is program-scoped and read-only by default.
 - System IT administration does not imply authority to change scores, counseling decisions, or releases.
 - Every permission grant/revoke, duty assignment/revoke, denied protected action, and break-glass use produces audit evidence.
+- Every protected applicant-record, result-sheet, converted-score, consultation-history, or program-projection view records the actor, target applicant/aggregate, scope, timestamp, purpose/category, and outcome; a future applicant-facing access-history view may expose approved privacy-safe entries without weakening the underlying audit record.
 - Frontend hiding is never an authorization control.
 
 ## 5. Privacy and data-handling contract

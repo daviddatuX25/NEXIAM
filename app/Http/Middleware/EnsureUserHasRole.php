@@ -11,8 +11,7 @@ class EnsureUserHasRole
     /**
      * Handle an incoming request. Requires user to have at least one of the given roles.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {

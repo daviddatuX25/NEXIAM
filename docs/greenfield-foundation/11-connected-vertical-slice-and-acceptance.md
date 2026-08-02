@@ -28,7 +28,7 @@ This is a connected workflow, not a collection of disconnected dashboards.
 - clean authentication and approved roles/scopes;
 - one active AcademicCycle and minimal reference data;
 - one durable ApplicantIdentity and one public pre-account AdmissionAttempt;
-- acceptance, explicit Portal Account activation/linking, and credential setup;
+- post-submission access challenge, optional Portal Account activation, and credential setup; acceptance remains an independent Registrar decision;
 - one ExamSession with one room and one assigned applicant;
 - temporary Proctor assignment;
 - attendance and answer submission;
@@ -126,7 +126,7 @@ Names are candidates, but command ownership and behavioral separation are requir
 | REQ-VS-016 | Refresh/re-login preserves authoritative state; deterministic reset recreates the seeded demo. |
 | REQ-VS-017 | Provider/worker outage does not prevent the manual core journey from completing. |
 | REQ-VS-018 | Browser execution records no unhandled console errors, failed required network requests, or silent failures. |
-| REQ-VS-019 | Public submission may precede account activation; acceptance links/activates exactly one Portal Account through a real approved delivery/recovery channel without fabricated email. |
+| REQ-VS-019 | Public submission creates/links a durable ApplicantIdentity and AdmissionAttempt, assigns Applicant No/Reference, and issues a one-time setup/access challenge after commit; acceptance remains independent; any optional Portal Account uses a real approved delivery/recovery channel without fabricated email. |
 | REQ-VS-020 | One effective exam deadline applies after extension to attendance, submission, manual close, and scheduler close; all close paths reconcile assignments and open grading once. |
 | REQ-VS-021 | Manual multi-area score writes are transactional; staged imports have durable batch identity, explicit row states, resumable idempotency, and a manual fallback. |
 | REQ-VS-022 | Internal result preview is distinct, watermarked, and audited; applicant/external generation or distribution is denied until finalized consultation/release prerequisites pass. |
@@ -150,12 +150,12 @@ Names are candidates, but command ownership and behavioral separation are requir
 **Then** the database and command contract allow only the approved result  
 **And** the rejected request receives a typed duplicate-resolution response.
 
-### SCN-VS-003 — Accept and establish credentials
+### SCN-VS-003 — Submit and establish applicant access
 
-**Given** a pending attempt reviewed by an authorized Registrar actor  
-**When** the actor accepts it  
-**Then** acceptance and mandatory audit commit atomically  
-**And** setup delivery occurs only after commit  
+**Given** a valid public or authorized staff submission
+**When** the submission commits
+**Then** the ApplicantIdentity, AdmissionAttempt, Applicant No/Reference, and mandatory audit commit atomically
+**And** setup/access delivery occurs only after commit
 **And** the one-time setup challenge cannot be reused or recovered from storage.
 
 ### SCN-VS-004 — Deny unauthorized acceptance

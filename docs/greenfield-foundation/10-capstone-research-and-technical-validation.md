@@ -31,6 +31,10 @@
 
 ## 3. OMR validation contract
 
+### Founder UX direction for the OMR review workspace
+
+The OMR feature should include a powerful PWA-capable review workspace in which an authorized reviewer can move through a scan batch smoothly, inspect the full paper and bubble regions, correct detected marks, explicitly confirm blank/no-bubble answers, and preserve confidence, provenance, before/after values, reviewer attribution, and audit history. PWA delivery is an interface requirement, not permission for offline authoritative mutation; offline writes remain subject to the conflict-controlled synchronization decision and gate.
+
 ### Required inputs before implementation commitment
 
 - approved answer-sheet template and version;

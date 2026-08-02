@@ -6,11 +6,10 @@ use App\Models\Applicant;
 use App\Models\ApplicantScore;
 use App\Models\Application;
 use App\Models\AptitudeArea;
+use App\Models\ConsultationSummary;
 use App\Models\ExamSession;
 use App\Models\GradingSession;
 use App\Models\SystemSetting;
-use App\Models\ConsultationSummary;
-use App\Services\ApplicationPipelineService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -97,7 +96,7 @@ class ScoreImportService
                     $area = $areaMap[$lowerKey] ?? null;
                     $isConversionTable = $area && ($area->scoring_method ?? 'formula') === 'conversion_table';
                     $enableNormalizedScores = SystemSetting::enableNormalizedScores();
-                    $mustBeNumeric = $enableNormalizedScores || !$isConversionTable;
+                    $mustBeNumeric = $enableNormalizedScores || ! $isConversionTable;
 
                     if ($value !== '' && $value !== null && $mustBeNumeric && ! is_numeric($value)) {
                         $recordErrors[] = "{$key} must be a number";
@@ -263,7 +262,7 @@ class ScoreImportService
                 if (isset($areaCodeToId[$lowerKey]) && $value !== '' && $value !== null) {
                     $area = $areaCodeToId[$lowerKey];
                     $isConversionTable = ($area->scoring_method ?? 'formula') === 'conversion_table';
-                    $mustBeNumeric = $enableNormalizedScores || !$isConversionTable;
+                    $mustBeNumeric = $enableNormalizedScores || ! $isConversionTable;
 
                     if ($mustBeNumeric && ! is_numeric($value)) {
                         $skipped++;

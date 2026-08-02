@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAptitudeAreaRequest;
 use App\Http\Requests\UpdateAptitudeAreaRequest;
 use App\Models\AptitudeArea;
+use App\Models\SystemSetting;
 use App\Services\AuditService;
 use App\Services\FormulaEvaluator;
 use Illuminate\Http\JsonResponse;
@@ -48,7 +49,7 @@ class AptitudeAreaController extends Controller
         $this->authorize('create', AptitudeArea::class);
 
         return Inertia::render('Admin/AptitudeAreas/Create', [
-            'enable_normalized_scores' => \App\Models\SystemSetting::enableNormalizedScores(),
+            'enable_normalized_scores' => SystemSetting::enableNormalizedScores(),
         ]);
     }
 
@@ -89,7 +90,7 @@ class AptitudeAreaController extends Controller
         $aptitudeArea->load('percentileConversions');
 
         return Inertia::render('Admin/AptitudeAreas/Edit', [
-            'enable_normalized_scores' => \App\Models\SystemSetting::enableNormalizedScores(),
+            'enable_normalized_scores' => SystemSetting::enableNormalizedScores(),
             'aptitude_area' => [
                 'id' => $aptitudeArea->id,
                 'name' => $aptitudeArea->name,

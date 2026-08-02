@@ -3,10 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Application;
-use App\Models\ConsultationSummary;
-use App\Models\ExamSession;
 use App\Services\ApplicationPipelineService;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class SyncPipelineStatusesCommand extends Command

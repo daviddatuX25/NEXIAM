@@ -6,7 +6,7 @@ use App\Models\Course;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Course>
+ * @extends Factory<Course>
  */
 class CourseFactory extends Factory
 {
@@ -22,8 +22,8 @@ class CourseFactory extends Factory
                 'Business Administration',
                 'Education',
                 'Engineering',
-            ]) . ' ' . $this->faker->numerify('###'),
-            'code' => strtoupper($this->faker->lexify('???')) . $this->faker->numerify('###'),
+            ]).' '.$this->faker->numerify('###'),
+            'code' => strtoupper($this->faker->lexify('???')).$this->faker->numerify('###'),
             'is_active' => true,
         ];
     }

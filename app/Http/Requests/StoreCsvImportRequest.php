@@ -18,7 +18,7 @@ class StoreCsvImportRequest extends FormRequest
         $maxKb = (int) (CsvToNarrativeService::MAX_FILE_SIZE_BYTES / 1024);
 
         return [
-            'file' => ['required', 'file', 'mimes:csv,txt', 'max:' . $maxKb],
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:'.$maxKb],
             'title' => ['required', 'string', 'max:255'],
             'metadata' => ['sometimes', 'array'],
             'metadata.category' => ['nullable', 'string', 'max:128'],

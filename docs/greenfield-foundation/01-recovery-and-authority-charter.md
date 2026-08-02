@@ -23,6 +23,8 @@ Recovery succeeds when:
 
 NEXIAM already has substantial analysis, manuscript material, audit evidence, architecture proposals, and a greenfield roadmap. Repeating BMAD Phase 1 as blank-slate brainstorming would waste evidence and risk new contradictions. Skipping directly to Phase 4 would make unresolved assumptions executable.
 
+Founder decision D-002 is GO: use this controlled recovery bridge because the exercised legacy codebase and capstone documents are valuable evidence inputs, while the approved BMAD/foundation chain becomes the target authority.
+
 The controlled path is:
 
 1. **Phase 1 recovery validation:** inventory evidence, preserve unknowns, close field-evidence gaps.
@@ -31,9 +33,9 @@ The controlled path is:
 4. **Readiness audit:** independently verify traceability and contradictions.
 5. **Phase 4 implementation:** scaffold, then build the approved connected slice.
 
-## 3. Draft source-of-truth precedence
+## 3. Source-of-truth precedence
 
-Until founder review, this order is a proposal:
+D-001 was approved GO by David on 2026-08-02. The following hierarchy governs the recovery process, while the individual foundation artifacts remain DRAFT until their own decisions are propagated and the readiness audit passes:
 
 1. Explicit founder decisions recorded in the approved batch-decision matrix.
 2. Binding panel/adviser constraints and verified institutional policy.

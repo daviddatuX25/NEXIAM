@@ -88,7 +88,7 @@ A controller must not return a success that implies an after-commit effect compl
 | FAIL-001 | Duplicate/concurrent admission submission | DB constraint/lock selects legal result; return typed duplicate/conflict | Link/review/merge/new-attempt path per D-027 | read-then-insert race or second accidental identity |
 | FAIL-002 | Reference collision | Roll back and retry bounded safe generator/sequence | Alert if exhausted | `COUNT + 1` or exposing DB error |
 | FAIL-003 | Appointment capacity race | One reservation commits; other receives capacity conflict | choose another slot/waitlist if approved | negative/drifting count or overbooking |
-| FAIL-004 | Acceptance commits but setup mail fails | Attempt remains accepted; delivery marked failed/retrying | authorized resend/retry; applicant support fallback | roll back acceptance through email failure or issue second reusable token |
+| FAIL-004 | Submission commits but applicant setup/access delivery fails | ApplicantIdentity, AdmissionAttempt, Applicant No/Reference, and submission state remain committed; delivery marked failed/retrying | authorized resend/retry or bounded staff-assisted recovery; applicant acceptance remains independent | roll back submission through delivery failure or issue a second reusable token |
 | FAIL-005 | Bulk intake row invalid | Apply approved atomic/staged semantics; return each row outcome | corrected re-import by same batch/idempotency contract | bypass validation/policy or silently skip rows |
 | FAIL-006 | Session room/capacity conflict | Reject conflicting command atomically | refresh/reselect room/time/assignment | last-write-wins schedule corruption |
 | FAIL-007 | Proctor unavailable/revoked | Deny further protected session actions immediately | authorized reassignment with history/notification | permanent role leakage or deleting assignment evidence |
@@ -237,6 +237,10 @@ Every import has explicit phases:
 10. support idempotent retry and audited correction.
 
 Importer code never writes around policies/domain services merely for speed.
+
+### Future unified/dynamic import direction
+
+The detail-stage architecture must evaluate whether one configurable import workflow can create and link related records—such as identity, admission attempt, examination assignment, and reviewed score data—without preserving today’s application-import and score-import split as a permanent boundary. Any such capability must remain staged, typed, scope-authorized, idempotent, auditable, and explicit about transaction/partial-failure semantics; it must converge on the same owning aggregate commands rather than performing unrestricted direct table writes.
 
 ## 10. Reconciliation work queues
 

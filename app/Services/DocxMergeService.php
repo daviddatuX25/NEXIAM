@@ -8,8 +8,6 @@ class DocxMergeService
      * Merge multiple DOCX files into a single output DOCX file using altChunk.
      *
      * @param  string[]  $docxPaths
-     * @param  string  $outputPath
-     * @return void
      */
     public function merge(array $docxPaths, string $outputPath): void
     {
@@ -30,7 +28,7 @@ class DocxMergeService
             return;
         }
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($outputPath) !== true) {
             throw new \RuntimeException("Failed to open output DOCX file: {$outputPath}");
         }
@@ -51,9 +49,9 @@ class DocxMergeService
         $bodyChunks = '';
 
         for ($i = 1; $i < count($docxPaths); $i++) {
-            $chunkId = 'rIdChunk' . $i;
-            $chunkName = 'chunk' . $i . '.docx';
-            $chunkPathInZip = 'word/' . $chunkName;
+            $chunkId = 'rIdChunk'.$i;
+            $chunkName = 'chunk'.$i.'.docx';
+            $chunkPathInZip = 'word/'.$chunkName;
 
             // Add secondary DOCX file to zip archive
             $zip->addFromString($chunkPathInZip, file_get_contents($docxPaths[$i]));
@@ -80,12 +78,12 @@ class DocxMergeService
 
         // 3. Inject relationships into word/_rels/document.xml.rels
         // Insert right before the closing </Relationships>
-        $relsXml = str_replace('</Relationships>', $relsToAppend . '</Relationships>', $relsXml);
+        $relsXml = str_replace('</Relationships>', $relsToAppend.'</Relationships>', $relsXml);
         $zip->addFromString('word/_rels/document.xml.rels', $relsXml);
 
         // 4. Inject content types into [Content_Types].xml
         // Insert right before the closing </Types>
-        $contentTypesXml = str_replace('</Types>', $contentTypesToAppend . '</Types>', $contentTypesXml);
+        $contentTypesXml = str_replace('</Types>', $contentTypesToAppend.'</Types>', $contentTypesXml);
         $zip->addFromString('[Content_Types].xml', $contentTypesXml);
 
         // 5. Inject altChunks into word/document.xml
@@ -94,9 +92,9 @@ class DocxMergeService
         // Therefore, we must insert our altChunks right before the final <w:sectPr>.
         $sectPrPos = strrpos($documentXml, '<w:sectPr');
         if ($sectPrPos !== false) {
-            $documentXml = substr($documentXml, 0, $sectPrPos) . $bodyChunks . substr($documentXml, $sectPrPos);
+            $documentXml = substr($documentXml, 0, $sectPrPos).$bodyChunks.substr($documentXml, $sectPrPos);
         } else {
-            $documentXml = str_replace('</w:body>', $bodyChunks . '</w:body>', $documentXml);
+            $documentXml = str_replace('</w:body>', $bodyChunks.'</w:body>', $documentXml);
         }
         $zip->addFromString('word/document.xml', $documentXml);
 

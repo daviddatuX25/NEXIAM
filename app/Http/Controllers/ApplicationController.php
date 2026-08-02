@@ -265,7 +265,7 @@ class ApplicationController extends Controller
 
         // Identity-based duplicate check (name + birthdate + sex)
         $identityDuplicate = null;
-        if (!empty($validated['birthdate']) && !empty($validated['sex'])) {
+        if (! empty($validated['birthdate']) && ! empty($validated['sex'])) {
             $identityDuplicate = Application::where('academic_year_id', $activeAcademicYear->id)
                 ->whereRaw('LOWER(first_name) = ?', [strtolower($validated['first_name'])])
                 ->whereRaw('LOWER(last_name) = ?', [strtolower($validated['last_name'])])
@@ -281,7 +281,7 @@ class ApplicationController extends Controller
                 ->with('error', "A person with the same name, birthdate, and sex already has an application ({$identityDuplicate->reference_number}) for this academic year.");
         }
 
-        $birthdateVal = !empty($validated['birthdate']) ? $validated['birthdate'] : '2005-01-01';
+        $birthdateVal = ! empty($validated['birthdate']) ? $validated['birthdate'] : '2005-01-01';
         $birthdate = Carbon::parse($birthdateVal);
         $age = (int) $birthdate->diffInYears(now());
 
@@ -469,7 +469,7 @@ class ApplicationController extends Controller
 
         // Identity-based duplicate check (name + birthdate + sex)
         $identityDuplicate = null;
-        if (!empty($validated['birthdate']) && !empty($validated['sex'])) {
+        if (! empty($validated['birthdate']) && ! empty($validated['sex'])) {
             $identityDuplicate = Application::where('academic_year_id', $activeAcademicYear->id)
                 ->whereRaw('LOWER(first_name) = ?', [strtolower($validated['first_name'])])
                 ->whereRaw('LOWER(last_name) = ?', [strtolower($validated['last_name'])])
@@ -485,7 +485,7 @@ class ApplicationController extends Controller
                 ->with('error', "A person with the same name, birthdate, and sex already has an application ({$identityDuplicate->reference_number}) for this academic year.");
         }
 
-        $birthdateVal = !empty($validated['birthdate']) ? $validated['birthdate'] : '2005-01-01';
+        $birthdateVal = ! empty($validated['birthdate']) ? $validated['birthdate'] : '2005-01-01';
         $birthdate = Carbon::parse($birthdateVal);
         $age = (int) $birthdate->diffInYears(now());
 

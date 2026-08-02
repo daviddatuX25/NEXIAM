@@ -56,6 +56,11 @@ Read [`00-catch-up-and-continue-progress.md`](00-catch-up-and-continue-progress.
 | 13 | `13-decision-and-batch-approval-matrix.md` | Presents all founder decisions with recommendations, consequences, and Go/No-Go choices | Single-session batch review authority |
 | 14 | `14-readiness-gates-and-reconciled-roadmap.md` | Reconciles the old 14 phases with BMAD and vertical-slice sequencing | Controls entry into implementation |
 | 15 | `15-architecture-decision-record-catalog.md` | Defines proposed ADRs, dependencies, alternatives, consequences, and promotion tests | Creates the Phase 3 bridge from approved decisions to implementation stories |
+| 16 | `16-solutioning-review-and-artifact-plan.md` | Defines the staged review and HLD/LLD/schema/interface/operations artifact chain | Controls solutioning promotion |
+| 17 | `17-system-high-level-design.md` | Defines system context, containers, module boundaries, trust boundaries, and runtime topology | Provides the HLD review gate before LLD |
+| 18 | `18-module-and-domain-low-level-design.md` | Defines aggregates, commands, queries, state ownership, transaction boundaries, failure types, and LLD holds | Provides the LLD review gate before schema/interfaces |
+| 19 | `19-schema-constraint-and-migration-catalog.md` | Defines candidate tables, keys, constraints, deletion policy, migration order, and database evidence | Provides the persistence review gate |
+| 20 | `20-application-and-integration-contract-catalog.md` | Defines command/query/event/job/adapter/idempotency/failure contracts | Provides the application-boundary review gate |
 
 ## Draft engineering diagrams
 

@@ -22,18 +22,18 @@
 | Aggregate/entity | Responsibility | Proposed lifetime |
 |---|---|---|
 | `StaffAccount` | Staff authentication, status, role/capability grants, office/program assignments | Durable while employed; deactivate, do not erase audit identity |
-| `ApplicantIdentity` | Durable normalized person/contact identity that owns cycle-scoped admission attempts, including unauthenticated public intake | Durable subject record across approved cycles; correction/merge/restriction is explicit |
-| `ApplicantAccount` | Optional portal credential principal linked to one ApplicantIdentity and activated/provisioned after approved acceptance | Durable account across approved cycles; deactivation does not erase ApplicantIdentity/history |
+| `ApplicantIdentity` | Durable normalized person/contact identity that owns cycle-scoped admission attempts, Applicant No/Reference values, and optional portal access, including unauthenticated public intake | Durable subject record across approved cycles; correction/merge/restriction is explicit |
+| `ApplicantAccount` | Optional portal credential principal linked to one ApplicantIdentity and established after successful submission through an approved one-time challenge; Registrar acceptance is not a prerequisite | Durable account across approved cycles; deactivation does not erase ApplicantIdentity/history |
 | `RoleGrant` | Permanent approved base-role assignment with granter and dates | Versioned/revocable |
 | `DutyAssignment` | Contextual capability such as Proctor for one ExamSession | Time/state bounded and revocable |
-| `CredentialChallenge` | Hashed one-time setup/reset challenge | Short-lived, one-time, auditable |
+| `CredentialChallenge` | Hashed one-time setup/reset/access challenge issued after successful Applicant submission or an approved recovery request | Short-lived, one-time, auditable; never a stored bearer secret |
 
 ### Admission Intake
 
 | Aggregate/entity | Responsibility | Proposed lifetime |
 |---|---|---|
 | `AcademicCycle` | Admission cycle/window and activation state | Historical, immutable after closure except reasoned correction |
-| `AdmissionAttempt` | One ApplicantIdentity’s cycle-scoped application, preferences, intake decision, and workflow reference | Durable historical record; may exist before ApplicantAccount activation |
+| `AdmissionAttempt` | One ApplicantIdentity’s cycle-scoped application, stable Applicant No/Reference, preferences, intake decision, and workflow reference; Applicant No/Reference binds answer-sheet receipt/import | Durable historical record; may exist before ApplicantAccount activation |
 | `AppointmentSlot` | Capacity-controlled intake appointment | Cycle-scoped; occupancy derived or transactionally maintained |
 | `ApplicationDocument` | Approved uploaded/generated intake artifact metadata | Retained by classification/version policy |
 
@@ -61,7 +61,9 @@
 
 | Aggregate/entity | Responsibility | Proposed lifetime |
 |---|---|---|
-| `ConsultationDecision` | Counselor’s approved/modified/overridden/deferred outcome and rationale | Versioned, attributable, never autonomously generated |
+| `ConsultationPlan` | Published consultation mode/availability: default F2F batch schedule or online open reservation window | Versioned, office-owned, published/unpublished with audit; does not alter result evidence |
+| `ConsultationReservation` | Applicant’s F2F batch assignment or online first-come reservation, with actor/source and scope | Durable reservation history; cancellation/rebooking preserves prior evidence |
+| `ConsultationDecision` | Counselor/Test Administrator’s approved/modified/overridden/deferred outcome and rationale, including suggested programs/courses and the Applicant’s separate selected choice | Versioned, attributable, never autonomously generated; suggestions and selections are never silently collapsed |
 | `InferenceResult` | Engine input hash, output, confidence, version, provenance | Immutable supporting evidence; not the final decision |
 | `ResultRelease` | Release/unrelease event, mode, document version, actor, recipient effects | Immutable event/version history with current released projection |
 | `GeneratedDocument` | Template/version, typed inputs, output checksum, storage reference | Retained according to document/data class |
@@ -123,7 +125,7 @@ Exact transition contracts are defined in `06-workflows-and-state-transitions.md
 |---|---|---|
 | INV-001 | One durable ApplicantIdentity may own multiple cycle-scoped AdmissionAttempts; one optional ApplicantAccount authenticates that identity; one attempt belongs to exactly one identity and cycle | Public pre-account intake, legacy applicant/application cardinality, and relinking ambiguity |
 | INV-002 | Normalized identity uniqueness is explicitly scoped and database-enforced; duplicate handling is an approved workflow | Read-then-insert duplicate race |
-| INV-003 | Application/reference identifiers use a collision-safe generator or locked counter plus unique retry | `COUNT + 1` race |
+| INV-003 | Applicant No/Reference uses a collision-safe generator or locked counter plus unique retry; it is unique per AdmissionAttempt, stable for its history, non-secret, and used to bind answer-sheet receipt/import | `COUNT + 1` race and wrong-sheet attribution |
 | INV-004 | At most one active AcademicCycle, enforced through serialized activation and database support | Application-level active-cycle race |
 | INV-005 | Appointment capacity cannot be exceeded under concurrent booking | Non-atomic `booked_count` drift |
 | INV-006 | Room/session overlap cannot be committed concurrently | Application-only room-conflict check |

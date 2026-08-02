@@ -9,6 +9,14 @@
 
 NEXIAM is a role-isolated admissions-management system for the ISPSC Tagudin admission-testing journey: application intake, controlled applicant access, examination scheduling and administration, scoring, result release, and post-examination counseling support. Its capstone contribution is not “AI everywhere.” It is a complete, auditable institutional workflow with carefully bounded computer-vision and decision-support assistance under human authority.
 
+**D-006 founder direction:** The product promise is the whole approved NEXIAM capstone concept and its complete feature boundary, not only the first connected vertical slice. The Connected Admission-to-Release Slice is the first implementation and proof milestone. Every other feature must be deliberately classified, designed, traced to evidence, and sequenced; no capability may be silently omitted.
+
+**D-008 founder direction:** The capstone should plan one shared, provider-agnostic AI capability boundary that can support the RAG chatbot, model/OMR assistance, scheduling assistance, and future AI-assisted interfaces. AI-automated reporting is not part of the current capstone commitment. Exact libraries, SDKs, providers, prompts, model contracts, and implementation details remain subject to later research and HLD/LLD decisions. AI outputs remain supporting evidence or assistance; approved human/application commands remain authoritative.
+
+The detail pass after this decision review must also revisit import architecture. The current separation between application import and score import is observed legacy behavior, not a permanent target boundary. A future unified/dynamic import capability may create related records through one validated, staged, idempotent workflow, subject to domain ownership, authorization, transaction, error-recovery, and audit design.
+
+Where feature families already exist in the manuscript, capstone research, RAD work, or phase plans, the merge process must recover and trace those artifacts into the canonical chain rather than recreate or silently narrow them. The canonical chain is the reconciled design authority; the earlier artifacts remain evidence until promoted through the decision and readiness process.
+
 ## 2. Problem boundary
 
 The system should address:
@@ -29,16 +37,18 @@ The final wording of each problem claim must trace to stakeholder or institution
 ### Evaluated product actors
 
 1. Applicant
-2. Registrar Staff
+2. Registrar Clerk
 3. Registrar Administrator
 4. Guidance Counselor
-5. Guidance Administrator
+5. Guidance Clerk
 6. Program Head
-7. System IT Administrator
 
 ### Contextual/system actors
 
 - Proctor: temporary examination-session duty assigned to an eligible staff account; proposed default, not a permanent role.
+- Registrar Support Staff: subordinate/temporary Registrar office staff role.
+- Guidance Support Staff: subordinate/temporary Guidance office staff role with Guidance Clerk responsibilities by default; may receive delegated Test Administration capability or Proctor duty separately.
+- Staffing/HR Administrator: personnel-lifecycle actor for approved permanent and support-staff accounts; not an operational applicant/admission actor and cannot grant Test Administrator/Proctor capability.
 - Super Admin: non-evaluated break-glass/oversight account, if retained.
 - Queue/worker/scheduler: system actors with no human authority.
 - External services: mail, knowledge/vector provider, LLM provider, and approved inference worker behind adapters.
@@ -53,15 +63,15 @@ Final actor membership is decision-gated by D-ROLE-01 through D-ROLE-05.
 |---|---|
 | Applicant intake | Create a cycle-scoped admission attempt with validated identity/contact/preferences and duplicate controls |
 | Staff review | Registrar can review, correct within authority, accept, dismiss, and reopen through explicit commands |
-| Applicant authentication | Non-secret identifier plus credential setup/recovery; own-data isolation |
-| Examination scheduling | Guidance creates/publishes sessions, assigns applicants and contextual proctors, records attendance/submission |
+| Applicant authentication | Applicant No/Reference plus post-submission credential setup/recovery; own-data isolation; durable history across cycles |
+| Examination scheduling | Guidance creates/publishes sessions, assigns applicants and contextual proctors, records attendance/submission, and publishes F2F/online consultation availability |
 | Manual scoring | Authorized Guidance staff can enter/correct scores with finalization completeness rules |
-| Consultation and result release | Counselor records decision support/rationale and performs explicit release/unrelease under approved rules |
-| Applicant portal | Applicant sees own status, schedule, admission documents, and released results |
+| Consultation and result release | Guidance prepares/prints results as required; Counselor/Test Administrator records consultation evidence, preserves suggestions versus Applicant selections, and performs explicit release/unrelease under approved rules |
+| Applicant portal | Applicant sees own submitted/accepted status, schedule, consultation availability, and released results; admission slip is not required for answer-sheet identity |
 | Documents and notifications | Safe, typed generation plus idempotent after-commit delivery |
 | Authorization | Approved capability matrix, office/program/own/assigned scopes, denied-path tests |
 | Critical audit evidence | Actor-attributed events for identity, role, workflow, score, release, access, and configuration actions |
-| Program Head projection | Read-only, program-scoped aggregate visibility if stakeholder scope is approved |
+| Program Head projection | Read-only, program-scoped aggregate and authorized applicant-record visibility, including result/remark sheet and converted per-domain scores; raw answer sheets and confidential conversion tables remain restricted |
 
 ### Tier B — Capstone differentiators, recommended COMMITTED only after spike gates
 
@@ -170,7 +180,7 @@ A capstone demonstration PASS does not imply pilot or production clearance.
 
 ## 8. First target outcome
 
-The first product milestone is not feature parity. It is the **Connected Admission-to-Release Slice**:
+The first implementation milestone is not the whole product boundary. It is the **Connected Admission-to-Release Slice**:
 
 1. submit one admission attempt;
 2. review and accept it;

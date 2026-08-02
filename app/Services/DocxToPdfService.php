@@ -124,7 +124,7 @@ class DocxToPdfService
      * Convert multiple DOCX files to PDF in batches using single LibreOffice invocations.
      *
      * @param  string[]  $docxPaths
-     * @return string[]  Array of PDF file contents in the same order as $docxPaths
+     * @return string[] Array of PDF file contents in the same order as $docxPaths
      */
     public function convertMultiple(array $docxPaths): array
     {
@@ -196,7 +196,6 @@ class DocxToPdfService
 
         return $pdfContents;
     }
-
 
     /**
      * @param  string[]  $pdfContents

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (! Schema::hasColumn('exam_session_applicant', 'attendance_status')) {
             Schema::table('exam_session_applicant', function (Blueprint $table) {
-$table->enum('attendance_status', ['pending', 'present', 'absent'])->default('pending')->after('applicant_id');
+                $table->enum('attendance_status', ['pending', 'present', 'absent'])->default('pending')->after('applicant_id');
                 $table->timestamp('attendance_marked_at')->nullable()->after('attendance_status');
                 $table->foreignId('attendance_marked_by')->nullable()->after('attendance_marked_at')->constrained('users')->nullOnDelete();
                 $table->enum('submission_status', ['pending', 'submitted'])->default('pending')->after('attendance_marked_by');

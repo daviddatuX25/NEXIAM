@@ -26,8 +26,8 @@ class GoogleOAuthUserResolver
         }
 
         UserCredential::create([
-            'user_id'    => $user->id,
-            'provider'   => UserCredential::PROVIDER_GOOGLE,
+            'user_id' => $user->id,
+            'provider' => UserCredential::PROVIDER_GOOGLE,
             'identifier' => $socialUser->getId(),
         ]);
 

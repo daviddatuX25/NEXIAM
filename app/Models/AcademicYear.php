@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class AcademicYear extends Model
 {
     use HasFactory;
+
     protected $table = 'academic_years';
 
     protected $fillable = ['academic_year', 'semester', 'is_active', 'application_start_date', 'application_end_date'];

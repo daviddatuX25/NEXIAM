@@ -20,6 +20,10 @@ export default defineConfig({
             '@': path.resolve(__dirname, 'resources/js'),
         },
     },
+    test: {
+        environment: 'jsdom',
+        passWithNoTests: true,
+    },
     server: {
         port: process.env.LARAVEL_SAIL
             ? (parseInt(process.env.VITE_PORT, 10) || 5173)

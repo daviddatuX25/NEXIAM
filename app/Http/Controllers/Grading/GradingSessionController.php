@@ -88,5 +88,4 @@ class GradingSessionController extends Controller
 
         return redirect()->back()->with('success', 'Status updated.');
     }
-
 }

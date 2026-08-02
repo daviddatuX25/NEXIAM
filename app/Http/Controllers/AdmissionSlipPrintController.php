@@ -28,6 +28,7 @@ class AdmissionSlipPrintController extends Controller
             ->get()
             ->map(function (Application $app) {
                 $name = trim(implode(' ', array_filter([$app->first_name, $app->middle_name, $app->last_name, $app->suffix])));
+
                 return [
                     'id' => $app->id,
                     'application_id' => $app->id,
@@ -158,7 +159,7 @@ class AdmissionSlipPrintController extends Controller
                 // Half layout: render each slip separately and concatenate so the page has two root elements (mirror GradingPrintController).
                 $html1 = $this->templateService->render($template, [$dataBatch[0]], false);
                 $html2 = $this->templateService->render($template, [$dataBatch[1]], false);
-                $sheetsHtml[] = $html1 . $html2;
+                $sheetsHtml[] = $html1.$html2;
             } else {
                 $sheetsHtml[] = $this->templateService->render($template, $dataBatch, false);
             }

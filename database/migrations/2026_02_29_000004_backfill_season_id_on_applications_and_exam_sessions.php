@@ -79,6 +79,7 @@ return new class extends Migration
             if (! DB::table('seasons')->where('is_active', true)->exists()) {
                 DB::table('seasons')->where('id', $existing->id)->update(['is_active' => true]);
             }
+
             return (int) $existing->id;
         }
 
@@ -90,6 +91,7 @@ return new class extends Migration
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         return (int) $id;
     }
 };

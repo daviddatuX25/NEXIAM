@@ -1,0 +1,9 @@
+node_modules
+vendor
+build
+public/build
+legacy_codebase
+manuscript
+graphify-out
+result_sheet_templates
+storage
