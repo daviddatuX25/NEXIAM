@@ -32,10 +32,15 @@ Unknowns remain visible. They are never filled with fabricated stakeholder facts
 
 The existing audit and greenfield documents are inputs to these phases. They do not bypass them.
 
+## Start here after a break
+
+Read [`00-catch-up-and-continue-progress.md`](00-catch-up-and-continue-progress.md) first. It is the project return point: current status, what remains blocked, the founder/PM catch-up checklist, the Lead Engineer continuation sequence, the first working-version boundary, and a reusable progress checkpoint template.
+
 ## Document suite and reading order
 
 | Order | Artifact | Purpose | Approval effect |
 |---:|---|---|---|
+| 0 | `00-catch-up-and-continue-progress.md` | Catch-up index and continuation checkpoint for resuming the project safely | Establishes where to resume; does not approve product behavior |
 | 1 | `01-recovery-and-authority-charter.md` | Controls evidence, authority, freezes, review, promotion, and stop gates | Approves the recovery process, not product behavior |
 | 2 | `02-evidence-and-contradiction-register.md` | Records sources, confidence, conflicts, winning candidates, and missing validation | Identifies what must be decided or gathered |
 | 3 | `03-product-scope-and-success-contract.md` | Defines capstone promise, actors, must/conditional/deferred scope, and success planes | Locks product and evaluation boundaries |
