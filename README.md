@@ -19,6 +19,8 @@ NEXIAM is a comprehensive, zero-trust web application specifically engineered to
 - [Technology Stack and Environment](#technology-stack--environment)
 - [NEXIAM Dokploy Deployment Guide](#nexiam--dokploy-deployment-guide)
 - [Project Identity and Naming Policy](./docs/project-identity.md)
+- [Greenfield Foundation Suite README](./docs/greenfield-foundation/README.md)
+- [Greenfield Foundation — Catch-up and Continue Progress](./docs/greenfield-foundation/00-catch-up-and-continue-progress.md)
 
 ---
 
@@ -40,6 +42,41 @@ Start here and read in order:
 | 8 | [Architecture Audit](./docs/architecture-audit.md) | Historical reconnaissance (reference; corrections in the master blueprint take precedence). |
 
 Documents 1-3 are the path from understanding to execution. Documents 4-8 are the evidence base.
+
+### Greenfield Foundation — Catch-up and Continue Progress
+
+The documents above are historical architecture/audit inputs. For the current greenfield rebuild, use the foundation suite below as the approval and implementation-readiness path.
+
+**If returning after a break, start here:** [00 — Catch-up and Continue Progress](./docs/greenfield-foundation/00-catch-up-and-continue-progress.md)
+
+Read the suite in this order:
+
+| # | Foundation document | Purpose |
+|---:|---|---|
+| Index | [Foundation Suite README](./docs/greenfield-foundation/README.md) | Full suite authority model, reading order, status vocabulary, and review protocol |
+| 0 | [Catch-up and Continue Progress](./docs/greenfield-foundation/00-catch-up-and-continue-progress.md) | Current position, blocked work, PM/Lead Engineer next actions, and checkpoint template |
+| 1 | [Recovery and Authority Charter](./docs/greenfield-foundation/01-recovery-and-authority-charter.md) | Evidence authority, review, promotion, and stop gates |
+| 2 | [Evidence and Contradiction Register](./docs/greenfield-foundation/02-evidence-and-contradiction-register.md) | Sources, conflicts, confidence, and unresolved validation |
+| 3 | [Product Scope and Success Contract](./docs/greenfield-foundation/03-product-scope-and-success-contract.md) | Product boundary, capstone promise, success criteria, and non-goals |
+| 4 | [Role, Capability, and Data Scope Matrix](./docs/greenfield-foundation/04-role-capability-and-data-scope-matrix.md) | Role authority, negative permissions, and data visibility |
+| 5 | [Domain Model and Data Lifecycle](./docs/greenfield-foundation/05-domain-model-and-data-lifecycle.md) | Identity, admission attempts, ownership, lifecycle, and invariants |
+| 6 | [Workflows and State Transitions](./docs/greenfield-foundation/06-workflows-and-state-transitions.md) | Actor-owned journeys and canonical state transitions |
+| 7 | [Failure, Recovery, and Integration Contracts](./docs/greenfield-foundation/07-failure-recovery-and-integration-contracts.md) | Retry, idempotency, compensation, recovery, and external adapters |
+| 8 | [Security, Privacy, and Audit Contract](./docs/greenfield-foundation/08-security-privacy-and-audit-contract.md) | Authentication, authorization, privacy, retention, and audit obligations |
+| 9 | [Platform Topology and Development Standards](./docs/greenfield-foundation/09-platform-topology-and-development-standards.md) | Runtime, Compose topology, quality gates, and operations standards |
+| 10 | [Capstone Research and Technical Validation](./docs/greenfield-foundation/10-capstone-research-and-technical-validation.md) | OMR, RAG, inference, pilot, and research evidence contracts |
+| 11 | [Connected Vertical Slice and Acceptance](./docs/greenfield-foundation/11-connected-vertical-slice-and-acceptance.md) | Minimum admission-to-release working version and acceptance scenarios |
+| 12 | [Requirements Traceability Matrix](./docs/greenfield-foundation/12-requirements-traceability-matrix.md) | Evidence → requirement → decision → workflow → acceptance coverage |
+| 13 | [Decision and Batch Approval Matrix](./docs/greenfield-foundation/13-decision-and-batch-approval-matrix.md) | 80 founder decisions, recommendations, consequences, and Go/No-Go gates |
+| 14 | [Readiness Gates and Reconciled Roadmap](./docs/greenfield-foundation/14-readiness-gates-and-reconciled-roadmap.md) | Conditions and sequencing for implementation |
+| 15 | [Architecture Decision Record Catalog](./docs/greenfield-foundation/15-architecture-decision-record-catalog.md) | ADRs to promote after founder approval |
+
+Supporting diagrams:
+
+- [Proposed domain ERD (editable Mermaid source)](./docs/greenfield-foundation/assets/proposed-domain-erd.mmd) · [rendered SVG](./docs/greenfield-foundation/assets/proposed-domain-erd.svg)
+- [Proposed deployment topology (editable Mermaid source)](./docs/greenfield-foundation/assets/proposed-deployment-topology.mmd) · [rendered SVG](./docs/greenfield-foundation/assets/proposed-deployment-topology.svg)
+
+The foundation suite remains `DRAFT — REVIEW REQUIRED`. No schema, authentication, or domain implementation should begin until the P0 decisions are approved and the readiness gate is passed.
 
 ## 🏢 System Overview & Architecture
 
