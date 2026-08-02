@@ -1,0 +1,211 @@
+erDiagram
+    STAFF_ACCOUNT {
+        bigint id PK
+        string public_id
+        string email
+        string status
+    }
+    APPLICANT_IDENTITY {
+        bigint id PK
+        string public_id
+        string normalized_identity_key
+        string primary_email
+        string status
+    }
+    APPLICANT_ACCOUNT {
+        bigint id PK
+        bigint applicant_identity_id FK
+        string login_identifier
+        string status
+    }
+    ROLE_GRANT {
+        bigint id PK
+        bigint staff_account_id FK
+        string role
+        datetime starts_at
+        datetime ends_at
+    }
+    ACADEMIC_CYCLE {
+        bigint id PK
+        string code
+        string status
+        datetime application_opens_at
+        datetime application_closes_at
+    }
+    ADMISSION_ATTEMPT {
+        bigint id PK
+        string public_reference
+        bigint applicant_identity_id FK
+        bigint academic_cycle_id FK
+        string intake_status
+        string workflow_stage
+    }
+    APPOINTMENT_SLOT {
+        bigint id PK
+        bigint academic_cycle_id FK
+        datetime starts_at
+        int capacity
+    }
+    PROGRAM {
+        bigint id PK
+        string code
+        string name
+        string status
+    }
+    PROGRAM_PREFERENCE {
+        bigint id PK
+        bigint admission_attempt_id FK
+        bigint program_id FK
+        int rank
+    }
+    EXAM_SESSION {
+        bigint id PK
+        bigint academic_cycle_id FK
+        bigint room_id FK
+        string status
+        string assessment_mode
+        datetime starts_at
+        datetime ends_at
+    }
+    ROOM {
+        bigint id PK
+        string code
+        int capacity
+        string status
+    }
+    EXAM_ASSIGNMENT {
+        bigint id PK
+        bigint exam_session_id FK
+        bigint admission_attempt_id FK
+        string attendance_status
+        string submission_status
+    }
+    PROCTOR_ASSIGNMENT {
+        bigint id PK
+        bigint exam_session_id FK
+        bigint staff_account_id FK
+        datetime assigned_at
+        datetime revoked_at
+    }
+    GRADING_SESSION {
+        bigint id PK
+        bigint exam_session_id FK
+        int version
+        string status
+    }
+    APTITUDE_AREA {
+        bigint id PK
+        string code
+        int version
+        string status
+    }
+    SCORE_RECORD {
+        bigint id PK
+        bigint grading_session_id FK
+        bigint admission_attempt_id FK
+        bigint aptitude_area_id FK
+        decimal score
+        int version
+        string source
+    }
+    OMR_BATCH {
+        bigint id PK
+        string public_id
+        string template_version
+        string answer_key_version
+        string status
+    }
+    OMR_OBSERVATION {
+        bigint id PK
+        bigint omr_batch_id FK
+        bigint admission_attempt_id FK
+        string item_key
+        decimal confidence
+        string review_status
+    }
+    INFERENCE_RESULT {
+        bigint id PK
+        bigint admission_attempt_id FK
+        string engine_id
+        string engine_version
+        string input_hash
+        string status
+    }
+    CONSULTATION_DECISION {
+        bigint id PK
+        bigint admission_attempt_id FK
+        bigint counselor_id FK
+        int version
+        string decision
+        string status
+    }
+    RESULT_RELEASE {
+        bigint id PK
+        bigint admission_attempt_id FK
+        bigint consultation_decision_id FK
+        int version
+        string status
+        datetime released_at
+    }
+    GENERATED_DOCUMENT {
+        bigint id PK
+        string owner_type
+        bigint owner_id
+        string template_version
+        string checksum
+        string storage_key
+    }
+    NOTIFICATION_DELIVERY {
+        bigint id PK
+        string event_id
+        string recipient_type
+        bigint recipient_id
+        string channel
+        string status
+    }
+    KNOWLEDGE_DOCUMENT {
+        bigint id PK
+        string source_version
+        string audience
+        string sync_status
+    }
+    AUDIT_EVENT {
+        bigint id PK
+        bigint sequence
+        string actor_type
+        bigint actor_id
+        string action
+        string subject_type
+        bigint subject_id
+        string previous_hash
+        string event_hash
+    }
+
+    STAFF_ACCOUNT ||--o{ ROLE_GRANT : receives
+    APPLICANT_IDENTITY ||--o| APPLICANT_ACCOUNT : authenticates
+    APPLICANT_IDENTITY ||--o{ ADMISSION_ATTEMPT : owns
+    ACADEMIC_CYCLE ||--o{ ADMISSION_ATTEMPT : scopes
+    ACADEMIC_CYCLE ||--o{ APPOINTMENT_SLOT : offers
+    ADMISSION_ATTEMPT ||--o{ PROGRAM_PREFERENCE : selects
+    PROGRAM ||--o{ PROGRAM_PREFERENCE : ranks
+    ACADEMIC_CYCLE ||--o{ EXAM_SESSION : schedules
+    ROOM ||--o{ EXAM_SESSION : hosts
+    EXAM_SESSION ||--o{ EXAM_ASSIGNMENT : contains
+    ADMISSION_ATTEMPT ||--o{ EXAM_ASSIGNMENT : receives
+    EXAM_SESSION ||--o{ PROCTOR_ASSIGNMENT : delegates
+    STAFF_ACCOUNT ||--o{ PROCTOR_ASSIGNMENT : performs
+    EXAM_SESSION ||--o{ GRADING_SESSION : opens
+    GRADING_SESSION ||--o{ SCORE_RECORD : records
+    ADMISSION_ATTEMPT ||--o{ SCORE_RECORD : earns
+    APTITUDE_AREA ||--o{ SCORE_RECORD : measures
+    OMR_BATCH ||--o{ OMR_OBSERVATION : produces
+    ADMISSION_ATTEMPT ||--o{ OMR_OBSERVATION : identifies
+    ADMISSION_ATTEMPT ||--o{ INFERENCE_RESULT : receives
+    ADMISSION_ATTEMPT ||--o{ CONSULTATION_DECISION : receives
+    STAFF_ACCOUNT ||--o{ CONSULTATION_DECISION : authors
+    ADMISSION_ATTEMPT ||--o{ RESULT_RELEASE : releases
+    CONSULTATION_DECISION ||--o{ RESULT_RELEASE : supports
+    RESULT_RELEASE ||--o{ GENERATED_DOCUMENT : generates
+    ADMISSION_ATTEMPT ||--o{ GENERATED_DOCUMENT : owns
+    APPLICANT_ACCOUNT ||--o{ NOTIFICATION_DELIVERY : receives
+    STAFF_ACCOUNT ||--o{ NOTIFICATION_DELIVERY : receives

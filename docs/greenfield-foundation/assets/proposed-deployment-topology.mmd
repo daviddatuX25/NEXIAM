@@ -1,0 +1,43 @@
+flowchart LR
+    subgraph U[Untrusted Client Zone]
+        B[Applicant and Staff Browsers]
+    end
+
+    subgraph I[Ingress]
+        T[Dokploy and Traefik HTTPS]
+    end
+
+    subgraph P[Private NEXIAM Application Network]
+        W[Laravel Web Application]
+        Q[Laravel Queue Worker]
+        S[Laravel Scheduler]
+        DB[(MySQL 8.4)]
+        FS[(Private File Storage)]
+        PY[Python Inference Worker]
+        MP[Mailpit Local and Test Only]
+    end
+
+    subgraph E[Explicit External Adapters]
+        MAIL[Production Mail Provider]
+        VEC[Knowledge or Vector Provider]
+        LLM[LLM Provider]
+        OBJ[Approved Object Storage or Audit Checkpoint]
+    end
+
+    B -->|HTTPS 443| T
+    T -->|Internal HTTP| W
+    W -->|SQL| DB
+    Q -->|SQL and Queue Claims| DB
+    S -->|Scheduled Commands| DB
+    W -->|Private Files| FS
+    Q -->|Private Files| FS
+    W -->|Versioned Internal Contract| PY
+    Q -->|Versioned Internal Contract| PY
+    W -->|Local Test Mail| MP
+    Q -->|Local Test Mail| MP
+    Q -->|After-Commit Mail| MAIL
+    Q -->|Approved Corpus Sync| VEC
+    Q -->|Bounded RAG Generation| LLM
+    Q -->|Backup or Checkpoint| OBJ
+    DB -->|Health and Readiness| W
+    PY -->|Health and Typed Results| W
