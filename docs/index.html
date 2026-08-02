@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NEXIAM Greenfield Foundation</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #172033;
+            --muted: #5d677a;
+            --line: #dbe2ec;
+            --surface: #ffffff;
+            --accent: #2257c7;
+            --accent-soft: #edf3ff;
+            --background: #f5f7fb;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--background);
+            color: var(--ink);
+            font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        main { max-width: 1100px; margin: 0 auto; padding: 48px 22px 72px; }
+        header {
+            background: linear-gradient(135deg, #162447, #2257c7);
+            border-radius: 18px;
+            color: #fff;
+            padding: 38px;
+            box-shadow: 0 18px 45px rgba(22, 36, 71, .18);
+        }
+        h1 { margin: 0 0 8px; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.1; }
+        header p { margin: 0; max-width: 760px; color: #e8efff; }
+        .status { display: inline-block; margin-top: 22px; padding: 5px 11px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; font-size: .86rem; letter-spacing: .04em; }
+        section { margin-top: 30px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 26px; }
+        h2 { margin: 0 0 10px; font-size: 1.35rem; }
+        .intro { color: var(--muted); margin-top: 0; }
+        .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 18px; }
+        a.card { display: block; padding: 16px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); text-decoration: none; background: #fff; }
+        a.card:hover, a.card:focus { border-color: var(--accent); background: var(--accent-soft); }
+        a.card strong { display: block; color: var(--accent); }
+        a.card span { display: block; color: var(--muted); font-size: .92rem; margin-top: 3px; }
+        .button { display: inline-block; margin-top: 18px; padding: 10px 15px; border-radius: 8px; background: #fff; color: var(--accent); font-weight: 700; text-decoration: none; }
+        footer { color: var(--muted); font-size: .9rem; margin-top: 24px; }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>NEXIAM Greenfield Foundation</h1>
+        <p>Approval-ready planning artifacts for rebuilding the Next-Generation Examinations and Cross-Role Intelligent Admissions Management system.</p>
+        <span class="status">DRAFT — FOUNDER REVIEW REQUIRED</span>
+        <br>
+        <a class="button" href="https://github.com/daviddatuX25/NEXIAM/tree/master/docs/greenfield-foundation">Open the complete suite on GitHub</a>
+    </header>
+
+    <section>
+        <h2>Recommended review order</h2>
+        <p class="intro">Begin with the authority contract, then review the decision matrix before implementation begins.</p>
+        <div class="links">
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/01-recovery-and-authority-charter.md"><strong>01 — Authority charter</strong><span>What governs the rebuild and what remains evidence only.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/02-evidence-and-contradiction-register.md"><strong>02 — Evidence register</strong><span>Known evidence, gaps, contradictions, and source precedence.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/03-product-scope-and-success-contract.md"><strong>03 — Scope contract</strong><span>Product boundary, success criteria, and non-goals.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/04-role-capability-and-data-scope-matrix.md"><strong>04 — Role and scope matrix</strong><span>Capabilities, negative permissions, and data boundaries.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/05-domain-model-and-data-lifecycle.md"><strong>05 — Domain model</strong><span>Identity, admission attempts, lifecycle, and invariants.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/06-workflows-and-state-transitions.md"><strong>06 — Workflows</strong><span>Actor-owned journeys and canonical state transitions.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/07-failure-recovery-and-integration-contracts.md"><strong>07 — Recovery contracts</strong><span>Failure, retry, idempotency, reconciliation, and integration rules.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/08-security-privacy-and-audit-contract.md"><strong>08 — Security and audit</strong><span>Privacy, authorization, retention, and audit-chain expectations.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/09-platform-topology-and-development-standards.md"><strong>09 — Platform baseline</strong><span>Technical topology, quality gates, and operational standards.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/10-capstone-research-and-technical-validation.md"><strong>10 — Validation contract</strong><span>Technical pilot, RAG/OMR conditions, and research evidence.</span></a>
+        </div>
+    </section>
+
+    <section>
+        <h2>Founder approval and implementation gates</h2>
+        <div class="links">
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/11-connected-vertical-slice-and-acceptance.md"><strong>11 — Vertical slice</strong><span>Admission-to-release acceptance scenarios and evidence.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/12-requirements-traceability-matrix.md"><strong>12 — Traceability matrix</strong><span>Requirements linked to decisions, evidence, tests, and gates.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/13-decision-and-batch-approval-matrix.md"><strong>13 — Decision matrix</strong><span>80 canonical decisions for one concentrated founder review.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/14-readiness-gates-and-reconciled-roadmap.md"><strong>14 — Readiness gates</strong><span>Go/No-Go conditions and the reconciled implementation roadmap.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/15-architecture-decision-record-catalog.md"><strong>15 — ADR catalog</strong><span>Architecture decisions to promote after approval.</span></a>
+            <a class="card" href="https://github.com/daviddatuX25/NEXIAM/blob/master/docs/greenfield-foundation/README.md"><strong>README — Suite index</strong><span>Full navigation, authority model, and review instructions.</span></a>
+        </div>
+    </section>
+
+    <footer>Repository: <a href="https://github.com/daviddatuX25/NEXIAM">daviddatuX25/NEXIAM</a> · The artifacts remain draft until founder approval.</footer>
+</main>
+</body>
+</html>
