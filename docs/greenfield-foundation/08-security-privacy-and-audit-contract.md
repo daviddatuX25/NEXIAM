@@ -34,18 +34,21 @@
 
 ### Applicant
 
-Proposed default:
+Locked default (D-025 + **D-085**, 2026-08-05):
 
 - Applicant No/Applicant Reference is an identifier, not a bearer secret;
-- successful public submission may issue a short-lived one-time setup/access challenge immediately, before Registrar acceptance;
-- the challenge may establish a password or other approved credential, but result access remains gated by the authoritative ResultRelease;
+- successful public submission mints a high-entropy **access key** immediately (before Registrar acceptance); store **hash only**;
+- confirmation shows the plaintext key once and may offer browser save; email delivers the same key as backup when enabled;
+- ongoing login requires **access key + birthdate** (both required); applicants do not invent a free-form password;
+- result access remains gated by the authoritative ResultRelease;
 - account/access provisioning requires a real approved delivery/recovery channel and never a fabricated fallback address;
-- setup/reset challenge is stored only as a hash, expires, and is consumed atomically;
-- failed attempts are rate-limited by account/identifier, IP/network signal, and challenge as appropriate;
-- recovery does not disclose whether arbitrary personal data exists beyond an approved response contract;
-- birthday or another personal fact may support assisted recovery only as an additional verification signal, never as the sole authenticator;
+- failed attempts are rate-limited; recovery responses are non-enumerating;
+- birthday alone is never sufficient; access key alone is never sufficient;
+- E2 recovery is registrar-assisted key reissue (email and/or F2F) that revokes the prior key hash; Nexi forgot-key is deferred;
 - sessions rotate on authentication and privilege change;
 - sensitive actions require recent authentication where justified.
+
+See [`decisions/D-085-applicant-access-credential.md`](decisions/D-085-applicant-access-credential.md).
 
 ### Applicant access-challenge implementation direction (research-backed)
 
@@ -58,10 +61,10 @@ The greenfield implementation should use a dedicated applicant-access challenge 
 - consume it atomically so a race cannot use it twice;
 - expire it and run cleanup; Laravel’s password broker exposes configurable expiry/throttle behavior and an expired-token cleanup command;
 - throttle challenge issuance per ApplicantIdentity/identifier and delivery channel, and use generic/non-enumerating responses;
-- do not use Applicant No/Reference or birthday as the challenge; Applicant No is a lookup/binding identifier only;
+- do not use Applicant No/Reference as the access key; Applicant No is a lookup/binding identifier only; birthdate is the second login factor with the access key (D-085), never a sole authenticator;
 - a Laravel temporary signed URL may protect URL integrity and expiry, but it is not sufficient by itself for one-time use; a consumed challenge record remains required;
 - issue the initial challenge in an after-commit effect after public submission, not after Registrar acceptance; delivery failure leaves the submission durable and creates a retry/recovery state;
-- after successful setup, establish an optional durable ApplicantAccount/password or another approved credential; released-result visibility still requires ResultRelease authorization;
+- after first successful key+birthdate authentication, establish a durable ApplicantAccount session binding; released-result visibility still requires ResultRelease authorization;
 - use Referrer-Policy protection and HTTPS for challenge URLs, do not log challenge values, and provide a bounded staff-assisted recovery path when the approved delivery channel is unavailable;
 - personal facts such as birthday may be an additional assisted-recovery check, never the sole reset mechanism.
 
@@ -84,22 +87,26 @@ Research sources:
 
 If Super Admin is retained:
 
-- no routine operational use;
+- no routine operational use of business actions;
+- full audit-scope user view is permitted as the master audit review surface, including cross-office/user/event filtering;
 - strong authentication;
 - explicit incident/support reason;
 - time-bounded access;
 - alert to designated reviewer;
-- mandatory post-use review.
+- mandatory post-use review; audit-view access is itself an audit event and cannot be hidden by the viewer.
 
 ## 4. Authorization contract
 
 - Policies/application authorization enforce the approved `04-role-capability-and-data-scope-matrix.md`.
 - Route middleware may establish authentication/coarse capability but cannot replace resource ownership checks.
 - Proctor access requires a current ExamSession assignment; it does not require or grant a permanent Proctor role.
+- Test Administrator is an audited capability overlay held by an authorized Guidance Counselor, Guidance Clerk, or Guidance Support Staff account; it is not a generic office role.
+- Registrar Support Staff is not Registrar Clerk-equivalent: it may accept/dismiss within explicit Registrar delegation and view statuses, but cannot use institutional/reference/setup pages.
 - Program Head access is program-scoped and read-only by default.
-- System IT administration does not imply authority to change scores, counseling decisions, or releases.
+- Super Admin audit visibility does not imply routine authority to change scores, counseling decisions, admissions, or releases.
 - Every permission grant/revoke, duty assignment/revoke, denied protected action, and break-glass use produces audit evidence.
 - Every protected applicant-record, result-sheet, converted-score, consultation-history, or program-projection view records the actor, target applicant/aggregate, scope, timestamp, purpose/category, and outcome; a future applicant-facing access-history view may expose approved privacy-safe entries without weakening the underlying audit record.
+- Every accepted/dismissed application, application-window change/late override, slot-reservation open/close/finalize, manual assignment, direct-assessment start, exam publication, force-open/close, OMR identity/mark correction, offline replay/conflict resolution, assistant task proposal/confirmation/result, and audit-query/export emits attributable evidence.
 - Frontend hiding is never an authorization control.
 
 ## 5. Privacy and data-handling contract
@@ -126,7 +133,9 @@ For each data class, the future approved lifecycle matrix must name:
 - Controlled demonstrations use synthetic or expressly approved sanitized fixtures.
 - No real applicant sheet/image or personal record is uploaded to external AI/vector/model providers without approved handling.
 - Prompts and inference envelopes minimize personal data; use pseudonymous attempt IDs where possible.
-- Raw OMR images have stricter access and shorter proposed retention than finalized scoring provenance.
+- Raw OMR images have stricter access and a working default of 90 days after accepted import/finalization and correction/appeal-hold closure; finalized scoring provenance follows the assessment/audit retention class.
+- Working defaults are five years after academic-cycle closure for applicant/admission/exam/score/consultation/result records and seven years for audit/security evidence; institutional/privacy approval, legal hold, and the retention controller can override these before pilot/production.
+- The retention controller evaluates the lifecycle/data-class reference and active `retention_holds` before archive, anonymization, or purge. Placing or releasing a hold is an approved, audited command; releasing a hold does not itself delete data.
 - Logs contain identifiers only where operationally necessary and never credentials/secrets/full sensitive payloads.
 - Formal NPC certification and completed PIA must not be claimed.
 
@@ -166,6 +175,9 @@ Every importer/processor must enforce:
 - Retrieved content is untrusted data; embedded prompt-like text cannot override system policy.
 - Responses return citations/evidence or refuse below the approved support threshold.
 - Placement/admission advice is outside RAG authority.
+- Policy answers may link the user to the governing policy page; policy text is explanatory content, never an executable instruction.
+- Staff task assistance is limited to an allowlisted catalog of typed UI-equivalent commands. Authorization, state/window/capability checks, mutation confirmation, idempotency, and audit happen in the application service after retrieval and before execution.
+- The model cannot call the database, select arbitrary routes, invent an unlisted command, bypass frontend/request gates, or retrieve records outside the server-resolved scope.
 - Provider timeout/outage returns a bounded degraded response and staff fallback.
 - Arbitrary manifests, external URLs, Python classes, or UI component paths cannot be registered/executed by routine administrators.
 - Fixed approved adapters are the capstone default; future extensibility requires signed/allowlisted deployment governance.
@@ -207,13 +219,16 @@ Minimum fields:
 - report view/export and document preview/generation/distribution/physical-print evidence where protected;
 - application acceptance/dismissal/reopen/archive/correction;
 - exam publication/start/cancel/reopen, assignment, attendance/submission;
+- application-window and slot-reservation lifecycle, manual late assignment, direct-assessment start, and schedule publication/notification;
 - score import/edit/finalize/reopen;
-- OMR processing/review/import;
+- OMR processing/review/import, identity binding, mark correction, and raw-artifact retention/purge state;
+- offline outbox creation/replay/conflict/reconciliation;
 - counseling decision/override/defer;
 - release/unrelease/document generation;
 - corpus/settings/integration/key changes;
-- assistant exchange failure/retry, history clear, persona change, and confirmed refusal-to-inquiry creation where retained;
+- assistant exchange failure/retry, history clear, persona change, task proposal/confirmation/result, and confirmed refusal-to-inquiry creation where retained;
 - break-glass access and verifier/checkpoint failure.
+- retention-hold placement/release, retention-policy evaluation, and purge/archive/destruction outcome.
 
 ### Failure policy
 
@@ -231,6 +246,7 @@ Minimum fields:
 | SEC-G4 RAG/model | Data-scope isolation, prompt-injection fixtures, citation/refusal, provider outage, untrusted-output handling |
 | SEC-G5 Audit | Canonicalization, concurrent append, tamper/delete/reorder detection, key rotation, checkpoint, append-only privilege |
 | SEC-G6 Privacy/operations | Data classification, provider map, backup/restore/destruction, incident and access-review process |
+| SEC-G7 Offline proctoring | Encrypted local scope, operation identity, outbox durability, replay idempotency, stale/conflict handling, human reconciliation, and degraded-state visibility |
 
 ## 10. Pilot/production blockers
 
@@ -240,6 +256,7 @@ Minimum fields:
 - plaintext/reusable setup/reset tokens;
 - untrusted upload or arbitrary endpoint/plugin execution;
 - no representative OMR/RAG/model technical evidence while claims remain;
+- no representative offline-proctoring/replay/conflict evidence while the committed capability is claimed;
 - no approved audit threat model while cryptographic assurance is claimed;
 - no backup/restore and incident ownership;
 - no provider data-handling inventory.

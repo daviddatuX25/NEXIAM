@@ -14,12 +14,11 @@ This is a connected workflow, not a collection of disconnected dashboards.
 ## 2. Included actors
 
 - Applicant
-- Registrar Staff or Registrar Administrator under the approved acceptance authority
-- Guidance Counselor
-- Guidance Administrator where required
+- Registrar Administrator, Registrar Clerk, or authorized Registrar Support Staff within approved Registrar capability and scope
+- Guidance Counselor, Guidance Clerk, or Guidance Support Staff holding the required Test Administrator capability
 - Staff member with temporary Proctor assignment
 - Program Head through a read-only program projection if D-ROLE-05 is approved
-- System IT Administrator only for setup/audit verification, not admission decisions
+- Super Admin only for reasoned, time-bounded break-glass audit/support verification, not routine admission decisions
 
 ## 3. Slice boundaries
 
@@ -47,7 +46,7 @@ This is a connected workflow, not a collection of disconnected dashboards.
 - full generic engine registry;
 - BGE/Yukee functional integration unless separately approved and spike-passed;
 - arbitrary plugin/UI loading;
-- offline synchronization;
+- offline synchronization from this first connected journey; offline proctoring remains a committed later capability gated by EV-011 and must use encrypted device/session scope, durable outbox, ordered idempotent replay, conflict detection, and human reconciliation rather than cache-only behavior;
 - broad in-app messaging;
 - full report/template parity;
 - multi-cycle migration of legacy records;
@@ -57,6 +56,8 @@ This is a connected workflow, not a collection of disconnected dashboards.
 ## 4. Proposed route/responsibility graph
 
 Exact URIs remain a UX/implementation decision; responsibility is fixed here.
+
+Every node in this graph has a server-authorized page or an explicit non-UI operational representation. The page contract, top-of-page breadcrumb, scope/context bar, loading/empty/denied/error/conflict/retry state, confirmation level, toast/notification wording, audit correlation, and responsive/accessibility behavior are defined in GF-22; capability and protected-view enforcement are defined in GF-21.
 
 ```text
 Applicant submission
@@ -85,24 +86,27 @@ Applicant submission
 | Step | Proposed command | Required event/evidence |
 |---:|---|---|
 | 1 | `SubmitAdmissionAttempt` | `AdmissionAttemptSubmitted` |
-| 2 | `AcceptAdmissionAttempt` / `DismissAdmissionAttempt` | acceptance/dismissal audit and projection update |
-| 3 | `IssueApplicantSetupChallenge` / `CompleteApplicantSetup` | hashed challenge lifecycle and credential-established event |
+| 2 | `CorrectAdmissionAttempt` / `AcceptAdmissionAttempt` / `DismissAdmissionAttempt` | correction, acceptance, or dismissal audit and projection update |
+| 3 | `IssueApplicantAccessChallenge` / `CompleteApplicantAccessSetup` | hashed challenge lifecycle and credential-established event |
 | 4 | `CreateExamSession` | draft session event |
-| 5 | `AssignAdmissionAttemptToExamSession` | eligibility/capacity/conflict evidence |
+| 5 | `AssignAttemptToExamSession` | eligibility/capacity/conflict evidence |
 | 6 | `PublishExamSession` | publish event and after-commit schedule notification |
-| 7 | `AssignProctorDuty` | contextual assignment/revocation evidence |
+| 7 | `AssignProctorDuty` / `RevokeProctorDuty` | contextual assignment/revocation evidence |
 | 8 | `StartExamSession` | legal-time/state evidence; override reason if applicable |
-| 9 | `RecordAttendance` | idempotent attendance event |
-| 10 | `RecordSubmission` | idempotent submission receipt |
-| 11 | `CloseExamSession` | shared manual/automatic close outcome, effective-deadline, reconciliation, and exactly-once grading-open evidence |
-| 12 | `OpenGradingSession` | one-active-grading invariant |
-| 13 | `RecordScore` / `ImportReviewedOmrScores` | source/version and correction evidence |
-| 14 | `SubmitGradingForReview` / `FinalizeGradingSession` | explicit review state and score-completeness evidence |
-| 15 | `RecordConsultationDecision` | counselor action, rationale, signal provenance |
-| 16 | `ReleaseResult` | release event, generated artifact, after-commit delivery |
-| 17 | `UnreleaseResult` if approved | reversal/supersession event; no history deletion |
+| 9 | `ExtendExamSession` if approved | one effective deadline/version and reasoned audit |
+| 10 | `RecordAttendance` | idempotent attendance event |
+| 11 | `RecordSubmission` | idempotent submission receipt |
+| 12 | `CloseExamSession` | shared manual/automatic close outcome, effective-deadline, reconciliation, and exactly-once grading-open evidence |
+| 13 | `OpenGradingSession` | one-active-grading invariant |
+| 14 | `RecordScore` / `ImportReviewedScores` | source/version and correction evidence |
+| 15 | `SubmitGradingForReview` / `FinalizeGradingSession` | explicit review state and score-completeness evidence |
+| 16 | `RecordConsultationDraft` / `ConfirmConsultationDecision` / `DeferConsultationDecision` | counselor action, rationale, signal provenance |
+| 17 | `PrepareResultDocument` | private artifact/template/checksum evidence before release |
+| 18 | `ReleaseResult` | release event, generated artifact, after-commit delivery |
+| 19 | `ReverseResultRelease` if approved | reversal/supersession event; no history deletion |
+| 20 | `MarkNotificationRead` | recipient ownership and idempotent read-state evidence |
 
-Names are candidates, but command ownership and behavioral separation are required.
+These are the canonical connected-slice command names. Feature-gated commands remain conditional, but their owner, state transition, failure behavior, and evidence contract must still be explicit.
 
 ## 6. Slice acceptance requirements
 
@@ -133,6 +137,52 @@ Names are candidates, but command ownership and behavioral separation are requir
 | REQ-VS-023 | Applicant notification projection/list/read state is connected and scoped; an empty UI cannot mask stored unread notifications. |
 | REQ-VS-024 | Policy-corpus RAG and own released-data retrieval use separate authorization gates; refusal creates no inquiry until the applicant explicitly confirms fallback. |
 | REQ-VS-025 | Any Program Head projection uses approved metric definitions, program ownership, freshness, and privacy threshold and exposes no unapproved individual data. |
+| REQ-VS-026 | Every connected page/panel exposes an explicit initial-loading, ready, empty/not-yet-available, denied, validation, server-error, stale/conflict, and degraded/retry state where applicable; no failure is rendered as an empty success state. |
+| REQ-VS-027 | Staff/applicant navigation is server-authorized and includes a top-of-page breadcrumb with safe authorized ancestors, current-page semantics, scope context, mobile collapse, deep-link, and dirty-form/back behavior. |
+| REQ-VS-028 | Every authoritative mutation has field/server validation, idempotent submit behavior, risk-appropriate confirmation, authoritative success/pending wording, failure/retry, conflict/review, and audit correlation; a toast is never the only error or permission signal. |
+| REQ-VS-029 | Every dashboard chart/graphic has a scoped metric/source/freshness/unit contract, distinguishes zero/no-data/suppressed/stale/error, provides an accessible text/table alternative, and cannot mutate or decide domain state. |
+| REQ-VS-030 | Notification center and toasts are scoped, deduplicated, severity/duration/dismissal aware, redacted, keyboard/screen-reader accessible, and never claim delivery or release beyond authoritative evidence. |
+| REQ-VS-031 | Critical connected journeys work at narrow responsive widths and by keyboard, including navigation drawer, filters, dialogs, tables, charts, OMR/document preview, and degraded/recovery states. |
+| REQ-VS-032 | OMR/document graphics show provenance, confidence/uncertainty, review/correction state, watermark/privacy status, and authorized alternatives; they never imply autonomous score/admission/release authority. |
+
+### 6.1 Requirement-to-scenario/evidence crosswalk
+
+Every slice requirement has at least one named scenario or an explicit browser/operational evidence target. A range reference alone is not a passing result; the final package must attach the discovered test, trace, or runtime artifact to the row.
+
+| Requirement | Scenario/evidence target |
+|---|---|
+| REQ-VS-001 | SCN-VS-016; fresh PostgreSQL migration/seed/catalog output |
+| REQ-VS-002 | SCN-VS-003/006; authentication, expiry, re-login, and revoked-duty tests |
+| REQ-VS-003 | SCN-VS-001/006/014/020; cross-applicant/cross-session/browser/API denial tests |
+| REQ-VS-004 | SCN-VS-003/004/013; correction, decision, archive/reopen history tests |
+| REQ-VS-005 | SCN-VS-005/017; database constraint/lock/race and publication tests |
+| REQ-VS-006 | SCN-VS-006; assignment/revocation/closure authorization tests |
+| REQ-VS-007 | SCN-VS-007/017; replay, time-window, duplicate, and close-race tests |
+| REQ-VS-008 | SCN-VS-008; no-worker/manual end-to-end journey |
+| REQ-VS-009 | SCN-VS-010; completeness/invalid-score atomicity tests |
+| REQ-VS-010 | SCN-VS-009/018; OMR uncertainty, review, import, and provenance evidence when promoted |
+| REQ-VS-011 | SCN-VS-011; decision/provenance/confirmation tests |
+| REQ-VS-012 | SCN-VS-012/013/019; prerequisite, reversal, artifact, and visibility tests |
+| REQ-VS-013 | SCN-VS-012/020; after-commit delivery, retry, projection, and terminal-failure evidence |
+| REQ-VS-014 | SCN-VS-019; malicious-template/value fixtures, checksum, private-storage, and print evidence |
+| REQ-VS-015 | SCN-VS-015 and audit assertions in SCN-VS-003/012/013/020; tamper/checkpoint/access evidence |
+| REQ-VS-016 | SCN-VS-003/016; refresh/re-login persistence and deterministic reset output |
+| REQ-VS-017 | SCN-VS-008/020; provider outage/manual fallback and degraded-state browser evidence |
+| REQ-VS-018 | All connected browser journeys; console/network error report with no unhandled failures |
+| REQ-VS-019 | SCN-VS-003; public/staff parity, challenge one-time use, delivery failure, and acceptance-independence tests |
+| REQ-VS-020 | SCN-VS-017; extension/manual-close/scheduler-close effective-deadline race evidence |
+| REQ-VS-021 | SCN-VS-010/018; transactional multi-area save, staged row states, replay, and manual recovery |
+| REQ-VS-022 | SCN-VS-019; internal watermark, protected preview, pending generation, and external-publication denial |
+| REQ-VS-023 | SCN-VS-020; notification prop/API/ownership/read/rebuild/retry evidence |
+| REQ-VS-024 | SCN-VS-021; policy/own-data gate, refusal, confirmation, idempotency, and outage evidence |
+| REQ-VS-025 | SCN-VS-022; metric dictionary, freshness, threshold, scope, and export audit evidence |
+| REQ-VS-026 | All connected journeys plus GF-22 §7 component/E2E state matrix |
+| REQ-VS-027 | All authenticated/public journeys plus GF-22 §§3–4 breadcrumb/deep-link/dirty-form evidence |
+| REQ-VS-028 | SCN-VS-003–013/017–022 as applicable plus GF-22 §§5–7 validation/confirmation/feedback tests |
+| REQ-VS-029 | SCN-VS-022 plus GF-22 §8 chart data/no-data/suppression/accessibility/export evidence |
+| REQ-VS-030 | SCN-VS-020 plus GF-22 §6 notification/toast dedupe, severity, redaction, and live-region tests |
+| REQ-VS-031 | All critical journeys plus GF-22 §§10–13 keyboard/viewport/accessibility evidence |
+| REQ-VS-032 | SCN-VS-009/019 plus GF-22 §§8.5/9.5/9.6 OMR/document provenance, watermark, privacy, and manual-alternative evidence |
 
 ## 7. Given/When/Then scenarios
 
@@ -222,6 +272,8 @@ Names are candidates, but command ownership and behavioral separation are requir
 **Then** release state, artifact metadata, and mandatory audit commit atomically  
 **And** delivery is queued once after commit  
 **And** a delivery failure is visible/retryable without duplicate release.
+**And** if document generation is asynchronous, the command returns `AcceptedForProcessing` with a durable operation ID until a verified private artifact is ready
+**And** no release, delivery, or toast claims the document is ready merely because generation was requested.
 
 ### SCN-VS-013 — Non-destructive unrelease/reopen
 
@@ -275,6 +327,7 @@ Names are candidates, but command ownership and behavioral separation are requir
 **Then** the internal preview is watermarked and audited  
 **And** external generation/distribution is denied  
 **And** generated, downloaded/distributed, and physically printed evidence remain distinct.
+**And** a pending generation renders as `accepted_for_processing`/`not_yet_available`, never as a public artifact or completed release.
 
 ### SCN-VS-020 — Applicant notification projection is connected
 
@@ -317,6 +370,10 @@ Names are candidates, but command ownership and behavioral separation are requir
 - Program Head metric dictionary/privacy evidence if included;
 - limitations and unavailable-integration/degraded-mode report;
 - traceability from REQ-VS and SCN-VS IDs to code/tests.
+- route/page/state matrix, breadcrumb/navigation evidence, responsive screenshots, and keyboard/accessibility evidence;
+- chart/graphic data/no-data/suppressed/stale/error variants with table/text alternatives;
+- toast/notification severity/dedupe/pending/failure evidence and redaction review;
+- confirmation, dirty-form, validation, conflict, retry, degraded-provider, and offline reconciliation evidence where applicable.
 
 ## 9. Slice stop gates
 
@@ -331,6 +388,7 @@ Implementation must stop before expanding horizontally when:
 - manual scoring cannot complete end to end;
 - production-engine migrations/constraints are unproven;
 - browser actor state is disconnected or page-local;
+- any committed page leaves breadcrumbs, charts/graphics, toasts/notifications, confirmations, validation, or recovery states to implementation inference;
 - mandatory audit/authorization tests fail;
 - OMR/RAG/model integration is being used to hide an incomplete core journey.
 

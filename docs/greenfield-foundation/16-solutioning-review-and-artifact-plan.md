@@ -22,18 +22,18 @@ It currently provides:
 - traceability and decision matrices;
 - a conceptual ERD and deployment topology.
 
-It does not yet provide canonical implementation contracts for:
+It now provides draft/review artifacts for the following areas, but none is promoted implementation authority yet:
 
 - system containers and trust boundaries;
 - module ownership and dependency direction;
 - aggregate/transaction boundaries;
 - schema columns, foreign keys, indexes, checks, delete behavior, and migration order;
 - commands, queries, events, jobs, idempotency keys, and typed failures;
-- authorization enforcement points and scope-resolution algorithms;
-- Inertia page, route, form, and UI-state contracts;
 - provider/worker adapter envelopes and operational health;
 - observability, backup/restore, and incident runbooks;
 - executable BMAD epics/stories and OpenSpec change packages.
+
+GF-21 and GF-22 have now been drafted as the authorization and browser/UI contract layers. They are detailed review artifacts, not yet promoted implementation authority; their assumptions, route/state decisions, accessibility behavior, chart/graphic semantics, feedback rules, and verification scenarios must pass the same cross-artifact and readiness gates as the HLD/LLD/schema/contracts.
 
 Therefore:
 
@@ -176,13 +176,13 @@ The chain is directional. A downstream artifact may expose an upstream ambiguity
 | Artifact | Purpose | Depends on | Current status |
 |---|---|---|---|
 | GF-17 System HLD | Context, containers, boundaries, deployment, cross-cutting concerns | GF-01–GF-15 | Drafting/review |
-| GF-18 Module and Domain LLD | Aggregates, commands, queries, events, dependencies, failure semantics | GF-17 + GF-05–GF-08 | Not started |
-| GF-19 Schema, ERD, and Constraint Catalog | Tables, columns, keys, indexes, checks, deletes, migration order | GF-18 | Not started |
-| GF-20 Application and Integration Contract Catalog | HTTP actions, queries, jobs, events, adapter envelopes, typed failures | GF-18/GF-19 | Not started |
-| GF-21 Authorization Enforcement Design | Policies, scope resolution, capability checks, break-glass, audit views | GF-18/GF-04/GF-08 | Not started |
-| GF-22 UI, Route, and State Contract | Page inventory, route responsibilities, form states, loading/empty/error/recovery states | GF-20/GF-21 | Not started |
-| GF-23 Operations and Recovery Design | Compose, environments, health, metrics, logs, queues, backups, runbooks | GF-17/GF-20/GF-08 | Not started |
-| GF-24 BMAD/OpenSpec Implementation Package | Epics, stories, acceptance, dependencies, first change package | GF-18–GF-23 | Not started |
+| GF-18 Module and Domain LLD | Aggregates, commands, queries, events, dependencies, failure semantics | GF-17 + GF-05–GF-08 | Draft written — review required |
+| GF-19 Schema, ERD, and Constraint Catalog | Tables, columns, keys, indexes, checks, deletes, migration order | GF-18 | Draft written — review required |
+| GF-20 Application and Integration Contract Catalog | HTTP actions, queries, jobs, events, adapter envelopes, typed failures | GF-18/GF-19 | Draft — review required |
+| GF-21 Authorization Enforcement Design | Policies, scope resolution, capability checks, break-glass, audit views | GF-18/GF-04/GF-08 | Draft written — review required |
+| GF-22 UI, Route, and State Contract | Page inventory, route responsibilities, form states, loading/empty/error/recovery states, charts, toasts, accessibility, responsive behavior | GF-20/GF-21 | Draft written — review required |
+| GF-23 Operations and Recovery Design | Compose, environments, health, metrics, logs, queues, backups, runbooks | GF-17/GF-20/GF-08 | Draft written — review/evidence required |
+| GF-24 BMAD/OpenSpec Implementation Package | Legacy disposition, E0/E1/E2 implementation handoff, acceptance, dependencies, first change package | GF-18–GF-23 | Draft written — E0 OpenSpec package created; review/provenance required |
 
 The conceptual ERD and deployment Mermaid files remain illustrations until GF-19 and GF-23 replace them as authority.
 
@@ -240,8 +240,8 @@ These are intentionally not guessed during HLD/LLD drafting:
 - OMR template/device/ground-truth/threshold evidence;
 - program mapping and metric dictionary;
 - production provider and object-storage credentials/configuration;
-- whether bounded inquiry threads remain in the capstone;
-- whether offline proctoring remains in scope.
+- bounded inquiry thread model/SLA/retention and EV-018 evidence;
+- offline proctoring synchronization/device/conflict evidence and EV-011 promotion.
 
 ## 9. Recorded review outcomes
 
@@ -267,6 +267,16 @@ These are intentionally not guessed during HLD/LLD drafting:
 **Scope of approval:** GF-18, GF-19, and GF-20 may use these boundaries as their working design input.  
 **Not approved:** final schema, implementation code, production provider selection, pilot, or production deployment.  
 **Next review:** HLD data ownership/runtime boundaries and LLD aggregate/transaction contracts.
+
+### HLD/LLD/contract/UI propagation review — 2026-08-03
+
+**Outcome:** CONDITIONAL alignment; no implementation authority granted.
+
+- **GF-17 HLD:** system context, modular-monolith containers, PostgreSQL authority, worker/provider boundaries, manual fallback, trust boundaries, runtime modes, and browser/UI handoff are coherent as a working baseline. The ADR promotion table was reconciled so modular-monolith, queue, inference, storage, and release references point to the correct ADRs.
+- **GF-18 LLD:** aggregate ownership, command-owned transitions, reservation/finalization/publication separation, direct-assessment bypass, grading/import/OMR human-review boundary, release reversal, idempotency/concurrency obligations, typed failures, and module dependency rules align with GF-17, GF-20, GF-21, and GF-22.
+- **GF-19/GF-20 handoff:** schema and application contracts may continue from the reviewed ownership/command boundaries, but PostgreSQL major/pgvector, credential delivery, template renderer, audit key/checkpoint, provider envelopes, and operational SLOs remain explicit holds.
+- **GF-21/GF-22 handoff:** authorization and browser/UI behavior are now captured as dedicated drafts; route/page state, breadcrumbs, charts/graphics, toasts/notifications, confirmations, validation, accessibility, responsive behavior, privacy, and degraded/offline feedback cannot be inferred later.
+- **Promotion condition:** GF-17 through GF-24 remain DRAFT/REVIEW REQUIRED until open decisions are assigned, evidence gates are closed or bounded, cross-reference checks pass, and GF-14 records the R5 verdict. GF-24 permits only the bounded E0 scaffold before E1/E2 feature implementation.
 
 ## 10. Review deliverable definition
 

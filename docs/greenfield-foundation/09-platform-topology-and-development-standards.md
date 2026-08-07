@@ -9,13 +9,13 @@
 
 | Concern | Recommended target | Decision/status |
 |---|---|---|
-| Backend | PHP 8.4 + Laravel 12 | Proposed fixed major versions; replace “latest stable” wording |
-| Server-driven SPA | Inertia.js 2 | Proposed |
-| Frontend | Svelte 5 + TypeScript 5.9 | Proposed |
-| Styling/components | Tailwind CSS 4 + approved shadcn-svelte components | Proposed; accessibility remains application responsibility |
+| Backend | PHP 8.4 + Laravel 13 | Revised compatible target; Pest 5 Laravel integration requires Laravel 13 |
+| Server-driven SPA | Inertia.js 3 | Revised compatible target |
+| Frontend | Svelte 5 + TypeScript 5.9 | Restored to legacy-aligned target (E1b); Inertia v3 adapter `@inertiajs/svelte` |
+| Styling/components | Tailwind CSS 4 + shadcn-svelte (bits-ui) + NEXIAM UI kit gallery | Legacy-approved design system; academic tone (`--radius: 0.25rem`); accessibility remains application responsibility |
 | Build/runtime | Node.js 24 LTS across local, CI, and image build | REVIEW REQUIRED; current Docker/CI disagree |
-| Production database | MySQL 8.4 LTS | Recommended to align existing Compose; REVIEW REQUIRED against MariaDB plan |
-| Test database | MySQL 8.4 for integration/migration evidence; SQLite only for explicitly parity-safe fast tests | Proposed |
+| Production database | PostgreSQL with a supported major version pinned during E0; optional pgvector only through an approved extension/ADR/evidence gate | Founder-revised D-057; greenfield authority |
+| Test database | PostgreSQL for integration/migration/race evidence; SQLite only for explicitly parity-safe fast tests | Proposed; parity must be demonstrated per contract |
 | Queue | Laravel queue worker with database-backed queue initially; all domain-triggered work after commit | Proposed capstone baseline |
 | Scheduler | Dedicated scheduler process/service using the same application image | Proposed |
 | Mail | Mailpit in local/test; provider adapter in deployed environment | Proposed |
@@ -23,8 +23,8 @@
 | RAG/vector/LLM | Application adapters; provider choices configured, health-checked, and replaceable | Provider decision required; no provider becomes domain authority |
 | File storage | Laravel filesystem contract; private persistent volume for controlled demo; object-storage adapter ready for pilot | Review with backup/retention requirements |
 | Reverse proxy/ingress | Dokploy/Traefik-managed HTTPS boundary where deployed | Proposed deployment environment |
-| Testing | PHPUnit 11 backend; Vitest frontend units; Playwright browser E2E | REVIEW REQUIRED; resolves Pest/PHPUnit conflict in favor of project convention |
-| Static quality | Larastan/PHPStan, Pint, svelte-check, ESLint, Prettier | Required zero-on-greenfield baseline |
+| Testing | Pest 5 on PHPUnit 13 with Laravel/architecture/browser plugins; Vitest frontend units; Playwright browser E2E | Revised compatible target |
+| Static quality | Larastan/PHPStan, Pint, TypeScript, ESLint, Prettier | Required zero-on-greenfield baseline |
 
 No dependency may use an unpinned `latest` tag/version in reproducible CI or deployment evidence.
 
@@ -42,7 +42,7 @@ Dokploy / Traefik ingress
     ├── web/application service
     ├── queue-worker service (same application image)
     ├── scheduler service (same application image)
-    ├── MySQL 8.4 datastore
+    ├── PostgreSQL datastore (major version pinned in E0)
     ├── Python inference worker (only when approved)
     └── Mailpit (local/test only)
           |
@@ -168,15 +168,15 @@ Required jobs:
 
 - Composer validation and security audit;
 - PHP syntax, Pint, Larastan/PHPStan;
-- PHPUnit unit/feature/architecture suites;
+- Pest 5 unit/feature/architecture suites on PHPUnit 13;
 - npm clean install and audit policy;
-- svelte-check;
+- TypeScript (`tsc --noEmit`);
 - ESLint source-only;
 - Prettier check;
 - Vitest with non-zero discovered tests where applicable;
 - frontend production build;
 - Playwright critical journey suite when routes exist;
-- fresh MySQL migration/seed and catalog/invariant checks;
+- fresh PostgreSQL migration/seed and catalog/invariant checks; pgvector checks only if enabled;
 - Compose configuration and service-health validation;
 - secret scanning and dependency/update reporting.
 
@@ -220,6 +220,28 @@ Minimum recovery runbooks:
 - database/file restore;
 - audit verification/checkpoint failure.
 
+### 9.1 Operational ownership and evidence contract
+
+Every runtime surface has an accountable domain owner, an operations responder, a terminal-failure owner, and a verification artifact. The role names below are responsibility boundaries; the named individuals/escalation channels and numeric targets remain R5/D-OPS decisions.
+
+| Surface | Accountable owner | Operations responder | Required evidence |
+|---|---|---|---|
+| Web/application health and authorization boundary | Platform/Operations with Identity & Access and domain owners | Application operations | Liveness/readiness output, denied-path health, correlation IDs, incident record |
+| PostgreSQL, migrations, constraints, and queue storage | Platform/Operations with data owner | Database operations | Engine/version, migration/catalog check, backup recency, lock/race evidence |
+| Queue workers and scheduler | Platform/Operations with the owning domain module | Queue/scheduler operator | Heartbeat, depth, attempts, dead-letter/terminal failures, retry/reconcile evidence |
+| Notifications and delivery providers | Communications | Communications/operations | Per-channel delivery state, provider health, retry/dead-letter, manual fallback |
+| Documents, private storage, reports, and exports | Documents & Reporting | Storage/operations | Checksum/private retrieval, generation/download/print evidence, protected-export audit, restore proof |
+| Assessment/OMR/import processing | Assessment & Grading | Assessment/operations | Batch/row state, worker health, uncertainty/manual fallback, retention/purge evidence |
+| RAG, inference, and decision-support adapters | Knowledge & RAG / Decision Support | Adapter/operations owner | Version/provenance, timeout/health, degraded fallback, no-authoritative-write evidence |
+| Offline proctoring replay | Examination | Device/sync/operations owner | Enrollment, outbox, ordered replay, conflict/manual-resolution, revoked-duty evidence |
+| Audit chain/checkpoints | Audit & Compliance | Security/operations | Append/verify/checkpoint health, key version, tamper/reorder tests, incident evidence |
+| Retention, legal holds, and destruction | Privacy/Records owner | Operations with privacy escalation | Approved profile, hold/purge decision, destruction verification, audit trail |
+| Backup/restore and disaster recovery | Platform/Operations with data and storage owners | Recovery incident lead | Off-machine copy, database+files rehearsal, RPO/RTO result, restore/destruction log |
+
+Minimum health/readiness signals are separate: web liveness, application/database readiness, queue-worker heartbeat, scheduler heartbeat, private-storage probe, optional inference/provider health, audit-chain verification health, and backup-recency status. Optional-provider health may degrade a feature; it must not make the manual core claim success or become an unscoped authorization fallback.
+
+Numeric SLOs, retry counts, timeout/deadline values, backup retention, RPO/RTO, alert thresholds, and escalation contacts are implementation-entry inputs, not assumptions hidden in code or dashboards.
+
 ## 10. Repository/workspace boundary
 
 Recommended:
@@ -240,13 +262,13 @@ The platform contract becomes implementation-ready only after:
 - clean install produces pinned lockfiles;
 - scaffold boots and health checks pass;
 - zero-baseline CI is green;
-- MySQL migration/seed proof exists;
+- PostgreSQL migration/seed proof exists;
 - no default secrets or generated build artifacts pollute source checks.
 
 ## 12. Decisions
 
 - D-TECH-01 production/test database engines.
-- D-TECH-02 PHPUnit versus Pest.
+- D-TECH-02 PHPUnit versus Pest — resolved as Pest 5 on PHPUnit 13 (D-058).
 - D-TECH-03 Node runtime.
 - D-TECH-04 Python worker and approved engines.
 - D-TECH-05 queue/storage/cache topology.

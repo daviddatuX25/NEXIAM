@@ -38,8 +38,17 @@ graphify-out/
 capstone/output/
 capstone/manuscript/diagrams/*.png
 
+# Legacy runtime generated/dependency artifacts
+/legacy_codebase/application/vendor/
+/legacy_codebase/application/node_modules/
+/legacy_codebase/application/public/build/
+/legacy_codebase/application/public/hot
+/legacy_codebase/application/public/storage
+/legacy_codebase/application/storage/framework/cache/*
+/legacy_codebase/application/storage/framework/sessions/*
+/legacy_codebase/application/storage/framework/views/*
+/legacy_codebase/application/storage/logs/*
+
 # Agent / editor context
 .playwright-mcp/
 securecat-conventions-1.0.0.ctxpkg
-
-

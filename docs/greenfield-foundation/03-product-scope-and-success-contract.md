@@ -1,9 +1,10 @@
 # Product Scope and Success Contract
 
 **Artifact:** NEXIAM-GF-03  
-**Status:** DRAFT — REVIEW REQUIRED  
+**Status:** PROMOTED — planning contract (2026-08-05)  
+**Story-binding surface:** [`../prd.md`](../prd.md) (full FR/NFR/BR + E2 Connected Slice cut-line)  
 **Scope:** ISPSC Tagudin admission-testing workflow and bounded post-examination decision support  
-**Non-claim:** This draft does not amend the manuscript until approved and propagated.
+**Non-claim:** Manuscript amendment still requires explicit adviser/founder propagation; quiet omission remains prohibited.
 
 ## 1. Product statement
 
@@ -11,7 +12,7 @@ NEXIAM is a role-isolated admissions-management system for the ISPSC Tagudin adm
 
 **D-006 founder direction:** The product promise is the whole approved NEXIAM capstone concept and its complete feature boundary, not only the first connected vertical slice. The Connected Admission-to-Release Slice is the first implementation and proof milestone. Every other feature must be deliberately classified, designed, traced to evidence, and sequenced; no capability may be silently omitted.
 
-**D-008 founder direction:** The capstone should plan one shared, provider-agnostic AI capability boundary that can support the RAG chatbot, model/OMR assistance, scheduling assistance, and future AI-assisted interfaces. AI-automated reporting is not part of the current capstone commitment. Exact libraries, SDKs, providers, prompts, model contracts, and implementation details remain subject to later research and HLD/LLD decisions. AI outputs remain supporting evidence or assistance; approved human/application commands remain authoritative.
+**D-008 founder direction:** The capstone should plan one shared, provider-agnostic AI capability boundary that can support the RAG chatbot, model/OMR assistance, scheduling assistance, and future AI-assisted interfaces. AI-automated reporting is not part of the current capstone commitment. Exact libraries, SDKs, providers, prompts, model contracts, and implementation details remain subject to later research and HLD/LLD decisions. AI outputs remain supporting evidence or assistance; approved human/application commands remain authoritative. The chatbot may guide an authorized actor through typed, frontend-equivalent task requests, but it never receives a direct database, policy-bypass, or hidden command path.
 
 The detail pass after this decision review must also revisit import architecture. The current separation between application import and score import is observed legacy behavior, not a permanent target boundary. A future unified/dynamic import capability may create related records through one validated, staged, idempotent workflow, subject to domain ownership, authorization, transaction, error-recovery, and audit design.
 
@@ -46,7 +47,7 @@ The final wording of each problem claim must trace to stakeholder or institution
 ### Contextual/system actors
 
 - Proctor: temporary examination-session duty assigned to an eligible staff account; proposed default, not a permanent role.
-- Registrar Support Staff: subordinate/temporary Registrar office staff role.
+- Registrar Support Staff: subordinate/temporary Registrar office staff role with an explicit intake/status/decision subset; it is not Registrar Clerk-equivalent and cannot use institutional/reference setup pages.
 - Guidance Support Staff: subordinate/temporary Guidance office staff role with Guidance Clerk responsibilities by default; may receive delegated Test Administration capability or Proctor duty separately.
 - Staffing/HR Administrator: personnel-lifecycle actor for approved permanent and support-staff accounts; not an operational applicant/admission actor and cannot grant Test Administrator/Proctor capability.
 - Super Admin: non-evaluated break-glass/oversight account, if retained.
@@ -64,7 +65,7 @@ Final actor membership is decision-gated by D-ROLE-01 through D-ROLE-05.
 | Applicant intake | Create a cycle-scoped admission attempt with validated identity/contact/preferences and duplicate controls |
 | Staff review | Registrar can review, correct within authority, accept, dismiss, and reopen through explicit commands |
 | Applicant authentication | Applicant No/Reference plus post-submission credential setup/recovery; own-data isolation; durable history across cycles |
-| Examination scheduling | Guidance creates/publishes sessions, assigns applicants and contextual proctors, records attendance/submission, and publishes F2F/online consultation availability |
+| Examination scheduling | The authorized Test Administrator holder creates/publishes sessions, controls whether applicant slot reservation is open, assigns applicants and contextual proctors, records attendance/submission, and publishes F2F/online consultation availability; manual assignment and late/direct-assessment paths remain supported |
 | Manual scoring | Authorized Guidance staff can enter/correct scores with finalization completeness rules |
 | Consultation and result release | Guidance prepares/prints results as required; Counselor/Test Administrator records consultation evidence, preserves suggestions versus Applicant selections, and performs explicit release/unrelease under approved rules |
 | Applicant portal | Applicant sees own submitted/accepted status, schedule, consultation availability, and released results; admission slip is not required for answer-sheet identity |
@@ -80,18 +81,18 @@ Final actor membership is decision-gated by D-ROLE-01 through D-ROLE-05.
 | OMR-assisted scoring | One approved sheet/input contract; uncertainty abstains to human review; manual fallback always available |
 | Scoped RAG | Cited institutional answers plus approved own-data retrieval; refusal and staff fallback; no placement advice |
 | Human-gated scheduling assistance | Suggestions only; authorized officer confirms; manual scheduling remains complete fallback |
+| Offline proctoring | Committed capstone path with encrypted device scope, durable outbox, ordered/idempotent replay, explicit conflict resolution, and visible degraded status; EV-011 gates promotion |
 | Counselor decision-support presentation | Independent aptitude/interest signals with versioned provenance; counselor may approve/modify/override/defer |
 
 If any Tier B feature remains in the final manuscript promise, it needs engineering evidence independent of TAM.
 
 ### Tier C — CONDITIONAL
 
-- BGE inference service and interest-ranking workflow.
-- Yukee reproduction if exact parameters and transforms become available.
+- BGE inference service and interest-ranking workflow as a low-priority, feature-flagged beta.
+- YuKee aptitude-engine integration from the available trained `.joblib` artifact and engine specifications, with versioned loading/provenance and deterministic expected-output fixtures.
 - Generic engine administration beyond fixed approved adapters.
 - Program quota management rather than read-only visibility.
 - In-app messaging beyond a bounded RAG-refusal handoff.
-- Offline proctor synchronization.
 - Expanded analytics and report inventory.
 
 Conditional means: foundation contract may be designed now, but functional implementation and evaluation proceed only after the named evidence/spike gate passes.
@@ -185,7 +186,7 @@ The first implementation milestone is not the whole product boundary. It is the 
 1. submit one admission attempt;
 2. review and accept it;
 3. establish applicant credentials;
-4. schedule and assign one examination;
+4. either reserve an opened applicant slot or have the authorized Test Administrator manually assign one examination; a special Direct Assessment may bypass ordinary reservation/scheduling;
 5. assign a contextual proctor;
 6. record attendance/submission;
 7. score manually or through confidence-gated OMR;

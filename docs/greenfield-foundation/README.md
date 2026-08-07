@@ -1,9 +1,12 @@
 # NEXIAM Greenfield Foundation Suite
 
-**Status:** DRAFT — prepared for founder batch review  
+**Status:** CONTRACT SUITE — E0 PASS; E1 PASS; E1b locked; PRD promoted; E2 planning PASS 2026-08-05  
 **Project:** NEXIAM  
+**Single entry point:** [`../GREENFIELD-MASTER-REFERENCE.md`](../GREENFIELD-MASTER-REFERENCE.md)  
+**Work process:** [`../project-context.md`](../project-context.md)  
+**Product PRD:** [`../prd.md`](../prd.md)  
 **Purpose:** Convert legacy evidence, capstone commitments, and the greenfield strategy into an approval-ready foundation for a clean rebuild.  
-**Implementation authority:** None until the decision matrix is approved and the affected documents are promoted.
+**Implementation authority:** One active OpenSpec change under `openspec/changes/`, gated by the master roadmap.
 
 ## Thesis
 
@@ -34,7 +37,12 @@ The existing audit and greenfield documents are inputs to these phases. They do 
 
 ## Start here after a break
 
-Read [`00-catch-up-and-continue-progress.md`](00-catch-up-and-continue-progress.md) first. It is the project return point: current status, what remains blocked, the founder/PM catch-up checklist, the Lead Engineer continuation sequence, the first working-version boundary, and a reusable progress checkpoint template.
+1. [`../GREENFIELD-MASTER-REFERENCE.md`](../GREENFIELD-MASTER-REFERENCE.md) — live status, blockers, parity gaps, continuation order
+2. [`../project-context.md`](../project-context.md) — permanent agent work process (legacy → req → story → OpenSpec)
+3. [`00-catch-up-and-continue-progress.md`](00-catch-up-and-continue-progress.md) — supporting GF checklist
+4. [`14-readiness-gates-and-reconciled-roadmap.md`](14-readiness-gates-and-reconciled-roadmap.md) / [`../MASTER-DELIVERY-ROADMAP.md`](../MASTER-DELIVERY-ROADMAP.md) — phase spine
+
+Do not treat older architecture or 14-phase implementation-order documents as sequence authority. Corrupted historical copies are quarantined under `quarantine/`.
 
 ## Document suite and reading order
 

@@ -44,14 +44,15 @@ The core system owns:
 
 ### 2.2 Conditional or deferred system capabilities
 
-The following are adapter-backed and gated separately:
+The following are adapter-backed and gated separately. “Gated” means the contract is committed and evidence must pass before promotion; it does not mean the feature may silently disappear from the capstone promise.
 
 - OMR observation and reviewed import;
-- aptitude/interest decision-support engines;
-- policy and authorized own-data RAG;
+- Yukee-compatible/deterministic aptitude and interest decision-support engines;
+- policy, authorized own-data, and typed staff-task RAG chatbot;
 - AI-assisted scheduling proposals;
 - bounded Guidance inquiry handoff;
 - offline proctoring with outbox/conflict resolution;
+- BGE as a low-priority beta behind an explicit feature flag;
 - broader analytics, generic engine registration, and multi-campus tenancy.
 
 No conditional feature may weaken or bypass the core domain contract.
@@ -61,8 +62,8 @@ No conditional feature may weaken or bypass the core domain contract.
 ```mermaid
 flowchart LR
     APPLICANT[Applicant]
-    REGISTRAR[Registrar Staff/Admin]
-    GUIDANCE[Guidance Counselor/Clerk]
+    REGISTRAR[Registrar Admin/Clerk/Support Staff]
+    GUIDANCE[Guidance Counselor/Clerk/Support Staff]
     PROCTOR[Assigned Proctor]
     PROGRAM[Program Head]
     HR[HR/Staffing]
@@ -98,12 +99,14 @@ flowchart LR
 | Actor | System responsibility | Explicit boundary |
 |---|---|---|
 | Applicant | Submit, establish approved access, view own status/approved release, use permitted policy/own-data assistance | No staff data, no pre-release result, no cross-applicant inference |
-| Registrar | Intake, correction, acceptance/dismissal within assigned authority, approved admission administration | No converted result/remark sheets or converted per-domain scores unless separately approved |
-| Guidance | Exam workflow, scoring, consultation, result preparation, release coordination, approved evidence review | No unrestricted HR/staff lifecycle; no raw/confidential data beyond capability scope |
+| Registrar Admin | Institutional/reference setup, delegated Registrar accounts, intake oversight, acceptance/dismissal, application-window configuration | No converted result/remark sheets or converted per-domain scores unless separately approved |
+| Registrar Clerk | Daily intake, correction, acceptance/dismissal, and approved institutional/reference setup pages within Registrar scope | No cross-office authority; Support Staff permissions are not inherited automatically |
+| Registrar Support Staff | Delegated intake/correction, acceptance/dismissal, and status visibility | No institutional/reference/setup pages or role-management authority |
+| Guidance Counselor/Clerk/Support Staff with Test Administrator capability | Exam workflow, slot reservation/manual assignment, scoring, consultation, result preparation, release coordination, and approved evidence review | Capability is explicit and audited; no unrestricted HR/Registrar authority; no raw/confidential data beyond capability scope |
 | Proctor | Assigned-session attendance/submission operations | No global proctor role, no unrelated session access, no scoring authority |
 | Program Head | Read-only program-scoped projection and approved consultation-facing evidence | No admission/score/release writes, raw answer sheets, or confidential conversion tables |
 | HR/Staffing | Permanent personnel and approved support-staff lifecycle | No applicant, exam, scoring, consultation, or release decisions; cannot grant Proctor/Test Administrator capability |
-| Super Admin | Exceptional technical/support recovery | Time-bound, reasoned, alerted, audited; not routine business authority |
+| Super Admin | Full audit-scope user view plus exceptional technical/support recovery | Full audit visibility is permitted because the legacy Super Admin could see all; every audit-view/use is reasoned, time-bound, alerted, audited, and does not grant routine business authority |
 
 ## 4. Container architecture
 
@@ -118,6 +121,8 @@ Browser responsibilities:
 - display loading, empty, denied, stale, validation, conflict, and retry states;
 - never contain authoritative workflow logic or secrets;
 - never treat an AI/model response as a permission or state transition.
+
+The browser contract is split deliberately: GF-21 defines server-enforced authorization and protected-view boundaries; GF-22 defines the shells, route responsibilities, page props, breadcrumbs, forms, tables, charts/graphics, notifications/toasts, loading/empty/error/conflict/offline states, accessibility, responsive behavior, and evidence expected from the Inertia/Svelte presentation. HLD modules may expose page/query contracts, but they may not leave these behaviors to ad hoc component inference.
 
 ### 4.2 Laravel web application
 
@@ -189,6 +194,7 @@ Worker jobs must be:
 The scheduler triggers bounded operational commands, such as:
 
 - application-window transitions;
+- slot-reservation open/close/finalize and publication readiness;
 - session auto-close;
 - notification retry/reconciliation;
 - expired challenge cleanup;
@@ -200,7 +206,7 @@ Scheduler commands call the same application command as manual operations where 
 
 ### 4.6 Relational database
 
-The production authority is the approved relational engine selected by GF-09/D-057. The current proposed baseline is MySQL 8.4 with engine-specific migration and concurrency evidence. SQLite is limited to tests where parity is proven.
+The production authority is PostgreSQL for the greenfield system, with the supported major version pinned during E0 and recorded in the environment/ADR. `pgvector` may be enabled for the optional BGE/RAG embedding path only after extension/version, index, backup/restore, and privacy evidence is approved. SQLite is limited to tests where parity is proven; the current MySQL Compose setup is legacy/current-app evidence, not the greenfield authority.
 
 The database protects:
 
@@ -211,6 +217,7 @@ The database protects:
 - idempotency keys;
 - durable job/import/notification state;
 - audit sequence/checkpoint fields.
+- vector/document metadata only through an approved PostgreSQL extension contract; embeddings never become an authorization source.
 
 Application checks alone are insufficient for race-sensitive invariants.
 
@@ -228,11 +235,11 @@ Every controlled artifact records:
 - access policy reference;
 - created/retained/expired state.
 
-Object storage is an adapter choice for pilot durability; the application contract must not assume local disk permanence.
+Object storage is an adapter choice for pilot durability; the application contract must not assume local disk permanence. Retention status for raw OMR images and derived provenance is explicit and operator-observable.
 
 ### 4.8 Inference worker
 
-The optional Python worker is an internal, authenticated adapter boundary for OMR and approved decision-support engines.
+The optional Python worker is an internal, authenticated adapter boundary for OMR and approved decision-support engines, including the low-priority BGE beta when its feature flag and evidence gate are enabled.
 
 It may:
 
@@ -307,13 +314,13 @@ Approved input/version
 | Identity & Access | Staff/applicant credentials, challenge lifecycle, grants, scope resolution | Authenticated actor and capability context | Admission decisions or result visibility by itself |
 | Reference Data | Academic cycles, programs, rooms, aptitude areas, templates, mappings | Versioned reference snapshots | Applicant workflow state |
 | Admissions | ApplicantIdentity, AdmissionAttempt, Applicant No/Reference, intake decisions | Admission status/read model, eligibility signals | Exam scoring or result release |
-| Examination | ExamSession, assignment, proctor duty, attendance, submission, close | Session/roster/attendance read models | Score interpretation or consultation |
-| Assessment & Grading | Grading version, score records, OMR reviewed import | Score/grading read models and completion facts | Applicant admission or release authority |
+| Examination | ExamSession, ExamSlotPlan, ExamSlotReservation, assignment, proctor duty, attendance, submission, close | Session/slot/roster/attendance read models | Score interpretation or consultation |
+| Assessment & Grading | Grading version, score records, OMR observation/reviewed import, Direct Assessment mode | Score/grading read models and completion facts | Applicant admission or release authority |
 | Consultation & Release | Consultation evidence, availability/reservation, result preparation, release/reversal | Applicant/staff release views and release events | Authentication or raw model execution |
 | Documents & Reporting | Typed projections, templates, generated artifacts, safe exports | Private documents and scoped reports | Core workflow state mutation |
 | Communications | Notification intent/delivery/read state, conditional inquiry | Delivery/read projections | Acceptance, scoring, or release decisions |
 | Audit & Compliance | Event catalog, append/checkpoint/verification, access evidence | Audit verification and compliance views | Business state decisions |
-| Knowledge & RAG | Approved corpus, retrieval, citation/refusal envelope | Bounded answer proposal | Permission decisions, placement advice, state mutation |
+| Knowledge & RAG | Approved corpus, retrieval, citation/refusal envelope, AssistantActionRequest proposal/confirmation envelope | Bounded answer proposal and typed task request | Permission decisions, direct ORM/database access, placement advice, unapproved state mutation |
 | Decision Support | Engine adapter registry/manifest, proposals, provenance | Human-review proposals | Authoritative scores or admissions |
 | Platform/Operations | Queue/storage/provider/runtime adapters | Health, metrics, operational evidence | Domain policy |
 
@@ -347,7 +354,9 @@ Prohibited dependencies:
 - providers writing domain tables;
 - reports mutating core aggregates;
 - audit verification changing business state;
-- model/RAG text being accepted as a command without human authorization.
+- model/RAG text being accepted as a command without human authorization;
+- assistant action execution bypassing the same frontend/request gates used by the normal UI.
+- assistant text being treated as a route, ORM query, or capability grant without a typed allowlisted application command.
 
 ## 8. Trust and security boundaries
 
@@ -366,7 +375,7 @@ Prohibited dependencies:
 ```text
 HTTPS ingress
   → Laravel web container
-       → MySQL 8.4
+       → PostgreSQL (greenfield pinned major)
        → private storage volume
        → database queue
   → dedicated queue worker
@@ -396,7 +405,7 @@ Dokploy/Traefik is an ingress/deployment boundary, not a substitute for applicat
 |---|---|---|---|
 | Development | Synthetic seeded workflow | Local adapters/Mailpit | Synthetic only |
 | Test/CI | Deterministic fixtures and fake ports | Contract fixtures; no uncontrolled providers | Synthetic fixtures |
-| Controlled demo | Manual core plus approved test providers | OMR/RAG/engines only if their gates pass | Approved demo data |
+| Controlled demo | Manual core plus approved test providers | OMR/RAG/engines/offline only if their gates pass | Approved demo data |
 | Degraded provider | Manual core continues | Provider-backed action queues/retries visibly fail | Existing authorized data |
 | Pilot/production | Only after combined system-ready gate | Only approved and monitored capabilities | Institutionally approved real data |
 
@@ -408,7 +417,7 @@ Dokploy/Traefik is an ingress/deployment boundary, not a substitute for applicat
 - availability: provider failures do not block manual core;
 - recoverability: idempotent jobs, replay/reconciliation, backup/restore evidence;
 - auditability: mandatory mutation/access events and bounded tamper-evidence claim;
-- accessibility: keyboard, error, focus, and readable state design in UI contracts;
+- accessibility and UX correctness: keyboard, focus, readable loading/empty/error/conflict states, breadcrumbs, chart/table alternatives, toasts, responsive behavior, and protected feedback design in GF-21/GF-22 UI contracts;
 - maintainability: module ownership, dependency tests, typed boundaries;
 - reproducibility: pinned runtime and deterministic reset/seed;
 - performance: measurable query/import/worker limits to be specified before pilot.
@@ -417,13 +426,15 @@ Dokploy/Traefik is an ingress/deployment boundary, not a substitute for applicat
 
 | Decision | Current direction | Promotion artifact |
 |---|---|---|
-| Modular monolith | One Laravel transactional core with explicit modules | ADR-001 / GF-18 |
-| Queue boundary | After-commit jobs, database queue initially | ADR-014 / GF-20/GF-23 |
-| Inference boundary | Authenticated worker, proposal-only, no direct DB writes | ADR-015 / GF-20 |
-| Storage boundary | Private filesystem adapter now, object-storage adapter later | ADR-016 / GF-19/GF-23 |
+| Modular monolith | One Laravel transactional core with explicit modules | ADR-002 / GF-18 |
+| Queue boundary | After-commit jobs, database queue initially | ADR-008 / GF-20/GF-23 |
+| Inference boundary | Authenticated worker, proposal-only, no direct DB writes | ADR-010 / GF-20 |
+| Database boundary | PostgreSQL greenfield authority; pgvector only by extension/ADR/evidence gate; SQLite test-only | D-057 / GF-19/GF-20 |
+| Storage boundary | Private filesystem adapter now, object-storage adapter later | ADR-009 / GF-19/GF-23 |
 | Audit assurance | Tamper-evident under defined threat model, not tamper-proof | ADR-013 / GF-18/GF-23 |
 | Applicant access | Post-submission one-time challenge; acceptance independent | ADR-004 / GF-18/GF-21 |
-| Result release | Human decision and mode-specific prerequisites | ADR-010/GF-18 |
+| Authorization and browser boundary | Capability/resource-scope enforcement is server-side; UI routes/page states/feedback follow GF-21/GF-22 | GF-21/GF-22 |
+| Result release | Human decision and mode-specific prerequisites | ADR-006/ADR-009/GF-18 |
 
 ## 13. HLD review questions
 
@@ -433,12 +444,12 @@ These questions must be answered before LLD promotion:
 2. Should Reference Data be a separate module or part of the relevant workflow modules?
 3. Is Consultation & Release one module, or should consultation and document/release be separated?
 4. Is Communications limited to notifications for the first slice, with inquiry threads deferred?
-5. Is the Python worker required for the connected slice or optional until the OMR gate passes?
+5. Is the Python worker required for the connected slice or optional until the OMR gate passes, with offline proctoring independently gated by EV-011?
 6. Is database queue sufficient for the first system-ready target?
 7. Is private local storage acceptable for the controlled demonstration with a documented migration path?
 8. Which audit checkpoint destination and key-custody model are acceptable?
 9. Which provider calls must be synchronous, and which must always be queued?
-10. What is the approved production database/runtime matrix after clean-engine rehearsal?
+10. What PostgreSQL major version and pgvector extension/version are approved after clean-engine rehearsal, and what is the documented fallback if vector evidence is not ready?
 
 ## 14. HLD exit criteria
 
@@ -450,6 +461,7 @@ The HLD may be promoted to `APPROVED` or `CONDITIONAL` only when:
 - synchronous/asynchronous boundaries are explicit;
 - provider failures and manual fallback are explicit;
 - core data and audit ownership are clear;
+- browser shells, route/page responsibilities, authorization states, and UX feedback do not contradict the trust boundaries;
 - the HLD review questions are answered or assigned to named gates;
 - GF-18 can be written without inventing a module boundary.
 

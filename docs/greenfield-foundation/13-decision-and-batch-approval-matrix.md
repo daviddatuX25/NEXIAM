@@ -58,7 +58,7 @@ The numbered `D-001` through `D-080` rows are the canonical review identifiers. 
 | D-SCOPE-01 | D-021 |
 | D-SCOPE-02 | D-020 |
 | D-SCOPE-03 | D-023, D-051 |
-| D-AUTH-01 | D-025 |
+| D-AUTH-01 | D-025, D-085 |
 | D-AUTH-02 | D-026 |
 | D-DOM-01 | D-024 |
 | D-DOM-02 | D-024 |
@@ -152,7 +152,7 @@ The numbered `D-001` through `D-080` rows are the canonical review identifiers. 
 | ID | Decision | Recommended default | If rejected/held | Review trigger | Founder outcome |
 |---|---|---|---|---|---|
 | D-024 | Applicant lifetime | Durable ApplicantIdentity with optional Portal Account/access credential and repeatable cycle-scoped AdmissionAttempts; historical attempts, released results, consultation evidence, and audit history remain linked after a cycle closes | One-record-per-cycle requires explicit re-registration/history linking design | Institutional identity policy | GO WITH CONDITION — approved by David on 2026-08-02; retain one durable ApplicantIdentity across cycles, allow optional portal credentials after submission, and never delete historical attempts or evidence merely because an academic cycle ends |
-| D-025 | Applicant authentication | Applicant No/Applicant Reference is a non-secret identifier; after successful submission, issue a short-lived one-time hashed setup/access challenge through a real approved channel; challenge may establish a password or approved credential; result access remains separately gated by ResultRelease; reset/recovery is hashed, expiring, atomic, rate-limited, and non-enumerating | Identifier-only access, birthday-only authentication, fabricated recovery address, or a challenge issued only after acceptance is security NO-GO | Approved delivery/recovery channel, OTP/passkey/password decision, and applicant support procedure | GO WITH CONDITION — approved by David on 2026-08-02; issue applicant access after submission rather than acceptance; Applicant No is not a bearer secret; personal facts such as birthday may support assisted recovery but cannot be the sole authenticator |
+| D-025 | Applicant authentication | Applicant No/Applicant Reference is a non-secret identifier; after successful submission, issue a short-lived one-time hashed setup/access challenge through a real approved channel; challenge may establish a password or approved credential; result access remains separately gated by ResultRelease; reset/recovery is hashed, expiring, atomic, rate-limited, and non-enumerating | Identifier-only access, birthday-only authentication, fabricated recovery address, or a challenge issued only after acceptance is security NO-GO | Approved delivery/recovery channel, OTP/passkey/password decision, and applicant support procedure | GO WITH CONDITION — approved by David on 2026-08-02; **credential shape refined by D-085 (2026-08-05)** — access key + birthdate; birthday alone remains NO-GO; see `decisions/D-085-applicant-access-credential.md` |
 | D-026 | Staff authentication | Named local accounts first; defer Google OAuth until linking/domain/verified-email/takeover rules pass | No OAuth in core slice | Institutional identity provider approved | ____ |
 | D-027 | Identity duplicate rule | Define normalized identity key scoped to approved cycle/person model and enforce at DB; generate a collision-safe Applicant No/Applicant Reference unique to the AdmissionAttempt and use it as the answer-sheet binding key; provide explicit duplicate-resolution path | Intake remains race-prone and ambiguous | Institutional identifiers become available | GO WITH CONDITION — approved by David on 2026-08-02; Applicant No/Reference is stable per attempt, non-secret, printed or encoded on the answer sheet, and is never replaced by a required admission slip |
 | D-028 | Workflow source of truth | Commands own domain state; stage/status dashboards are projections from completed milestones, not independently mutable truths | Dual mutable status fields remain NO-GO | Approved domain model demonstrates need for independent aggregate | ____ |
@@ -236,6 +236,16 @@ These rows were added after the three bounded controller/service journeys comple
 | D-079 | RAG access and refusal-to-inquiry handoff | Institutional policy RAG may be available before consultation release; own scores/results/consultation are included only when their authoritative release permits; refusal shows staff fallback and creates a bounded Guidance inquiry only after applicant confirmation; general inter-office messaging remains conditional | Make RAG entirely post-release/policy-only, or defer inquiry threads and use static contact instructions | Manuscript/TAM scope, privacy, and Guidance SLA | ____ |
 | D-080 | Program Head/report metric and audit contract | Define program ownership, quota source/version, “matched” meaning, freshness, inactive-program history, and privacy aggregation thresholds; Guidance and Program Head may use approved consultation-facing information; preserve model provenance, program notes, Test Administrator suggestions, and Applicant selections as separate evidence; Program Head remains read-only/program-scoped; every protected view/export is audited and spreadsheet-safe | Defer Program Head and expose reports only to approved Registrar/Guidance roles | Program Head validation and privacy review | GO WITH CONDITION — approved by David on 2026-08-02; Program Head and Guidance may review authorized consultation history and admission-support projections, while counselor suggestions and applicant-selected alternatives remain distinct for later pre-enrolment planning |
 
+## 2B. Founder amendment — 2026-08-05 (applicant access credential)
+
+| ID | Decision | Recommended default | If rejected/held | Review trigger | Founder outcome |
+|---|---|---|---|---|---|
+| D-085 | Applicant portal credential (refines D-025 / D-AUTH-01) | Access key (hashed; shown once on confirmation; optional browser save; email backup) **plus** birthdate for login; no free-form applicant password; E2 recovery = registrar reissue (email/F2F); Nexi forgot-key deferred | Birthday-only or key-only login, or forcing email before first portal entry, reopens D-025 | Staff reissue UX and delivery evidence | **GO WITH CONDITION — approved by David on 2026-08-05**; full wording in [`decisions/D-085-applicant-access-credential.md`](decisions/D-085-applicant-access-credential.md) |
+
+| D-086 | Intake academic grades + privacy consent link | Digital English/Filipino/Math/Science (+ GWA) on apply for consultation; hard copy still required; Privacy Policy hyperlink+dialog; policy covers grades | Omitting consent link or inventing SIS scope | Consultation field review | **GO WITH CONDITION — 2026-08-05**; [`decisions/D-086-intake-grades-and-privacy-consent.md`](decisions/D-086-intake-grades-and-privacy-consent.md) |
+| D-087 | Shared institutional setup + Program Head quota | See [`decisions/D-087-shared-setup-and-program-quota.md`](decisions/D-087-shared-setup-and-program-quota.md); aptitude TA-only refinement | Separate hubs / registrar-only rooms | Setup OpenSpec archived PASS | **FOUNDING — 2026-08-06** |
+| D-088 | Exam scheduling conflict resolutions | Unpublish vs Cancel vs Close; single assign path; active uniqueness; dual-path capacity; plan finalized vs session Publish; late assign; proctor conflict deferred | Reintroducing legacy dual assign / forever-unique / cancel-only-in-progress | OpenSpec `exam-session-scheduling` | **FOUNDING — 2026-08-06**; [`decisions/D-088-exam-scheduling-conflict-resolutions.md`](decisions/D-088-exam-scheduling-conflict-resolutions.md) |
+
 ## 3. Suggested one-session review order
 
 For fastest safe review:
@@ -264,3 +274,5 @@ After review:
 - Domain/schema implementation: **NO-GO**
 - Controlled capstone demonstration: **NO-GO**
 - Real pilot/production: **BLOCKED**
+
+- D-086 (2026-08-05): apply collects digital subject grades for consultation; Privacy Policy dialog consent restored.

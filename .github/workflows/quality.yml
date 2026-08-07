@@ -1,4 +1,4 @@
-name: Quality
+name: Legacy Runtime Quality Reference
 
 on:
     push:
@@ -7,6 +7,10 @@ on:
 jobs:
     quality:
         runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                working-directory: legacy_codebase/application
 
         steps:
             - uses: actions/checkout@v4
@@ -38,6 +42,7 @@ jobs:
               with:
                   node-version: 24
                   cache: npm
+                  cache-dependency-path: legacy_codebase/application/package-lock.json
 
             - name: Install frontend dependencies
               run: npm ci

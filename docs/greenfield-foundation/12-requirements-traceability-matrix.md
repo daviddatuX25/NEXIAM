@@ -7,7 +7,8 @@
 
 ## 1. Status vocabulary
 
-- **PROPOSED:** Recommended behavior awaiting founder decision.
+- **PROPOSED:** Candidate behavior whose founder outcome may be recorded but whose contract/promotion/evidence is not yet complete.
+- **PROMOTED (planning):** Bound into [`../prd.md`](../prd.md) for story authorship; executable proof may still be open.
 - **EVIDENCE HOLD:** Product behavior needs stakeholder/institutional artifact.
 - **SPIKE HOLD:** Technical commitment needs measurable feasibility proof.
 - **CONDITIONAL:** Required only if retained in approved capstone scope.
@@ -35,7 +36,7 @@
 | REQ-AUTH-005 | Applicant access is own-data only | Legacy separate guard/policy intent | D-024–D-027 | GF-04 §4; SCN-VS-001/014 | Cross-applicant policy/browser tests | PROPOSED |
 | REQ-AUTH-006 | Staff access is capability-, office-, program-, and resource-scoped | Legacy globally broad application access | D-018–D-023, G-ROLE | GF-04 matrix/data-scope rules | Full allow/deny/cross-scope suite | EVIDENCE HOLD |
 | REQ-AUTH-007 | System IT has technical governance, not routine admission authority | Role separation/security principle | D-019 | GF-04 CAP-029–035 | Denied operational decision tests | PROPOSED |
-| REQ-AUTH-008 | Any break-glass access is time-bound, reasoned, alerted, and audited | Super Admin ambiguity | D-017 | GF-08 §§3–4 | Break-glass workflow and review tests | PROPOSED |
+| REQ-AUTH-008 | Any break-glass access is time-bound, reasoned, alerted, and audited | Super Admin ambiguity | D-017 | GF-08 §§3–4; GF-19 §§3.1/5/9; GF-20 §4; GF-21 §§3–8; GF-22 §3.4 | Activation/end, capability-allowlist, expiry/revocation, audit-view, and post-use review tests | PROPOSED |
 
 ## 4. Admission intake and identity-lifetime requirements
 
@@ -92,18 +93,18 @@
 | REQ-DOC-002 | CSV/XLSX outputs neutralize formulas/external-link risk | Audit export finding | D-062 | GF-08 §6 | Spreadsheet security fixtures | PROPOSED |
 | REQ-DOC-003 | Generated artifacts retain owner, template/version, checksum, private storage reference, and lifecycle class | Document provenance/retention need | D-033–D-035/D-062 | GF-05 GeneratedDocument | Storage/access/retention tests | PROPOSED |
 | REQ-DOC-004 | One versioned result-template authority exists; Applicant No/Reference binds answer-sheet identity; generated, distributed/downloaded, and physically printed result evidence are distinct; admission slip is not required in the target flow; large batches are observable jobs | Competing admission-slip authorities and orphaned print mutation | D-078, EV-016 | GF-05/GF-06; SCN-VS-019 | Applicant-No binding, result-template, print-evidence, retry, batch-job tests | EVIDENCE HOLD |
-| REQ-COMM-001 | Notifications are after-commit, idempotent, observable, retryable, and have terminal failure | Legacy swallowed/partial notifications | D-045/D-060/D-067 | GF-07/GF-09; SCN-VS-012 | Queue/retry/dead-letter tests | PROPOSED |
+| REQ-COMM-001 | Notifications are after-commit, idempotent, observable, retryable, and have terminal failure | Legacy swallowed/partial notifications | D-045/D-060/D-067 | GF-07/GF-09 §§7/9.1; GF-20 §7; SCN-VS-012 | Queue/retry/dead-letter/ownership tests | PROPOSED |
 | REQ-COMM-002 | Provider outage does not block the manual authoritative core journey | External dependency risk | D-067 | SCN-VS-008 | Degraded-mode E2E tests | PROPOSED |
 | REQ-COMM-003 | Applicant notification list/count/read state is a connected own-data projection; event preferences, idempotency, and terminal failures are explicit | Existing applicant API exists but portal props/page are disconnected | D-045/D-060/D-067 | GF-07 FAIL-030; SCN-VS-020 | Prop/API/ownership/read/rebuild/retry tests | PROPOSED |
-| REQ-INT-001 | Every external operation uses typed schemas, timeout, idempotency, provenance, health, and retry/failure contracts | Audit/greenfield adapter plan | D-060–D-067 | GF-07/GF-09 | Contract/integration tests | PROPOSED |
+| REQ-INT-001 | Every external operation uses typed schemas, timeout, idempotency, provenance, health, and retry/failure contracts | Audit/greenfield adapter plan | D-060–D-067 | GF-07/GF-09 §§4/9.1; GF-20 §§7–10 | Contract/integration/health/ownership tests | PROPOSED |
 
 ## 8. Security, privacy, and audit requirements
 
 | Requirement ID | Requirement | Primary evidence/source | Decision/gate | Contract/acceptance | Future proof | Status |
 |---|---|---|---|---|---|---|
-| REQ-SEC-001 | Protected commands enforce backend policy/resource scope and do not rely on UI hiding or LLM prompts | Legacy route/policy mismatch; RAG risk | D-014–D-023 | GF-08 §§3–7 | Policy/browser/negative tests | PROPOSED |
+| REQ-SEC-001 | Protected commands enforce backend policy/resource scope and do not rely on UI hiding or LLM prompts | Legacy route/policy mismatch; RAG risk | D-014–D-023 | GF-08 §§3–7; GF-21 §§1–6; GF-22 §12 | Policy/browser/negative tests | PROPOSED |
 | REQ-SEC-002 | Upload/import paths enforce content type, size/decompression/time, private storage, path/URL restrictions, and idempotency | Spreadsheet/SSRF/upload audit risk | D-062 | GF-08 §6 | Malformed/oversized/SSRF fixtures | PROPOSED |
-| REQ-PRIV-001 | Real data requires approved purpose, roles/scopes, provider map, retention, correction/restriction/export/deletion, backup/destruction | Manuscript excludes formal PIA/NPC certification; evidence pending | D-034/D-035/D-072 | GF-08 §5 | Approved lifecycle matrix and operations evidence | EVIDENCE HOLD |
+| REQ-PRIV-001 | Real data requires approved purpose, roles/scopes, provider map, retention, correction/restriction/export/deletion, backup/destruction | Manuscript excludes formal PIA/NPC certification; evidence pending | D-034/D-035/D-072 | GF-08 §5; GF-19 §§4/9; GF-20 §§7/9; GF-21 §§5.4/7; GF-22 §§8/12 | Approved lifecycle/hold matrix, provider map, purge/hold, backup/destruction, scope, redaction, and operations evidence | EVIDENCE HOLD |
 | REQ-AUD-001 | Critical event append and state mutation are mandatory and atomic under approved command boundary | Best-effort/partial legacy audit risk | D-052/D-060 | GF-08 §8 | Command failure/atomicity tests | PROPOSED |
 | REQ-AUD-002 | Cryptographic claim is limited to tamper evidence under a declared threat model | Manuscript HMAC overclaim/audit gap | D-052 | GF-08 §8 | Threat model and tamper suite | SPIKE HOLD |
 | REQ-AUD-003 | Canonical sequence/hash/key version/checkpoint verification detects covered tampering and concurrency is serialized | Audit architecture requirement | D-052 | SCN-VS-015 | Concurrent/tamper/key/checkpoint tests | SPIKE HOLD |
@@ -121,7 +122,7 @@
 | REQ-ENG-002 | Program mapping is versioned expert-approved reference data, not model output | Pending Program Head mapping | D-049, EV-005/006 | GF-10 §5 | Signed/versioned mapping evidence | EVIDENCE HOLD |
 | REQ-ENG-003 | BGE, if retained, is embedding similarity using approved genuine interest input/corpus, not supervised prediction | Manuscript/engine terminology conflict | D-050 | GF-10 §6 | Relevance/repeatability/provenance tests | CONDITIONAL |
 | REQ-SCHED-001 | Scheduling assistance exposes hard constraints, feasible/infeasible result, human confirmation, and manual fallback | AI-assisted scheduling promise lacks contract | D-009 | GF-10 §7 | Constraint fixtures/comparison/outage tests | CONDITIONAL |
-| REQ-OFF-001 | Offline proctoring requires outbox, idempotent replay, conflict detection/manual resolution; no cache-only claim | Manuscript/greenfield conflict | D-053, G-OFFLINE | GF-07/GF-10 | Disconnect/reconnect/duplicate/stale conflict tests | DEFERRED |
+| REQ-OFF-001 | Offline proctoring requires encrypted device/session scope, durable outbox, ordered idempotent replay, conflict detection/manual resolution, and visible degraded state; no cache-only claim | Manuscript/greenfield conflict | D-053, G-OFFLINE | GF-07/GF-10; GF-22 §9.4 | Disconnect/reconnect/duplicate/stale conflict tests | DEFERRED |
 
 ## 10. Reporting and Program Head requirements
 
@@ -137,11 +138,28 @@
 | REQ-PLAT-001 | Runtime, database, test frameworks, and dependency versions are pinned consistently across local/CI/images | Node/DB/Pest-PHPUnit contradictions | D-055–D-059, G-PLATFORM | GF-09 §1 | Clean lock/install/version output | PROPOSED |
 | REQ-PLAT-002 | One robust Compose topology includes web, worker, scheduler, DB, approved inference, and local/test mail with health dependencies | User deployment preference/current missing sidecar | D-060–D-064 | GF-09 §2 | Compose render/boot/health output | PROPOSED |
 | REQ-PLAT-003 | Greenfield starts with zero known lint/type/static/test failures; zero discovered tests is failure | Dirty legacy quality reality | D-065 | GF-09 §§6–8 | Green CI report | PROPOSED |
-| REQ-PLAT-004 | Production-engine migration/seed, constraints, concurrency, upgrade, rollback policy, backup/restore are verified | SQLite-only/fresh-only plan gap | D-057/D-066 | GF-09 §5 | Catalog/race/restore evidence | PROPOSED |
-| REQ-PLAT-005 | Manual core remains available during optional provider/worker outage | Capstone reliability | D-067 | SCN-VS-008 | Degraded-mode E2E tests | PROPOSED |
+| REQ-PLAT-004 | Production-engine migration/seed, constraints, concurrency, upgrade, rollback policy, backup/restore are verified | SQLite-only/fresh-only plan gap | D-057/D-066 | GF-09 §§5/9.1; GF-19 §§5/8/9 | Catalog/race/restore/RPO-RTO ownership evidence | PROPOSED |
+| REQ-PLAT-005 | Manual core remains available during optional provider/worker outage | Capstone reliability | D-067 | GF-09 §9.1; GF-17 §§4/10; SCN-VS-008 | Degraded-mode E2E and readiness/health evidence | PROPOSED |
 | REQ-EVAL-001 | Small technical pilot precedes broad TAM and has defect/Go-No-Go evidence | Current plan jumps to evaluation | D-012/D-013/D-072 | GF-10 §§10–12 | Pilot report and approved protocol | PROPOSED |
 
-## 12. Traceability completion rule
+## 12. Frontend, route, and UX requirements
+
+| Requirement ID | Requirement | Primary evidence/source | Decision/gate | Contract/acceptance | Future proof | Status |
+|---|---|---|---|---|---|---|
+| REQ-UX-001 | Every authenticated/public journey has an explicit shell, page identity, scope/context, server-authorized route responsibility, and top breadcrumb behavior | Legacy shell/breadcrumb evidence; UI ambiguity risk | D-014–D-023, D-055, G-ROLE | GF-21 §§5–6; GF-22 §§3–4; REQ-VS-027 | Route/page-prop/browser tests | PROPOSED |
+| REQ-UX-002 | Navigation/control visibility is a usability projection only; direct URLs, page props, queries, exports, jobs, and assistant commands enforce GF-21 policy and resource scope | Route/policy mismatch and RAG risk | D-014–D-023, D-051, G-ROLE | GF-21 §§1–5; REQ-SEC-001 | Allowed/denied/cross-scope/revocation tests | PROPOSED |
+| REQ-UX-003 | Every page/panel distinguishes initial loading, refresh, ready, empty, filtered-empty, not-yet-available, denied/not-found, validation, server error, conflict, degraded provider, and retry/reconciliation states | Existing empty/stale/projection failure risk | D-028, D-067, G-WORKFLOW | GF-20 §2; GF-22 §7; REQ-VS-026 | Component/E2E state matrix | PROPOSED |
+| REQ-UX-004 | Forms preserve safe input, associate field/server errors, manage focus, prevent duplicate/idempotent submit, warn on dirty navigation, and use risk-appropriate confirmations | Command/retry/conflict contract | D-029, D-031, D-032, D-039, D-043, D-075 | GF-20 §§2–4; GF-22 §§5.3–5.4/9 | Vitest/Playwright validation/conflict/confirmation tests | PROPOSED |
+| REQ-UX-005 | Toasts and durable notifications have typed severity, duration/dismissal, deduplication, correlation, redaction, accessible live-region behavior, and authoritative pending/delivery wording | Legacy notifications/toasts plus after-commit contract | D-045, D-060, D-067 | GF-07; GF-20 §2; GF-22 §6 | Notification/polling/retry/redaction tests | PROPOSED |
+| REQ-UX-006 | Charts/KPIs/graphics are scoped read projections with metric definition, unit/denominator, freshness, zero/no-data/suppressed/stale/error states, accessible text/table alternative, privacy thresholds, and audited export/drill-down | Legacy Chart.js evidence; reporting/privacy gaps | D-018, D-049, D-050, D-080, G-UX | GF-10; GF-21 §5.4; GF-22 §8 | Chart state/accessibility/privacy/export tests | CONDITIONAL |
+| REQ-UX-007 | Tables/lists support authorized filters, sort, pagination, deep links, responsive card/scroll behavior, empty distinctions, and row/bulk action safety without broadening scope | Existing list/filter behavior and scope contract | D-018, D-020, D-028, G-ROLE | GF-20 §5; GF-22 §5.2 | URL-state/scope/responsive browser tests | PROPOSED |
+| REQ-UX-008 | OMR and document graphics expose provenance, confidence/uncertainty, human-review/correction status, privacy/watermark/print state, and manual fallback without autonomous authority | OMR UX direction and document security | D-035, D-046–D-048, D-078, G-OMR | GF-10 §3; GF-22 §§8.5/9.5/9.6 | Review/import/preview/print tests | SPIKE HOLD |
+| REQ-UX-009 | Responsive and accessible behavior covers keyboard/focus/landmarks/live regions/contrast/reduced motion/touch targets/zoom/reflow for critical journeys | Accessibility and mobile acceptance gap | D-055, D-059 | GF-22 §§10–11; REQ-VS-031 | Playwright keyboard/viewport/accessibility evidence | PROPOSED |
+| REQ-UX-010 | Offline UI distinguishes local capture, queued replay, server commit, conflict, revoked/expired duty, and manual resolution; it never claims authoritative success from cache | Offline integrity contract | D-053, G-OFFLINE | GF-07/GF-10; GF-22 §9.4 | EV-011/device/replay/conflict tests | CONDITIONAL |
+| REQ-UX-011 | RAG/assistant UI distinguishes policy citations, own-data scope, task proposal, confirmation, refusal, inquiry handoff, and provider degradation; the same backend command/policy gates are used as ordinary UI | RAG authorization/refusal contradiction | D-008, D-051, D-079, EV-018 | GF-08 §7; GF-20 §§4–5; GF-22 §9.8 | Citation/auth/refusal/confirmation/outage tests | CONDITIONAL |
+| REQ-UX-012 | Protected views/exports/prints, break-glass activity, and sensitive feedback are scoped, redacted, reasoned, and correlated to audit evidence; no credential/secret/hidden-record leakage occurs in UI channels | Security/privacy/audit contract | D-023, D-034/D-035, D-052, D-062, G-AUDIT | GF-08; GF-21 §§5–7; GF-22 §12 | Audit-of-view/export/print/redaction tests | PROPOSED |
+
+## 13. Traceability completion rule
 
 A row may become APPROVED/implementation-ready only when:
 

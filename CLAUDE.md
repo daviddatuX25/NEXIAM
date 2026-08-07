@@ -1,4 +1,8 @@
 <laravel-boost-guidelines>
+## Workspace transition boundary
+
+The repository root is currently the greenfield planning/OpenSpec workspace, not the runnable legacy Laravel application. The complete legacy runtime is under `legacy_codebase/application/`. Run legacy Composer/npm/Artisan/Compose commands from that directory only. Do not treat legacy code, migrations, route-role strings, or tests as greenfield authority; use `docs/legacy-reference/` for the evidence crosswalk and `docs/greenfield-foundation/` plus approved OpenSpec changes for target work.
+
 === foundation rules ===
 
 # Laravel Boost Guidelines
@@ -10,16 +14,17 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
 - php - 8.4
-- inertiajs/inertia-laravel (INERTIA_LARAVEL) - v2
-- laravel/framework (LARAVEL) - v12
+- inertiajs/inertia-laravel (INERTIA_LARAVEL) - v3
+- laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
 - laravel/pail (PAIL) - v1
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
-- phpunit/phpunit (PHPUNIT) - v11
-- @inertiajs/svelte (INERTIA_SVELTE) - v2
+- pestphp/pest (PEST) - v5
+- phpunit/phpunit (PHPUNIT) - v13
+- @inertiajs/react (INERTIA_REACT) - v3
 - tailwindcss (TAILWINDCSS) - v4
 
 ## Skills Activation
@@ -27,7 +32,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 This project has domain-specific skills available. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
 
 - `laravel-best-practices` — Apply this skill whenever writing, reviewing, or refactoring Laravel PHP code. This includes creating or modifying controllers, models, migrations, form requests, policies, jobs, scheduled commands, service classes, and Eloquent queries. Triggers for N+1 and query performance issues, caching strategies, authorization and security patterns, validation, error handling, queue and job configuration, route definitions, and architectural decisions. Also use for Laravel code reviews and refactoring existing Laravel code to follow best practices. Covers any task involving Laravel backend PHP code patterns.
-- `inertia-svelte-development` — Develops Inertia.js v2 Svelte client-side applications. Activates when creating Svelte pages, forms, or navigation; using Link, Form, or router; working with deferred props, prefetching, or polling; or when user mentions Svelte with Inertia, Svelte pages, Svelte forms, or Svelte navigation.
+- `inertia-react-development` — Develops Inertia.js v3 React client-side applications. Activates when creating React pages, forms, or navigation; using Link, Form, or router; working with deferred props, prefetching, or polling; or when user mentions React with Inertia, React pages, React forms, or React navigation.
 - `tailwindcss-development` — Always invoke when the user's message includes 'tailwind' in any form. Also invoke for: building responsive grid layouts (multi-column card grids, product grids), flex/grid page structures (dashboards with sidebars, fixed topbars, mobile-toggle navs), styling UI components (cards, tables, navbars, pricing sections, forms, inputs, badges), adding dark mode variants, fixing spacing or typography, and Tailwind v3/v4 work. The core use case: writing or fixing Tailwind utility classes in HTML templates (Blade, JSX, Vue). Skip for backend PHP logic, database queries, API routes, JavaScript with no HTML/CSS component, CSS file audits, build tool configuration, and vanilla CSS.
 
 ## Conventions
@@ -121,7 +126,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 - Inertia creates fully client-side rendered SPAs without modern SPA complexity, leveraging existing server-side patterns.
 - Components live in `resources/js/Pages` (unless specified in `vite.config.js`). Use `Inertia::render()` for server-side routing instead of Blade views.
 - ALWAYS use `search-docs` tool for version-specific Inertia documentation and updated code examples.
-- IMPORTANT: Activate `inertia-svelte-development` when working with Inertia Svelte client-side patterns.
+- IMPORTANT: Activate `inertia-react-development` when working with Inertia React client-side patterns.
 
 # Inertia v2
 
@@ -195,12 +200,13 @@ This project has domain-specific skills available. You MUST activate the relevan
 - If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
 - Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
 
-=== phpunit/core rules ===
+=== pest/core rules ===
 
-# PHPUnit
+# Pest
 
-- This application uses PHPUnit for testing. All tests must be written as PHPUnit classes. Use `php artisan make:test --phpunit {name}` to create a new test.
-- If you see a test using "Pest", convert it to PHPUnit.
+- This application uses Pest 5 on PHPUnit 13 for testing. Write Pest feature/unit tests by default (`php artisan make:test --pest {name}`).
+- Do not convert Pest tests to PHPUnit classes. PHPUnit remains the execution engine under Pest.
+- Playwright is the connected browser authority; Pest Browser is supplementary only.
 - Every time a test has been updated, run that singular test.
 - When the tests relating to your feature are passing, ask the user if they would like to also run the entire test suite to make sure everything is still passing.
 - Tests should cover all happy paths, failure paths, and edge cases.
@@ -213,11 +219,11 @@ This project has domain-specific skills available. You MUST activate the relevan
 - To run all tests in a file: `php artisan test --compact tests/Feature/ExampleTest.php`.
 - To filter on a particular test name: `php artisan test --compact --filter=testName` (recommended after making a change to a related file).
 
-=== inertia-svelte/core rules ===
+=== inertia-react/core rules ===
 
-# Inertia + Svelte
+# Inertia + React
 
-- IMPORTANT: Activate `inertia-svelte-development` when working with Inertia Svelte client-side patterns.
+- IMPORTANT: Activate `inertia-react-development` when working with Inertia React client-side patterns.
 
 </laravel-boost-guidelines>
 

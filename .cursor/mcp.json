@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "/home/user/Projects/NEXIAM/system/bin/boost-mcp.sh",
+      "args": []
+    }
+  }
+}

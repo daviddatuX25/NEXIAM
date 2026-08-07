@@ -23,68 +23,69 @@
 |---|---|---|---|---|---|
 | ACT-01 | Applicant | Base role/account type | Yes | Own portal and own admission data | D-ROLE-01 |
 | ACT-02 | Registrar Clerk | Base staff role | Yes | Daily intake and record operations within Registrar scope | D-ROLE-01 |
-| ACT-03 | Registrar Administrator | Base staff role | Yes | Registrar oversight, configuration, approvals, and delegated accounts | D-ROLE-01 |
+| ACT-03 | Registrar Administrator | Base staff role | Yes | Registrar oversight, institutional/reference configuration, approvals, and delegated accounts | D-ROLE-01 |
 | ACT-04 | Guidance Counselor | Base staff role | Yes | Counseling, scoring, release, and approved assessment capabilities | D-ROLE-01 |
 | ACT-05 | Guidance Clerk | Base staff role | Yes | Guidance operational administration and delegated staff authority | D-ROLE-01 |
-| ACT-06 | Program Head | Base staff role | Yes | Read-only, program-scoped aggregate visibility by default | D-ROLE-01/D-ROLE-05 |
+| ACT-06 | Program Head | Base staff role | Yes | Program-scoped aggregate visibility + **PROGRAM-scoped quota write** (D-087); no admission/score/release writes | D-ROLE-01/D-ROLE-05/D-087 |
 | ACT-07 | Staffing/HR Administrator | Personnel lifecycle role | No separate product evaluation | Create/deactivate approved permanent and support-staff accounts and role records; no operational applicant/admission authority; cannot grant Test Administrator/Proctor | D-ROLE-01/D-017/D-019 |
 | ACT-08 | Super Admin | System oversight account | No | BREAK-GLASS only if retained; every use reasoned and audited | D-ROLE-04 |
-| ACT-09 | Registrar Support Staff | Subordinate/temporary office role | Yes | Registrar Clerk responsibilities by default; Registrar scope only | D-ROLE-01/D-020 |
+| ACT-09 | Registrar Support Staff | Subordinate/temporary office role | Yes | Explicit Registrar operational subset: delegated intake/correction, accept/dismiss, and status visibility; no Registrar Clerk/Admin setup pages | D-ROLE-01/D-020/D-036 |
 | ACT-10 | Guidance Support Staff | Subordinate/temporary office role | Yes | Guidance Clerk responsibilities by default; Test Administrator/Proctor only through explicit overlays | D-ROLE-01/D-015/D-016/D-020 |
 | DUTY-01 | Proctor | Temporary contextual duty | No separate role | ASSIGNED examination session only | D-ROLE-02 |
 | CAPSET-01 | Test Administration | Explicit capability set | No separate role | Assigned only to approved Guidance actors | D-ROLE-03 |
 
 ## 3. Proposed target capability matrix
 
-Abbreviations: APP Applicant, RC Registrar Clerk, RA Registrar Admin, GC Guidance Counselor, GCL Guidance Clerk, PH Program Head, HR Staffing/HR Admin, SA Super Admin. Registrar Support Staff and Guidance Support Staff inherit RC/GCL by default and receive only the explicit overlays in §3.1.
+Abbreviations: APP Applicant, RC Registrar Clerk, RA Registrar Admin, GC Guidance Counselor, GCL Guidance Clerk, PH Program Head, HR Staffing/HR Admin, SA Super Admin. Registrar Support Staff and Guidance Support Staff are not automatically equivalent to RC/GCL; each receives only the explicit overlays in §3.1.
 
 | Capability ID | Capability | APP | RC | RA | GC | GCL | PH | HR | SA | Status/evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | CAP-001 | Create admission attempt | PUBLIC/OWN | DENY | OFFICE | DENY | DENY | DENY | DENY | BREAK-GLASS | Legacy permits public and staff intake; target pre-account identity/account activation follows D-073 |
 | CAP-002 | View admission attempt | OWN | OFFICE (admission fields) | OFFICE (admission fields) | OFFICE/REVIEW | OFFICE/REVIEW | PROGRAM approved record view | DENY | BREAK-GLASS | Registrar record access excludes converted result/remark evidence; Program Head may view authorized applicant records within program scope; raw sensitive artifacts remain separately restricted |
 | CAP-003 | Correct application data before acceptance | OWN under guard | OFFICE | OFFICE | DENY | DENY | DENY | DENY | BREAK-GLASS | Own-edit freeze after assignment is useful legacy intent |
-| CAP-004 | Accept/dismiss application | DENY | REVIEW | OFFICE | DENY | DENY | DENY | DENY | BREAK-GLASS | Legacy allows broad roles; target delegation needs decision |
+| CAP-004 | Accept/dismiss application | DENY | OFFICE | OFFICE | DENY | DENY | DENY | DENY | BREAK-GLASS | Registrar Clerk and explicitly authorized Registrar Support Staff may decide within Registrar scope; reason/version/audit required |
 | CAP-005 | Reopen/archive/correct accepted attempt | DENY | DENY | OFFICE with reason | DENY | REVIEW | DENY | DENY | BREAK-GLASS | Must be non-destructive |
 | CAP-006 | Import applications | DENY | OFFICE | OFFICE | DENY | DENY | DENY | DENY | BREAK-GLASS | Built; requires idempotency and error report |
-| CAP-007 | Configure academic cycles/application windows | DENY | DENY | ALLOW | DENY | DENY | REVIEW | DENY | BREAK-GLASS | Ownership requires decision; HR has no academic-cycle authority |
-| CAP-008 | Configure programs/courses/rooms | DENY | DENY | ALLOW | DENY | DENY | PROGRAM read | DENY | BREAK-GLASS | Reference-data owner requires validation; HR has no academic-reference authority |
-| CAP-009 | Create exam session | DENY | DENY | REVIEW | OFFICE | OFFICE | PROGRAM read | DENY | BREAK-GLASS | Legacy grants Registrar Administrator; proposed Guidance ownership is unresolved under D-038 |
-| CAP-010 | Assign applicants to session | DENY | DENY | REVIEW | OFFICE | OFFICE | DENY | DENY | BREAK-GLASS | Transactional eligibility/capacity required |
-| CAP-011 | Publish/unpublish/cancel/reopen session | DENY | DENY | REVIEW | OFFICE | OFFICE | PROGRAM read | DENY | BREAK-GLASS | Reversal requires reason/audit |
-| CAP-012 | Assign/revoke Proctor duty | DENY | DENY | DENY | REVIEW | OFFICE | DENY | DENY | BREAK-GLASS | Proposed Guidance Admin owner; stakeholder decision required |
+| CAP-007 | Configure academic cycles/application windows | DENY | OFFICE (approved setup pages) | ALLOW | OFFICE | OFFICE | DENY | DENY | BREAK-GLASS | **D-087 shared setup:** Registrar Clerk/Admin and Guidance Counselor/Clerk may maintain; Support Staff denied; one Setup hub |
+| CAP-008 | Configure programs/courses/rooms | DENY | OFFICE (approved setup pages) | ALLOW | OFFICE | OFFICE | PROGRAM read | DENY | BREAK-GLASS | **D-087 shared setup:** rooms and courses interchangeable between Registrar and Guidance; Program Head remains read on programs |
+| CAP-009 | Create exam session | DENY | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | PROGRAM read | DENY | BREAK-GLASS | Examination ownership resolves through the concrete holder of Test Administrator capability, not a generic Guidance role |
+| CAP-010 | Assign applicants to session | DENY | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | DENY | DENY | BREAK-GLASS | Includes applicant-reservation finalization and authorized manual late-cohort assignment; transactional eligibility/capacity required |
+| CAP-011 | Publish/unpublish/cancel/reopen session | DENY | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | PROGRAM read | DENY | BREAK-GLASS | Reversal requires reason/audit; applicant notification follows publication |
+| CAP-012 | Assign/revoke Proctor duty | DENY | DENY | DENY | CAPSET | CAPSET | DENY | DENY | BREAK-GLASS | Only the authorized Test Administrator capability holder may assign/revoke session-scoped Proctor duty |
 | CAP-013 | View assigned proctor roster | DENY | DENY | REVIEW | ASSIGNED/office | ASSIGNED/office | DENY | DENY | BREAK-GLASS | Proctor scope is session assignment only |
-| CAP-014 | Start/monitor/close assigned session | DENY | DENY | DENY | ASSIGNED | ASSIGNED | DENY | DENY | BREAK-GLASS | Requires active duty and legal time/state window |
+| CAP-014 | Start/monitor/close assigned session | DENY | DENY | DENY | OFFICE/CAPSET | ASSIGNED | DENY | DENY | BREAK-GLASS | Test Administrator may manage within authorized scope; Proctor remains ASSIGNED; force-open/close uses the approved effective window |
 | CAP-015 | Record attendance/submission | DENY | DENY | DENY | ASSIGNED | ASSIGNED | DENY | DENY | BREAK-GLASS | Idempotent session command |
 | CAP-016 | Configure aptitude areas/rubrics | DENY | DENY | DENY | OFFICE | OFFICE | PROGRAM read | DENY | BREAK-GLASS | Guidance-owned proposed default |
 | CAP-017 | Import/enter/correct scores | DENY | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | DENY | DENY | BREAK-GLASS | Active legacy routes grant Super Admin/Test Administrator; target counselor/admin capability and corrections require D-076 |
 | CAP-018 | Finalize/reopen grading | DENY | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | DENY | DENY | BREAK-GLASS | Completeness and version/reason required |
 | CAP-019 | Run OMR batch/review uncertainty | DENY | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | DENY | DENY | BREAK-GLASS | Not built; spike-gated |
-| CAP-020 | Record counseling/triage decision | DENY | DENY | DENY | OFFICE | REVIEW | DENY | DENY | BREAK-GLASS | Active release route bypasses counselor-oriented request; target human author/release separation follows D-077 |
+| CAP-020 | Record counseling/triage decision | DENY | DENY | DENY | OFFICE | CAPSET/REVIEW | DENY | DENY | BREAK-GLASS | Guidance Counselor remains final human decision authority; Test Administrator capability may draft/assist only where explicitly granted |
 | CAP-021 | Release/unrelease result | DENY | DENY | DENY | OFFICE | OFFICE | DENY | DENY | BREAK-GLASS | Exact Guidance authority needs confirmation |
 | CAP-022 | View released own result/schedule | OWN | DENY | OFFICE operational view | OFFICE | OFFICE | PROGRAM aggregate only | DENY | BREAK-GLASS | Applicant own-data boundary |
 | CAP-023 | Preview/generate/distribute admission/result documents | OWN released/approved docs | OFFICE intake docs | OFFICE intake docs | OFFICE result preview/release | OFFICE result preview/release | PROGRAM-scoped result/remark sheet view | DENY | BREAK-GLASS | Program Head may view authorized converted result evidence; raw answer sheets and confidential conversion tables remain restricted |
 | CAP-024 | View Program Head dashboard and authorized applicant detail | DENY | DENY | REVIEW aggregate | REVIEW aggregate | REVIEW aggregate | PROGRAM aggregate + approved record detail | DENY | BREAK-GLASS | Program scope, field visibility, and individual-data audit follow D-080; no score/release/admission writes |
-| CAP-025 | Modify program quota | DENY | DENY | REVIEW | DENY | DENY | REVIEW | DENY | BREAK-GLASS | Default is no Program Head write authority |
-| CAP-026 | Use institutional RAG | OWN/authorized | OFFICE/authorized | OFFICE/authorized | OFFICE/authorized | OFFICE/authorized | PROGRAM/public corpus | DENY | BREAK-GLASS | Policy-corpus access and own released-data access are separate gates under D-079; technical corpus administration is not an HR function |
+| CAP-025 | Modify program quota | DENY | DENY | DENY | OFFICE/CAPSET | DENY | PROGRAM | DENY | BREAK-GLASS | **D-087:** Program Head writes own program quotas; Guidance Counselor (TA) may also adjust with audit + PH communication seam; before result release / pre-enrolment |
+| CAP-026 | Use institutional RAG | OWN/authorized | OFFICE/authorized | OFFICE/authorized | OFFICE/authorized | OFFICE/authorized | PROGRAM/public corpus | DENY | BREAK-GLASS | Policy, own-data, and staff-task contexts are separate; retrieval scope resolves before prompting and technical corpus administration is not an HR function |
 | CAP-027 | Retrieve own data through assistant | OWN released/authorized data | DENY | DENY | DENY | DENY | DENY | DENY | BREAK-GLASS | No cross-applicant retrieval; own score/result/consultation visibility follows release authority |
 | CAP-028 | Send/receive bounded inquiry thread | OWN confirmed thread | OFFICE assigned | OFFICE assigned | OFFICE assigned | OFFICE assigned | REVIEW | DENY | BREAK-GLASS | Not built; conditional workflow requires participant/routing/retention/SLA decisions and applicant confirmation |
 | CAP-029 | Manage users in own office | DENY | DENY | OFFICE | DENY | OFFICE | DENY | ALLOW personnel | BREAK-GLASS | HR manages approved permanent personnel lifecycle; offices manage subordinate support staff |
 | CAP-030 | Create/assign approved permanent and support-staff roles | DENY | DENY | OFFICE-limited | DENY | OFFICE-limited | DENY | ALLOW approved permanent and support-staff roles | BREAK-GLASS | HR may create/manage approved personnel accounts; Registrar and Guidance may create their own support staff; HR cannot grant Test Administrator/Proctor capability |
 | CAP-031 | Manage system/integration settings | DENY | DENY | DENY | DENY | DENY | DENY | DENY | BREAK-GLASS | Technical support is Super Admin break-glass only |
 | CAP-032 | Manage knowledge corpus | DENY | DENY | REVIEW | REVIEW | REVIEW | DENY | DENY | BREAK-GLASS | Content owner versus technical operator must be split |
-| CAP-033 | View/export audit/report evidence | OWN access history optional | DENY | OFFICE/REVIEW | DENY | OFFICE/REVIEW | PROGRAM aggregate/REVIEW | personnel audit only | BREAK-GLASS | Every protected view/export is itself scoped and audited; Program Head reporting follows D-080 |
+| CAP-033 | View/export audit/report evidence | OWN access history optional | DENY | OFFICE/REVIEW | DENY | OFFICE/REVIEW | PROGRAM aggregate/REVIEW | personnel audit only | BREAK-GLASS (FULL AUDIT SCOPE) | Super Admin is the master full-audit user view; audit visibility does not grant routine business-data browsing, and audit-view use is itself logged/alerted |
 | CAP-034 | Verify audit chain/checkpoints | DENY | DENY | DENY | DENY | DENY | DENY | DENY | BREAK-GLASS | Break-glass technical security operation |
 | CAP-035 | Override protected transition/access | DENY | DENY | DENY | DENY | DENY | DENY | DENY | BREAK-GLASS | Must require reason, time bound, alert, and review |
 | CAP-036 | View authorized converted result/remark sheet and per-domain scores | OWN released | DENY | DENY | OFFICE/CAPSET | OFFICE/CAPSET | PROGRAM approved record | DENY | BREAK-GLASS | Raw answer sheets, bubble scans, and confidential conversion table are denied; every protected view emits an audit event; applicant-facing access-history is a later presentation/notification policy |
+| CAP-037 | Use authorized assistant task commands | OWN approved context | DENY | OFFICE/approved setup/task scope | CAPSET/office scope | CAPSET/office scope | PROGRAM/read-only approved context | DENY | BREAK-GLASS | Assistant may propose or invoke only typed UI-equivalent commands after server-side authorization; mutations require confirmation and audit; no direct model/database path |
 
 ## 3.1 Role inheritance and capability overlays
 
-- `registrar_support_staff` inherits Registrar Clerk responsibilities by default. It does not inherit Registrar Administrator decision, role-management, or cross-office authority.
+- `registrar_support_staff` is not Registrar Clerk-equivalent. It receives only delegated intake/correction, accept/dismiss, and status visibility; it cannot access institutional/reference/setup pages or Registrar role management.
 - `guidance_support_staff` inherits Guidance Clerk responsibilities by default. It does not inherit Test Administrator or Proctor authority unless explicitly granted/assigned.
 - HR may create both permanent staff and support-staff accounts, but account creation does not grant office capabilities beyond the approved role ceiling.
 - Guidance Counselor has the Test Administrator capability inherently. Guidance Clerk and Guidance Support Staff may receive it only through explicit Guidance delegation with grant/revoke dates and audit evidence.
 - Proctor is a session-scoped duty overlay. It is assigned only to an eligible staff account and grants only the assigned ExamSession operations.
-- Test Administrator capability covers sensitive exam/test-specific operations: OMR intake/review, grading-session operation, score entry/import/correction within the approved lifecycle, result preparation/printing, release coordination where granted, consultation scheduling, and Proctor assignment. It does not grant HR, Registrar, or Program Head authority.
+- Test Administrator capability covers sensitive exam/test-specific operations: OMR intake/review, grading-session operation, score entry/import/correction within the approved lifecycle, result preparation/printing, exam slot-reservation control, manual scheduling/direct-assessment paths, release coordination where granted, consultation scheduling, and Proctor assignment. It does not grant HR, Registrar, or Program Head authority.
 - Program Head access is read-only and program-scoped. It includes approved converted result evidence and consultation/projection data but not raw answer sheets, bubble scans, or the confidential conversion table.
 
 ## 4. Data-scope rules
@@ -95,7 +96,7 @@ Abbreviations: APP Applicant, RC Registrar Clerk, RA Registrar Admin, GC Guidanc
 4. **Program scope:** Program Head sees only assigned program projection(s) and approved applicant result evidence, not all applicants, raw answer sheets, bubble scans, or confidential conversion tables.
 5. **Session-assignment scope:** Proctor access begins and ends with an active, auditable exam-session assignment.
 6. **Purpose limitation:** technical administrators do not gain routine counseling/admission authority merely because they administer the system.
-7. **Break-glass:** exceptional access requires explicit reason, short duration, append-only audit event, and post-use review.
+7. **Break-glass:** exceptional access requires explicit reason, short duration, append-only audit event, alert, and post-use review. Super Admin may view the full audit scope, but that does not turn audit visibility into routine access to the underlying business records.
 8. **Default deny:** absence of a matrix row is denial.
 
 ## 5. Separation-of-duty candidates

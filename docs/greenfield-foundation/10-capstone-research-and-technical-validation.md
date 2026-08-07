@@ -119,22 +119,24 @@ TAM may measure perceived usefulness/ease of use after these engineering gates; 
 
 ## 5. Yukee/deterministic aptitude engine contract
 
-Two honest implementation paths exist:
+The founder has selected the artifact-based path for the available YuKee model. The existing trained `.joblib` file and its engine specification package are the source definition. Integration does not require retraining the model or recreating its training process; it requires deterministic loading/inference, versioned provenance, and expected-output fixtures. The transparent deterministic baseline remains the fallback if the supplied artifact/spec package cannot be verified.
 
-### Path A — Reproducible adoption
+### Path A — Reproducible adoption from the supplied artifact
 
-Allowed only if the exact source definition is available:
+The adapter must version and verify:
 
+- immutable artifact reference and SHA-256 checksum;
+- joblib loader/runtime compatibility and dependency versions;
 - input features and units;
 - preprocessing/normalization/percentile transform;
-- centroid/cluster parameters and labels;
-- distance/assignment function;
+- artifact-defined model/cluster parameters, labels, and assignment behavior where exposed by the artifact/specification;
 - source dataset applicability and version;
-- deterministic fixtures reproducing expected assignments.
+- program-mapping input version and owner;
+- deterministic fixtures reproducing expected assignments and expected output schema.
 
 ### Path B — NEXIAM deterministic aptitude-profile baseline
 
-If exact parameters are unavailable:
+If the supplied artifact or specification cannot be verified:
 
 - do not call it a reproduction of Yukee K-Means;
 - define transparent rules/thresholds with domain-expert review;
@@ -247,7 +249,7 @@ Report incident counts alongside percentages for small groups to avoid false pre
 | RES-G1 Workflow evidence | Required process/authority artifacts indexed and contradictions decided | Do not claim stakeholder-validated workflow |
 | RES-G2 OMR | Approved input corpus and pass thresholds; uncertainty/manual path works | Keep manual scoring; present OMR only as bounded prototype or defer |
 | RES-G3 RAG | Approved corpus/query set; citation/refusal/auth tests pass | Remove/narrow chatbot claim or use static FAQ fallback |
-| RES-G4 Yukee | Exact reproducible model or approved honest deterministic baseline | Do not claim adopted K-Means reproduction |
+| RES-G4 Yukee | Supplied trained `.joblib` artifact plus specification manifest, checksum, compatible loader, and deterministic fixtures; otherwise an approved honest deterministic baseline | Do not claim artifact adoption or K-Means reproduction without the artifact/spec evidence |
 | RES-G5 BGE | Approved corpus/input semantics and relevance evidence | Defer BGE; preserve adapter seam only |
 | RES-G6 Scheduling | Constraint contract and feasible/manual fallback evidence | Ship manual scheduling; remove optimization claim |
 | RES-G7 Audit | Threat model and technical suite pass | Use conventional immutable audit log language only; no cryptographic assurance claim |
@@ -257,9 +259,9 @@ Report incident counts alongside percentages for small groups to avoid false pre
 
 - D-RES-01 separation of TAM and technical correctness claims.
 - D-RES-02 OMR corpus, thresholds, devices, review SLA, retention.
-- D-RAG-01 policy-only versus authorized own-data scope.
+- D-RAG-01 policy-corpus versus authorized own-data scope.
 - D-RAG-03 corpus/query ownership and measurable thresholds.
-- D-ENG-01 reproducible Yukee versus honest deterministic baseline.
+- D-ENG-01 artifact-based Yukee integration versus honest deterministic baseline fallback.
 - D-ENG-02 BGE inclusion, input semantics, and evidence.
 - D-SCHED-01 manual baseline and scope of scheduling assistance.
 - D-AUD-01 threat-model claim and technical validation.

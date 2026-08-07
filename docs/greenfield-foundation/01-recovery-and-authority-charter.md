@@ -7,7 +7,7 @@
 
 ## 1. Recovery objective
 
-Create one coherent, reviewable authority chain for rebuilding NEXIAM without carrying forward accidental legacy behavior or silently dropping current capstone commitments.
+Create one coherent, reviewable authority chain for rebuilding NEXIAM while preserving verified legacy behavior and capstone commitments, and replacing accidental legacy invariants/workarounds with explicit scalable target contracts.
 
 Recovery succeeds when:
 
@@ -53,7 +53,7 @@ A lower authority cannot silently override a higher authority. A contradiction r
 
 | Source class | Current disposition | Permitted use | Forbidden use |
 |---|---|---|---|
-| Legacy application source | EVIDENCE ONLY | Discover current workflows, data, integrations, defects, and useful invariants | Copy behavior as target truth without review |
+| Legacy application source | NEAREST-WORKING REFERENCE / REUSE INPUT | Discover and preserve verified workflows, data vocabulary, integrations, fixtures, page behavior, defects, and useful invariants through the target crosswalk | Promote a legacy path as target authority without reconciling its ownership, authorization, lifecycle, persistence, or recovery contract |
 | Architecture audit documents | SUPPORTING AUTHORITY | Identify known risks, capability seams, and decision gates | Replace stakeholder/product decisions |
 | Greenfield architecture and implementation order | DRAFT STRATEGY/BACKLOG | Guide boundaries, sequencing, quality goals, and risk closure | Direct implementation while gates conflict or remain unresolved |
 | Current manuscript and panel records | PRODUCT/RESEARCH INPUT | Establish promised scope, objectives, population, and evaluation claims | Treat stale or internally contradictory wording as settled |
@@ -72,7 +72,7 @@ The following are blocked until the applicable approval gate passes:
 - sensitive institutional or applicant-data collection for unapproved testing;
 - claims that OMR, RAG, scheduling, or admission-support models are validated;
 - production deployment or real-user pilot;
-- broad parity reconstruction from the legacy application;
+- broad parity reconstruction before target contracts and E0 quality evidence;
 - promotion of the current 14-phase document as direct execution authority.
 
 ## 6. Permitted work during recovery

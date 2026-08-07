@@ -32,18 +32,21 @@
 
 | Aggregate/entity | Responsibility | Proposed lifetime |
 |---|---|---|
-| `AcademicCycle` | Admission cycle/window and activation state | Historical, immutable after closure except reasoned correction |
-| `AdmissionAttempt` | One ApplicantIdentity’s cycle-scoped application, stable Applicant No/Reference, preferences, intake decision, and workflow reference; Applicant No/Reference binds answer-sheet receipt/import | Durable historical record; may exist before ApplicantAccount activation |
-| `AppointmentSlot` | Capacity-controlled intake appointment | Cycle-scoped; occupancy derived or transactionally maintained |
-| `ApplicationDocument` | Approved uploaded/generated intake artifact metadata | Retained by classification/version policy |
+| AcademicCycle | Admission cycle/window and activation state | Historical, immutable after closure except reasoned correction |
+| AdmissionAttempt | One ApplicantIdentity’s cycle-scoped application, stable Applicant No/Reference, preferences, intake decision, and workflow reference; Applicant No/Reference binds answer-sheet receipt/import | Durable historical record; may exist before ApplicantAccount activation |
+| AppointmentSlot | Capacity-controlled intake appointment | Cycle-scoped; occupancy derived or transactionally maintained |
+| ApplicationWindow | Academic-cycle public-intake opening/closing and reasoned late-intake override policy | Versioned/effective-dated; closure changes the cycle to historical scope and does not delete records |
+| ApplicationDocument | Approved uploaded/generated intake artifact metadata | Retained by classification/version policy |
 
 ### Examination Administration
 
 | Aggregate/entity | Responsibility | Proposed lifetime |
 |---|---|---|
-| `ExamSession` | Schedule, room, capacity, status, assignment eligibility, and assessment mode | Historical, cancellable/archivable, not physically erased after use |
-| `ExamAssignment` | AdmissionAttempt assigned to one session/mode | Historical child record; supports explicitly approved retake semantics |
-| `ProctorAssignment` | Staff duty for one session | Historical assignment and revocation evidence |
+| ExamSession | Schedule, room, capacity, status, assignment eligibility, and assessment mode | Historical, cancellable/archivable, not physically erased after use |
+| ExamAssignment | AdmissionAttempt assigned to one session/mode | Historical child record; supports explicitly approved retake semantics |
+| ExamSlotPlan | Test Administrator-controlled reservation policy for one or more exam dates/sessions | Draft → open for reservation → closed/finalized → published/bypassed; every change is attributable |
+| ExamSlotReservation | Applicant’s requested/reserved slot before staff finalization | Accepted attempt only; capacity-safe, cancellable, and preserved as reservation history |
+| ProctorAssignment | Staff duty for one session | Historical assignment and revocation evidence |
 | `AttendanceRecord` | Present/absent/pending and actor/time/source | Immutable event history plus current projection |
 | `SubmissionRecord` | Answer-sheet/submission receipt and chain of custody | Historical, idempotent receipt |
 
@@ -75,7 +78,8 @@
 | `NotificationDelivery` | Event/recipient/channel status, idempotency, retry, final failure | Operational history with retention policy |
 | `InquiryThread` | Bounded applicant-to-office handoff where approved | Retained by communication policy |
 | `KnowledgeDocument` | Institutional corpus source, owner, version, validity dates, sync status | Versioned; superseded sources preserved or archived |
-| `AssistantExchange` | Authorized query, citations/refusal, data scope, provider metadata | Privacy-limited and retention-controlled |
+| AssistantExchange | Authorized query, citations/refusal, data scope, provider metadata | Privacy-limited and retention-controlled |
+| AssistantActionRequest | Typed UI-equivalent task proposal/confirmation/result linked to an AssistantExchange | Never a direct model command; server authorization, confirmation, idempotency, and audit required |
 
 ### Governance and Operations
 
@@ -92,8 +96,10 @@
 |---|---|---|
 | Submit/accept/dismiss/reopen/archive admission | AdmissionAttempt | Controller, ApplicantAccount, report projection |
 | Activate/close cycle | AcademicCycle | Arbitrary settings mutation |
+| Open/close application window | ApplicationWindow/AcademicCycle | ExamSession or page-local state |
+| Open/close/finalize slot reservation | ExamSlotPlan | Applicant page or arbitrary settings mutation |
 | Create/publish/start/complete/cancel/reopen exam | ExamSession | Route middleware or page-local state |
-| Assign applicant | ExamSession/ExamAssignment transaction boundary | Independent pivot write without eligibility checks |
+| Assign applicant/reserve slot | ExamSession/ExamAssignment or ExamSlotReservation transaction boundary | Independent pivot write without eligibility checks |
 | Assign/revoke Proctor | ExamSession/ProctorAssignment | Permanent role mutation |
 | Record attendance/submission | ExamAssignment | Direct pivot mutation |
 | Enter/import/correct/finalize scores | GradingSession | CSV importer or OMR worker directly |
@@ -101,7 +107,7 @@
 | Record counseling decision | ConsultationDecision | Inference engine |
 | Release/unrelease | ResultRelease coordinated with AdmissionAttempt projection | Notification or document generator |
 | Send notification | NotificationDelivery after domain event | Controller transaction before commit |
-| Answer RAG query | Knowledge/RAG application service under policy | LLM prompt as authorization layer |
+| Answer RAG query or request assistant task | Knowledge/RAG application service under policy, then typed application command | LLM prompt as authorization layer or direct tool/database call |
 | Append audit event | Audit service within command transaction | Best-effort logging after state mutation |
 
 ## 4. Core state ownership
@@ -111,8 +117,9 @@ The proposed authoritative state families are:
 - Admission intake status: pending, accepted, dismissed, archived/cancelled as approved.
 - Admission workflow stage: projection of completed domain milestones, not an independently mutable second truth.
 - ExamSession status: draft, published, in_progress, completed, cancelled.
+- ExamSlotPlan status: draft, open_for_slot_reservation, reservation_closed, finalized, published, bypassed.
 - ExamAssignment attendance/submission statuses.
-- GradingSession status: draft/open, in_progress if needed, finalized, reopened/versioned as approved.
+- GradingSession status: open, review, finalized, with a superseded prior version when an approved correction/reopen creates a new version. `in_progress` is a derived activity indicator, not a competing authoritative state.
 - ConsultationDecision status: draft, confirmed, superseded/deferred.
 - ResultRelease status: unreleased/released/superseded through explicit release events.
 - Integration operation status: pending, processing, succeeded, failed, retrying, exhausted.
@@ -130,7 +137,7 @@ Exact transition contracts are defined in `06-workflows-and-state-transitions.md
 | INV-005 | Appointment capacity cannot be exceeded under concurrent booking | Non-atomic `booked_count` drift |
 | INV-006 | Room/session overlap cannot be committed concurrently | Application-only room-conflict check |
 | INV-007 | One AdmissionAttempt cannot hold conflicting active exam assignments; retake uniqueness is explicit by cycle/mode | Global applicant uniqueness currently blocks future cycles/retakes |
-| INV-008 | A published session has date/time/room, at least one eligible assignment, and valid timing | Legacy publish intent |
+| INV-008 | A published session has date/time/room, at least one eligible assignment, valid timing, and a source mode (`applicant_reserved`, `staff_assigned`, or `direct_assessment`) | Legacy publish intent and new slot/direct paths |
 | INV-009 | Attendance/submission commands are idempotent and legal only for assigned attempts in an active session | Duplicate/concurrent pivot mutation risk |
 | INV-010 | Grading finalization requires exactly one valid score per required active/versioned aptitude area per assigned attempt | Legacy completeness rule and nullable-area defect |
 | INV-011 | One active grading workflow per assessment unit unless a version model is approved | Model `hasOne` without DB uniqueness |
@@ -156,7 +163,7 @@ Final periods require institutional/privacy approval; this table establishes beh
 | Scores/grading | ScoreRecord, GradingSession | Draft → finalized → corrected/superseded | No silent overwrite or cascade delete | D-DATA-04 |
 | Counseling/release | ConsultationDecision, ResultRelease | Draft → confirmed/released → superseded | Preserve rationale and release history with scoped access | D-DATA-05 |
 | Generated documents | slips/results/reports | Generated/versioned → superseded/archive | Store checksum/template/version; destroy under approved schedule | D-DATA-06 |
-| OMR/model artifacts | images, observations, inputs/results | Pending → processed/reviewed → retained/anonymized/destroyed | Raw sheets/images require stricter purpose/period; inference provenance may be retained separately | D-RES-02, EV-013 |
+| OMR/model artifacts | images, observations, inputs/results | Pending → processed/reviewed → retained/eligible-for-purge/purged | Raw sheets/images are status-managed and normally eligible for purge 90 days after accepted import/finalization and correction/appeal hold closure; derived provenance follows assessment/audit retention | D-035, D-RES-02, EV-013 |
 | Messages/RAG exchanges | inquiry threads, prompts, citations | Active → closed → retained/deleted per policy | Minimize personal data; provider disclosure/redaction required | D-RAG-02, EV-013 |
 | Audit/security | AuditEvent, access and role changes | Append-only active verification → archive/checkpoint | No routine user deletion; define lawful retention and pseudonymization | D-AUD-01, EV-013 |
 | Operations | delivery attempts, integration logs | Active/retry → terminal → operational retention | Redact secrets/personal payloads; separate metrics from content | D-OPS-02 |

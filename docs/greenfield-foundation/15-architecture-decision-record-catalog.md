@@ -67,21 +67,21 @@ ADR-001 Greenfield workspace
 
 - **Status:** proposed
 - **Upstream:** D-055, D-068
-- **Candidate decision:** PHP 8.4/Laravel 12 application with capability/deep modules, Inertia 2, Svelte 5, TypeScript 5.9, and Tailwind 4; no service split for core domain workflows.
+- **Candidate decision:** PHP 8.4/Laravel 13 application with capability/deep modules, Inertia 3, Svelte 5 + shadcn-svelte, TypeScript 5.9, and Tailwind 4; no service split for core domain workflows. (E1b implemented the Svelte presentation kit; React revision revoked.)
 - **Rationale:** One transactional boundary and delivery unit fit the capstone team while allowing clear module ownership and adapter boundaries.
 - **Consequences:** Module dependency rules and architecture tests are required; controllers/pages remain thin; domain/application logic cannot return framework responses.
 - **Alternative:** Microservices. Rejected for unnecessary operational/transactional complexity.
 - **Verification:** Dependency/architecture tests, module ownership map, connected vertical-slice trace.
 
-### ADR-003 — Pin MySQL 8.4 as the integrity authority
+### ADR-003 — Pin PostgreSQL as the greenfield integrity authority
 
-- **Status:** proposed
+- **Status:** proposed, conditional
 - **Upstream:** D-057
-- **Candidate decision:** MySQL 8.4 LTS is the production and required integration/migration engine; SQLite is limited to tests with proven parity.
-- **Rationale:** Align existing Compose direction and ensure real FK/unique/JSON/locking/concurrency behavior is tested.
-- **Consequences:** CI must provision MySQL; schema and migrations use portable features deliberately; MariaDB wording is superseded if approved.
-- **Alternative:** MariaDB. Viable only if every topology/test/rehearsal artifact is changed consistently.
-- **Verification:** Fresh/upgrade/constraint/concurrency/catalog/backup-restore evidence on MySQL.
+- **Candidate decision:** PostgreSQL is the greenfield production, integration, migration, locking, backup, and restore authority from E0; the supported major version is pinned before scaffold promotion; SQLite is limited to parity-safe fast tests; pgvector is optional and requires its own extension, privacy, index, backup, restore, and verification evidence.
+- **Rationale:** The founder-revised D-057 explicitly separates greenfield authority from the current MySQL Compose evidence and requires the database-specific behavior used by the domain contract to be tested against the actual target engine.
+- **Consequences:** Compose, CI, schema, migrations, JSON/full-text/vector assumptions, race tests, backup/restore rehearsal, and operational runbooks must all use the pinned PostgreSQL major. Current MySQL configuration remains historical/current-app evidence and cannot silently govern greenfield design.
+- **Alternative:** MySQL/MariaDB as greenfield authority. Rejected for the target plan after D-057 unless a new explicit decision reopens the engine choice and propagates it through every downstream artifact.
+- **Verification:** Fresh/upgrade/constraint/concurrency/catalog/locking/backup/restore evidence on the pinned PostgreSQL major, plus parity evidence for any SQLite tests and separate pgvector evidence if enabled.
 
 ### ADR-004 — Separate durable applicant identity from cycle-scoped admission attempts
 
@@ -163,13 +163,13 @@ ADR-001 Greenfield workspace
 - **Alternative:** Fully automatic score writes. Rejected until materially stronger evidence and institutional authorization exist.
 - **Verification:** wrong/ambiguous input, false-auto-accept, exact-score, replay/import, outage/manual tests.
 
-### ADR-012 — Authorize retrieval before RAG and require citations/refusal
+### ADR-012 — Authorize retrieval before RAG and require citations, refusal, and typed task gates
 
 - **Status:** proposed, conditional
 - **Upstream:** D-008, D-051, D-067, D-079
-- **Candidate decision:** Application policy selects approved institutional corpus and authorized own data before prompt construction; output must cite support or refuse/fallback; no placement advice.
+- **Candidate decision:** Application policy selects the approved institutional corpus and the caller's authorized own-data context before prompt construction. Policy answers cite and link to the governing source; own-data answers obey release/scope gates; authorized staff task assistance uses typed UI-equivalent backend commands with the same capability, confirmation, idempotency, and audit rules as ordinary UI actions. Unsupported or unauthorized requests refuse and offer the bounded fallback; no placement advice is generated.
 - **Rationale:** Prevents cross-applicant leakage, prompt-as-authorization, stale policy, and hallucinated institutional guidance.
-- **Consequences:** Corpus ownership/versioning, curated query set, injection fixtures, provider privacy, outage fallback, and response encoding are required.
+- **Consequences:** Corpus ownership/versioning, curated query set, injection fixtures, provider privacy, outage fallback, safe response encoding, refusal copy, confirmation UX, and task-command audit evidence are required. A model response can never grant access, mutate state, or substitute for a page-level authorization decision.
 - **Alternative:** General chatbot over unscoped data. Rejected.
 - **Verification:** citation/support/refusal/auth isolation/injection/outage suite.
 
@@ -183,23 +183,23 @@ ADR-001 Greenfield workspace
 - **Alternative:** Conventional append-only audit without cryptographic claim remains fallback if spike fails.
 - **Verification:** concurrency, modification/deletion/reorder/insertion, key rotation, checkpoint, privilege tests.
 
-### ADR-014 — Deploy as one health-chained multi-service Compose project
+### ADR-014 — Deploy as one health-chained PostgreSQL-backed multi-service Compose project
 
 - **Status:** proposed
 - **Upstream:** D-056–D-067
-- **Candidate decision:** One Compose topology with web/app, same-image queue worker and scheduler, MySQL, optional approved Python worker, private storage, and Mailpit local/test; Dokploy/Traefik provides deployed ingress.
+- **Candidate decision:** One Compose topology with web/app, same-image queue worker and scheduler, the pinned PostgreSQL major, optional approved Python worker, private storage, and Mailpit local/test; Dokploy/Traefik provides deployed ingress.
 - **Rationale:** Reproducible companion-service deployment matches project preference and avoids hidden manual infrastructure.
 - **Consequences:** Images/versions are pinned; health/readiness/dependency chain, secrets, backup, and provider environment matrix are required.
 - **Alternative:** Separate application/database wizard deployment. Rejected by default.
 - **Verification:** Compose config/build/boot/health, migration/seed, worker/scheduler, mail, degraded sidecar, restore.
 
-### ADR-015 — Defer offline mutation until conflict-controlled synchronization is proven
+### ADR-015 — Commit offline proctoring behind conflict-controlled synchronization evidence
 
-- **Status:** proposed, deferred
+- **Status:** proposed, spike-gated (committed capstone capability)
 - **Upstream:** D-053
-- **Candidate decision:** No cache-only offline-write claim. If implemented, use durable client outbox, command/idempotency IDs, authenticated replay, aggregate-version conflict detection, and manual resolution.
+- **Candidate decision:** Offline proctoring is a committed capstone capability, but it may be promoted only with encrypted device/session scope, durable outbox, authenticated ordered replay, command/idempotency IDs, aggregate-version conflict detection, visible reconciliation status, and explicit human resolution. Cache-only or last-write-wins writes are prohibited.
 - **Rationale:** Attendance and submission are integrity-critical; service-worker caching alone cannot reconcile concurrent/stale writes safely.
-- **Consequences:** Online/paper manual fallback remains the capstone path unless infrastructure and sync spike pass.
+- **Consequences:** Online and paper/manual fallback remain available while EV-011 is open. A failed spike blocks the offline readiness claim and promotion of the capability; it does not justify silently deleting the committed behavior from the plan. Device loss, revoked duty, stale versions, partial replay, and conflict states require visible recovery paths.
 - **Alternative:** Last-write-wins replay. Rejected.
 - **Verification:** disconnect/reconnect, duplicate replay, revoked duty, stale version, conflicting correction, partial sync tests.
 

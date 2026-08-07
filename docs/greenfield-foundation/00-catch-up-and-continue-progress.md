@@ -1,9 +1,11 @@
 # Catch-up and Continue Progress
 
 **Artifact:** NEXIAM-GF-00  
-**Status:** ACTIVE PROJECT NAVIGATOR — FOUNDATION REVIEW PENDING  
-**Last verified:** 2026-08-02  
-**Purpose:** Give David a reliable return point after a break so the project can resume without rereading the entire repository or confusing historical evidence with approved implementation authority.
+**Status:** SUPPORTING CHECKPOINT — live navigator is the master reference  
+**Single entry point:** [`../GREENFIELD-MASTER-REFERENCE.md`](../GREENFIELD-MASTER-REFERENCE.md)  
+**Work process:** [`../project-context.md`](../project-context.md)  
+**Last repaired:** 2026-08-04 (restored from clean git; status superseded by master reference)  
+**Purpose:** Supporting return checklist. For current gates, blockers, and next actions use the master reference first.
 
 ## 1. Current position
 

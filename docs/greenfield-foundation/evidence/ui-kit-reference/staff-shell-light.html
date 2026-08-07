@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NEXIAM start set — institutional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        background: '#f4f3ef',
+        foreground: '#2a3a2f',
+        primary: { DEFAULT: '#2f7a4a', foreground: '#fff' },
+        muted: { DEFAULT: '#ebe8e0', foreground: '#6b756e' },
+        card: 'rgba(255,255,255,0.92)',
+        border: '#ddd9d0',
+        accent: '#d8eadc',
+      },
+      fontFamily: { sans: ['"IBM Plex Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      borderRadius: { lg: '0.5rem', xl: '0.75rem', '2xl': '1rem' },
+    },
+  },
+};
+</script>
+<style>
+  body {
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    color: #2a3a2f;
+    background-color: #f4f3ef;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 0% -5%, rgba(120, 180, 140, 0.45), transparent 55%),
+      radial-gradient(ellipse 70% 45% at 100% 0%, rgba(230, 210, 160, 0.35), transparent 50%),
+      radial-gradient(ellipse 55% 40% at 50% 110%, rgba(140, 190, 150, 0.25), transparent 55%),
+      linear-gradient(180deg, #faf9f6 0%, #f4f3ef 40%, #eef3ef 100%);
+    background-attachment: fixed;
+  }
+  .glass {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(14px) saturate(1.15);
+    border: 1px solid rgba(221,217,208,0.7);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .nav-active { background: #d8eadc; color: #1f5a36; }
+</style>
+</head>
+<body class="min-h-dvh antialiased">
+<!-- RESPONSIVE STAFF SHELL -->
+  <div class="mx-auto h-dvh max-w-[1400px] overflow-hidden border border-border/60 bg-transparent shadow-sm md:rounded-xl">
+    <div class="flex h-full w-full max-w-[100vw] overflow-hidden">
+      <!-- backdrop -->
+      <div id="backdrop" class="fixed inset-0 z-40 hidden bg-black/50 lg:hidden" onclick="closeSidebar()"></div>
+
+      <!-- sidebar -->
+      <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-border/60 glass transition-transform duration-200 ease-in-out md:translate-x-0">
+        <div class="flex items-center gap-2 border-b border-border/50 px-4 py-4">
+          <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary font-bold text-primary-foreground">N</span>
+          <div>
+            <div class="text-sm font-semibold tracking-tight text-primary">NEXIAM</div>
+            <div class="text-xs text-muted-foreground">Staff console</div>
+          </div>
+          <button class="ml-auto rounded-lg p-2 hover:bg-accent md:hidden" onclick="closeSidebar()" aria-label="Close menu">✕</button>
+        </div>
+        <nav class="flex-1 space-y-1 overflow-y-auto p-3">
+          <a class="nav-active flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium" href="#">Dashboard</a>
+          <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-foreground/80 hover:bg-accent" href="#">Applications</a>
+          <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-foreground/80 hover:bg-accent" href="#">Exam Scheduling</a>
+          <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-foreground/80 hover:bg-accent" href="#">Reports</a>
+        </nav>
+        <div class="border-t border-border/50 p-3">
+          <button class="flex w-full items-center gap-3 rounded-xl bg-muted/60 px-4 py-3 text-left hover:bg-muted">
+            <span class="flex size-10 items-center justify-center rounded-xl border-2 border-primary/20 bg-primary/15 text-sm font-semibold">RC</span>
+            <span>
+              <span class="block text-sm font-medium">Registrar Clerk</span>
+              <span class="block text-xs text-muted-foreground">registrar.clerk@…</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- main column -->
+      <div class="relative flex min-w-0 flex-1 flex-col md:pl-64">
+        <header class="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-border/60 px-4 glass sm:h-20 lg:px-8">
+          <div class="flex min-w-0 items-center gap-2">
+            <button class="rounded-lg p-2 hover:bg-accent md:hidden" onclick="openSidebar()" aria-label="Open menu">☰</button>
+            <nav class="hidden items-center gap-2 text-sm md:flex" aria-label="Breadcrumb">
+              <span class="text-muted-foreground">Staff</span>
+              <span class="text-muted-foreground">/</span>
+              <span class="truncate font-semibold">Home</span>
+            </nav>
+            <span class="font-semibold md:hidden">Home</span>
+          </div>
+          <div class="flex items-center gap-2 sm:gap-3">
+            <span class="hidden rounded-md border border-border bg-white/70 px-2 py-1 text-xs font-medium text-muted-foreground sm:inline">Cycle 2026</span>
+            <button class="flex size-11 items-center justify-center rounded-full hover:bg-accent" aria-label="Theme">◐</button>
+          </div>
+        </header>
+
+        <main class="min-w-0 flex-1 overflow-y-auto p-4 lg:p-8">
+          <div class="mb-6">
+            <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Staff home</h1>
+            <p class="mt-1 max-w-xl text-sm text-muted-foreground sm:text-base">
+              Capability-scoped workspace. Same shell as legacy: drawer under md, fixed sidebar from md up.
+            </p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+              <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Open apps</div>
+              <div class="mt-2 text-3xl font-semibold tabular-nums">128</div>
+            </div>
+            <div class="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+              <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Scheduled</div>
+              <div class="mt-2 text-3xl font-semibold tabular-nums">42</div>
+            </div>
+            <div class="rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:col-span-2 xl:col-span-2">
+              <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next window</div>
+              <div class="mt-2 text-lg font-semibold">Aug 11 · Main campus</div>
+              <p class="mt-1 text-sm text-muted-foreground">Room capacity and proctor duty remain scoped.</p>
+            </div>
+          </div>
+
+          <div class="mt-6 overflow-hidden rounded-xl border border-border/60 glass">
+            <div class="flex flex-col gap-3 border-b border-border/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 class="font-semibold">Recent applications</h2>
+              <input class="w-full rounded-md border border-border bg-white/80 px-3 py-2 text-sm sm:max-w-xs" placeholder="Search…" />
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th class="px-4 py-3 font-medium">Applicant</th>
+                    <th class="px-4 py-3 font-medium">Program</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-t border-border/40">
+                    <td class="px-4 py-3">Ana Reyes</td>
+                    <td class="px-4 py-3">BS Nursing</td>
+                    <td class="px-4 py-3"><span class="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-primary">Submitted</span></td>
+                  </tr>
+                  <tr class="border-t border-border/40">
+                    <td class="px-4 py-3">Jon Cruz</td>
+                    <td class="px-4 py-3">BS IT</td>
+                    <td class="px-4 py-3"><span class="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">Draft</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Login sample inline for mobile check -->
+          <div class="mt-10 max-w-md">
+            <h2 class="mb-3 text-lg font-semibold">Login surface (same tokens)</h2>
+            <div class="rounded-xl border border-border/60 glass p-6 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">NEXIAM</p>
+              <h3 class="mt-1 text-2xl font-semibold">Staff login</h3>
+              <p class="mt-1 text-sm text-muted-foreground">Synthetic E1 identity seam.</p>
+              <label class="mt-5 block text-sm font-medium">Email</label>
+              <input class="mt-1 w-full rounded-md border border-border bg-white/80 px-3 py-2.5 text-sm" value="registrar.clerk@nexiam.test" />
+              <label class="mt-4 block text-sm font-medium">Password</label>
+              <input type="password" class="mt-1 w-full rounded-md border border-border bg-white/80 px-3 py-2.5 text-sm" value="password" />
+              <button class="mt-5 w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground">Sign in</button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('backdrop');
+    function openSidebar() {
+      sidebar.classList.remove('-translate-x-full');
+      sidebar.classList.add('translate-x-0');
+      backdrop.classList.remove('hidden');
+    }
+    function closeSidebar() {
+      sidebar.classList.add('-translate-x-full');
+      sidebar.classList.remove('translate-x-0');
+      backdrop.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
