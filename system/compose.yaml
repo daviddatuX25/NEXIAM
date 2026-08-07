@@ -1,0 +1,160 @@
+name: nexiam-system
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        env_file:
+            - .env
+        environment:
+            APP_NAME: NEXIAM System
+            APP_ENV: local
+            APP_DEBUG: 'true'
+            APP_URL: http://localhost:18000
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_DATABASE: nexiam
+            DB_USERNAME: nexiam
+            DB_PASSWORD: nexiam-local-only
+            SESSION_DRIVER: database
+            CACHE_STORE: database
+            QUEUE_CONNECTION: database
+            FILESYSTEM_DISK: local
+            MAIL_MAILER: smtp
+            MAIL_HOST: mailpit
+            MAIL_PORT: 1025
+            MAIL_FROM_ADDRESS: foundation@nexiam.test
+            MAIL_FROM_NAME: NEXIAM
+        depends_on:
+            postgres:
+                condition: service_healthy
+            mailpit:
+                condition: service_started
+        ports:
+            - '18000:8000'
+        volumes:
+            - app_storage:/var/www/html/storage
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:8000/up']
+            interval: 5s
+            timeout: 3s
+            retries: 20
+            start_period: 10s
+
+    queue:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        command:
+            [
+                'php',
+                'artisan',
+                'queue:work',
+                '--sleep=1',
+                '--tries=1',
+                '--timeout=90',
+            ]
+        env_file:
+            - .env
+        environment:
+            APP_NAME: NEXIAM System
+            APP_ENV: local
+            APP_DEBUG: 'true'
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_DATABASE: nexiam
+            DB_USERNAME: nexiam
+            DB_PASSWORD: nexiam-local-only
+            SESSION_DRIVER: database
+            CACHE_STORE: database
+            QUEUE_CONNECTION: database
+        depends_on:
+            postgres:
+                condition: service_healthy
+            app:
+                condition: service_healthy
+        volumes:
+            - app_storage:/var/www/html/storage
+        healthcheck:
+            test: ['CMD-SHELL', "pgrep -f 'queue:work' >/dev/null"]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+
+    scheduler:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        command: ['php', 'artisan', 'schedule:work']
+        env_file:
+            - .env
+        environment:
+            APP_NAME: NEXIAM System
+            APP_ENV: local
+            APP_DEBUG: 'true'
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_DATABASE: nexiam
+            DB_USERNAME: nexiam
+            DB_PASSWORD: nexiam-local-only
+            SESSION_DRIVER: database
+            CACHE_STORE: database
+            QUEUE_CONNECTION: database
+        depends_on:
+            postgres:
+                condition: service_healthy
+            app:
+                condition: service_healthy
+        volumes:
+            - app_storage:/var/www/html/storage
+        healthcheck:
+            test: ['CMD-SHELL', "pgrep -f 'schedule:work' >/dev/null"]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+
+    postgres:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_DB: nexiam
+            POSTGRES_USER: nexiam
+            POSTGRES_PASSWORD: nexiam-local-only
+        ports:
+            - '5432:5432'
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U nexiam -d nexiam']
+            interval: 5s
+            timeout: 3s
+            retries: 10
+
+    mailpit:
+        image: axllent/mailpit:v1.21
+        ports:
+            - '18025:8025'
+            - '11025:1025'
+
+    inference:
+        profiles: ['optional']
+        build:
+            context: docker/inference
+        ports:
+            - '8100:8100'
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'python -c ''import urllib.request; urllib.request.urlopen("http://127.0.0.1:8100/health")''',
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+
+volumes:
+    app_storage:
+    postgres_data:
