@@ -16,6 +16,7 @@ test('admissions index denies users without registrar view capability', function
 test('admissions index returns filterable paginated applications payload', function (): void {
     seedE2Foundation();
     $fixturePending = AdmissionAttempt::query()->where('status', 'pending')->count();
+    $fixtureAccepted = AdmissionAttempt::query()->where('status', 'accepted')->count();
     $pending = submitSyntheticApplicant('pending.list@example.test', 'Pending');
     $accepted = submitSyntheticApplicant('accepted.list@example.test', 'Accepted');
     $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
@@ -33,7 +34,7 @@ test('admissions index returns filterable paginated applications payload', funct
             ->where('filters.status', 'pending')
             ->has('attempts.data', $fixturePending + 1)
             ->where('status_counts.pending', $fixturePending + 1)
-            ->where('status_counts.accepted', 1)
+            ->where('status_counts.accepted', $fixtureAccepted + 1)
             ->where('capabilities.accept', true)
             ->has('cycles')
             ->has('statuses')
