@@ -37,6 +37,14 @@ class StaffIdentitySeeder extends Seeder
                 'password' => 'password',
             ],
             [
+                'email' => 'guidance.clerk@nexiam.test',
+                'name' => 'Synthetic Guidance Clerk',
+                'role' => 'guidance_clerk',
+                'office' => 'guidance',
+                'programs' => ['BSN', 'BSPSY'],
+                'password' => 'password',
+            ],
+            [
                 'email' => 'guidance.counselor@nexiam.test',
                 'name' => 'Synthetic Guidance Counselor',
                 'role' => 'guidance_counselor',
