@@ -11,6 +11,16 @@ class CreateExamSessionRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled(['date', 'start_time', 'end_time']) && ! $this->filled('starts_at')) {
+            $this->merge([
+                'starts_at' => trim($this->string('date')->toString().' '.$this->string('start_time')->toString()),
+                'effective_end_at' => trim($this->string('date')->toString().' '.$this->string('end_time')->toString()),
+            ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

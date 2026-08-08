@@ -199,7 +199,8 @@ A change is done only when:
 6. UI states match GF-22 where UI is involved;
 7. evidence paths are recorded; master reference/GF-00/GF-14 status updated if a gate moves;
 8. implementation matches GF-18–GF-23 or divergence is recorded as a decision/ADR;
-9. no legacy route, migration, database, or provider was silently made authoritative.
+9. no legacy route, migration, database, or provider was silently made authoritative;
+10. active OpenSpec `HANDOFF.md` lists **developer-ready seeded data** (logins, seeder/reset commands, expected state, feature URLs) so a human can click the happy path without inventing fixtures.
 
 ## 13. Physical handoff checklist
 

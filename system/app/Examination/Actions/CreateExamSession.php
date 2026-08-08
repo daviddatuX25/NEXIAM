@@ -3,8 +3,6 @@
 namespace App\Examination\Actions;
 
 use App\Foundation\Actions\RecordAuditEvent;
-use App\Models\Admission\AdmissionAttempt;
-use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\Room;
@@ -43,6 +41,7 @@ class CreateExamSession
                 'room_id' => $room->id,
                 'code' => $code,
                 'status' => ExamSession::STATUS_DRAFT,
+                'booking_mode' => ExamSession::BOOKING_STAFF_ONLY,
                 'starts_at' => $startsAt,
                 'effective_end_at' => $effectiveEndAt,
             ]);

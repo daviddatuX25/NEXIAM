@@ -15,7 +15,7 @@ class HomeController extends Controller
         $user = $request->user();
 
         if ($user !== null && $user->applicantAccount()->exists() && ! $user->staffProfile()->exists()) {
-            return redirect()->route('applicant.portal');
+            return redirect()->route('applicant.schedule');
         }
 
         return Inertia::render('Staff/Home', [

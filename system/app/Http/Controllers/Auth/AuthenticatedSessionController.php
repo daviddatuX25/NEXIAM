@@ -31,7 +31,7 @@ class AuthenticatedSessionController extends Controller
         ], $user ? (string) $user->id : 'anonymous');
 
         if ($user !== null && $user->applicantAccount()->exists() && ! $user->staffProfile()->exists()) {
-            return redirect()->intended(route('applicant.portal'));
+            return redirect()->intended(route('applicant.schedule'));
         }
 
         return redirect()->intended(route('staff.home'));

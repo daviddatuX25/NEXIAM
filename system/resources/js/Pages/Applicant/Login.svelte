@@ -9,19 +9,19 @@
 
   const STORAGE_KEY = 'nexiam.applicant_access_key';
 
-  let { page_state = 'ready' } = $props();
+  let { page_state = 'ready', demo = null } = $props();
 
   let keyVisible = $state(false);
 
   const form = useForm({
-    access_key: '',
-    birthdate: '',
+    access_key: demo?.access_key ?? '',
+    birthdate: demo?.birthdate ?? '',
   });
 
   onMount(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
+      if (saved && !demo?.access_key) {
         form.access_key = saved;
       }
     } catch {
@@ -48,6 +48,13 @@
           Use your short access key (ABCD-EFGH) and birthdate. The key may be saved on this device or in your
           email.
         </Card.Description>
+        {#if demo?.access_key}
+          <p class="mt-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {demo.label ?? 'Synthetic demo'}: key
+            <span class="font-mono text-foreground">{demo.access_key}</span>
+            · birthdate <span class="font-mono text-foreground">{demo.birthdate}</span>
+          </p>
+        {/if}
       </Card.Header>
       <Card.Content>
         <form onsubmit={submit} class="space-y-4">

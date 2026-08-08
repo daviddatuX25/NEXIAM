@@ -24,6 +24,11 @@ Founder decisions / verified evidence → master roadmap → GF contracts → ac
 - Preserve useful legacy feel; rewrite authz/state/transaction/concurrency boundaries
 - Spatie roles/permissions are helpers; GF-21 CapabilityAuthorizer is decision authority
 - Never reintroduce legacy role middleware as authorization
+- **Developer-ready seeds:** every feature cut must leave clickable demo data; record credentials + recreate steps in the active OpenSpec `HANDOFF.md`
+
+## Handoff
+
+When a feature cut ships: update OpenSpec tasks, master checkpoint, **and** `HANDOFF.md` with staff/applicant seed logins, seeder/reset commands, expected starting state, and feature URLs.
 
 ## Stop
 

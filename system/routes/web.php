@@ -4,6 +4,7 @@ use App\Http\Controllers\Admission\AdmissionController;
 use App\Http\Controllers\Applicant\ApplicantPortalController;
 use App\Http\Controllers\Assessment\GradingController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Applicant\ApplicantScheduleController;
 use App\Http\Controllers\Examination\ExamSessionController;
 use App\Http\Controllers\Examination\ProctorController;
 use App\Http\Controllers\HealthController;
@@ -120,6 +121,10 @@ Route::middleware('auth')->group(function () {
         ->name('admissions.reissue-access-key');
 
     Route::get('/applicant/portal', [ApplicantPortalController::class, 'dashboard'])->name('applicant.portal');
+    Route::get('/applicant/schedule', [ApplicantScheduleController::class, 'show'])
+        ->name('applicant.schedule');
+    Route::post('/applicant/schedule/reserve', [ApplicantScheduleController::class, 'reserve'])
+        ->name('applicant.schedule.reserve');
     Route::get('/applicant/applications/{attempt}/correct', [ApplicantPortalController::class, 'correctionForm'])
         ->name('applicant.correction');
     Route::post('/applicant/applications/{attempt}/correct', [ApplicantPortalController::class, 'resubmitCorrection'])
@@ -128,21 +133,52 @@ Route::middleware('auth')->group(function () {
     Route::get('/exams/sessions', [ExamSessionController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.index');
+    Route::get('/exams/sessions/create', [ExamSessionController::class, 'create'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.create');
     Route::post('/exams/sessions', [ExamSessionController::class, 'store'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.store');
+    Route::get('/exams/sessions/{session}', [ExamSessionController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.show');
+    Route::get('/exams/sessions/{session}/edit', [ExamSessionController::class, 'edit'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.edit');
+    Route::put('/exams/sessions/{session}', [ExamSessionController::class, 'update'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.update');
     Route::post('/exams/sessions/{session}/assign', [ExamSessionController::class, 'assign'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.assign');
+    Route::post('/exams/sessions/{session}/assignments/{assignment}/remove', [ExamSessionController::class, 'remove'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.remove');
+    Route::post('/exams/sessions/{session}/reassign', [ExamSessionController::class, 'reassign'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.reassign');
     Route::post('/exams/sessions/{session}/publish', [ExamSessionController::class, 'publish'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.publish');
+    Route::post('/exams/sessions/{session}/unpublish', [ExamSessionController::class, 'unpublish'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.unpublish');
+    Route::post('/exams/sessions/{session}/cancel', [ExamSessionController::class, 'cancel'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.cancel');
     Route::post('/exams/sessions/{session}/close', [ExamSessionController::class, 'close'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.close');
     Route::post('/exams/sessions/{session}/extend', [ExamSessionController::class, 'extend'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.extend');
+    Route::post('/exams/sessions/{session}/open-reservation', [ExamSessionController::class, 'openReservation'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.open-reservation');
+    Route::post('/exams/sessions/{session}/close-reservation', [ExamSessionController::class, 'closeReservation'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->name('exams.sessions.close-reservation');
+
 
     Route::get('/proctor', [ProctorController::class, 'dashboard'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN)

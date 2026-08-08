@@ -32,7 +32,8 @@ This file is the durable reminder of *how* we work. Read it with the master refe
 4. If feature work → run the Legacy → Target Trace (below) before coding
 5. Implement only in system/ under the active OpenSpec change
 6. Prove with Pest / Vitest / Playwright / ops evidence
-7. Update OpenSpec tasks + master-reference checkpoint
+7. Ensure developer-ready seeded test data for the feature (or document exact seed/reset steps)
+8. Update OpenSpec tasks + HANDOFF (include seed credentials/paths) + master-reference checkpoint
 ```
 
 Never implement from memory, chat history alone, or “it looked like that in legacy.”
@@ -141,6 +142,26 @@ Applicant portal login is **access key + birthdate** (both required). Confirmati
 
 Apply collects digital grades from catalog `intake_grade_fields` (seeded GWA/subjects; CRUD-ready like privacy policies) into `admission_attempt_grade_values`; hard-copy Form 138/TOR still required at Registrar. Consent checkbox must link to the full active Privacy Policy dialog (legacy preserve). Decision: [`greenfield-foundation/decisions/D-086-intake-grades-and-privacy-consent.md`](greenfield-foundation/decisions/D-086-intake-grades-and-privacy-consent.md).
 
+
+## 3.7 Developer-ready seeded data (required on every feature handoff)
+
+Every feature cut must leave the developer able to **click through the happy path without inventing fixtures by hand**.
+
+Required in the active OpenSpec `HANDOFF.md` (and evidence note when relevant):
+
+1. **Who to log in as** — staff email/password and/or applicant access key + birthdate.
+2. **What seed creates it** — seeder class / `foundation:reset --force` / compose rebuild notes.
+3. **What state to expect** — e.g. accepted applicant waiting for reservation; draft session ready to open; empty calendar vs pre-open session.
+4. **How to recreate** — one short command sequence from a clean Compose DB.
+5. **URLs** — staff + applicant entry paths for the feature.
+
+Rules:
+
+- Prefer durable entries in `config/seed.php` + named seeders over one-off tinker scripts.
+- If the feature needs a mid-journey state the default seed does not provide, either extend the seeder **or** document the minimal staff clicks that produce it (and prefer extending the seeder when the state is reused).
+- Pest coverage alone is not enough — the handoff must still list human demo credentials.
+- Do not ship a “feature done” checkpoint without this section.
+
 ## 4. Runtime and tooling rules
 
 - Runnable greenfield app is **`system/`** only.
@@ -168,7 +189,8 @@ Stop and return to the master reference when:
 - legacy behavior has no disposition;
 - page/route/state/authz contract is missing;
 - a provider/SDK is being added before its ADR/gate;
-- tests cannot map back to FR/story acceptance.
+- tests cannot map back to FR/story acceptance;
+- feature handoff lacks developer-ready seed credentials / recreate steps.
 
 ## 7. Permanent file map for agents
 

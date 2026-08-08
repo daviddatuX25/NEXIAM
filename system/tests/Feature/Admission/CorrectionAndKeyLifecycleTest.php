@@ -68,14 +68,17 @@ test('needs_correction end-to-end: request then applicant resubmit returns pendi
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $this->get(route('applicant.portal'))
+        ->assertRedirect(route('applicant.schedule'));
+
+    $this->get(route('applicant.schedule'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Applicant/Dashboard')
-            ->where('attempts.0.needs_correction', true)
-            ->where('attempts.0.correction_notes', 'Update phone and preference 1')
+            ->component('Applicant/Schedule')
+            ->where('application.needs_correction', true)
+            ->where('application.correction_notes', 'Update phone and preference 1')
         );
 
     $this->get(route('applicant.correction', $attempt->fresh()))
@@ -96,7 +99,7 @@ test('needs_correction end-to-end: request then applicant resubmit returns pendi
         'strand' => 'ABM',
         'grades' => ['GWA' => '1.90'],
         'resubmission_notes' => 'Updated phone and preference',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $fresh = $attempt->fresh();
     expect($fresh->status)->toBe(AdmissionAttempt::STATUS_PENDING)
@@ -120,14 +123,17 @@ test('applicant can quietly amend while pending and stays pending', function ():
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $this->get(route('applicant.portal'))
+        ->assertRedirect(route('applicant.schedule'));
+
+    $this->get(route('applicant.schedule'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Applicant/Dashboard')
-            ->where('attempts.0.can_quiet_amend', true)
-            ->where('attempts.0.frozen_after_accept', false)
+            ->component('Applicant/Schedule')
+            ->where('application.can_quiet_amend', true)
+            ->where('application.frozen_after_accept', false)
         );
 
     $this->get(route('applicant.correction', $attempt))
@@ -143,7 +149,7 @@ test('applicant can quietly amend while pending and stays pending', function ():
         'expected_version' => 1,
         'contact_phone' => '09171112222',
         'city' => 'Quezon City',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $fresh = $attempt->fresh();
     expect($fresh->status)->toBe(AdmissionAttempt::STATUS_PENDING)
@@ -181,22 +187,26 @@ test('accepted applications freeze quiet portal and registrar correct', function
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $this->get(route('applicant.portal'))
+        ->assertRedirect(route('applicant.schedule'));
+
+    $this->get(route('applicant.schedule'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('attempts.0.frozen_after_accept', true)
-            ->where('attempts.0.can_quiet_amend', false)
+            ->component('Applicant/Schedule')
+            ->where('application.frozen_after_accept', true)
+            ->where('application.can_quiet_amend', false)
         );
 
     $this->get(route('applicant.correction', $attempt->fresh()))
-        ->assertRedirect(route('applicant.portal'));
+        ->assertRedirect(route('applicant.schedule'));
 
     $this->post(route('applicant.correction.store', $attempt->fresh()), [
         'expected_version' => 2,
         'contact_phone' => '09170000000',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     expect($attempt->fresh()->contact_phone)->not->toBe('09170000000')
         ->and($attempt->fresh()->status)->toBe(AdmissionAttempt::STATUS_ACCEPTED);

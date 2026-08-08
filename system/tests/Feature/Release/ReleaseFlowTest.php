@@ -103,10 +103,14 @@ test('applicant portal scopes to own attempts', function (): void {
 
     $this->actingAs($userA)
         ->get(route('applicant.portal'))
+        ->assertRedirect(route('applicant.schedule'));
+
+    $this->actingAs($userA)
+        ->get(route('applicant.schedule'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Applicant/Dashboard')
-            ->has('attempts', 1)
+            ->component('Applicant/Schedule')
+            ->where('attempt.id', $a['attempt']->id)
         );
 
     expect(AdmissionAttempt::query()->count())->toBeGreaterThan(1);

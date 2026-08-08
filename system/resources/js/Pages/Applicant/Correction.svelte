@@ -56,7 +56,7 @@
   <div class="mx-auto max-w-2xl space-y-6">
     <div class="space-y-2">
       <Link
-        href="/applicant/portal"
+        href="/applicant/schedule"
         class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft class="size-4" />
@@ -106,7 +106,7 @@
         <Button type="submit" class="min-h-11" disabled={form.processing}>
           {isAmend ? 'Save details' : 'Resubmit for review'}
         </Button>
-        <Link href="/applicant/portal">
+        <Link href="/applicant/schedule">
           <Button type="button" variant="outline" class="min-h-11">Cancel</Button>
         </Link>
       </div>

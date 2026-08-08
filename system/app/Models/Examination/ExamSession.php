@@ -2,6 +2,7 @@
 
 namespace App\Models\Examination;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,15 +20,30 @@ class ExamSession extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const BOOKING_STAFF_ONLY = 'staff_only';
+
+    public const BOOKING_OPEN_FOR_RESERVATION = 'open_for_reservation';
+
+    /**
+     * @var list<string>
+     */
+    public const BOOKING_MODES = [
+        self::BOOKING_STAFF_ONLY,
+        self::BOOKING_OPEN_FOR_RESERVATION,
+    ];
+
     protected $fillable = [
         'academic_cycle_id',
         'room_id',
         'code',
         'status',
+        'booking_mode',
         'starts_at',
         'effective_end_at',
         'version',
         'published_at',
+        'reservation_opened_at',
+        'reservation_closed_at',
         'closed_at',
     ];
 
@@ -40,8 +56,24 @@ class ExamSession extends Model
             'starts_at' => 'datetime',
             'effective_end_at' => 'datetime',
             'published_at' => 'datetime',
+            'reservation_opened_at' => 'datetime',
+            'reservation_closed_at' => 'datetime',
             'closed_at' => 'datetime',
         ];
+    }
+
+    public function isOpenForReservation(): bool
+    {
+        return $this->booking_mode === self::BOOKING_OPEN_FOR_RESERVATION;
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeOpenForReservation(Builder $query): Builder
+    {
+        return $query->where('booking_mode', self::BOOKING_OPEN_FOR_RESERVATION);
     }
 
     /**

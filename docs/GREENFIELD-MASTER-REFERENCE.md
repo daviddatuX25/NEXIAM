@@ -451,7 +451,7 @@ Nexi, SDK/provider selection, embeddings, typed actions, worker protocol, schedu
 9. Only after PASS, implement E2 in `system/`.
 10. Prepare R4 evidence and one separate E3 OpenSpec per promoted differentiator (Nexi/AI/embeddings included).
 
-Permanent process reminder: [`project-context.md`](project-context.md). OpenSpec remains the code handoff; BMAD is used only to close planning gaps.
+Permanent process reminder: [`project-context.md`](project-context.md) (includes §3.7 developer-ready seeded data on every feature `HANDOFF.md`). OpenSpec remains the code handoff; BMAD is used only to close planning gaps.
 
 ## 11. Story readiness contract
 
@@ -503,18 +503,19 @@ Stop implementation and return here when:
 - Permanent agent work process published: [`project-context.md`](project-context.md) + [`.cursor/rules/nexiam-greenfield.mdc`](../.cursor/rules/nexiam-greenfield.mdc) + Boost MCP [`.cursor/mcp.json`](../.cursor/mcp.json).
 - E1 staff authentication, capability helper/seam, actor scope, and reference catalogs have automated + live Compose evidence (`foundation:reset`, rebuild app image, `/login`→`/staff` on `:18000`).
 - Spatie Permission is persistence/helper only; GF-21 remains decision authority.
+- Exam session scheduling OpenSpec (`exam-session-scheduling`) — **Option A session booking_mode PASS** (staff sessions + Unpublish/Cancel; per-session Open/Close reservation; applicant Reserve→Assignment `applicant_reserved`; no SlotPlan/soft holds; publish notify seam; Pest matrix; Compose reset). Evidence: [`greenfield-foundation/evidence/exam-session-scheduling-option-a-evidence.md`](greenfield-foundation/evidence/exam-session-scheduling-option-a-evidence.md).
 
 ### Still open
 
-- Exam session scheduling OpenSpec (`exam-session-scheduling`) — active (staff legacy shape + applicant reservation calendar)
+- Next pipeline after scheduling: **AI assistant foundation** (Schedule Assistant apply path remains out of the scheduling cut)
 - E2 exit evidence G2–G4/H4 (parked; journey code remains in `system/`)
 - Exhaustive legacy parity ledger (imports, missed-exam policy, …)
 - optional E1 OpenSpec AI-seam alignment vs roadmap wording
 
 ### Current verdicts
 
-- Planning coherence: **PASS** for E2 slice planning (2026-08-05); personnel + attempt detail + institutional setup archived PASS; scheduling OpenSpec active.
+- Planning coherence: **PASS** for E2 slice planning (2026-08-05); personnel + attempt detail + institutional setup archived PASS; scheduling reservation cut PASS (OpenSpec still active until archive decision).
 - E0 implementation evidence: **PASS**.
 - E1 identity/reference: **PASS** (personnel UI complete).
-- E2 delivery PASS: **NOT YET** (OpenSpec parked incomplete; scheduling in progress).
+- E2 delivery PASS: **NOT YET** (OpenSpec parked incomplete; scheduling cut complete pending archive).
 - Pilot/production clearance: **NOT GRANTED**.

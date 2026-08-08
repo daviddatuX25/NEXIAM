@@ -82,10 +82,15 @@
                     </span>
                   </div>
                 {:else if a.frozen_after_accept}
-                  <p class="text-xs text-muted-foreground">
-                    Accepted and in the exam pipeline — portal edits are frozen. Contact admissions
-                    if something must change; that needs visible authority approval.
-                  </p>
+                  <div class="space-y-2">
+                    <p class="text-xs text-muted-foreground">
+                      Accepted and in the exam pipeline — portal edits are frozen. Contact admissions
+                      if something must change; that needs visible authority approval.
+                    </p>
+                    <Link href="/applicant/schedule">
+                      <Button size="sm" variant="outline">View exam schedule</Button>
+                    </Link>
+                  </div>
                 {/if}
               </li>
             {/each}

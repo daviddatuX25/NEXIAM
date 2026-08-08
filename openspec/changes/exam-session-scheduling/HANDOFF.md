@@ -1,55 +1,103 @@
 # Handoff: Exam Session Scheduling
 
-**Date:** 2026-08-07  
+**Date:** 2026-08-08  
 **Active OpenSpec:** `openspec/changes/exam-session-scheduling/`  
-**Prior archived:** `openspec/changes/archive/2026-08-06-institutional-setup-readiness/` (PASS)
+**Checkpoint:** **Option A shipped** — session `booking_mode`; reserve = assignment; SlotPlan removed
 
-## How we work here (do not skip)
+## Founder direction (2026-08-08, Option A)
 
-1. Read `docs/GREENFIELD-MASTER-REFERENCE.md` + `docs/project-context.md`  
-2. One active OpenSpec only (this folder)  
-3. Authority: founder decisions / evidence → roadmap → GF → OpenSpec → tests → legacy (evidence only)  
-4. Code only in `system/`; Compose runtime (`system/compose.yaml`), not Sail  
-5. **Existing features:** open matching legacy Pages/controllers first and **mimic UI/UX** (list → create/edit pages; no inventing layouts). See project-context §3.4 and `.cursor/rules/nexiam-greenfield.mdc`  
-6. Spatie roles are helpers; **GF-21 CapabilityAuthorizer** is authz authority  
-7. Stop if disposition, authz/scope, page state, idempotency/audit, or OpenSpec coverage is missing  
+Too many hops (create sessions → plan → link → open → reserve hold → close → finalize → publish).  
 
-## What is already done
+**Simplify:**
 
-- Institutional setup hub + shared setup / aptitude TA-only / ProgramQuota (D-087)  
-- Academic years list → create/edit (legacy shape); school year + semester  
-- Scheduling OpenSpec + legacy crosswalk `docs/legacy-reference/11-exam-scheduling-trace.md`  
-- Conflict lock **D-088** (`docs/greenfield-foundation/decisions/D-088-exam-scheduling-conflict-resolutions.md`)  
-- Page/state catalog updates for P-EXM + applicant calendar states  
+- Default: staff-only assign after session create  
+- Per-session **Open / Close reservation**  
+- Applicant **Reserve** creates `ExamAssignment` immediately (`applicant_reserved`)  
+- No SlotPlan UI / soft-hold / finalize  
+- Publish remains notify boundary  
+- DB reset allowed  
 
-## What to implement next (tasks B1→D2)
+Authority: `docs/greenfield-foundation/decisions/D-088-exam-scheduling-conflict-resolutions.md` (amended).
 
-Start at **B1** in `tasks.md`:
+## Key code map
 
-1. Schema: slot plans / reservations; assignment `source`; **active** uniqueness (D-088 §3)  
-2. Staff Index/Create/Edit/Show mimicking `legacy_codebase/application/resources/js/Pages/Admin/TestScheduling/`  
-3. Single assign/publish/unpublish/cancel command path (no dual UI/service rules)  
-4. ExamSlotPlan open/close/finalize/bypass + applicant calendar reserve  
-5. Pest matrix + Compose rebuild + evidence  
+| Area | Paths |
+|---|---|
+| Session pages | `Examination/{Index,Create,Edit,Show}.svelte` |
+| Applicant | `Applicant/Schedule.svelte` (+ pipeline) |
+| Actions | Open/CloseExamSessionReservation, ReserveExamSlot → Assignment |
+| Models | ExamSession (+ booking_mode), ExamAssignment |
+| Routes | `exams.sessions.*` only (no slot-plans) |
 
-## Locked product rules (D-088 summary)
+## Developer-ready seeded data (required)
 
-- Unpublish = published→draft; Cancel = terminal; in-progress ends via Close  
-- Staff + applicant paths share capacity; no silent overwrite of open reservations  
-- Plan ends at finalized/bypassed; **session Publish** = notify boundary  
-- Late assign on published allowed; AI assistant / missed-exam policy / proctor time-conflict = out of cut  
+Per `docs/project-context.md` §3.7 — human click-through without inventing fixtures.
 
-## Runtime notes
+### App URL
 
-- App: `http://127.0.0.1:18000` (Compose)  
-- After PHP/JS changes: `docker compose build app && up -d --force-recreate`  
-- Capability grants: reseed `CapabilityCatalogSeeder` when catalog changes  
-- Seed staff examples: `registrar.admin@nexiam.test`, `guidance.counselor@nexiam.test`, `program.head.bsn@nexiam.test` / `password`  
+- `http://127.0.0.1:18000` (Compose `app`)
 
-## Read first before coding
+### Logins
 
-1. `openspec/changes/exam-session-scheduling/{proposal,design,tasks,specs}/`  
-2. `docs/greenfield-foundation/decisions/D-088-exam-scheduling-conflict-resolutions.md`  
-3. `docs/legacy-reference/11-exam-scheduling-trace.md`  
-4. Legacy `Admin/TestScheduling/*` + `ExamSchedulingService.php`  
-5. GF-06 §5 / §5.1  
+| Actor | How | Credentials |
+|---|---|---|
+| Guidance (exam schedule) | Staff `/login` | `guidance.counselor@nexiam.test` / `password` |
+| Registrar (accept apps) | Staff `/login` | `registrar.clerk@nexiam.test` / `password` |
+| Accepted applicant | Applicant portal | access key `DEMO-ACPT` · birthdate `2003-09-25` |
+| Pending applicant | Applicant portal | access key `DEMO-PEND` · birthdate `2003-09-25` |
+
+Config source: `system/config/seed.php` → `JourneyFixtureSeeder` + `StaffIdentitySeeder`.
+
+### Recreate (clean DB)
+
+```bash
+cd system
+docker compose build app
+docker compose up -d --force-recreate app queue
+docker compose exec -T app php artisan foundation:reset --force
+```
+
+`foundation:reset --force` already runs `JourneyFixtureSeeder` (demo applicants). To reseed demos only:
+
+```bash
+docker compose exec -T app php artisan db:seed --class=JourneyFixtureSeeder --force
+```
+
+### Feature URLs
+
+| Surface | Path |
+|---|---|
+| Staff exam sessions | `/exams/sessions` |
+| Create session | `/exams/sessions/create` |
+| Session show (Open/Close reservation, roster, publish) | `/exams/sessions/{id}` |
+| Applicant schedule pipeline | `/applicant/schedule` |
+
+### Expected starting state after reset
+
+- No exam sessions yet (staff-only create from Index).
+- `DEMO-ACPT` is accepted / exam-eligible → applicant schedule shows **waiting_for_reservation_open** until a session is opened for reservation.
+- `DEMO-PEND` is not accepted → schedule stays **pending_acceptance**.
+
+### Minimal happy-path click script
+
+1. Guidance: create a draft session (room + times) → Show.
+2. Optionally assign `DEMO-ACPT` (staff-only path) **or** click **Open reservation**.
+3. Applicant `DEMO-ACPT`: `/applicant/schedule` → calendar → confirm seat → assignment (`applicant_reserved`).
+4. Guidance: Publish when roster ready (notify boundary).
+
+### Automated proof
+
+```bash
+docker compose exec -T app php artisan test --compact tests/Feature/Examination
+```
+
+Evidence: `docs/greenfield-foundation/evidence/exam-session-scheduling-option-a-evidence.md`.
+
+## Deferred (not in this cut)
+
+- **Applicant notify** on staff Remove / Reassign / Cancel session (NotificationOutbox seam; publish remains the only wired notify today).
+- Richer applicant nav beyond single status home.
+
+## Next after this OpenSpec
+
+AI assistant foundation (out of this cut).

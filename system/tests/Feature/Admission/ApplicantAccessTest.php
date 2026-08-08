@@ -58,7 +58,7 @@ test('http applicant login redirects to portal', function (): void {
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $this->assertAuthenticated();
     expect(User::query()->where('email', 'http-login@example.test')->exists())->toBeTrue();
@@ -113,7 +113,7 @@ test('applicant can logout and returns to applicant login', function (): void {
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.portal'));
+    ])->assertRedirect(route('applicant.schedule'));
 
     $this->assertAuthenticated();
 
@@ -125,4 +125,32 @@ test('applicant can logout and returns to applicant login', function (): void {
     expect(\App\Models\Foundation\AuditEvent::query()
         ->where('event_type', 'auth.applicant_logout')
         ->exists())->toBeTrue();
+});
+
+test('seeded demo accepted applicant can sign in with fixed access key', function (): void {
+    seedE2Foundation();
+
+    $accepted = config('seed.applicants.accepted');
+
+    $this->get(route('applicant.login'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Applicant/Login')
+            ->where('demo.access_key', $accepted['access_key'])
+        );
+
+    $this->post(route('applicant.login.store'), [
+        'access_key' => $accepted['access_key'],
+        'birthdate' => $accepted['birthdate'],
+    ])->assertRedirect(route('applicant.schedule'));
+
+    $this->assertAuthenticated();
+
+    $this->get(route('applicant.schedule'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Applicant/Schedule')
+            ->where('page_state', 'waiting_for_reservation_open')
+            ->has('pipeline', 4)
+        );
 });
