@@ -8,7 +8,8 @@
 **Target runtime:** [`../system/`](../system/)  
 **Legacy runtime:** [`../legacy_codebase/application/`](../legacy_codebase/application/) — read-only behavior evidence
 **Cursor always-on rule:** [`.cursor/rules/nexiam-greenfield.mdc`](../.cursor/rules/nexiam-greenfield.mdc)  
-**Boost MCP:** [`.cursor/mcp.json`](../.cursor/mcp.json) → `system/bin/boost-mcp.sh` (reload Cursor MCP after first use)
+**Boost MCP:** [`.cursor/mcp.json`](../.cursor/mcp.json) → `system/bin/boost-mcp.sh` (reload Cursor MCP after first use)  
+**Teammate handoff (Taglish):** [`HANDOFF-TEAMMATE.md`](HANDOFF-TEAMMATE.md) — para sa nagpapatuloy ng development habang wala ang founder
 
 This file is the place to start and return to. It does not replace the detailed GF contracts. It ties them together, records unresolved parity work, and prevents an implementation task from starting when its product behavior is still untraced.
 

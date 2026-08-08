@@ -1,6 +1,6 @@
 # NEXIAM Project Workspace
 
-**Phase:** E0 PASS; E1 CONDITIONAL (live exit verification/reconciliation open); E2 NOT READY  
+**Phase:** E0 PASS; E1 PASS; E1b locked; E2 IN PROGRESS (exam-session reservation cut done 2026-08-08)  
 **Single entry point:** [`docs/GREENFIELD-MASTER-REFERENCE.md`](docs/GREENFIELD-MASTER-REFERENCE.md)  
 **Work process:** [`docs/project-context.md`](docs/project-context.md)  
 **Master roadmap:** [`docs/MASTER-DELIVERY-ROADMAP.md`](docs/MASTER-DELIVERY-ROADMAP.md) · formal suite artifact: [`docs/greenfield-foundation/14-readiness-gates-and-reconciled-roadmap.md`](docs/greenfield-foundation/14-readiness-gates-and-reconciled-roadmap.md)  
