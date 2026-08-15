@@ -11,7 +11,7 @@
    */
   import { Link, router } from '@inertiajs/svelte';
   import { usePage } from '@inertiajs/svelte';
-  import {
+  import { QrCode,
     ChevronDown,
     ChevronRight,
     Menu,
@@ -33,6 +33,7 @@
   import ToastManager from '@/Components/kit/ToastManager.svelte';
   import NotificationBell from '@/Components/kit/NotificationBell.svelte';
   import NexiDock from '@/Components/kit/Nexi/NexiDock.svelte';
+  import ApplicantScanModal from '@/Components/kit/ApplicantScanModal.svelte';
   import { Button } from '@/Components/ui/button';
 
   let { children, breadcrumbs = [] } = $props();
@@ -45,6 +46,7 @@
       : 'NEXIAM'
   );
   let sidebarOpen = $state(false);
+  import { scanModal, openScanModal, closeScanModal } from '@/lib/scan-modal';
   let breadcrumbOpen = $state(false);
 
   $effect(() => {
@@ -160,6 +162,19 @@
           </div>
         {/each}
       </nav>
+    </div>
+
+    <!-- Scan applicant QR — pinned above the profile block (desktop + mobile) -->
+    <div class="p-3 pb-0 shrink-0">
+        <Button
+            variant="default"
+            size="lg"
+            class="w-full min-h-[44px] gap-2 font-semibold shadow-sm"
+            onclick={() => openScanModal()}
+        >
+            <QrCode class="size-4" />
+            Scan Applicant QR
+        </Button>
     </div>
 
     <!-- User block in sidebar footer -->
@@ -302,6 +317,8 @@
 </div>
 
 <NexiDock />
+
+<ApplicantScanModal open={$scanModal.open} preselect={$scanModal.preselect} onOpenChange={() => closeScanModal()} />
 
 <style>
   .scrollbar-hide {
