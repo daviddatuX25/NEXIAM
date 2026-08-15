@@ -124,7 +124,7 @@ Authority detail and scenarios: [GF-11](greenfield-foundation/11-connected-verti
 
 Stable IDs below are promoted from the 2026-08-04 implementation-readiness extraction. Map stories to these IDs plus `REQ-*` (GF-12) and `REQ-VS-*` (GF-11).
 
-### 5.1 Functional requirements (FR-001–FR-075)
+### 5.1 Functional requirements (FR-001–FR-085)
 
 - **FR-001** — NEXIAM shall support the ISPSC Tagudin admission-testing journey: application intake, controlled applicant access, examination scheduling and administration, scoring, result release, and post-examination counseling support. (GF-03 §1)
 - **FR-002** — The system shall create a cycle-scoped admission attempt with validated identity, contact information, preferences, and duplicate controls. (GF-03 §4)
@@ -161,9 +161,9 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **FR-033** — The system shall implement the approved capability matrix with office, program, own-record, assigned-resource, and contextual-duty scopes. (GF-03 §4; Roadmap E1)
 - **FR-034** — The system shall implement policy-matrix and denied-path tests for protected behavior. (GF-03 §4; Roadmap E1)
 - **FR-035** — The system shall record actor-attributed audit events for identity, role, workflow, score, release, access, and configuration actions. (GF-03 §4)
-- **FR-036** — Program Heads shall receive read-only, program-scoped aggregate visibility. (GF-03 §4)
-- **FR-037** — Program Heads shall receive authorized, program-scoped applicant-record visibility, including result/remark sheets and converted per-domain scores. (GF-03 §4)
-- **FR-038** — The connected journey shall expose its approved program-scoped aggregate consequence. (GF-03 §8)
+- **FR-036** — Program Heads shall receive assigned-program aggregate and candidate visibility with canonical Potential/Upcoming/Follow-up/Enrolling/Enrolled definitions, basis tags, metric source, and freshness. (D-ROLE-05/D-090)
+- **FR-037** — Program Heads shall receive tiered assigned-program applicant visibility: accepted Potential summary rows; protected released-result records only for an applicant-acknowledged current selection or explicit targeted follow-up, including approved converted per-domain scores/result sheet and bounded program-relevant notes. Preference/pool membership alone remains minimal. (D-080)
+- **FR-038** — The connected journey shall expose program-scoped preference demand, Guidance-pool demand, quota reservations, upcoming/follow-up/enrolling/enrolled consequences without granting cross-program access. (D-ROLE-05/D-090)
 - **FR-039** — OMR-assisted scoring shall operate against one approved answer-sheet/input contract. (GF-03 §4)
 - **FR-040** — OMR uncertainty shall abstain to human review rather than silently commit a score. (GF-03 §4)
 - **FR-041** — Manual scoring shall remain available whenever OMR is disabled, unavailable, uncertain, or not yet approved. (GF-03 §4; Roadmap E2/E3)
@@ -178,8 +178,8 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **FR-050** — The conditional BGE service shall support interest-ranking as a low-priority, feature-flagged beta. (GF-03 §4)
 - **FR-051** — Conditional YuKee integration shall load the available trained `.joblib` artifact and engine specifications with versioned loading, provenance, and deterministic expected-output fixtures. (GF-03 §4)
 - **FR-052** — Conditional engine administration may extend beyond fixed approved adapters only after its evidence gate passes. (GF-03 §4)
-- **FR-053** — Conditional program-quota management may extend Program Head functionality beyond read-only visibility only after its gate passes. (GF-03 §4)
-- **FR-054** — Conditional in-app messaging may extend beyond a bounded RAG-refusal handoff only after routing, retention, and service-ownership rules are approved. (GF-03 §4; Roadmap E4)
+- **FR-053** — Program quota management shall allow Program Head own-program and authorized Guidance/TA writes (D-087); only applicant selections reserve capacity, with FCFS/idempotent guard, assisted acknowledgement, atomic transfer/release, and change history (D-090).
+- **FR-054** — Bounded admission-support messaging may operate only as approved case threads: internal PH↔Guidance and current-selection/targeted-follow-up PH↔applicant support (D-092). General inbox, marketing, and applicant-to-any-role messaging remain conditional/out.
 - **FR-055** — Conditional analytics and reporting shall support role-scoped dashboards and reports with a metric dictionary, data scope and freshness, re-authenticated drill-down, accessible chart alternatives, and auditable exports. (GF-03 §4; Roadmap E4)
 - **FR-056** — The system shall provide one shared, provider-agnostic AI capability boundary for RAG, model/OMR assistance, scheduling assistance, and future AI-assisted interfaces. (GF-03 §1; Roadmap §2.4)
 - **FR-057** — The chatbot may guide an authorized actor through typed task requests equivalent to frontend operations. (GF-03 §1)
@@ -202,6 +202,15 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **FR-074** — A controlled role-based technical pilot shall execute frozen TAM scenarios and record defects and Go/No-Go outcomes before broad evaluation. (GF-03 §7; Roadmap E5)
 - **FR-075** — Approved pilot/production operation shall provide deployment health and observability, backup and restore, outage and incident runbooks, key/secret operations, staff training/support ownership, and release/rollback procedures. (Roadmap E6)
 - **FR-076** — Authorized Staffing/HR Administrators (and office actors within D-020 ceilings) shall list, create, update, deactivate, and activate staff personnel accounts with approved permanent and support role helpers, hashed credentials, and personnel-lifecycle audit — without granting Test Administrator or Proctor authority through personnel commands. (GF-04 CAP-029/030; D-014/D-017/D-020; BR-012)
+- **FR-077** — Registrar acceptance shall remain the sole application acceptance and gate to exam assignment; Guidance/PH cannot Accept/Dismiss applications. (CAP-004; D-089)
+- **FR-078** — Guidance shall record a versioned post-consultation program pool; provider suggestions cannot change it without counselor confirmation. (D-090; BR-022/024)
+- **FR-079** — Applicant choice or Guidance's advised default shall establish one provisional program; a default records source and remains pending until applicant acknowledgement through portal/Guidance or attributable Registrar sheet submission while starting `enrolling`. (D-090)
+- **FR-080** — Ordinary provisional selection shall reserve quota FCFS/idempotently; preferences/pool/follow-up consume zero. Registrar signed-paper finalization may record an out-of-pool/full/unconfigured final program, release the old reservation, leave capacity unchanged, and report variance. (D-090/091)
+- **FR-081** — Guidance shall route targeted PH follow-up before `enrolling`; it shall remain visible during `enrolling`, require assigned-PH terminal clear/decline, and block only `enrolled`; normal processing requires no PH system approval. (D-089)
+- **FR-082** — Applicant shall receive scoped access-history, decline, follow-up, selection, paper-final-program, quota-variance, stamp, and admission-support message notices after authoritative commit. (D-092)
+- **FR-083** — Registrar shall stamp `enrolling` on sheet submission after core admission milestones even with open follow-up; `enrolled` shall require terminal PH edge follow-up + signed-sheet verification and may adjust final program to paper truth. Split freeze/reversal rules apply without creating a broader enrollment SIS. (D-091; BR-026/092)
+- **FR-084** — NEXIAM shall expose one universal applicant QR concept across portal and approved print; authenticated scan shall resolve the opaque applicant-attempt locator into a server-authored action hub whose Registrar, Guidance/TA, or PH destinations derive from ordinary capability/duty/scope and never mutate automatically. (D-092)
+- **FR-085** — The consultation workspace shall embed applicant-specific released-score charts/table, preferences, structured consultation evidence, independent future-analysis regions, and human decision/pool/follow-up/history. YuKee artifact/K-Means and transparent deterministic/rule-based plugins remain separate later integrations; no provider/fake engine ships in this cut. (D-093; BR-022/024/025)
 
 ### 5.2 Non-functional requirements (NFR-001–NFR-055)
 
@@ -261,7 +270,7 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **NFR-054** — Technical evidence and TAM/usability evidence shall remain separate, with limitations and non-claims explicit. (Roadmap E5)
 - **NFR-055** — Result and notification feedback shall use truthful pending/sent/released wording and shall not claim provider success without evidence. (Roadmap risk controls)
 
-### 5.3 Business rules and constraints (BR-001–BR-083)
+### 5.3 Business rules and constraints (BR-001–BR-092)
 
 - **BR-001** — The whole approved NEXIAM capstone concept is the product boundary; the Connected Admission-to-Release Slice is only the first implementation and proof milestone. (GF-03 D-006)
 - **BR-002** — Every other feature shall be deliberately classified, designed, traced to evidence, and sequenced; no capability may be silently omitted. (GF-03 D-006)
@@ -279,8 +288,8 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **BR-014** — Queue workers and schedulers have no human authority. (GF-03 §3)
 - **BR-015** — Mail, knowledge/vector, LLM, and inference services shall remain external services behind adapters. (GF-03 §3)
 - **BR-016** — Final actor membership is gated by D-ROLE-01 through D-ROLE-05. (GF-03 §3)
-- **BR-017** — Program Head access is read-only and program-scoped. (GF-03 §4)
-- **BR-018** — Raw answer sheets and confidential conversion tables remain unavailable to Program Heads. (GF-03 §4)
+- **BR-017** — Program Head access is read-only and program-scoped by default. Approved exceptions: own-program quota write (D-087), tiered protected record view (D-080), direct pre-enrolling selection decline, resolution of an already-open follow-up through `enrolling` (D-089), and bounded messaging (D-092). PH never Registrar-Accepts/Dismisses, writes scores/releases, or alters paper-confirmed final enrollment.
+- **BR-018** — Raw answer sheets, bubble scans, and confidential conversion tables remain unavailable to Program Heads; unrelated counseling notes remain unavailable.
 - **BR-019** — An admission slip is not required for answer-sheet identity. (GF-03 §4)
 - **BR-020** — AI-automated reporting is outside the current capstone commitment. (GF-03 D-008)
 - **BR-021** — Exact AI libraries, SDKs, providers, prompts, model contracts, and implementation details remain subject to research and HLD/LLD decisions. (GF-03 D-008)
@@ -288,13 +297,13 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **BR-023** — Manual scheduling is the complete authoritative baseline; AI scheduling only proposes feasibility and requires human confirmation. (Roadmap D-009)
 - **BR-024** — Autonomous admission, placement, or enrollment decisions are outside the current study. (GF-03 Tier D)
 - **BR-025** — Predictive-validity or applicant-outcome claims are prohibited without a valid longitudinal study. (GF-03 Tier D)
-- **BR-026** — Enrollment, tuition/payment, long-term academic records, and cross-campus resource allocation are outside the current study. (GF-03 Tier D)
+- **BR-026** — Enrollment, tuition/payment, subjects/class lists, long-term academic records, and cross-campus resource allocation are outside the study. Only reasoned Registrar `enrolling`/`enrolled` admission-completion stamps are included (D-091).
 - **BR-027** — Multi-campus and multi-tenant platform behavior are outside the current study. (GF-03 Tier D)
 - **BR-028** — Arbitrary third-party executable plugins and model-provided UI code are outside the current study. (GF-03 Tier D)
 - **BR-029** — Formal NPC certification and claims of a completed PIA are outside the current study. (GF-03 Tier D)
 - **BR-030** — Synthetic demonstrations or TAM alone cannot support production or pilot claims. (GF-03 Tier D)
 - **BR-031** — OMR, scoped RAG, scheduling assistance, offline proctoring, and counselor decision-support are committed only after their named spike/evidence gates pass. (GF-03 Tier B)
-- **BR-032** — BGE, YuKee, generic engine administration, quota management, extended messaging, and expanded analytics/reporting are conditional: their contracts may be designed now, but implementation and evaluation proceed only after the named gate passes. (GF-03 Tier C)
+- **BR-032** — BGE, YuKee, generic engine administration, full messaging/inbox, and expanded analytics remain conditional. D-087/D-ROLE-05/D-090/D-092 approve only bounded quota, projection, and admission-support case contracts; real provider integration remains gated.
 - **BR-033** — If a Tier B feature remains in the final manuscript promise, it requires engineering evidence independent of TAM. (GF-03 §4)
 - **BR-034** — TAM may establish perceived usefulness, perceived ease of use, and role-scenario acceptance only within the approved sample and protocol. (GF-03 §7)
 - **BR-035** — TAM cannot establish OMR accuracy, retrieval grounding/citation correctness, scheduler optimality, model validity/fairness/predictive power, cryptographic tamper resistance, authorization/privacy correctness, or production scalability/availability. (GF-03 §7)
@@ -306,7 +315,7 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **BR-041** — Quiet omission is prohibited. (GF-03 §§1, 9; Roadmap R1)
 - **BR-042** — Planning coherence, implementation preparation, and pilot/deployment clearance are three independent verdicts and shall always be reported separately. (Roadmap §8)
 - **BR-043** — A capstone-demonstration PASS does not imply pilot or production clearance. (GF-03 §6)
-- **BR-044** — The approved application plane is Laravel 13, PHP 8.4, Inertia 3, React 19, TypeScript 5.9, Tailwind 4, and PostgreSQL 16 under `system/`. (Roadmap §2.1)
+- **BR-044** — The approved application plane is Laravel 13, PHP 8.4, Inertia 3, Svelte 5, TypeScript 5.9, Tailwind 4, and PostgreSQL 16 under `system/`. (Roadmap §2.1; E1b executable checkpoint)
 - **BR-045** — `system/` is the isolated greenfield workspace; legacy migrations, routes, controllers, databases, and storage shall not become target runtime dependencies. (Roadmap §§2.1, E0)
 - **BR-046** — Baseline security, quality, and integrity shall never be deferred, even though full production hardening is not required for a bounded demonstration. (Roadmap §1)
 - **BR-047** — The critical execution path is E0 → E1 → E2. Parallel work may prepare evidence and prototypes but may not mutate authoritative domain state or inject E3 dependencies into E1/E2. (Roadmap §5)
@@ -346,6 +355,15 @@ Stable IDs below are promoted from the 2026-08-04 implementation-readiness extra
 - **BR-081** — Later OpenSpec tasks shall not mask earlier failures, and checked tasks shall correspond to committed evidence paths. (Roadmap §11)
 - **BR-082** — Planning shall stop and reopen when new founder, panel, stakeholder, privacy, or spike evidence changes product commitment, actor authority/data visibility, identity/cardinality, state/reversal, research claims, or runtime/storage/provider choices with schema or security consequences. (Roadmap §13)
 - **BR-083** — After such a change, upstream contracts shall be propagated first and readiness rerun; downstream code shall not be patched around unresolved authority changes. (Roadmap §13)
+- **BR-084** — Registrar acceptance is the sole application acceptance and exam gate; no PH outcome may be named or treated as application acceptance.
+- **BR-085** — Initial preferences, Guidance pool, provisional selection, provider proposals, and Registrar paper-confirmed final program are distinct attributable concepts; none silently writes another.
+- **BR-086** — Preferences/pool/follow-up consume zero quota; provisional selections reserve; commitments deduplicate reservations and stamps. Paper-confirmed enrollment records truth beyond configured capacity without silently changing capacity and exposes variance.
+- **BR-087** — Potential-list visibility is tiered: accepted summary rows from preference/pool evidence; protected released-result record only with an applicant-acknowledged current selection or explicit targeted follow-up for that program.
+- **BR-088** — Normal processing needs no PH approval. Direct PH selection decline is pre-enrolling; an already-open PH follow-up remains actionable during `enrolling` and blocks only `enrolled`, requiring assigned-PH terminal resolution.
+- **BR-089** — Guidance's advised default remains attributable/pending until applicant portal/Guidance acknowledgement or Registrar records confirmation from submitted enrollment paper while starting `enrolling`; no-device service cannot become silent placement.
+- **BR-090** — One universal applicant QR is an opaque locator only; it encodes no feature destination or authority. Scanning returns only actor-authorized destinations and performs no automatic business transition.
+- **BR-091** — Applicant access history records protected PH views; user-facing view notices are deduplicated while complete audit evidence remains retained.
+- **BR-092** — `enrolling` freezes core admission facts/new follow-up/ordinary selection changes but permits existing PH follow-up resolution and Registrar paper finalization; `enrolled` requires ordered reasoned reversal before correction. No automatic cascade rewrites history.
 
 ### PRD Completeness Assessment
 
@@ -356,6 +374,7 @@ Both files were read completely. Status and tension points:
 - GF-03’s first-target wording allows “manual or confidence-gated OMR,” while the Roadmap excludes OMR from E2 unless separately gated. The Roadmap supplies the controlling qualification.
 - GF-03 describes offline proctoring as a Tier B committed capstone path subject to EV-011; the Roadmap places it behind E3 evidence gates while also referring to offline sync as conditional in E4. Its commitment versus sequencing status needs explicit reconciliation.
 - GF-03 recommends Tier A/Tier B commitments, but those recommendations remain decision-gated rather than approved implementation authority.
+- **2026-08-15 reconciliation:** D-ROLE-05/D-080/D-089–D-093 and `2026-08-15-admission-model-program-head` close the planning-definition gap for bounded Program Head/admission-support work, the consultation visualization backbone, and the universal applicant QR. Implementation evidence remains open; YuKee, deterministic/rule-based, BGE, real-provider, and production claims remain gated.
 
 ## 6. Success planes
 

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Release;
 
+use App\Release\Actions\ReleaseResult;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ReleaseResultRequest extends FormRequest
 {
@@ -18,6 +20,7 @@ class ReleaseResultRequest extends FormRequest
     {
         return [
             'idempotency_key' => ['required', 'string', 'max:128'],
+            'mode' => ['nullable', Rule::in(ReleaseResult::MODES)],
         ];
     }
 }

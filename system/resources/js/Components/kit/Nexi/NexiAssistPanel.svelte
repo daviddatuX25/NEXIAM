@@ -24,17 +24,26 @@
   import { Button } from '@/Components/ui/button';
   import { resolveNexiContext } from '@/lib/nexi-context.js';
   import { actionsForContext } from '@/lib/nexi-actions.js';
+  import {
+    cancelNexiProposal,
+    clearNexiConversation,
+    confirmNexiProposal,
+    fetchNexiSnapshot,
+    startNexiSkill,
+    submitNexiTurn,
+  } from '@/lib/nexi-transport';
 
   let {
     enabled = true,
     mode = 'degraded',
     disclosure = 'Nexi is an assistant. It cannot grant access or change records without a confirmed typed command.',
-    defaultInteraction = 'assistant',
+    defaultInteraction = 'inquiry',
     interactionModes = [
-      { key: 'assistant', label: 'Assistant' },
       { key: 'inquiry', label: 'Inquiry' },
     ],
     usage = { used: 0, limit: 50, unit: 'asks', period: 'today' },
+    /** @type {import('@/types/nexi').NexiSessionView | null} */
+    session = null,
   } = $props();
 
   const STORAGE_KEY = 'nexiam.nexi.expanded';
@@ -42,8 +51,30 @@
 
   const page = usePage();
   const grants = $derived(page.props.auth?.user?.capabilities ?? []);
-  const context = $derived(resolveNexiContext(page.url ?? '/'));
-  const actions = $derived(actionsForContext(context.key, grants).filter((a) => !a.locked));
+  /** Demo/fixture context only — never authority when session is set. */
+  const fixtureContext = $derived(resolveNexiContext(page.url ?? '/'));
+  const context = $derived.by(() => {
+    if (session?.page_pack) {
+      return {
+        key: session.page_pack.key,
+        title: session.page_pack.key,
+        kind: 'page_help',
+        summary:
+          session.availability === 'degraded'
+            ? 'Provider is offline. I can orient you to this page; use ordinary controls to act.'
+            : 'Page-aware help from the server pack. Mutations need a later OpenSpec.',
+        assistive_hint: 'Use the page path for changes. Apply tools are not live in this foundation cut.',
+      };
+    }
+    return fixtureContext;
+  });
+  const actions = $derived.by(() => {
+    // Server session: no client typed-action catalog as authority.
+    if (session) {
+      return [];
+    }
+    return actionsForContext(fixtureContext.key, grants).filter((a) => !a.locked);
+  });
 
   const modes = $derived(
     Array.isArray(interactionModes) && interactionModes.length
@@ -52,20 +83,27 @@
   );
 
   let expanded = $state(false);
-  let interaction = $state('assistant');
+  let interaction = $state('inquiry');
   let modeMenuOpen = $state(false);
   let input = $state('');
   let frame = $state(0);
-  /** @type {{ role: 'user'|'assistant', content: string }[]} */
+  /** @type {{ role: 'user'|'assistant', content: string, citations?: Array<{ source_title?: string, excerpt?: string, version_id?: string }>, corpusNote?: string | null }[]} */
   let messages = $state([]);
   /** @type {any} */
   let gate = $state(null);
   let hydrated = $state(false);
+  /** @type {HTMLElement | undefined} */
+  let dockRoot = $state();
+  let loadedConversationId = $state(/** @type {string | null} */ (null));
   /** @type {HTMLDivElement | undefined} */
   let scrollEl = $state();
   /** Ephemeral filler in the wrap island — Thinking… / Analyzing… */
   let statusText = $state(/** @type {string | null} */ (null));
   let busy = $state(false);
+  /** @type {string | null} */
+  let skillGrantId = $state(null);
+  /** @type {string | null} */
+  let skillConversationId = $state(null);
 
   const currentMode = $derived(modes.find((m) => m.key === interaction) ?? modes[0]);
 
@@ -132,31 +170,67 @@
     hydrated = true;
     try {
       expanded = sessionStorage.getItem(STORAGE_KEY) === '1';
-      const saved = sessionStorage.getItem(MODE_KEY);
       const allowed = (Array.isArray(interactionModes) ? interactionModes : []).map((m) => m.key);
-      if (saved && allowed.includes(saved)) {
-        interaction = saved;
+      // Server session owns mode. Local MODE_KEY cannot reactivate Assistant after pack/epoch changes.
+      if (session) {
+        interaction = session.active_mode || defaultInteraction || 'inquiry';
       } else {
-        interaction = defaultInteraction || 'assistant';
+        const saved = sessionStorage.getItem(MODE_KEY);
+        if (saved && allowed.includes(saved)) {
+          interaction = saved;
+        } else {
+          interaction = defaultInteraction || 'inquiry';
+        }
+      }
+      if (!allowed.includes(interaction)) {
+        interaction = allowed[0] || 'inquiry';
       }
     } catch {
       expanded = false;
-      interaction = defaultInteraction || 'assistant';
+      interaction = defaultInteraction || 'inquiry';
     }
-    messages = [
-      {
-        role: 'assistant',
-        content:
-          'Hi — I’m Nexi. I’ll stay with you on this page. Ask me anything about what you’re looking at — chat uses the space beside my frame.',
-      },
-    ];
+    void bootstrapMessages();
+  });
+
+  function welcomeMessage() {
+    const packLabel = session?.page_pack?.key ?? context.title;
+    const availabilityNote =
+      session?.availability === 'degraded'
+        ? ' I’m in degraded mode — the provider is not live; use the page for real actions.'
+        : '';
+    return {
+      role: /** @type {'assistant'} */ ('assistant'),
+      content: `Hi — I’m Nexi on “${packLabel}”.${availabilityNote} Ask about what you’re looking at; chat uses the space beside my frame.`,
+    };
+  }
+
+  async function bootstrapMessages() {
+    const conversationId = session?.conversation?.id ?? null;
+    if (conversationId) {
+      await loadServerHistory(conversationId);
+      return;
+    }
+    messages = [welcomeMessage()];
+    loadedConversationId = null;
+  }
+
+  // Inertia page changes remount the dock — reload durable history whenever conversation id is present/changes.
+  $effect(() => {
+    const conversationId = session?.conversation?.id ?? null;
+    if (!hydrated) return;
+    if (!conversationId) return;
+    if (conversationId === loadedConversationId && messages.length > 0) return;
+    void loadServerHistory(conversationId);
   });
 
   $effect(() => {
     if (!hydrated) return;
     try {
       sessionStorage.setItem(STORAGE_KEY, expanded ? '1' : '0');
-      sessionStorage.setItem(MODE_KEY, interaction);
+      // Do not persist interaction when server session owns mode.
+      if (!session) {
+        sessionStorage.setItem(MODE_KEY, interaction);
+      }
     } catch {
       /* ignore */
     }
@@ -168,6 +242,28 @@
     expanded;
     if (!expanded) return;
     void scrollToBottom();
+  });
+
+
+  function onDocumentPointerDown(event) {
+    if (!expanded || busy) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (dockRoot && dockRoot.contains(target)) return;
+    // Floating collapsed launcher also counts as inside when not expanded — handled by expanded check.
+    minimize();
+  }
+
+  $effect(() => {
+    if (!expanded) return;
+    // Defer so the opening click does not immediately minimize.
+    const timer = window.setTimeout(() => {
+      document.addEventListener('pointerdown', onDocumentPointerDown);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onDocumentPointerDown);
+    };
   });
 
   function open() {
@@ -186,15 +282,61 @@
 
   function setInteraction(key) {
     if (!modes.some((m) => m.key === key)) return;
+    // Server modes list is authority; allow Assistant when pack/surface include it.
+    if (session && key === 'assistant' && !(session.modes ?? []).includes('assistant')) return;
     modeMenuOpen = false;
     if (interaction === key) return;
     interaction = key;
     gate = null;
+    if (key === 'assistant') {
+      void ensureExamSkillStarted();
+    }
     speak(
       key === 'inquiry'
         ? 'Inquiry mode — policy and own-data questions. I won’t propose page Apply commands here.'
-        : 'Assistant mode — page help and allowlisted Apply previews when you need them.'
+        : 'Assistant mode — allowlisted Apply previews only. Confirm still runs the same page Action.'
     );
+  }
+
+  function examSessionIdFromUrl() {
+    const path = String(page.url ?? '');
+    const m = path.match(/\/exams\/sessions\/(\d+)/);
+    return m ? Number(m[1]) : null;
+  }
+
+  async function ensureExamSkillStarted() {
+    if (!session?.page_pack?.key?.startsWith('staff.exams.sessions.')) return;
+    if (skillGrantId) return;
+    try {
+      const started = await startNexiSkill({
+        skillKey: 'schedule.exam_session@1',
+        pagePackKey: session.page_pack.key,
+        pagePackVersion: session.page_pack.version,
+        sessionId: examSessionIdFromUrl(),
+      });
+      skillGrantId = started.grant_id;
+      skillConversationId = started.conversation_id;
+      loadedConversationId = started.conversation_id;
+    } catch {
+      speak('I could not start the exam scheduling skill. Use the ordinary page controls.');
+    }
+  }
+
+  /** @param {Array<{ type: string, payload?: Record<string, unknown> }>} events */
+  function gateFromSkillEvents(events) {
+    const proposalEvent = [...events].reverse().find((e) => e.type === 'skill.proposal');
+    if (!proposalEvent?.payload?.proposal_id) return null;
+    const capability = String(proposalEvent.payload.capability_id ?? 'proposed command');
+    return {
+      kind: 'apply',
+      label: `Apply: ${capability}`,
+      description: 'Confirm runs the same Examination Action as the page button.',
+      command_stub: capability,
+      capability,
+      needs_confirm: true,
+      proposal_id: String(proposalEvent.payload.proposal_id),
+      equivalent_ui: 'Exam session page control',
+    };
   }
 
   function wait(ms) {
@@ -219,9 +361,44 @@
     speak(reply);
   }
 
-  function speak(text) {
-    messages = [...messages, { role: 'assistant', content: text }];
+  function speak(text, citations = [], corpusNote = null) {
+    messages = [...messages, { role: 'assistant', content: text, citations, corpusNote }];
     frame = frame === 0 ? 1 : 0;
+  }
+
+  /** @param {Array<{ type: string, payload?: Record<string, unknown> }>} events */
+  function corpusNoteFromEvents(events) {
+    const retrieval = [...events].reverse().find((e) => e.type === 'knowledge.retrieval');
+    if (!retrieval?.payload) {
+      return null;
+    }
+    const outcome = String(retrieval.payload.outcome ?? '');
+    const hits = Number(retrieval.payload.hit_count ?? 0);
+    if (outcome === 'support') {
+      return `Corpus match: ${hits} source${hits === 1 ? '' : 's'} (see citations).`;
+    }
+    if (outcome === 'no_support') {
+      return 'Corpus: no lexical match. Ask using words from the policy title or body, or publish richer policy text in Knowledge.';
+    }
+    return `Corpus outcome: ${outcome || 'unknown'}.`;
+  }
+
+  async function clearChat() {
+    if (busy) return;
+    busy = true;
+    statusText = 'Clearing…';
+    try {
+      await clearNexiConversation();
+      messages = [];
+      loadedConversationId = null;
+      statusText = null;
+      speak('Conversation cleared. Ask a new question when you are ready.');
+    } catch {
+      statusText = null;
+      speak('I could not clear the conversation. Use the ordinary page controls, or try again.');
+    } finally {
+      busy = false;
+    }
   }
 
   function proposeAction(action) {
@@ -239,32 +416,163 @@
     void runStatusThen(action.description);
   }
 
-  function confirmGate() {
+  async function confirmGate() {
     if (!gate || busy) return;
+    const proposalId = gate.proposal_id ?? null;
     const stub = gate.command_stub;
-    gate = null;
-    void runStatusThen(
-      `Preview acknowledged → ${stub}. Later this becomes the allowlisted command after capability, confirm, idempotency, and audit.`
-    );
+    const current = gate;
+    if (!proposalId) {
+      gate = null;
+      void runStatusThen(
+        `Preview acknowledged → ${stub}. No durable proposal id was attached; use the page button if you need the change applied.`
+      );
+      return;
+    }
+    busy = true;
+    statusText = 'Confirming…';
+    try {
+      const confirmed = await confirmNexiProposal(proposalId);
+      gate = null;
+      statusText = null;
+      speak(
+        `Applied via confirm → ${confirmed.proposal.capability_id ?? current.capability ?? stub}. Same Action as the page path.`
+      );
+    } catch (err) {
+      statusText = null;
+      const msg = err instanceof Error ? err.message : 'confirm_failed';
+      speak(`Confirm failed (${msg}). Proposal may be stale — refresh the page and try again, or use the ordinary control.`);
+    } finally {
+      busy = false;
+    }
   }
 
-  function dismissGate() {
+  async function dismissGate() {
     if (busy) return;
+    const proposalId = gate?.proposal_id ?? null;
     gate = null;
+    if (proposalId) {
+      try {
+        await cancelNexiProposal(proposalId);
+      } catch {
+        // cancel best-effort
+      }
+    }
     speak('Okay — staying on the page path. You’re in control.');
   }
 
-  function send() {
+  /** Hydrate confirm gate from server proposals (OpenSpec 8). */
+  $effect(() => {
+    const list = session?.proposals;
+    if (!Array.isArray(list) || list.length === 0 || gate) return;
+    const open = list.find((p) => p?.status === 'proposed');
+    if (!open) return;
+    const impact = open.summary?.impact ?? open.summary ?? {};
+    const action = impact.action ?? open.capability_id;
+    gate = {
+      kind: 'apply',
+      label: `Apply: ${action}`,
+      description: 'Confirm runs the same Examination Action as the page button.',
+      command_stub: open.capability_id,
+      capability: open.capability_id,
+      needs_confirm: true,
+      proposal_id: open.id,
+      equivalent_ui: 'Exam session page control',
+    };
+  });
+
+  async function loadServerHistory(conversationId = session?.conversation?.id ?? null) {
+    if (!conversationId) return;
+    try {
+      const snap = await fetchNexiSnapshot(conversationId, 0);
+      loadedConversationId = conversationId;
+      if (Array.isArray(snap.messages) && snap.messages.length) {
+        messages = snap.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          citations: Array.isArray(m.citations) ? m.citations : [],
+          corpusNote: null,
+        }));
+      } else if (messages.length === 0) {
+        messages = [welcomeMessage()];
+      }
+    } catch {
+      // Snapshot may 403/404 — keep local welcome if empty.
+      if (messages.length === 0) {
+        messages = [welcomeMessage()];
+      }
+    }
+  }
+
+  async function send() {
     const text = input.trim();
     if (!text || busy) return;
     messages = [...messages, { role: 'user', content: text }];
     input = '';
     frame = frame === 0 ? 1 : 0;
 
+    if (session) {
+      busy = true;
+      statusText = 'Thinking…';
+      try {
+        if (interaction === 'assistant') {
+          await ensureExamSkillStarted();
+        }
+        const accepted = await submitNexiTurn({
+          message: text,
+          pagePackKey: session.page_pack?.key ?? null,
+          pagePackVersion: session.page_pack?.version ?? null,
+          mode: interaction === 'assistant' ? 'assistant' : 'inquiry',
+        });
+        loadedConversationId = accepted.conversation_id;
+        statusText = 'Analyzing…';
+        // Sync queue completes in tests; poll snapshot briefly for assistant message.
+        let assistant = null;
+        let citations = [];
+        let corpusNote = null;
+        /** @type {Array<{ type: string, payload?: Record<string, unknown> }>} */
+        let lastEvents = [];
+        for (let i = 0; i < 20; i += 1) {
+          const snap = await fetchNexiSnapshot(accepted.conversation_id, 0);
+          lastEvents = Array.isArray(snap.events) ? snap.events : [];
+          const last = [...snap.messages].reverse().find((m) => m.role === 'assistant');
+          if (last?.content) {
+            assistant = last.content;
+            citations = Array.isArray(last.citations) ? last.citations : [];
+            corpusNote = corpusNoteFromEvents(lastEvents);
+            break;
+          }
+          if (snap.run?.status === 'failed' || snap.run?.status === 'cancelled') {
+            assistant = 'That run did not complete. Use the ordinary page controls, or try again.';
+            break;
+          }
+          await wait(100);
+        }
+        statusText = null;
+        busy = false;
+        const nextGate = gateFromSkillEvents(lastEvents);
+        if (nextGate) {
+          gate = nextGate;
+        }
+        speak(assistant ?? 'I could not fetch a reply yet. Refresh or try again.', citations, corpusNote);
+      } catch (e) {
+        statusText = null;
+        busy = false;
+        const code = e instanceof Error ? e.message : 'turn_failed';
+        if (code === 'quota_exhausted') {
+          speak('You have reached today’s Nexi ask limit. Use the ordinary page controls, or try again later.');
+        } else if (code === 'emergency_stop') {
+          speak('Nexi is suspended by emergency stop. Use the ordinary page path.');
+        } else {
+          speak('I could not send that turn. Use the ordinary page controls, or try again.');
+        }
+      }
+      return;
+    }
+
     const reply =
       mode === 'degraded'
         ? interaction === 'inquiry'
-          ? `Inquiry on “${context.title}” — citations and own-data stay gated until the provider is live.`
+          ? `Inquiry on “${context.title}” — I cite approved Knowledge sources when they support the answer.`
           : `I’m with you on “${context.title}”. Talk here, or use the page controls when you’re ready to act.`
         : context.summary;
 
@@ -282,6 +590,7 @@
 {#if enabled && mode !== 'disabled'}
   {#if expanded}
     <div
+      bind:this={dockRoot}
       class="nexi-dock fixed bottom-3 right-3 z-50 flex max-h-[min(740px,calc(100dvh-1rem))] w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border/50 sm:bottom-6 sm:right-6 sm:w-[min(480px,calc(100vw-2rem))]"
       role="dialog"
       aria-label="Nexi assistant"
@@ -380,6 +689,17 @@
             variant="ghost"
             size="icon-sm"
             class="min-h-[36px] min-w-[36px]"
+            onclick={() => void clearChat()}
+            aria-label="Clear conversation"
+            disabled={busy}
+          >
+            <span class="text-[10px] font-semibold tracking-wide">CLR</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class="min-h-[36px] min-w-[36px]"
             onclick={minimize}
             aria-label="Minimize Nexi"
           >
@@ -407,6 +727,21 @@
                 <p class="nexi-line {msg.role === 'user' ? 'is-user' : 'is-assistant'}">
                   {msg.content}
                 </p>
+                {#if msg.role === 'assistant' && msg.corpusNote}
+                  <p class="nexi-corpus-note">{msg.corpusNote}</p>
+                {/if}
+                {#if msg.role === 'assistant' && msg.citations?.length}
+                  <ul class="nexi-citations" aria-label="Policy citations">
+                    {#each msg.citations as cite}
+                      <li>
+                        <span class="font-medium">{cite.source_title ?? 'Policy source'}</span>
+                        {#if cite.excerpt}
+                          <span class="text-muted-foreground"> — {cite.excerpt}</span>
+                        {/if}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
               {/each}
             </div>
           {/if}
@@ -433,6 +768,21 @@
 
             {#if spoken}
               <p class="nexi-line is-assistant nexi-spoken">{spoken.content}</p>
+              {#if spoken.corpusNote}
+                <p class="nexi-corpus-note">{spoken.corpusNote}</p>
+              {/if}
+              {#if spoken.citations?.length}
+                <ul class="nexi-citations" aria-label="Policy citations">
+                  {#each spoken.citations as cite}
+                    <li>
+                      <span class="font-medium">{cite.source_title ?? 'Policy source'}</span>
+                      {#if cite.excerpt}
+                        <span class="text-muted-foreground"> — {cite.excerpt}</span>
+                      {/if}
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
             {/if}
 
             {#if statusText}
@@ -516,6 +866,7 @@
     </div>
   {:else}
     <button
+      bind:this={dockRoot}
       type="button"
       class="nexi-fab fixed bottom-4 right-4 z-50 flex min-h-[56px] items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-transform hover:scale-[1.03] sm:bottom-6 sm:right-6"
       onclick={open}
@@ -722,5 +1073,20 @@
     .nexi-gate {
       animation: none;
     }
+  }
+
+  .nexi-citations {
+    margin: 0.25rem 0 0.75rem;
+    padding-left: 1rem;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    color: var(--muted-foreground, #64748b);
+  }
+
+  .nexi-corpus-note {
+    margin: 0.15rem 0 0.5rem;
+    font-size: 0.68rem;
+    line-height: 1.3;
+    color: var(--muted-foreground, #64748b);
   }
 </style>

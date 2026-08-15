@@ -301,19 +301,48 @@ The assistant may combine policy explanation with a link to the relevant page, b
 - Applicant/external result download, print, or export requires finalized grading, approved consultation prerequisites, and the current released result version.
 - Large generation/export batches are observable jobs with actor, selection, template version, status, failures, retry, and audit evidence.
 
-## 12. Program Head journey
+## 12. Program choice, Program Head support, and admission completion
 
-Proposed first-slice behavior:
+### 12.1 Ownership truth
 
-- authenticate as assigned Program Head;
-- select/receive only assigned program projection;
-- view approved aggregate applicant/release/recommendation counts;
-- view authorized consultation history, program notes, model/inference provenance, Test Administrator suggestions, and Applicant-selected program/course values within program scope;
-- see freshness/source/definition for each metric;
-- receive no raw scores or counseling notes by default;
-- cannot modify quotas, admission decisions, model outputs, or releases unless a later approved capability row says otherwise.
+- Registrar alone reviews/corrects and **Accepts/Dismisses** applications; Registrar acceptance is the gate to exam assignment.
+- Guidance/Test Administrator owns exam, scoring, release, consultation/advice, the Guidance program pool, normal advised default, and pre-enrolling edge follow-up routing.
+- Applicant action establishes the ordinary provisional choice; Guidance's normal advised default may do so first, reserves quota, and remains pending acknowledgement until portal/Guidance acknowledgement or Registrar records sheet-based confirmation while starting `enrolling`.
+- PH normal-path approval is not required. PH may manage own quota, see scoped projections, open D-080 records, directly decline an acknowledged selection before `enrolling`, resolve an already-open edge follow-up during `enrolling`, request appearance, and use bounded messaging.
+- Registrar alone stamps/reverts `enrolling`/`enrolled` and records signed-paper final-program truth; NEXIAM stops there (BR-026).
 
-This journey remains evidence-gated by EV-004/EV-005/EV-017 and D-018/D-080.
+### 12.2 Canonical journey
+
+```text
+submit → Registrar accept (exam gate) → exam → score/finalize → release
+  → consultation/advised → Guidance pool/default → applicant choice/ack
+  → sheet submitted → Registrar enrolling
+  → [edge only: assigned-PH terminal follow-up]
+  → Registrar verifies signed paper + final program → enrolled
+```
+
+- Initial preferences remain Potential evidence; pool/follow-up/preferences consume no quota.
+- Provisional choice/default reserves quota FCFS/idempotently. The standing record may still be pending applicant acknowledgement.
+- Direct PH decline of an acknowledged current selection is pre-`enrolling`; it releases quota and opens reconsideration. Guidance opens edge follow-up only before `enrolling`.
+- An already-open edge follow-up does not block `enrolling`; it requires assigned-PH terminal clear/decline and blocks only `enrolled`. Request appearance remains open.
+- `enrolling` freezes core acceptance/exam/result/advice facts, opening new follow-up, and ordinary applicant/Guidance selection changes, while permitting existing PH resolution and Registrar paper finalization. `enrolled` freezes final truth until ordered Registrar reversal.
+
+### 12.3 PH lists and access
+
+- **Potential:** program in P1–P3 or Guidance pool; candidate not committed to a single different program and not in a later primary list; identified rows only after Registrar acceptance; basis + lifecycle tags, no sensitive record from preference/pool alone.
+- **Upcoming:** active acknowledged selection + one remaining option + no open follow-up or enrollment stamp.
+- **Follow-up / Enrolling / Enrolled:** canonical targeted follow-up and Registrar-stamp projections. Primary-list precedence is `Enrolled → Enrolling → Follow-up → Upcoming → Potential`; follow-up remains an orthogonal work queue and may overlap `Enrolling`.
+- Full protected record requires result release plus an applicant-acknowledged current selection or explicit targeted follow-up for the PH program. Preference/pool membership alone remains minimal. D-080 permits converted scores/result sheet and bounded program notes; raw sheets/scans/conversion tables and unrelated notes remain denied.
+- Every protected PH open is audited; applicant access history records it and a user-facing notice is deduplicated per PH/program/24h.
+
+### 12.4 Messaging, universal QR, and consultation visualization
+
+- PH↔Guidance internal thread is case-scoped; Guidance's ordinary work requires no PH permission. PH↔applicant support requires current selection/targeted follow-up and is not a general inbox.
+- One universal digital/printed applicant QR resolves an opaque applicant-attempt locator, not a feature route. Authenticated scan opens a role-neutral action hub whose destinations come from the actor's ordinary capability, duty, office/program/cycle relationship, and case state; it never mutates automatically.
+- The existing consultation selected-attempt workspace owns the applicant-specific admission-support tabs: real released-score charts/table, preferences, structured consultation evidence, independent future-analysis regions, human decision/pool/default, follow-up, and history.
+- This cut installs no engine. YuKee artifact/K-Means and transparent deterministic/rule-based plugins remain separate later changes under D-093; BGE remains separately deferred. Future outputs remain independent evidence and never write authoritative state.
+
+This journey is approved by D-ROLE-05, D-080, D-087, and D-089–D-093. Executable implementation evidence remains open under `2026-08-15-admission-model-program-head`.
 
 ## 13. System administration journey
 

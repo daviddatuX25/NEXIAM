@@ -1,6 +1,8 @@
 <script>
   import { Link, router, usePage } from '@inertiajs/svelte';
   import { Button } from '@/Components/ui/button';
+  import NotificationBell from '@/Components/kit/NotificationBell.svelte';
+  import NexiDock from '@/Components/kit/Nexi/NexiDock.svelte';
 
   let { children, title = 'Your status', wide = false } = $props();
 
@@ -24,6 +26,7 @@
         <p class="truncate text-sm text-muted-foreground">{user?.name ?? 'Applicant'}</p>
       </div>
       <div class="flex shrink-0 items-center gap-2">
+        <NotificationBell />
         <Button type="button" variant="outline" class="min-h-11" onclick={logout}>Sign out</Button>
       </div>
     </div>
@@ -33,3 +36,5 @@
     {@render children?.()}
   </main>
 </div>
+
+<NexiDock />

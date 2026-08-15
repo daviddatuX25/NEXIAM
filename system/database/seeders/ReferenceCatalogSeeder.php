@@ -54,16 +54,31 @@ class ReferenceCatalogSeeder extends Seeder
             ['code' => 'VERBAL', 'name' => 'Verbal Reasoning', 'version' => 1],
             ['code' => 'QUANT', 'name' => 'Quantitative Reasoning', 'version' => 1],
         ] as $area) {
-            AptitudeArea::query()->updateOrCreate(
+            $aptitude = AptitudeArea::query()->updateOrCreate(
                 [
                     'code' => $area['code'],
                     'version' => $area['version'],
                 ],
                 [
                     'name' => $area['name'],
+                    'scoring_method' => AptitudeArea::SCORING_METHOD_CONVERSION_TABLE,
+                    'max_items' => 100,
                     'is_active' => true,
                 ],
             );
+
+            // Developer-ready conversion tables covering 0..100 so any seeded
+            // raw score converts (demo scores in GradingDemoSeeder use 85).
+            if ($aptitude->conversionRows()->count() === 0) {
+                foreach ([
+                    ['min_score' => 0, 'max_score' => 49, 'output_value' => 'Below Average'],
+                    ['min_score' => 50, 'max_score' => 74, 'output_value' => 'Average'],
+                    ['min_score' => 75, 'max_score' => 89, 'output_value' => 'Above Average'],
+                    ['min_score' => 90, 'max_score' => 100, 'output_value' => 'Excellent'],
+                ] as $row) {
+                    $aptitude->conversionRows()->create($row);
+                }
+            }
         }
 
         ApplicationWindow::query()->updateOrCreate(

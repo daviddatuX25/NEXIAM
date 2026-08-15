@@ -4,7 +4,7 @@ use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\Room;
-use App\Models\Release\NotificationOutbox;
+use App\Notifications\NotificationDelivery;
 use App\Models\User;
 
 function acceptApplicant(string $email, string $lastName = 'Applicant'): array
@@ -75,6 +75,11 @@ test('unpublish returns published session to draft with reason; cancel is termin
         ])
         ->assertRedirect();
 
+    // NT-8 — the applicant must hold a portal account to receive the publish
+    // notification; login creates it.
+    loginAsApplicant($result);
+    $this->post(route('logout'));
+
     $session->refresh();
     $this->actingAs($guidance)
         ->post(route('exams.sessions.publish', $session), [
@@ -83,8 +88,11 @@ test('unpublish returns published session to draft with reason; cancel is termin
         ->assertRedirect();
 
     expect($session->fresh()->status)->toBe(ExamSession::STATUS_PUBLISHED);
-    expect(NotificationOutbox::query()
-        ->where('idempotency_key', 'like', 'exam-published-'.$session->id.'-%')
+
+    $applicant = User::query()->where('email', 'unpub-cancel@example.test')->firstOrFail();
+    expect(NotificationDelivery::forUser($applicant)
+        ->where('event_type', 'exam.session_published.v1')
+        ->where('channel', NotificationDelivery::CHANNEL_IN_APP)
         ->exists())->toBeTrue();
 
     $session->refresh();

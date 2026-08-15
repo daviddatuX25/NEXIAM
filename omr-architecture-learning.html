@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXIAM — OMR Architecture Learning Map</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2129; --line: #2d333b;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --accent2: #3fb950;
+    --warn: #d29922; --danger: #f85149; --purple: #bc8cff; --cyan: #39c5cf;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: 60px;
+  }
+  header {
+    padding: 22px 28px 14px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  h1 { font-size: 20px; font-weight: 700; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+  nav button {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  nav button.active { color: var(--accent); border-color: var(--accent); background: var(--panel2); }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 28px; }
+  section { display: none; }
+  section.visible { display: block; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px; margin-bottom: 18px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 10px; }
+  .card h3 { font-size: 14px; color: var(--accent); margin: 14px 0 8px; }
+  .card p, .card li { color: var(--text); font-size: 14px; }
+  .card li { margin-left: 18px; margin-bottom: 4px; }
+  .muted { color: var(--muted); }
+  .tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    border: 1px solid var(--line); color: var(--muted); margin-right: 6px;
+  }
+  .tag.nex { color: var(--accent); border-color: var(--accent); }
+  .tag.wkr { color: var(--cyan); border-color: var(--cyan); }
+  .tag.lock { color: var(--warn); border-color: var(--warn); }
+  .tag.green { color: var(--accent2); border-color: var(--accent2); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .pipe-wrap { display: grid; grid-template-columns: 320px 1fr; gap: 18px; }
+  @media (max-width: 900px) { .pipe-wrap { grid-template-columns: 1fr; } }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; cursor: pointer; text-align: left; font-size: 13px; color: var(--muted);
+  }
+  .step b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+  .step.active { border-color: var(--accent); color: var(--text); background: var(--panel2); }
+  .step .num {
+    display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 50%;
+    margin-right: 8px; font-size: 12px; color: var(--accent);
+  }
+  .step.active .num { background: var(--accent); color: #0d1117; border-color: var(--accent); }
+  .detail { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .detail h3 { font-size: 15px; color: var(--accent); margin-bottom: 8px; }
+  .detail .who { margin-bottom: 10px; }
+  .detail ul { margin-top: 8px; }
+  svg text { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .svg-box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; overflow-x: auto; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .legend span::before { content: "■"; margin-right: 5px; font-size: 10px; }
+  .lg-nex::before { color: var(--accent); } .lg-wkr::before { color: var(--cyan); }
+  .lg-db::before { color: var(--purple); } .lg-ui::before { color: var(--accent2); }
+
+  .erd-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 18px; }
+  @media (max-width: 900px) { .erd-wrap { grid-template-columns: 1fr; } }
+  .erd-node { cursor: pointer; }
+  .erd-node rect { transition: stroke .15s; }
+  .erd-node:hover rect, .erd-node.active rect { stroke: var(--accent); stroke-width: 2; }
+
+  .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .mod {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; cursor: pointer; font-size: 13px;
+  }
+  .mod:hover, .mod.active { border-color: var(--accent); }
+  .mod b { display: block; margin: 6px 0 3px; }
+  .mod .path { color: var(--muted); font-size: 11.5px; font-family: ui-monospace, monospace; word-break: break-all; }
+  .mod-info { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 14px; display: none; }
+  .mod-info.visible { display: block; }
+
+  .callout { border-left: 3px solid var(--warn); background: #1a1712; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 10px 0; font-size: 13.5px; }
+  .callout.good { border-left-color: var(--accent2); background: #12201a; }
+  .callout.info { border-left-color: var(--accent); background: #0f1a2a; }
+
+  .navbtns { display: flex; gap: 10px; margin-top: 12px; }
+  .navbtns button {
+    background: var(--panel2); border: 1px solid var(--accent); color: var(--accent);
+    padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  .navbtns button:disabled { opacity: .35; cursor: default; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; font-size: 13px; }
+  .kv .k { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NEXIAM <span>OMR Architecture</span> — interactive learning map</h1>
+  <div class="sub">Optical-mark capture for aptitude exams · OMRChecker engine · NEXIAM owns the answer key · the worker only proposes</div>
+  <nav>
+    <button data-sec="overview" class="active">1 · The big picture</button>
+    <button data-sec="pipeline">2 · Pipeline walkthrough</button>
+    <button data-sec="erd">3 · Data model (ERD)</button>
+    <button data-sec="modules">4 · Modules (LLD)</button>
+    <button data-sec="decisions">5 · Decisions & gates</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ 1. OVERVIEW ============ -->
+<section id="overview" class="visible">
+  <div class="card">
+    <h2>The problem</h2>
+    <p>Aptitude exams use <b>bubble answer sheets</b>. Staff photograph each sheet and NEXIAM must turn the photo into per-question answers — but a machine misread may never silently become a score. Everything below exists to guarantee one sentence:</p>
+    <div class="callout good"><b>The OMRChecker engine proposes marks. NEXIAM validates, shows evidence to staff, and only after human confirmation compares against its own answer key.</b> The engine never receives the key, the roster, scores, or database access.</div>
+  </div>
+
+  <div class="card">
+    <h2>Two halves of the world</h2>
+    <div class="grid2">
+      <div>
+        <h3><span class="tag wkr">ENGINE WORLD</span> Template — the blank sheet</h3>
+        <ul>
+          <li><b>template.json</b> — where every bubble lives (field blocks: APPLICANT_NUMBER, VERBAL, QUANT)</li>
+          <li><b>config.json</b> — engine thresholds</li>
+          <li><b>reference.svg</b> — what the sheet looks like</li>
+          <li>Authored in OMRChecker's native format — <b>outside NEXIAM</b></li>
+          <li>Pinned in NEXIAM as an immutable, hash-addressed <b>NativeBundle</b></li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="tag nex">NEXIAM WORLD</span> Booklet — the exam content</h3>
+        <ul>
+          <li>Which questions exist, grouped by <b>aptitude area</b> (Verbal / Quantitative)</li>
+          <li>The <b>answer key</b> (correct option per question) — private, stored as a SHA-256 hash</li>
+          <li>Points at template questions for bubble geometry</li>
+          <li>Versioned; a <b>pair</b> approves "booklet X v2 reads on template Y v1"</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:10px">Why separate? The same sheet layout can serve many exams (or shuffled-key variants to stop copying), and the answer key must never cross the provider boundary.</p>
+  </div>
+
+  <div class="card">
+    <h2>The trust boundary in one diagram</h2>
+    <div class="svg-box">
+    <svg width="1080" height="300" viewBox="0 0 1080 300">
+      <defs>
+        <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+        </marker>
+      </defs>
+      <rect x="20" y="20" width="500" height="260" rx="12" fill="#161b22" stroke="#2d333b"/>
+      <text x="40" y="48" fill="#39c5cf" font-size="15" font-weight="700">OMRChecker worker (isolated Python)</text>
+      <rect x="40" y="70" width="190" height="70" rx="8" fill="#1c2129" stroke="#39c5cf"/>
+      <text x="60" y="98" fill="#e6edf3" font-size="13" font-weight="600">Reads bubbles</text>
+      <text x="60" y="118" fill="#8b949e" font-size="11.5">"Q7 = B, applicant = 3456789012"</text>
+      <rect x="250" y="70" width="190" height="70" rx="8" fill="#1c2129" stroke="#39c5cf"/>
+      <text x="270" y="98" fill="#e6edf3" font-size="13" font-weight="600">Returns aligned image</text>
+      <text x="270" y="118" fill="#8b949e" font-size="11.5">straightened PNG + block shifts</text>
+      <text x="40" y="190" fill="#f85149" font-size="12.5" font-weight="600">NEVER receives:</text>
+      <text x="40" y="214" fill="#8b949e" font-size="12">answer key · scores · applicant roster · DB access · storage paths</text>
+      <text x="40" y="240" fill="#8b949e" font-size="12">confidence claims (returns null until qualified calibration)</text>
+      <text x="40" y="266" fill="#8b949e" font-size="12">one child process per sheet, then exit</text>
+
+      <line x1="520" y1="150" x2="560" y2="150" stroke="#8b949e" stroke-width="2" marker-end="url(#arw)"/>
+      <text x="466" y="140" fill="#8b949e" font-size="11">signed multipart</text>
+      <line x1="560" y1="170" x2="520" y2="170" stroke="#8b949e" stroke-width="2" marker-end="url(#arw)"/>
+      <text x="466" y="188" fill="#8b949e" font-size="11">signed result</text>
+
+      <rect x="560" y="20" width="500" height="260" rx="12" fill="#161b22" stroke="#2d333b"/>
+      <text x="580" y="48" fill="#58a6ff" font-size="15" font-weight="700">NEXIAM app (PHP/Laravel)</text>
+      <rect x="580" y="70" width="200" height="70" rx="8" fill="#1c2129" stroke="#58a6ff"/>
+      <text x="600" y="98" fill="#e6edf3" font-size="13" font-weight="600">Validates everything</text>
+      <text x="600" y="118" fill="#8b949e" font-size="11.5">hashes · coverage · echoes</text>
+      <rect x="800" y="70" width="200" height="70" rx="8" fill="#1c2129" stroke="#58a6ff"/>
+      <text x="820" y="98" fill="#e6edf3" font-size="13" font-weight="600">Owns the answer key</text>
+      <text x="820" y="118" fill="#8b949e" font-size="11.5">scores only after staff confirm</text>
+      <text x="580" y="190" fill="#3fb950" font-size="12.5" font-weight="600">KEYS IT HOLDS:</text>
+      <text x="580" y="214" fill="#8b949e" font-size="12">booklet answer key (hashed) · applicant roster · encryption key</text>
+      <text x="580" y="240" fill="#8b949e" font-size="12">audit events · idempotency receipts · state machine</text>
+      <text x="580" y="266" fill="#8b949e" font-size="12">original photo + aligned derivative (AES-256-CBC, HMAC'd)</text>
+    </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. PIPELINE ============ -->
+<section id="pipeline">
+  <div class="pipe-wrap">
+    <div class="steps" id="stepList"></div>
+    <div>
+      <div class="svg-box">
+        <svg id="pipeSvg" width="900" height="640" viewBox="0 0 900 640"></svg>
+      </div>
+      <div class="detail" id="stepDetail"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Guided walkthrough</h2>
+    <p class="muted" id="walkText">Click "Next" to follow one sheet from photo to score.</p>
+    <div class="navbtns">
+      <button id="prevBtn">← Previous</button>
+      <button id="nextBtn">Next →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. ERD ============ -->
+<section id="erd">
+  <div class="card">
+    <h2>The configuration domain — click any table</h2>
+    <p class="muted">Template world = geometry (imported, never hand-edited). Booklet world = exam content + answer key (NEXIAM-authored). Pair = approved combination.</p>
+  </div>
+  <div class="erd-wrap">
+    <div class="svg-box">
+      <svg id="erdSvg" width="1080" height="720" viewBox="0 0 1080 720"></svg>
+    </div>
+    <div class="detail" id="erdDetail">
+      <h3>Click a table</h3>
+      <p class="muted">Select an entity on the diagram to see what it is, what it owns, and how it relates.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. MODULES ============ -->
+<section id="modules">
+  <div class="card">
+    <h2>Code modules — grouped by layer</h2>
+    <p class="muted">Click a module to see its responsibility and file path. <span class="tag nex">PHP</span> <span class="tag wkr">Python</span></p>
+  </div>
+  <div id="modGrid" class="mod-grid"></div>
+  <div class="mod-info" id="modInfo"></div>
+</section>
+
+<!-- ============ 5. DECISIONS ============ -->
+<section id="decisions">
+  <div class="card">
+    <h2>Founder decision locks (binding)</h2>
+    <div class="kv" style="margin-top:8px">
+      <div class="k"><span class="tag lock">LOCK 2026-08-12</span></div><div>OMRChecker-native geometry is <b>canonical</b>; NEXIAM derives review geometry from it, never compiles NEXIAM coordinates back into it.</div>
+      <div class="k"><span class="tag lock">LOCK 2026-08-12</span></div><div>The <b>answer key remains NEXIAM-only</b>; the engine reports marks, never correctness or scores.</div>
+      <div class="k"><span class="tag lock">LOCK 2026-08-12</span></div><div>Real-engine confidence is <b>null</b> until a separately qualified calibration exists; no percentages, no auto-acceptance.</div>
+      <div class="k"><span class="tag lock">LOCK 2026-08-12</span></div><div>Review uses an <b>encrypted aligned-sheet derivative</b>; the original image stays immutable forensic evidence.</div>
+      <div class="k"><span class="tag lock">LOCK 2026-08-12</span></div><div><b>One isolated child handles one sheet</b> and exits; upstream patches limited to headless-import safety + the stale overlay-coordinate fix.</div>
+      <div class="k"><span class="tag lock">LOCK 2026-08-12</span></div><div>Identity is <b>bubbled applicant-number digits only</b>; free-form OCR is out; staff binding is mandatory.</div>
+    </div>
+    <div class="callout">No NEXIAM template <i>builder</i> is allowed: authoring bubble coordinates in the UI would create a second geometry authority. NEXIAM's job is import → verify → pin → derive → activate.</div>
+  </div>
+
+  <div class="card">
+    <h2>What shipped and what remains</h2>
+    <div class="grid2">
+      <div>
+        <h3><span class="tag green">DONE (dev)</span></h3>
+        <ul>
+          <li>Capture/review UI (mockup-aligned) — Manual + Auto</li>
+          <li>Real OMRChecker engine active in dev, isolated signed worker</li>
+          <li>Native bundle → derived manifest → relational projections</li>
+          <li>Envelope v2 + validator (hashes, echoes, coverage, aligned image)</li>
+          <li>Durable run claims, idempotency, audit, encrypted assets</li>
+          <li>Deterministic fixture generator (<code>generate_fixture.py --seed 3</code>)</li>
+          <li>Full suite: 10 unit + 272 feature tests green</li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="tag">OPEN GATES</span></h3>
+        <ul>
+          <li><b>Configuration UI</b>: bundle intake (import/verify) + booklet &amp; answer-key authoring + pair activation — actions exist, screens don't</li>
+          <li><b>Who authors native template JSONs</b> in production (vendor / external tool / catalog) — founder decision</li>
+          <li>Production qualification: client corpus, named approvers, retention/legal-hold, operational drills</li>
+          <li>Real-engine confidence calibration; multi-page grouping</li>
+          <li>Result-sheet printing pipeline (separate feature)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Environment gotcha worth knowing</h2>
+    <div class="callout info">
+      PHPUnit 12 applies <code>&lt;env force&gt;</code> to <code>$_ENV</code> + <code>putenv</code> only — never <code>$_SERVER</code>. Laravel's <code>env()</code> reads <code>$_SERVER</code> first, and the app image runs <code>variables_order=EGPCS</code>.
+      So a Compose <code>environment:</code> entry <b>silently beats phpunit.xml</b>. Rule: never put <code>OMR_PROVIDER</code> / <code>OMR_ALLOW_FAKE_PROVIDER</code> in <code>compose.yaml</code>. Tests select the fake provider; the dev runtime defaults to <code>omrchecker</code> fail-closed.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* ================= SHARED ================= */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
+
+// Tabs
+$$('nav button').forEach(btn => btn.addEventListener('click', () => {
+  $$('nav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $$('main > section').forEach(s => s.classList.remove('visible'));
+  $('#' + btn.dataset.sec).classList.add('visible');
+}));
+
+/* ================= PIPELINE ================= */
+const PIPE_NODES = [
+  { x: 30,  y: 30, w: 220, h: 64, id: 'capture', owner: 'UI', title: 'Capture page', sub: 'camera / upload · Manual / Auto' },
+  { x: 30,  y: 130, w: 220, h: 64, id: 'upload', owner: 'PHP', title: 'UploadOmrCaptureSheet', sub: 'encrypt photo (AES+HMAC)' },
+  { x: 30,  y: 230, w: 220, h: 64, id: 'job', owner: 'QUEUE', title: 'Analyze job (Auto)', sub: 'durable claim + version guard' },
+  { x: 30,  y: 330, w: 220, h: 64, id: 'pin', owner: 'PHP', title: 'OmrPinnedSnapshot', sub: 'pins template+booklet hashes' },
+  { x: 30,  y: 430, w: 220, h: 64, id: 'adapter', owner: 'PHP', title: 'OmrCheckerDetection', sub: 'signs request (HMAC)' },
+  { x: 30,  y: 530, w: 220, h: 64, id: 'validator', owner: 'PHP', title: 'OmrDetectionResultValidator', sub: 'echoes · coverage · issues' },
+  { x: 350, y: 250, w: 200, h: 64, id: 'worker', owner: 'WORKER', title: 'OMRChecker worker', sub: 'one child per sheet' },
+  { x: 650, y: 30,  w: 220, h: 64, id: 'persist', owner: 'PHP', title: 'Persist proposal', sub: 'aligned PNG encrypted → needs_review' },
+  { x: 650, y: 160, w: 220, h: 64, id: 'review', owner: 'UI', title: 'Review panel', sub: 'aligned image + evidence' },
+  { x: 650, y: 290, w: 220, h: 64, id: 'bind', owner: 'UI', title: 'Bind to applicant + save', sub: 'staff confirmation' },
+  { x: 650, y: 420, w: 220, h: 64, id: 'score', owner: 'PHP', title: 'Score vs answer key', sub: 'NEXIAM-only comparison' },
+];
+const PIPE_EDGES = [
+  ['capture','upload'], ['upload','job'], ['job','pin'], ['pin','adapter'],
+  ['adapter','worker','signed multipart: manifest + image'],
+  ['worker','adapter','signed result: observations + aligned.png'],
+  ['adapter','validator'], ['validator','persist'],
+  ['persist','review'], ['review','bind'], ['bind','score'],
+];
+
+const PIPE_STEPS = [
+  { node: 'capture', title: '1 · Capture',
+    who: '<span class="tag">UI</span> <span class="tag nex">PHP</span>',
+    body: `<p>Staff photograph the sheet (camera or upload). <b>Manual</b> mode opens review immediately; <b>Auto</b> mode queues analysis in the background and returns to the shutter.</p>
+    <ul><li>The photo is encrypted (AES-256-CBC) into the private "sensitive" store with an HMAC.</li>
+    <li>The <b>original is immutable forensic evidence</b> — nothing ever paints over it.</li>
+    <li>Idempotency: a client-capture UUID means retrying the upload never duplicates a sheet.</li></ul>` },
+  { node: 'upload', title: '2 · Upload commits the sheet',
+    who: '<span class="tag nex">PHP</span> UploadOmrCaptureSheet',
+    body: `<p>One HTTP command, three resumable phases: claim receipt → write/verify encrypted asset (outside locks) → finalize state.</p>
+    <ul><li>Sheet row created: status <code>queued</code>, expected template/booklet versions pinned.</li>
+    <li>Auto mode dispatches the analysis job <b>after commit</b> (never before).</li></ul>` },
+  { node: 'job', title: '3 · Analysis run (durable claim)',
+    who: '<span class="tag">QUEUE</span> AnalyzeOmrCaptureSheetJob → RunOmrSheetAnalysis',
+    body: `<p>Before touching the provider, the job takes a <b>claim</b>: a row in <code>omr_processing_runs</code> with a random token, expiry lease, and the expected sheet version.</p>
+    <ul><li>Only the still-current, still-authorized claim may persist results.</li>
+    <li>Crash/retry safe: a stale claim is terminal-failed; a new run can be created from the sheet.</li></ul>` },
+  { node: 'pin', title: '4 · Pin the immutable snapshot',
+    who: '<span class="tag nex">PHP</span> OmrPinnedSnapshot',
+    body: `<p>Builds the exact detection request from the <b>activated pair</b>: template geometry (items, options, identity regions) + booklet hash + engine identity.</p>
+    <ul><li>Every hash is re-checked against the run's pinned hashes before the provider is invoked.</li>
+    <li>Answer keys are NOT included — the provider sees geometry and image only.</li></ul>` },
+  { node: 'adapter', title: '5 · Adapter signs and sends',
+    who: '<span class="tag nex">PHP</span> OmrCheckerDetection',
+    body: `<p>The request becomes a <b>multipart</b> body (manifest JSON + image bytes) with an HMAC signature over timestamp + run id + hashes.</p>
+    <ul><li>Clock skew, contract version, size limits, and signature are enforced by the worker.</li>
+    <li>The same port interface has a fake adapter used only by tests — <b>no production fallback to fake, ever</b>.</li></ul>` },
+  { node: 'worker', title: '6 · Isolated worker runs OMRChecker',
+    who: '<span class="tag wkr">PYTHON</span> server.py → detect.py → OMRChecker',
+    body: `<p>The worker verifies the signature, writes inputs to a temp dir, and runs <b>one child process per sheet</b> (upstream owns shared mutable state — exit is the safety boundary).</p>
+    <ul><li>Headless mode: no UI, no CSV/output folders, no entry.py directory recursion.</li>
+    <li>Returns: per-bubble observations, a straightened <b>aligned PNG</b>, per-block shifts, applicant-number bubbles.</li>
+    <li>Confidence: <code>null</code> · calibration: <code>unqualified</code> (until a qualified calibration exists).</li></ul>` },
+  { node: 'validator', title: '7 · Validator rejects anything off-contract',
+    who: '<span class="tag nex">PHP</span> OmrDetectionResultValidator',
+    body: `<p>Before a single byte persists, the result must match the exact request:</p>
+    <ul><li>Echoed run id / correlation id / booklet hash / input hash / engine identity</li>
+    <li>One state per requested item; area codes and options in-range; known issue codes</li>
+    <li>Aligned PNG decodes, hashes, and fits limits; block-shift coverage complete</li>
+    <li>Invalid → typed failure (retryable vs terminal). No partial proposals survive.</li></ul>` },
+  { node: 'persist', title: '8 · Persist proposal',
+    who: '<span class="tag nex">PHP</span> RunOmrSheetAnalysis.persistSuccess',
+    body: `<p>Inside one transaction (guarded by the claim token):</p>
+    <ul><li>The <b>aligned PNG is encrypted</b> into the sensitive store (<code>aligned_asset_*</code> columns).</li>
+    <li>Per-item observations, issues, applicant-number proposal → <code>proposal_json</code>.</li>
+    <li>Sheet → <code>needs_review</code>; run → <code>succeeded</code>; audit event written.</li>
+    <li>No scores are computed yet — the answer key hasn't been consulted.</li></ul>` },
+  { node: 'review', title: '9 · Staff review',
+    who: '<span class="tag">UI</span> Review panel',
+    body: `<p>The reviewer sees the <b>aligned image</b> (served from the encrypted derivative), per-item evidence (detected mark, state, issue), and the proposed applicant number.</p>
+    <ul><li>The image route requires the dedicated OMR capability + scope check.</li>
+    <li>Drafts save non-authoritatively; only "Save review" after binding matters.</li></ul>` },
+  { node: 'bind', title: '10 · Bind + confirm',
+    who: '<span class="tag">UI</span> → ReviewOmrCaptureSheet',
+    body: `<p>Staff bind the sheet to an eligible roster applicant (mandatory — never auto-bound) and save.</p>
+    <ul><li>Manual mode commits this sheet immediately; Auto sheets commit at "Confirm session's scans".</li>
+    <li>Confirmation atomically commits every reviewed sheet and closes the batch.</li></ul>` },
+  { node: 'score', title: '11 · NEXIAM scores against its own key',
+    who: '<span class="tag nex">PHP</span> ConfirmOmrCaptureBatch → score records',
+    body: `<p>Only now does the pinned <b>booklet answer key</b> enter the picture:</p>
+    <ul><li>Correctness = validated observation vs booklet's <code>correct_option_code</code>.</li>
+    <li>Scores are written through the existing scoring pipeline (conversion tables if configured).</li>
+    <li>The engine never saw this comparison.</li></ul>` },
+];
+
+const OWNER_COLORS = { UI:'#3fb950', PHP:'#58a6ff', QUEUE:'#d29922', WORKER:'#39c5cf' };
+
+function renderPipeSvg(activeId) {
+  const svg = $('#pipeSvg');
+  svg.innerHTML = PIPE_EDGES.map(([a,b,label]) => {
+    const A = PIPE_NODES.find(n => n.id === a), B = PIPE_NODES.find(n => n.id === b);
+    return edgePath(A, B, label);
+  }).join('') + PIPE_NODES.map(n => {
+    const active = n.id === activeId;
+    const c = OWNER_COLORS[n.owner] || '#8b949e';
+    return `<g class="erd-node ${active?'active':''}" data-node="${n.id}" style="cursor:pointer">
+      <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10" fill="#1c2129" stroke="${active ? '#58a6ff' : c}" stroke-width="${active?2:1.5}"/>
+      <text x="${n.x+14}" y="${n.y+26}" fill="${c}" font-size="12">${n.owner}</text>
+      <text x="${n.x+14}" y="${n.y+44}" fill="#e6edf3" font-size="13.5" font-weight="600">${n.title}</text>
+      <text x="${n.x+14}" y="${n.y+58}" fill="#8b949e" font-size="10.5">${n.sub}</text>
+    </g>`;
+  }).join('');
+  $$('#pipeSvg .erd-node').forEach(g => g.addEventListener('click', () => {
+    setStep(g.dataset.node);
+  }));
+}
+function edgePath(A, B, label) {
+  const ex = A.x + A.w, ey = A.y + A.h/2;
+  const sx = B.x, sy = B.y + B.h/2;
+  const mx = (ex + sx) / 2;
+  const d = `M ${ex} ${ey} C ${mx} ${ey}, ${mx} ${sy}, ${sx} ${sy}`;
+  const lab = label ? `<text x="${mx}" y="${Math.min(ey,sy)-6}" fill="#8b949e" font-size="10" text-anchor="middle">${label}</text>` : '';
+  return `<path d="${d}" fill="none" stroke="#8b949e" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arw)"/>${lab}`;
+}
+
+function renderSteps(activeId) {
+  $('#stepList').innerHTML = PIPE_STEPS.map(s => `
+    <button class="step ${s.node===activeId?'active':''}" data-node="${s.node}">
+      <span class="num">${PIPE_STEPS.indexOf(s)+1}</span><b>${s.title}</b>
+    </button>`).join('');
+  $$('#stepList .step').forEach(b => b.addEventListener('click', () => setStep(b.dataset.node)));
+}
+function setStep(id) {
+  current = PIPE_STEPS.findIndex(s => s.node === id);
+  const step = PIPE_STEPS[current];
+  renderSteps(id); renderPipeSvg(id);
+  $('#stepDetail').innerHTML = `<h3>${step.title}</h3><div class="who">${step.who}</div>${step.body}`;
+  $('#prevBtn').disabled = current === 0;
+  $('#nextBtn').disabled = current === PIPE_STEPS.length - 1;
+  $('#walkText').textContent = `Step ${current+1} of ${PIPE_STEPS.length} — one sheet from photo to score.`;
+}
+let current = 0;
+$('#prevBtn').addEventListener('click', () => { if (current > 0) setStep(PIPE_STEPS[current-1].node); });
+$('#nextBtn').addEventListener('click', () => { if (current < PIPE_STEPS.length-1) setStep(PIPE_STEPS[current+1].node); });
+setStep('capture');
+
+/* ================= ERD ================= */
+const ERD_TABLES = [
+  { id:'tpl', x: 40,  y: 40,  w: 250, h: 64, title:'omr_answer_sheet_templates', desc:'code + name (e.g. SYN-OMR-ONE-PAGE)' },
+  { id:'tplv', x: 40,  y: 160, w: 250, h: 74, title:'omr_answer_sheet_template_versions', desc:'pinned native bundle + hashes,\nderived review manifest, engine identity' },
+  { id:'tarea', x: 40,  y: 300, w: 250, h: 60, title:'omr_template_areas', desc:'projection: area grouping + max_items' },
+  { id:'tq', x: 40,  y: 400, w: 250, h: 60, title:'omr_template_questions', desc:'projection: question geometry' },
+  { id:'topt', x: 40,  y: 500, w: 250, h: 60, title:'omr_template_question_options', desc:'projection: A–D bubble regions' },
+  { id:'book', x: 790, y: 40,  w: 250, h: 64, title:'omr_question_booklets', desc:'code + name of the exam' },
+  { id:'bookv', x: 790, y: 160, w: 250, h: 74, title:'omr_question_booklet_versions', desc:'answer_key_hash (private),\nstatus draft/active/retired' },
+  { id:'bq', x: 790, y: 300, w: 250, h: 70, title:'omr_question_booklet_questions', desc:'question_position, correct_option_code,\narea + template-question link' },
+  { id:'pair', x: 415, y: 330, w: 250, h: 70, title:'omr_template_booklet_pairs', desc:'approved combination:\ntemplate version × booklet version' },
+  { id:'area', x: 415, y: 60, w: 250, h: 60, title:'aptitude_areas', desc:'existing catalog: VERBAL, QUANT…' },
+];
+const ERD_LINKS = [
+  ['tpl','tplv','1—N versions'], ['tplv','tarea','projection'], ['tarea','tq','projection'], ['tq','topt','projection'],
+  ['area','tarea','max_items'], ['area','bq','grouping'],
+  ['book','bookv','1—N versions'], ['bookv','bq','content'],
+  ['tq','bq','geometry link'],
+  ['tplv','pair','pair'], ['bookv','pair','pair'],
+];
+const ERD_INFO = {
+  tpl: ['Answer sheet template (header)', 'Just an identity row: code + name. The real content lives in its versions. Templates are imported from OMRChecker-native bundles — never authored inside NEXIAM.'],
+  tplv: ['Template version (the pinned bundle)', 'Owns: template.json / config.json / reference.svg hashes, engine name/commit/patch identity, the derived review manifest + hash, page dimensions, and the identity-region declaration. Immutable once activated — changing a bubble means a NEW version. Status: draft → active → retired (DB triggers enforce immutability).'],
+  tarea: ['Template area (projection)', 'Read-only mirror derived from the native bundle at activation: which aptitude area a group of questions belongs to, display order, max_items, and the unioned region. Never hand-edited.'],
+  tq: ['Template question (projection)', 'One row per bubble-question: its area, question_no, and the unioned bubble region. Linked from booklet questions for geometry.'],
+  topt: ['Template question option (projection)', 'One row per option bubble (A/B/C/D): its code, display order, and exact normalized region.'],
+  book: ['Question booklet (header)', 'The exam identity: code + name (e.g. SYN-OMR-BOOKLET-A). NEXIAM-authored — this is where exam content lives.'],
+  bookv: ['Booklet version (content + key)', 'Version of the exam with its answer_key_hash (SHA-256 so the key is not readable). Draft → active → retired, immutable after activation.'],
+  bq: ['Booklet question', 'One row per exam question: question_position (contiguous per area), the correct option (NEXIAM-only), which aptitude area, and which template question supplies its bubble geometry.'],
+  pair: ['Template–booklet pair (approval)', 'The approved combination: "this exam is read using this sheet". Capture batches must select an active pair. Multiple pairs may coexist (same sheet, different exams / shuffled keys).'],
+  area: ['Aptitude area', 'The existing catalog entry (Verbal, Quantitative…). Both template projections and booklet questions reference it; activation checks the template\'s max_items matches the booklet\'s question counts per area.'],
+};
+
+function renderErd(activeId) {
+  const svg = $('#erdSvg');
+  svg.innerHTML = ERD_LINKS.map(([a,b,label]) => {
+    const A = ERD_TABLES.find(t=>t.id===a), B = ERD_TABLES.find(t=>t.id===b);
+    const x1 = A.x + A.w/2, y1 = A.y + A.h/2, x2 = B.x + B.w/2, y2 = B.y + B.h/2;
+    const mx = (x1+x2)/2;
+    const d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+    return `<path d="${d}" fill="none" stroke="#2d333b" stroke-width="1.5"/>` +
+      (label ? `<text x="${mx}" y="${(y1+y2)/2 - 5}" fill="#8b949e" font-size="10" text-anchor="middle">${label}</text>` : '');
+  }).join('') + ERD_TABLES.map(t => {
+    const active = t.id === activeId;
+    const accent = ['pair','area'].includes(t.id) ? '#bc8cff' : (t.id.startsWith('b')) ? '#58a6ff' : '#39c5cf';
+    return `<g class="erd-node ${active?'active':''}" data-table="${t.id}">
+      <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="8" fill="#161b22" stroke="${active?'#58a6ff':accent}" stroke-width="${active?2:1.2}"/>
+      <text x="${t.x+12}" y="${t.y+22}" fill="#e6edf3" font-size="12" font-weight="600" class="title">${t.title}</text>
+      ${t.desc.split('\n').map((l,i)=>`<text x="${t.x+12}" y="${t.y+40+i*13}" fill="#8b949e" font-size="10.5" class="desc">${l}</text>`).join('')}
+    </g>`;
+  }).join('');
+  $$('#erdSvg .erd-node').forEach(g => g.addEventListener('click', () => {
+    setErd(g.dataset.table);
+  }));
+}
+function setErd(id) {
+  renderErd(id);
+  const [title, body] = ERD_INFO[id];
+  $('#erdDetail').innerHTML = `<h3>${title}</h3><p>${body}</p>`;
+}
+setErd('tplv');
+
+/* ================= MODULES ================= */
+const MODS = [
+  ['NativeBundle', 'app/Assessment/Omr/NativeBundle.php', 'nex',
+   'Immutable, hash-addressed bundle files (template.json, config.json, reference.svg, manifest.json). Validates shape, file hashes, engine identity. Label expansion mirrors upstream OMRChecker exactly (VERBAL_Q_1, no zero-pad).'],
+  ['NativeManifestDeriver', 'app/Assessment/Omr/NativeManifestDeriver.php', 'nex',
+   'Expands field blocks into one bubble per (label, option) with normalized regions. Rejects duplicates, out-of-bounds, and overlaps. Output = the derived NEXIAM review manifest.'],
+  ['ActivateOmrConfiguration', 'app/Assessment/Actions/Omr/ActivateOmrConfiguration.php', 'nex',
+   'One transaction: verify bundle + engine hashes → derive manifest → project relational rows → validate contiguity, 4-option coverage, area max_items → mark template/booklet active → create pair → audit.'],
+  ['OmrPinnedSnapshot', 'app/Assessment/Omr/OmrPinnedSnapshot.php', 'nex',
+   'Per-sheet immutable pin: items, options, identity regions, all hashes, engine identity, expected labels. Built from the activated pair; never contains the answer key in the provider request.'],
+  ['OmrDetectionPort + DTOs', 'app/Assessment/Omr/OmrDetection*.php', 'nex',
+   'The provider seam. Request v2 carries geometry + image + identity hashes only. Result is Succeeded | Unsupported | InvalidInput | RetryableFailure | TerminalFailure with echo validation.'],
+  ['FakeOmrDetection', 'app/Assessment/Omr/FakeOmrDetection.php', 'nex',
+   'Deterministic fake adapter (tests only). Forced by phpunit.xml; blocked in production by the allow_fake flag. Never a runtime fallback for the real engine.'],
+  ['OmrCheckerDetection', 'app/Assessment/Omr/OmrCheckerDetection.php', 'nex',
+   'Real adapter: canonical manifest → HMAC-signed multipart POST → parses signed response → maps worker codes to typed outcomes. Terminal vs retryable classification lives here.'],
+  ['OmrDetectionResultValidator', 'app/Assessment/Omr/OmrDetectionResultValidator.php', 'nex',
+   'The gate before persistence: envelope version, hash/run/correlation/booklet echoes, engine identity, item coverage + option validity, issue codes, confidence rules, aligned-image integrity, block-shift coverage.'],
+  ['RunOmrSheetAnalysis', 'app/Assessment/Actions/Omr/RunOmrSheetAnalysis.php', 'nex',
+   'Heart of analysis: claim (token+lease+versions) → authorize → pin → detect → validate → persist proposal + encrypted aligned PNG → audit. Provider runs outside DB locks; only a still-current claim persists.'],
+  ['UploadOmrCaptureSheet', 'app/Assessment/Actions/Omr/UploadOmrCaptureSheet.php', 'nex',
+   'Three-phase resumable upload: receipt claim → asset write/verify → finalize + after-commit dispatch. Idempotent by (batch, client_capture_id).'],
+  ['Create / Review / Confirm actions', 'app/Assessment/Actions/Omr/*.php', 'nex',
+   'CreateOmrCaptureBatch (one active batch, must pick an active pair) · ReviewOmrCaptureSheet (binding + drafts, versioned) · ConfirmOmrCaptureBatch (atomic commit of all reviewed Auto sheets, closes batch).'],
+  ['SensitiveAssetStore', 'app/Support/SensitiveAssetStore.php', 'nex',
+   'AES-256-CBC encryption at rest + SHA-256 HMAC for both the original photo and the aligned derivative. Read verifies HMAC; review image route serves the aligned asset with private, no-store.'],
+  ['Models + invariant triggers', 'app/Models/Assessment/Omr*.php + migrations 2026_08_12_080*', 'nex',
+   'Sheets, batches, runs, pairs, projections. PostgreSQL triggers enforce immutability after activation and JSON shape; SQLite tests skip PG-only bits.'],
+  ['server.py', 'docker/inference/server.py', 'wkr',
+   'Isolated HTTP worker: signature + clock-skew checks, size limits, bounded concurrency, one temp dir per request, spawns a child per sheet, returns signed multipart (result + aligned.png). Read-only rootfs, capped CPU/mem/pids.'],
+  ['detect.py', 'docker/inference/detect.py', 'wkr',
+   'Child entry: validates manifest vs env identity, decodes image, runs OMRChecker headless (apply_preprocessors → read_omr_response), emits observations + aligned PNG + block shifts, exits.'],
+  ['generate_fixture.py', 'docker/inference/generate_fixture.py', 'wkr',
+   'Deterministic synthetic sheet generator from the SAME native template (--seed N, --blank, --margin-ratio). Demo/repro path for the real engine — no second coordinate table.'],
+  ['Capture / review UI', 'resources/js/Pages/Assessment/Omr/Capture.svelte', 'nex',
+   'Mockup-aligned capture app: camera + gallery + review, Manual/Auto, roster binding, per-item score editor, protected image. Staff capability-gated.'],
+];
+
+function renderMods() {
+  $('#modGrid').innerHTML = MODS.map((m,i) => `
+    <div class="mod" data-i="${i}">
+      <span class="tag ${m[2]==='nex'?'nex':'wkr'}">${m[2]==='nex'?'PHP':'PYTHON'}</span>
+      <b>${m[0]}</b>
+      <div class="path">${m[1]}</div>
+    </div>`).join('');
+  $$('#modGrid .mod').forEach(el => el.addEventListener('click', () => {
+    $$('#modGrid .mod').forEach(m => m.classList.remove('active'));
+    el.classList.add('active');
+    const m = MODS[+el.dataset.i];
+    $('#modInfo').classList.add('visible');
+    $('#modInfo').innerHTML = `<h3>${m[0]}</h3><div class="path" style="margin-bottom:8px">${m[1]}</div><p>${m[3]}</p>`;
+  }));
+}
+renderMods();
+</script>
+</body>
+</html>

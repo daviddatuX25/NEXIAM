@@ -92,7 +92,7 @@ These invariants bind all later work. Feature stories may not weaken them.
 ### 2.1 System shape
 
 - Modular monolith first: module-owned aggregates, command/query boundaries, and dependency-direction tests. No cross-module ORM mutation shortcuts.
-- Laravel 13 / PHP 8.4 / Inertia 3 / React 19 / TypeScript 5.9 / Tailwind 4 / PostgreSQL 16 as the approved application plane (`system/`).
+- Laravel 13 / PHP 8.4 / Inertia 3 / Svelte 5 / TypeScript 5.9 / Tailwind 4 / PostgreSQL 16 as the approved application plane (`system/`).
 - Fresh migration history only. Legacy migrations, routes, controllers, and databases are never runtime dependencies of the target.
 
 ### 2.2 Integrity and mutation

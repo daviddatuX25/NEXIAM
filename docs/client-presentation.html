@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXIAM — One System for the Whole Admission Journey</title>
+  
+  <!-- Google Fonts: IBM Plex Sans & IBM Plex Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ==========================================
+       DESIGN TOKENS & SYSTEM BASE (UI Kit Locked)
+       ========================================== */
+    :root {
+      --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      
+      --radius: 0.5rem;
+      --radius-sm: 0.25rem;
+      --radius-lg: 0.75rem;
+
+      /* Palette Tokens */
+      --primary: oklch(0.52 0.13 144.33);          /* #1a6e43 Brand Green */
+      --primary-hover: oklch(0.45 0.13 144.33);    /* Darker Brand Green */
+      --primary-light: oklch(0.95 0.03 144.33);    /* #e8f5ec Soft Green Tint */
+      --primary-border: oklch(0.85 0.06 144.33);   /* Soft Green Border */
+      
+      --background: oklch(0.97 0.01 87.41);       /* #f9f8f3 Layered paper background */
+      --foreground: oklch(0.25 0.03 148.20);       /* Dark Slate Text */
+      --foreground-muted: oklch(0.48 0.02 150);   /* Muted Body Text */
+      
+      --card: rgba(255, 255, 255, 0.92);
+      --card-solid: #ffffff;
+      --card-border: oklch(0.88 0.02 77.29);
+      
+      --accent-badge-bg: oklch(0.92 0.04 146.01);
+      --accent-badge-fg: oklch(0.38 0.12 144.33);
+      
+      --success-bg: oklch(0.93 0.05 142.90);
+      --success-fg: oklch(0.35 0.14 142.90);
+      --warning-bg: oklch(0.95 0.08 65);
+      --warning-fg: oklch(0.40 0.14 45);
+      
+      --glass-panel-bg: rgba(255, 255, 255, 0.88);
+      --glass-panel-border: rgba(26, 110, 67, 0.16);
+      
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Background texture gradient */
+    .bg-gradient-container {
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 10% 10%, rgba(26, 110, 67, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, rgba(26, 110, 67, 0.03) 0%, transparent 50%),
+        var(--background);
+      z-index: -1;
+    }
+
+    /* Deck Layout */
+    .deck-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      padding: 1.25rem 2rem 1.25rem 2rem;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* Header Bar */
+    .deck-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: 0.05em;
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+
+    .brand-divider {
+      color: var(--card-border);
+      font-weight: 300;
+    }
+
+    .deck-subtitle {
+      font-size: 0.875rem;
+      color: var(--foreground-muted);
+      font-weight: 500;
+    }
+
+    .header-audience {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-badge-fg);
+      background: var(--accent-badge-bg);
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Main Slide Content Frame */
+    .slide-stage {
+      flex: 1;
+      position: relative;
+      margin: 1rem 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      transform: translateY(6px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--glass-panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-panel-border);
+      border-radius: var(--radius);
+      padding: 2rem 2.25rem;
+      box-shadow: var(--shadow-md);
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      z-index: 2;
+    }
+
+    /* Slide Typography Standards */
+    .slide-kicker {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      margin-bottom: 0.35rem;
+    }
+
+    .slide-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--foreground);
+      line-height: 1.25;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.01em;
+    }
+
+    .slide-subheading {
+      font-size: 0.95rem;
+      color: var(--foreground-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    /* Clean Large Bullet List */
+    .bullet-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .bullet-list li {
+      position: relative;
+      padding-left: 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--foreground);
+      line-height: 1.45;
+    }
+
+    .bullet-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0.25rem;
+      top: -0.05rem;
+      color: var(--primary);
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .card {
+      background: var(--card-solid);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.35rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--foreground);
+      margin-bottom: 0.6rem;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .badge-success { background: var(--success-bg); color: var(--success-fg); }
+    .badge-warning { background: var(--warning-bg); color: var(--warning-fg); }
+    .badge-primary { background: var(--primary-light); color: var(--primary); }
+
+    /* Tables */
+    .pitch-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.9rem;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: var(--card-solid);
+    }
+
+    .pitch-table th {
+      background: var(--primary-light);
+      color: var(--foreground);
+      font-weight: 700;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--primary-border);
+      text-align: left;
+    }
+
+    .pitch-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--foreground);
+      vertical-align: middle;
+    }
+
+    .pitch-table tr:last-child td { border-bottom: none; }
+
+    /* Hero Box */
+    .hero-box {
+      background: var(--primary-light);
+      border-left: 4px solid var(--primary);
+      padding: 1.35rem 1.5rem;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .hero-box p {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    /* Footer Controls Bar */
+    .deck-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .nav-hint {
+      font-size: 0.75rem;
+      color: var(--foreground-muted);
+      font-weight: 500;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .slide-counter {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--foreground);
+      background: var(--card-solid);
+      padding: 0.25rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--card-border);
+    }
+
+    .dots-container {
+      display: flex;
+      gap: 0.35rem;
+    }
+
+    .dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--card-border);
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .dot.active {
+      background: var(--primary);
+      transform: scale(1.25);
+    }
+
+    .btn-nav {
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--card-border);
+      background: var(--card-solid);
+      color: var(--foreground);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .btn-nav:hover:not(:disabled) {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+      color: var(--primary);
+    }
+
+    .btn-nav:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Print Styles */
+    @media print {
+      body { background: #ffffff !important; overflow: visible !important; height: auto !important; width: auto !important; }
+      .bg-gradient-container, .deck-footer, .header-audience { display: none !important; }
+      .deck-container { padding: 0 !important; width: 100% !important; height: auto !important; max-width: none !important; }
+      .deck-header { border-bottom: 2px solid #000 !important; margin-bottom: 1rem !important; }
+      .slide-stage { display: block !important; height: auto !important; margin: 0 !important; }
+      .slide { position: relative !important; opacity: 1 !important; visibility: visible !important; transform: none !important; page-break-after: always !important; break-after: page !important; box-shadow: none !important; border: 1px solid #ccc !important; background: #fff !important; margin-bottom: 2rem !important; height: 90vh !important; max-height: 90vh !important; overflow: hidden !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-gradient-container"></div>
+
+  <div class="deck-container">
+    
+    <!-- Top Header Bar -->
+    <header class="deck-header">
+      <div class="brand-group">
+        <span class="brand-logo">NEXIAM</span>
+        <span class="brand-divider">|</span>
+        <span class="deck-subtitle">Institutional Admission Briefing</span>
+      </div>
+      <div class="header-audience">
+        Guidance Counselor · Test Administrator · Registrar
+      </div>
+    </header>
+
+    <!-- Main Presentation Stage -->
+    <main class="slide-stage" id="slideStage">
+
+      <!-- SLIDE 1: Cover -->
+      <section class="slide active" data-slide="1">
+        <div>
+          <div class="slide-kicker">Client Pitch Briefing · August 2026</div>
+          <h1 class="slide-title" style="font-size: 2.5rem; margin-bottom: 0.4rem;">NEXIAM</h1>
+          <div class="slide-subheading" style="font-size: 1.2rem; font-weight: 600; color: var(--primary);">
+            One system for the whole admission journey
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin: 0.75rem 0;">
+          <div class="card" style="background: var(--primary-light); border-color: var(--primary-border);">
+            <div>
+              <div class="card-title" style="color: var(--primary);">The Institutional Payoff</div>
+              <p style="font-size: 1rem; color: var(--foreground); line-height: 1.5;">
+                Faster release cycles, zero transcription errors, an automated audit trail, and absolute confidence that no applicant falls through the cracks.
+              </p>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--foreground-muted); border-top: 1px solid var(--primary-border); padding-top: 0.5rem; margin-top: 0.75rem;">
+              Consultation stays the heart of assessment — face-to-face stays fully supported.
+            </div>
+          </div>
+
+          <div class="card">
+            <div>
+              <div class="card-title">Where We Stand Today</div>
+              <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; margin-top: 0.25rem;">
+                <div style="display: flex; justify-content: space-between;"><span>Exam Scheduling (both modes)</span><span class="badge badge-success">Built & Proven</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Grading & Scoring Workflow</span><span class="badge badge-success">Built & Proven</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Bubble-Sheet OMR Capture</span><span class="badge badge-warning">Dev Engine Active</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Consultation & Eligibility</span><span class="badge badge-primary">Screens Completing</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding-top: 0.75rem; border-top: 1px solid var(--card-border); display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--foreground-muted);">
+          <span>Prepared from project reference specifications</span>
+          <span style="font-family: var(--font-mono);">Document Ref: GF-2026-PITCH-DECK</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: The Problem Today -->
+      <section class="slide" data-slide="2">
+        <div>
+          <div class="slide-kicker">Operational Breakdown</div>
+          <h2 class="slide-title">What We Replace & Eliminate</h2>
+          <div class="slide-subheading">Removing manual friction points from your campus admission pipeline</div>
+        </div>
+
+        <div class="slide-body">
+          <ul class="bullet-list">
+            <li>No single-day release crowd rush</li>
+            <li>No manual score re-typing errors</li>
+            <li>No double-booking or overbooked rooms</li>
+            <li>No counter queues for Registrar clearance</li>
+            <li>No lost paper records or spreadsheets</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: What NEXIAM Is + Journey Diagram -->
+      <section class="slide" data-slide="3">
+        <div>
+          <div class="slide-kicker">Core System Architecture</div>
+          <h2 class="slide-title">What NEXIAM Is</h2>
+          <div class="slide-subheading">One shared digital record carrying applicants from application to enrollment</div>
+        </div>
+
+        <div class="slide-body">
+          <!-- Horizontal SVG Journey Spine -->
+          <div style="background: #ffffff; border: 1px solid var(--card-border); border-radius: var(--radius); padding: 1.25rem 1rem; box-shadow: var(--shadow-sm);">
+            <svg viewBox="0 0 900 85" style="width: 100%; height: auto; font-family: var(--font-sans);">
+              <defs>
+                <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a6e43"/>
+                </marker>
+              </defs>
+              <!-- Step 1 -->
+              <rect x="10" y="15" width="140" height="55" rx="6" fill="#e8f5ec" stroke="#1a6e43" stroke-width="1.5"/>
+              <text x="80" y="38" font-size="11" font-weight="700" fill="#1a6e43" text-anchor="middle">1. APPLY</text>
+              <text x="80" y="54" font-size="10" fill="#333" text-anchor="middle">Online Intake</text>
+              
+              <line x1="150" y1="42.5" x2="185" y2="42.5" stroke="#1a6e43" stroke-width="2" marker-end="url(#arrow-green)"/>
+              
+              <!-- Step 2 -->
+              <rect x="190" y="15" width="140" height="55" rx="6" fill="#e8f5ec" stroke="#1a6e43" stroke-width="1.5"/>
+              <text x="260" y="38" font-size="11" font-weight="700" fill="#1a6e43" text-anchor="middle">2. EXAM</text>
+              <text x="260" y="54" font-size="10" fill="#333" text-anchor="middle">Session Roster</text>
+              
+              <line x1="330" y1="42.5" x2="365" y2="42.5" stroke="#1a6e43" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+              <!-- Step 3 -->
+              <rect x="370" y="15" width="140" height="55" rx="6" fill="#e8f5ec" stroke="#1a6e43" stroke-width="1.5"/>
+              <text x="440" y="38" font-size="11" font-weight="700" fill="#1a6e43" text-anchor="middle">3. RESULT</text>
+              <text x="440" y="54" font-size="10" fill="#333" text-anchor="middle">OMR & Human Review</text>
+
+              <line x1="510" y1="42.5" x2="545" y2="42.5" stroke="#1a6e43" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+              <!-- Step 4 -->
+              <rect x="550" y="15" width="140" height="55" rx="6" fill="#e8f5ec" stroke="#1a6e43" stroke-width="1.5"/>
+              <text x="620" y="38" font-size="11" font-weight="700" fill="#1a6e43" text-anchor="middle">4. ADVISED</text>
+              <text x="620" y="54" font-size="10" fill="#333" text-anchor="middle">Counselor Session</text>
+
+              <line x1="690" y1="42.5" x2="725" y2="42.5" stroke="#1a6e43" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+              <!-- Step 5 -->
+              <rect x="730" y="15" width="160" height="55" rx="6" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+              <text x="810" y="38" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">5. ENROLL</text>
+              <text x="810" y="54" font-size="10" fill="#14532d" text-anchor="middle">Registrar Clearance</text>
+            </svg>
+          </div>
+
+          <ul class="bullet-list" style="margin-top: 0.5rem;">
+            <li>Replaces paper files with one shared digital record</li>
+            <li>Gives every office the exact data it needs</li>
+            <li>Keeps consultation at the heart of assessment</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: Step 1 — Apply & Get Accepted -->
+      <section class="slide" data-slide="4">
+        <div>
+          <div class="slide-kicker">Journey Step 1</div>
+          <h2 class="slide-title">Apply & Get Accepted</h2>
+          <div class="slide-subheading">Simple online student application and single-queue review</div>
+        </div>
+
+        <div class="slide-body">
+          <ul class="bullet-list">
+            <li>Applicants submit data, grades, and preferences online</li>
+            <li>Registrar reviews, accepts, or corrects from one queue</li>
+            <li>Private access key + birthdate sign-in for security</li>
+            <li>Digital grades stored alongside Form 138/TOR</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: Step 2 — Exam Day -->
+      <section class="slide" data-slide="5">
+        <div>
+          <div class="slide-kicker">Journey Step 2</div>
+          <h2 class="slide-title">Exam Day, Without the Chaos</h2>
+          <div class="slide-subheading">Automated capacity limits and flexible session booking</div>
+        </div>
+
+        <div class="slide-body">
+          <ul class="bullet-list">
+            <li>Venues picked from room list with built-in capacity</li>
+            <li>System blocks double-booking automatically</li>
+            <li>Staff assign seats or open online self-booking</li>
+            <li>Live proctor roster tracks attendance on exam day</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SLIDE 6: Step 3 — Fair, Fast Scoring -->
+      <section class="slide" data-slide="6">
+        <div>
+          <div class="slide-kicker">Journey Step 3</div>
+          <h2 class="slide-title">Fair, Fast Scoring</h2>
+          <div class="slide-subheading">Rapid bubble-sheet scanning with human-in-the-loop review</div>
+        </div>
+        <div class="slide-body">
+          <div class="grid-2">
+            <div class="card">
+              <ul class="bullet-list">
+                <li>Exam booklet stays paper; students fill bubble answer sheets</li>
+                <li>Sheets are scanned — marks read automatically from the scan images</li>
+                <li>Paper conversion table is digitized once — encrypted, confidential, staff-only</li>
+                <li>Raw counts become final scores through that secure digital table</li>
+                <li>Missing scores block approval; a person confirms every result</li>
+              </ul>
+            </div>
+            <div class="card" style="justify-content: center; gap: 0.9rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--background);">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--primary); background: var(--primary-light); border-radius: 50%; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</span>
+                <div><div style="font-weight: 700; color: var(--foreground);">Answer sheets scanned</div><div style="font-size: 0.85rem; color: var(--foreground-muted);">No manual ticking, no re-encoding</div></div>
+              </div>
+              <div style="text-align: center; color: var(--primary); font-weight: 700;">↓</div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--background);">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--primary); background: var(--primary-light); border-radius: 50%; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
+                <div><div style="font-weight: 700; color: var(--foreground);">Marks become scores</div><div style="font-size: 0.85rem; color: var(--foreground-muted);">Encrypted digital table applied automatically</div></div>
+              </div>
+              <div style="text-align: center; color: var(--primary); font-weight: 700;">↓</div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid var(--success-fg); border-radius: var(--radius-sm); background: var(--success-bg);">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--success-fg); background: #ffffff; border-radius: 50%; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</span>
+                <div><div style="font-weight: 700; color: var(--success-fg);">A person approves</div><div style="font-size: 0.85rem; color: var(--foreground);">Nothing auto-releases unchecked</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 7: Step 4 — Consult, Advise, Release -->
+      <section class="slide" data-slide="7">
+        <div>
+          <div class="slide-kicker">Journey Step 4</div>
+          <h2 class="slide-title">Consult, Advise, Release</h2>
+          <div class="slide-subheading">Workload spreads naturally across advising sessions</div>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-2">
+            <div class="card">
+              <ul class="bullet-list">
+                <li>Results release online or on printed sheets</li>
+                <li>Counselor advises student to set status to Advised</li>
+                <li>Uses exact same scheduling screens as exam day</li>
+                <li>Appointment-based slots (~50/day) or open batch</li>
+                <li>Video-call consultation fallback for remote students</li>
+              </ul>
+            </div>
+            <div class="card" style="justify-content: center; gap: 0.9rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--background);">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--primary); background: var(--primary-light); border-radius: 50%; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</span>
+                <div><div style="font-weight: 700; color: var(--foreground);">Release</div><div style="font-size: 0.85rem; color: var(--foreground-muted);">Scores become visible</div></div>
+              </div>
+              <div style="text-align: center; color: var(--primary); font-weight: 700;">↓</div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--background);">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--primary); background: var(--primary-light); border-radius: 50%; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
+                <div><div style="font-weight: 700; color: var(--foreground);">Advise</div><div style="font-size: 0.85rem; color: var(--foreground-muted);">Counselor records the session</div></div>
+              </div>
+              <div style="text-align: center; color: var(--primary); font-weight: 700;">↓</div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid var(--success-fg); border-radius: var(--radius-sm); background: var(--success-bg);">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--success-fg); background: #ffffff; border-radius: 50%; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</span>
+                <div><div style="font-weight: 700; color: var(--success-fg);">Eligible</div><div style="font-size: 0.85rem; color: var(--foreground);">Registrar sees the answer</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 8: Step 5 — The Registrar's Answer -->
+      <section class="slide" data-slide="8">
+        <div>
+          <div class="slide-kicker">Journey Step 5</div>
+          <h2 class="slide-title">The Registrar's Answer</h2>
+          <div class="slide-subheading">Instant computed eligibility status without paper checks</div>
+        </div>
+
+        <div class="slide-body">
+          <ul class="bullet-list">
+            <li>Search name to see clearance status card</li>
+            <li>System checks: Accepted + Exam + Released + Advised</li>
+            <li>Shows exact missing requirement if incomplete</li>
+            <li>Registrar sees status facts — never counselor notes</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SLIDE 9: What Changes vs Today -->
+      <section class="slide" data-slide="9">
+        <div>
+          <div class="slide-kicker">Operational Comparison</div>
+          <h2 class="slide-title">What Changes vs Today</h2>
+          <div class="slide-subheading">Concrete operational improvements for your campus</div>
+        </div>
+
+        <div class="slide-body">
+          <table class="pitch-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Area</th>
+                <th style="width: 37.5%;">Traditional Process</th>
+                <th style="width: 37.5%;">With NEXIAM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Release & Crowds</strong></td>
+                <td>Single-day crowded rush</td>
+                <td>Workload spreads across sessions</td>
+              </tr>
+              <tr>
+                <td><strong>Scoring Speed</strong></td>
+                <td>Days of manual grading</td>
+                <td>Fast OMR scan & auto-conversion</td>
+              </tr>
+              <tr>
+                <td><strong>Registrar Check</strong></td>
+                <td>Queues & paper cross-checks</td>
+                <td>Computed status card in seconds</td>
+              </tr>
+              <tr>
+                <td><strong>Records</strong></td>
+                <td>Paper files & spreadsheets</td>
+                <td>One audited digital record</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 10: System Security & Intelligence -->
+      <section class="slide" data-slide="10">
+        <div>
+          <div class="slide-kicker">Platform Foundations</div>
+          <h2 class="slide-title">System Security & Intelligence</h2>
+          <div class="slide-subheading">Built-in protection and administrative efficiency tools</div>
+        </div>
+
+        <div class="slide-body">
+          <ul class="bullet-list">
+            <li>Role-based security checks every staff action</li>
+            <li>Program Heads get aggregate projections, never raw sheets</li>
+            <li>Notifications fire only after actions are committed</li>
+            <li>Nexi assistant proposes schedules — humans confirm</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SLIDE 11: Dashboards, Program Heads & Support Views -->
+      <section class="slide" data-slide="11">
+        <div>
+          <div class="slide-kicker">Platform Views</div>
+          <h2 class="slide-title">Dashboards, Program Heads & Support Views</h2>
+          <div class="slide-subheading">Every role sees exactly what it needs — nothing more</div>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-2">
+            <div class="card">
+              <ul class="bullet-list">
+                <li>Each office gets its own dashboard — Counselor, Test Admin, Registrar</li>
+                <li>Program Head platform: program-scoped views — result summaries + enrollment projections</li>
+                <li>Program Heads never see raw sheets, scan images, or the confidential table</li>
+                <li>Projections and released results reach Program Heads through built-in notifications</li>
+                <li>Admission support views: suggested programs shown beside the student's chosen program</li>
+                <li>Models advise — people decide</li>
+              </ul>
+            </div>
+            <div class="card" style="justify-content: center;">
+              <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); margin-bottom: 0.75rem;">Program Head View</div>
+              <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 0.9rem; border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--background);">
+                  <div style="font-weight: 700; color: var(--foreground);">BSIT</div>
+                  <div style="font-size: 0.85rem; color: var(--foreground-muted);">84 eligible · 60 projected slots</div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 0.9rem; border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--background);">
+                  <div style="font-weight: 700; color: var(--foreground);">BSED</div>
+                  <div style="font-size: 0.85rem; color: var(--foreground-muted);">41 eligible · 40 projected slots</div>
+                </div>
+                <div style="display: inline-flex; align-self: flex-start; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: var(--radius-sm); background: var(--primary-light); color: var(--primary);">READ-ONLY · PROGRAM-SCOPED</div>
+                <div style="font-size: 0.8rem; color: var(--foreground-muted); border-top: 1px solid var(--card-border); padding-top: 0.6rem;">Raw sheets, scan images &amp; the confidential table are never visible here.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 11: Decisions & Options for You -->
+      <section class="slide" data-slide="12">
+        <div>
+          <div class="slide-kicker">Client Policy Choices</div>
+          <h2 class="slide-title">Decisions & Options for You</h2>
+          <div class="slide-subheading">Key policy choices to lock your institution's configuration</div>
+        </div>
+
+        <div class="slide-body">
+          <table class="pitch-table">
+            <thead>
+              <tr>
+                <th style="width: 30%;">Policy Decision</th>
+                <th style="width: 70%;">Available Configuration Options</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Consultation Records</strong></td>
+                <td>Typed notes with AI keywords / Summary only / Recording</td>
+              </tr>
+              <tr>
+                <td><strong>Result Delivery</strong></td>
+                <td>Online portal download / Video-call fallback / F2F print</td>
+              </tr>
+              <tr>
+                <td><strong>Scheduling Mode</strong></td>
+                <td>Appointment slots (~50/day) / Open batch window</td>
+              </tr>
+              <tr>
+                <td><strong>Exam Content Storage</strong></td>
+                <td>Stored encrypted / Answer key only (item numbers)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 13: Closing & Guarantees -->
+      <section class="slide" data-slide="13">
+        <div>
+          <div class="slide-kicker">Institutional Commitment</div>
+          <h2 class="slide-title">Four Guarantees & Next Steps</h2>
+          <div class="slide-subheading">Proven technology with complete human control</div>
+        </div>
+
+        <div class="slide-body">
+          <div class="hero-box" style="margin-bottom: 0.5rem;">
+            <p>
+              NEXIAM simplifies mechanics while respecting institutional values: consultation remains the heart of assessment, face-to-face stays fully supported, and staff keep every final decision.
+            </p>
+          </div>
+
+          <ul class="bullet-list">
+            <li>One record per applicant across all offices</li>
+            <li>Complete audit trail — who did what and when</li>
+            <li>Manual fallback for every automated feature</li>
+            <li>Consultation remains the heart of assessment</li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Controls & Footer Bar -->
+    <footer class="deck-footer">
+      <div class="nav-hint">
+        Use <strong>&larr; / &rarr;</strong> or <strong>Space</strong> to navigate · Print to PDF supported
+      </div>
+
+      <div class="controls-group">
+        <div class="slide-counter" id="slideCounter">Slide 1 / 12</div>
+
+        <div class="dots-container" id="dotsContainer"></div>
+
+        <button class="btn-nav" id="btnPrev" aria-label="Previous slide">
+          &larr; Prev
+        </button>
+        <button class="btn-nav" id="btnNext" aria-label="Next slide">
+          Next &rarr;
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Inline Navigation Logic -->
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const totalSlides = slides.length;
+      let currentIndex = 0;
+
+      const slideCounter = document.getElementById('slideCounter');
+      const dotsContainer = document.getElementById('dotsContainer');
+      const btnPrev = document.getElementById('btnPrev');
+      const btnNext = document.getElementById('btnNext');
+
+      // Generate clickable navigation dots
+      slides.forEach((_, idx) => {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        if (idx === 0) dot.classList.add('active');
+        dot.setAttribute('aria-label', 'Go to slide ' + (idx + 1));
+        dot.addEventListener('click', () => goToSlide(idx));
+        dotsContainer.appendChild(dot);
+      });
+
+      const dots = Array.from(dotsContainer.querySelectorAll('.dot'));
+
+      function updateDeck() {
+        slides.forEach((slide, idx) => {
+          if (idx === currentIndex) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        });
+
+        dots.forEach((dot, idx) => {
+          if (idx === currentIndex) {
+            dot.classList.add('active');
+          } else {
+            dot.classList.remove('active');
+          }
+        });
+
+        slideCounter.textContent = `Slide ${currentIndex + 1} / ${totalSlides}`;
+        btnPrev.disabled = currentIndex === 0;
+        btnNext.disabled = currentIndex === totalSlides - 1;
+      }
+
+      function goToSlide(index) {
+        if (index < 0) index = 0;
+        if (index >= totalSlides) index = totalSlides - 1;
+        currentIndex = index;
+        updateDeck();
+      }
+
+      function nextSlide() {
+        if (currentIndex < totalSlides - 1) {
+          goToSlide(currentIndex + 1);
+        }
+      }
+
+      function prevSlide() {
+        if (currentIndex > 0) {
+          goToSlide(currentIndex - 1);
+        }
+      }
+
+      // Button listeners
+      btnPrev.addEventListener('click', prevSlide);
+      btnNext.addEventListener('click', nextSlide);
+
+      // Keyboard navigation (robust handling window dispatch & real keys)
+      function handleKeyDown(e) {
+        const key = e.key || e.code;
+        if (key === 'ArrowRight' || key === 'Space' || key === ' ' || key === 'PageDown') {
+          if (e.preventDefault) e.preventDefault();
+          nextSlide();
+        } else if (key === 'ArrowLeft' || key === 'PageUp') {
+          if (e.preventDefault) e.preventDefault();
+          prevSlide();
+        } else if (key === 'Home') {
+          if (e.preventDefault) e.preventDefault();
+          goToSlide(0);
+        } else if (key === 'End') {
+          if (e.preventDefault) e.preventDefault();
+          goToSlide(totalSlides - 1);
+        }
+      }
+
+      window.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keydown', handleKeyDown);
+
+      // Initial state load
+      updateDeck();
+    })();
+  </script>
+</body>
+</html>

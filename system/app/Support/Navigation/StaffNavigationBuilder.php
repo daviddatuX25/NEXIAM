@@ -4,132 +4,181 @@ namespace App\Support\Navigation;
 
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
+use App\Models\Examination\ProctorDuty;
 use App\Models\User;
 
 /**
  * Server-authored staff sidebar contract (GF-22).
- * Capability filters which items appear; match mode keeps one active highlight.
+ *
+ * Sections group capability-filtered items; a section with no authorized item is
+ * omitted. Grouping follows the legacy pipeline feel: Admissions (intake +
+ * scheduling plan), Assessment (conduct + scoring + release + consultation),
+ * and System (setup / knowledge / staff). Exam scheduling and exam monitoring
+ * stay distinct items — scheduling owns the session plan (create/edit/assign/
+ * publish), monitoring owns conduct (roster/attendance/submission) for the
+ * session's later phase.
  */
 final class StaffNavigationBuilder
 {
-    public function __construct(private readonly CapabilityAuthorizer $authorizer)
-    {
-    }
+    public function __construct(private readonly CapabilityAuthorizer $authorizer) {}
 
     /**
-     * @return list<array{href: string, label: string, icon: string, match: string, group: string}>
+     * @return list<array{label: string|null, items: list<array{href: string, label: string, icon: string, match: string}>}>
      */
     public function for(?User $user): array
     {
-        $items = [
-            [
-                'href' => '/staff',
-                'label' => 'Home',
-                'icon' => 'LayoutDashboard',
-                'match' => 'exact',
-                'group' => 'workspace',
+        $sections = [];
+
+        $sections[] = [
+            'label' => null,
+            'items' => [
+                [
+                    'href' => '/staff',
+                    'label' => 'Home',
+                    'icon' => 'LayoutDashboard',
+                    'match' => 'exact',
+                ],
             ],
         ];
 
         if ($user === null) {
-            return $items;
+            return $sections;
         }
 
-        if ($this->allows($user, CapabilityCatalog::REGISTRAR_APPLICATIONS_VIEW)) {
-            $items[] = [
+        $admissions = array_merge(
+            $this->when($this->allows($user, CapabilityCatalog::REGISTRAR_APPLICATIONS_VIEW), [
                 'href' => '/admissions',
                 'label' => 'Admissions',
                 'icon' => 'ClipboardList',
                 'match' => 'prefix',
-                'group' => 'registrar',
-            ];
-        }
-
-        if ($this->allows($user, CapabilityCatalog::REGISTRAR_SETUP_MANAGE)
-            || $this->allows($user, CapabilityCatalog::PROGRAM_QUOTA_MANAGE)) {
-            $items[] = [
-                'href' => '/setup',
-                'label' => 'Setup',
-                'icon' => 'Settings',
+            ]),
+            $this->when($this->allows($user, CapabilityCatalog::REGISTRAR_ENROLLMENT_ELIGIBILITY), [
+                'href' => '/registrar/enrollment-eligibility',
+                'label' => 'Enrollment Eligibility',
+                'icon' => 'BadgeCheck',
                 'match' => 'prefix',
-                'group' => 'institution',
-            ];
-        }
-
-        if ($this->allows($user, CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)) {
-            $items[] = [
+            ]),
+            $this->when($this->allowsAny($user, CapabilityCatalog::examSessionManagementCapabilities()), [
                 'href' => '/exams/sessions',
-                'label' => 'Exams',
+                'label' => 'Exam Scheduling',
                 'icon' => 'Calendar',
                 'match' => 'prefix',
-                'group' => 'guidance',
-            ];
+            ]),
+        );
+
+        if ($admissions !== []) {
+            $sections[] = ['label' => 'Admissions', 'items' => $admissions];
         }
 
-        if ($this->allows($user, CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN)) {
-            $items[] = [
-                'href' => '/proctor',
-                'label' => 'Proctor',
-                'icon' => 'Shield',
-                'match' => 'prefix',
-                'group' => 'guidance',
-            ];
-        }
-
-        if ($this->allows($user, CapabilityCatalog::GUIDANCE_SCORING_MANUAL)) {
-            $items[] = [
-                'href' => '/grading',
-                'label' => 'Grading',
-                'icon' => 'FileCheck',
-                'match' => 'prefix',
-                'group' => 'guidance',
-            ];
-        }
-
-        if ($this->allows($user, CapabilityCatalog::GUIDANCE_CONSULTATION_DECIDE)) {
-            $items[] = [
-                'href' => '/consultation',
-                'label' => 'Consultation',
-                'icon' => 'MessagesSquare',
-                'match' => 'prefix',
-                'group' => 'guidance',
-            ];
-        }
-
-        if ($this->allows($user, CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)) {
-            $items[] = [
-                'href' => '/release',
-                'label' => 'Release',
-                'icon' => 'Send',
-                'match' => 'prefix',
-                'group' => 'guidance',
-            ];
-        }
-
-        if ($this->allows($user, CapabilityCatalog::HR_STAFF_MANAGE)
-            || $this->allows($user, CapabilityCatalog::OFFICE_SUPPORT_STAFF_MANAGE)) {
-            $items[] = [
-                'href' => '/staff/personnel',
-                'label' => 'Personnel',
-                'icon' => 'Users',
-                'match' => 'prefix',
-                'group' => 'staffing',
-            ];
-        }
-
-        $items[] = [
-            'href' => '/ui-kit',
-            'label' => 'UI Kit',
-            'icon' => 'Blocks',
+        $assessment = [];
+        $assessment[] = [
+            'href' => '/exams/monitoring',
+            'label' => 'Exam Monitoring',
+            'icon' => 'Activity',
             'match' => 'prefix',
-            'group' => 'system',
+        ];
+        $assessment[] = [
+            'href' => '/grading',
+            'label' => 'Scoring',
+            'icon' => 'FileCheck',
+            'match' => 'prefix',
+        ];
+        $assessment[] = [
+            'href' => '/release',
+            'label' => 'Release',
+            'icon' => 'Send',
+            'match' => 'prefix',
+        ];
+        $assessment[] = [
+            'href' => '/consultation',
+            'label' => 'Consultation',
+            'icon' => 'MessagesSquare',
+            'match' => 'prefix',
         ];
 
-        return $items;
+        $assessment = array_values(array_filter($assessment, fn (array $item) => $this->canSeeAssessment($user, $item)));
+
+        if ($assessment !== []) {
+            $sections[] = ['label' => 'Assessment', 'items' => $assessment];
+        }
+
+        $system = array_merge(
+            $this->when($this->allows($user, CapabilityCatalog::REGISTRAR_SETUP_MANAGE)
+                || $this->allows($user, CapabilityCatalog::PROGRAM_QUOTA_MANAGE), [
+                    'href' => '/setup',
+                    'label' => 'Setup',
+                    'icon' => 'Settings',
+                    'match' => 'prefix',
+                ]),
+            $this->when($this->allows($user, CapabilityCatalog::KNOWLEDGE_SOURCES_MANAGE)
+                || $this->allows($user, CapabilityCatalog::KNOWLEDGE_SOURCES_APPROVE), [
+                    'href' => '/knowledge',
+                    'label' => 'Knowledge',
+                    'icon' => 'BookOpen',
+                    'match' => 'prefix',
+                ]),
+            [[
+                'href' => '/staff/personnel',
+                'label' => 'Staff',
+                'icon' => 'Users',
+                'match' => 'prefix',
+            ]],
+        );
+
+        if ($system !== []) {
+            $sections[] = ['label' => 'System', 'items' => $system];
+        }
+
+        return $sections;
+    }
+
+    /**
+     * Assessment items are individually capability-gated (D-015/D-016/GRE).
+     *
+     * @param  array{href: string, label: string, icon: string, match: string}  $item
+     */
+    private function canSeeAssessment(User $user, array $item): bool
+    {
+        return match ($item['href']) {
+            '/exams/monitoring' => $this->canMonitor($user),
+            '/grading' => $this->allows($user, CapabilityCatalog::GUIDANCE_SCORING_MANUAL),
+            '/release' => $this->allows($user, CapabilityCatalog::GUIDANCE_RESULTS_RELEASE),
+            '/consultation' => $this->allows($user, CapabilityCatalog::GUIDANCE_CONSULTATION_DECIDE),
+            default => false,
+        };
+    }
+
+    /**
+     * Monitoring is visible to Test Administrators (schedule capability) and to
+     * staff holding an active proctor duty on any session (D-015 duty overlay).
+     */
+    private function canMonitor(User $user): bool
+    {
+        if ($this->allowsAny($user, CapabilityCatalog::examSessionManagementCapabilities())) {
+            return true;
+        }
+
+        return ProctorDuty::query()
+            ->where('user_id', $user->id)
+            ->where('status', ProctorDuty::STATUS_ACTIVE)
+            ->exists();
+    }
+
+    /**
+     * @return list<array{href: string, label: string, icon: string, match: string}>
+     */
+    private function when(bool $condition, array $item): array
+    {
+        return $condition ? [$item] : [];
     }
 
     private function allows(User $user, string $capability): bool
     {
         return $this->authorizer->allows($user, $capability);
+    }
+
+    private function allowsAny(User $user, array $capabilities): bool
+    {
+        return $this->authorizer->allowsAny($user, $capabilities);
     }
 }

@@ -18,6 +18,7 @@
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="1G"/>
         <!-- force=true so Compose/runtime env cannot override the isolated test database -->
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
@@ -35,6 +36,8 @@
         <env name="TELESCOPE_ENABLED" value="false" force="true"/>
         <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
         <env name="PEST_BROWSER_ENABLED" value="false" force="true"/>
+        <env name="OMR_PROVIDER" value="fake" force="true"/>
+        <env name="OMR_ALLOW_FAKE_PROVIDER" value="true" force="true"/>
         <!-- DevTools getContent()/setContent() replaces the View original and breaks assertInertia -->
         <env name="INERTIA_DEVTOOLS_ENABLED" value="false" force="true"/>
     </php>

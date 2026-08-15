@@ -12,7 +12,7 @@
   import * as Table from '@/Components/ui/table';
   import { Textarea } from '@/Components/ui/textarea';
   import { Link, router } from '@inertiajs/svelte';
-  import { Ban, Lock, LockOpen, Pencil, Search, Send, Undo2, UserMinus, UserPlus, ArrowRightLeft } from 'lucide-svelte';
+  import { Ban, Lock, LockOpen, Pencil, Search, Send, Undo2, UserMinus, UserPlus, ArrowRightLeft, Activity } from 'lucide-svelte';
 
   let {
     session,
@@ -183,7 +183,7 @@
   }
 
   const breadcrumbs = [
-    { label: 'Exams', href: '/exams/sessions' },
+    { label: 'Exam Scheduling', href: '/exams/sessions' },
     { label: session?.code ?? 'Session' },
   ];
 </script>
@@ -198,6 +198,14 @@
     >
       {#snippet actions()}
         <div class="flex flex-wrap gap-2">
+          {#if session.status === 'published' || session.status === 'in_progress'}
+            <Link href={`/exams/sessions/${session.id}/monitoring`}>
+              <Button variant="outline" class="min-h-10 gap-2">
+                <Activity class="size-4" />
+                Go to monitoring
+              </Button>
+            </Link>
+          {/if}
           {#if session.status === 'draft'}
             <Link href={`/exams/sessions/${session.id}/edit`}>
               <Button variant="outline" class="min-h-10 gap-2">

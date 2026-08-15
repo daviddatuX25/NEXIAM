@@ -82,21 +82,26 @@ test('attendance idempotency returns same record', function (): void {
         'expected_version' => 1,
     ]);
 
-    $this->actingAs($guidance)->post(route('proctor.assign', $session), [
-        'proctor_user_id' => $guidance->id,
+    // D-015: only Guidance clerk/support may hold a proctor duty; the counselor
+    // holds GUIDANCE_PROCTOR_ASSIGN (may assign) but is not an eligible assignee.
+    $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
+
+    $this->actingAs($guidance)->post(route('proctor-duty.assign', $session), [
+        'proctor_user_id' => $clerk->id,
         'idempotency_key' => 'proctor-1',
     ]);
 
     $assignment = \App\Models\Examination\ExamAssignment::query()->firstOrFail();
+    $session = $assignment->examSession;
 
-    $this->actingAs($guidance)->post(route('proctor.attendance', $assignment), [
+    $this->actingAs($clerk)->post(route('exams.sessions.monitoring.attendance', [$session, $assignment]), [
         'outcome' => 'present',
         'idempotency_key' => 'att-1',
     ])->assertRedirect();
 
     $first = \App\Models\Examination\ExamAttendanceRecord::query()->count();
 
-    $this->actingAs($guidance)->post(route('proctor.attendance', $assignment), [
+    $this->actingAs($clerk)->post(route('exams.sessions.monitoring.attendance', [$session, $assignment]), [
         'outcome' => 'present',
         'idempotency_key' => 'att-1',
     ])->assertRedirect();
@@ -131,8 +136,9 @@ test('proctor without duty is denied', function (): void {
     $this->actingAs($guidance)->post(route('exams.sessions.publish', $session), ['expected_version' => 1]);
 
     $assignment = \App\Models\Examination\ExamAssignment::query()->latest('id')->firstOrFail();
+    $session = $assignment->examSession;
 
-    $this->actingAs($hr)->post(route('proctor.attendance', $assignment), [
+    $this->actingAs($hr)->post(route('exams.sessions.monitoring.attendance', [$session, $assignment]), [
         'outcome' => 'present',
         'idempotency_key' => 'att-deny',
     ])->assertForbidden();

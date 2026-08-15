@@ -10,14 +10,46 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ScoreRecord extends Model
 {
+    public const SOURCE_MANUAL = 'manual';
+
+    public const SOURCE_OMR = 'omr';
+
     protected $fillable = [
         'grading_session_id',
         'admission_attempt_id',
         'aptitude_area_id',
         'score',
+        'converted_score',
+        'source',
+        'capture_sheet_id',
+        'confidence',
         'recorded_by_user_id',
         'idempotency_key',
     ];
+
+    /**
+     * Score + converted output are the most sensitive fields in the grading
+     * path and are encrypted at rest (SCV-5). Presence-only queries (finalize
+     * completeness) are unaffected by the encrypted cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'score' => 'encrypted',
+            'converted_score' => 'encrypted',
+            'confidence' => 'float',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<OmrCaptureSheet, $this>
+     */
+    public function captureSheet(): BelongsTo
+    {
+        return $this->belongsTo(OmrCaptureSheet::class, 'capture_sheet_id');
+    }
 
     /**
      * @return BelongsTo<GradingSession, $this>

@@ -5,7 +5,7 @@
   import { Input } from '@/Components/ui/input';
   import { Link, useForm } from '@inertiajs/svelte';
 
-  let { user, roles = [], can_full_hr = false } = $props();
+  let { user, roles = [], can_full_hr = false, is_support = false, can_reset_password = false } = $props();
 
   let selectedRoles = $state([...(user.roles ?? [])]);
   let password = $state('');
@@ -21,6 +21,8 @@
     program_codes: user.program_codes ?? [],
   });
 
+  const canPickRoles = can_full_hr && !is_support;
+
   function toggleRole(name) {
     if (selectedRoles.includes(name)) {
       selectedRoles = selectedRoles.filter((r) => r !== name);
@@ -33,12 +35,12 @@
     e.preventDefault();
     form.password = password || '';
     form.password_confirmation = passwordConfirmation || '';
-    form.roles = selectedRoles;
+    form.roles = canPickRoles ? selectedRoles : [...(user.roles ?? [])];
     form.put(`/staff/personnel/${user.id}`);
   }
 
   const breadcrumbs = [
-    { label: 'Personnel', href: '/staff/personnel' },
+    { label: 'Staff', href: '/staff/personnel' },
     { label: 'Edit' },
   ];
 </script>
@@ -65,14 +67,20 @@
         {#if form.errors?.email}<p class="text-sm text-destructive">{form.errors.email}</p>{/if}
       </div>
 
-      <PasswordStrengthInput
-        bind:password
-        bind:passwordConfirmation
-        errors={form.errors}
-        label="New password"
-        confirmationLabel="Confirm new password"
-      />
-      <p class="text-xs text-muted-foreground">Leave password blank to keep the current password.</p>
+      {#if can_reset_password}
+        <PasswordStrengthInput
+          bind:password
+          bind:passwordConfirmation
+          errors={form.errors}
+          label="New password"
+          confirmationLabel="Confirm new password"
+        />
+        <p class="text-xs text-muted-foreground">Leave password blank to keep the current password.</p>
+      {:else}
+        <div class="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+          Password reset is limited to Staffing/HR and office leads. Request a reset from your office lead or HR.
+        </div>
+      {/if}
 
       {#if can_full_hr}
         <div class="space-y-2">
@@ -83,23 +91,42 @@
         <p class="text-sm text-muted-foreground">Office: <span class="font-medium text-foreground">{user.office}</span></p>
       {/if}
 
-      <div class="space-y-2">
-        <p class="text-sm font-medium">Roles</p>
-        <div class="flex flex-wrap gap-4 pt-2">
-          {#each roles as r}
-            <label class="flex min-h-11 cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedRoles.includes(r.name)}
-                onchange={() => toggleRole(r.name)}
-                class="h-4 w-4 rounded border-input accent-primary"
-              />
-              <span class="text-sm">{r.display_name}</span>
-            </label>
-          {/each}
+      {#if canPickRoles}
+        <div class="space-y-2">
+          <p class="text-sm font-medium">Roles</p>
+          <p class="text-xs text-muted-foreground">Permanent role helpers only. Support staff roles follow the office.</p>
+          <div class="flex flex-wrap gap-4 pt-2">
+            {#each roles as r}
+              <label class="flex min-h-11 cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedRoles.includes(r.name)}
+                  onchange={() => toggleRole(r.name)}
+                  class="h-4 w-4 rounded border-input accent-primary"
+                />
+                <span class="text-sm">{r.display_name}</span>
+              </label>
+            {/each}
+          </div>
+          {#if form.errors?.roles}<p class="text-sm text-destructive">{form.errors.roles}</p>{/if}
         </div>
-        {#if form.errors?.roles}<p class="text-sm text-destructive">{form.errors.roles}</p>{/if}
-      </div>
+      {:else}
+        <div class="space-y-2">
+          <p class="text-sm font-medium">Roles</p>
+          <div class="flex flex-wrap gap-2 pt-1">
+            {#each user.roles ?? [] as roleName}
+              <span class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                {roleName.replaceAll('_', ' ')}
+              </span>
+            {/each}
+          </div>
+          <p class="text-xs text-muted-foreground">
+            {is_support
+              ? 'Support staff role follows the office and is not reassigned here.'
+              : 'Role helpers are managed by Staffing/HR only.'}
+          </p>
+        </div>
+      {/if}
 
       <div class="flex gap-2 pt-4">
         <Button type="submit" disabled={form.processing}>

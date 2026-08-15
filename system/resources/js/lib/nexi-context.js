@@ -1,4 +1,9 @@
 /**
+ * FIXTURE / DEMO ONLY — not production authority.
+ * OpenSpec ai-assistant-foundation: page context comes from server PageCapabilityPack
+ * via NexiSessionView. Do not use this module to decide mode, tools, or capabilities.
+ *
+
  * Page-aware Nexi context (presentational).
  * Real retrieval/authz stays server-side under GF-08/21/22 — this only labels the shell.
  *

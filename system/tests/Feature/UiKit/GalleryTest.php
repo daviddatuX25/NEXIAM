@@ -8,9 +8,8 @@ it('redirects guests away from the ui kit gallery', function () {
 });
 
 it('renders the ui kit gallery for authenticated staff', function () {
-    $user = User::factory()->create([
-        'email' => 'ui.kit@nexiam.test',
-    ]);
+    seedE2Foundation();
+    $user = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
 
     $this->actingAs($user)
         ->get(route('ui-kit.gallery'))
@@ -21,19 +20,19 @@ it('renders the ui kit gallery for authenticated staff', function () {
                 ->where('enabled', true)
                 ->where('mode', 'degraded')
                 ->has('disclosure')
-                ->where('default_interaction', 'assistant')
+                ->where('default_interaction', 'inquiry')
                 ->has('interaction_modes')
                 ->has('usage', fn (Assert $usage) => $usage
                     ->has('used')
                     ->has('limit')
                     ->has('unit')
-                    ->has('period'))));
+                    ->has('period'))
+                ->etc()));
 });
 
 it('shares nexi presentation seam on staff home', function () {
-    $user = User::factory()->create([
-        'email' => 'nexi.seam@nexiam.test',
-    ]);
+    seedE2Foundation();
+    $user = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
 
     $this->actingAs($user)
         ->get(route('staff.home'))

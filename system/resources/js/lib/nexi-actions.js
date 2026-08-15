@@ -1,4 +1,9 @@
 /**
+ * FIXTURE / DEMO ONLY — not production authority.
+ * OpenSpec ai-assistant-foundation: typed actions will come from the Capability Registry
+ * in a later OpenSpec. This catalog must not drive production Apply decisions.
+ *
+
  * Finite typed-action catalog stubs for Nexi (GF master §8.5 / GF-22 / GF-06 §10).
  *
  * UI may *propose* a typed UI-equivalent request. Execution requires a later

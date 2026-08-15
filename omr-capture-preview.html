@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>OMR capture — revised workflow preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: oklch(0.97 0.01 87.41);
+    --foreground: oklch(0.31 0.02 148.20);
+    --card: oklch(1 0 0 / 0.95);
+    --card-solid: oklch(0.97 0.01 87.41);
+    --glass-panel-bg: oklch(1 0 0 / 0.95);
+    --glass-panel-border: oklch(0.88 0 0 / 0.28);
+    --primary: oklch(0.52 0.13 144.33);
+    --primary-foreground: oklch(1.00 0 0);
+    --muted: oklch(0.94 0.01 72.65);
+    --muted-foreground: oklch(0.50 0.01 156.76);
+    --accent: oklch(0.90 0.05 146.01);
+    --accent-foreground: oklch(0.43 0.12 144.33);
+    --destructive: oklch(0.54 0.19 26.90);
+    --success: oklch(0.62 0.15 142.90);
+    --warning: oklch(0.85 0.12 43.20);
+    --warning-foreground: oklch(0.25 0.06 28.30);
+    --info: oklch(0.55 0.14 190.10);
+    --border: oklch(0.88 0 0);
+    --input: oklch(0.88 0.02 77.29);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --radius: 0.5rem;
+    --shadow-sm: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+    --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--background);
+    color: var(--foreground);
+    background-image:
+      radial-gradient(ellipse 90% 55% at 0% -5%, oklch(0.88 0.06 145 / 0.65), transparent 55%),
+      radial-gradient(ellipse 70% 45% at 100% 0%, oklch(0.92 0.03 95 / 0.5), transparent 50%),
+      linear-gradient(180deg, oklch(0.98 0.01 90) 0%, var(--background) 40%, oklch(0.96 0.015 145 / 0.9) 100%);
+    background-attachment: fixed;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ================= STAFF SHELL ================= */
+  .shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+  .sidebar { width: 14rem; flex-shrink: 0; display: flex; flex-direction: column; background: var(--glass-panel-bg); backdrop-filter: blur(14px) saturate(1.15); border-right: 1px solid var(--glass-panel-border); }
+  .brand { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .brand-name { font-weight: 600; font-size: 16px; letter-spacing: -0.02em; }
+  nav { flex: 1; overflow-y: auto; padding: 8px; }
+  .nav-group-label { padding: 8px 12px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: color-mix(in srgb, var(--muted-foreground) 70%, transparent); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--foreground) 80%, transparent); text-decoration: none; cursor: pointer; transition: background-color .15s; margin-bottom: 2px; }
+  .nav-item:hover { background: var(--accent); color: var(--foreground); }
+  .nav-item.active { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-sm); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .user-block { padding: 16px; border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+  .user-row { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: color-mix(in srgb, var(--muted) 50%, transparent); }
+  .avatar { width: 40px; height: 40px; border-radius: 10px; background: color-mix(in srgb, var(--primary) 20%, transparent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+  .user-meta { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-email { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: var(--glass-panel-bg); backdrop-filter: blur(14px) saturate(1.15); border-bottom: 1px solid var(--glass-panel-border); }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .crumb a { color: var(--muted-foreground); text-decoration: none; font-weight: 500; cursor: pointer; }
+  .crumb .chev { color: color-mix(in srgb, var(--muted-foreground) 50%, transparent); display: flex; }
+  .crumb strong { font-weight: 600; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .hamburger { display: none; width: 40px; height: 40px; border-radius: 8px; border: none; background: transparent; color: var(--muted-foreground); align-items: center; justify-content: center; cursor: pointer; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent; color: var(--muted-foreground); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+  .icon-btn:hover { background: var(--accent); color: var(--foreground); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .notif-dot { position: absolute; top: 10px; right: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--destructive); border: 2px solid var(--card); }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 84; }
+
+  main.scroll { flex: 1; min-width: 0; overflow-y: auto; padding: 32px; scroll-behavior: smooth; }
+  .page { max-width: 1080px; margin: 0 auto; display: none; }
+  .page.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .page-header h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; }
+  .page-header .desc { font-size: 14px; color: var(--muted-foreground); margin-top: 4px; max-width: 66ch; line-height: 1.55; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: var(--radius); font-family: var(--font-sans); font-size: 14px; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: background-color .15s, border-color .15s; text-decoration: none; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-sm); }
+  .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
+  .btn-outline { background: var(--card); border-color: var(--border); color: var(--foreground); }
+  .btn-outline:hover:not(:disabled) { background: var(--muted); }
+  .btn-ghost { background: transparent; color: var(--foreground); }
+  .btn-ghost:hover:not(:disabled) { background: var(--accent); }
+  .btn-destructive { background: var(--destructive); color: oklch(1 0 0); }
+  .btn-outline-destructive { background: var(--card); border-color: color-mix(in srgb, var(--destructive) 40%, transparent); color: var(--destructive); }
+  .btn-sm { min-height: 32px; padding: 0 10px; font-size: 12px; }
+  .btn-block { width: 100%; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-success { background: color-mix(in srgb, var(--success) 14%, transparent); color: oklch(0.40 0.11 145); }
+  .badge-warning { background: color-mix(in srgb, var(--warning) 18%, transparent); color: color-mix(in srgb, var(--warning-foreground) 85%, transparent); }
+  .badge-outline { background: transparent; border: 1px solid var(--border); color: var(--muted-foreground); }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); }
+  .card-pad { padding: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-foreground); font-weight: 600; text-align: left; padding: 10px 16px; background: color-mix(in srgb, var(--muted) 50%, transparent); }
+  tbody td { padding: 12px 16px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); vertical-align: middle; }
+  .mono { font-family: var(--font-mono); }
+  .muted { color: var(--muted-foreground); }
+
+  /* mini answer-sheet thumbnail */
+  .mini-sheet { width: 78%; height: 78%; }
+  .mini-sheet .mrow { display: flex; gap: 5px; margin-bottom: 7px; }
+  .mini-sheet .mbub { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #8a8474; flex-shrink: 0; }
+  .mini-sheet .mbub.fill { background: #1f6f6b; border-color: #1f6f6b; }
+  .mini-sheet .mbub.flag { background: #c23b3b; border-color: #c23b3b; }
+
+  /* ================= CAPTURE APP ================= */
+  #captureApp { position: fixed; inset: 0; z-index: 70; background: #101312; color: oklch(0.93 0.01 145); display: none; flex-direction: column; }
+  #captureApp.open { display: flex; }
+  @media (min-width: 620px) {
+    #captureApp { left: 50%; right: auto; width: min(560px, 100vw); transform: translateX(-50%); box-shadow: 0 0 90px rgba(0,0,0,.55); border-left: 1px solid oklch(1 0 0 / 0.07); border-right: 1px solid oklch(1 0 0 / 0.07); }
+  }
+
+  .ca-top { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid oklch(1 0 0 / 0.08); flex-shrink: 0; min-height: 54px; }
+  .ca-back { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; color: oklch(0.88 0.01 145); font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 4px; font-family: var(--font-sans); }
+  .ca-back svg { width: 17px; height: 17px; }
+  .ca-title { font-weight: 600; font-size: 14.5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ca-title small { display: block; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: oklch(0.72 0.02 145 / 0.7); font-family: var(--font-mono); font-weight: 500; }
+  .ca-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .ca-count { font-family: var(--font-mono); font-size: 10.5px; color: oklch(0.72 0.02 145 / 0.8); }
+
+  .ca-screen { flex: 1; display: none; flex-direction: column; min-height: 0; }
+  .ca-screen.active { display: flex; animation: fade .18s ease; }
+
+  /* ---- screen 1: camera ---- */
+  .cam-stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .cam-view { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #0d100f; }
+  .scan-hint { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #e9e1c8; opacity: .65; z-index: 2; }
+  .corner { position: absolute; width: 26px; height: 26px; opacity: .85; }
+  .c-tl { top: 18px; left: 18px; border-top: 2px solid #e9e1c8; border-left: 2px solid #e9e1c8; }
+  .c-tr { top: 18px; right: 18px; border-top: 2px solid #e9e1c8; border-right: 2px solid #e9e1c8; }
+  .c-bl { bottom: 18px; left: 18px; border-bottom: 2px solid #e9e1c8; border-left: 2px solid #e9e1c8; }
+  .c-br { bottom: 18px; right: 18px; border-bottom: 2px solid #e9e1c8; border-right: 2px solid #e9e1c8; }
+
+  .cam-sheet { width: 300px; max-width: 78%; aspect-ratio: 3/4; background: #f4f2ec; border-radius: 6px; box-shadow: 0 24px 60px -18px rgba(0,0,0,.6); transform: rotate(-1.2deg); padding: 16px; }
+  .cam-sheet .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cam-sheet .sheet-head .tag { font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; color: #14181c; font-weight: 600; }
+  .cam-sheet .sheet-head .logo { width: 20px; height: 20px; border-radius: 4px; background: #1f6f6b; }
+  .cam-sheet .id-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 9px; }
+  .cam-sheet .id-cell { height: 18px; border-radius: 3px; border: 1px solid #cfc8b8; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 8px; color: #14181c; }
+  .cam-sheet .nd-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 7px; margin-bottom: 10px; }
+  .cam-sheet .nd-cell { height: 15px; border-radius: 3px; border: 1px solid #cfc8b8; padding: 0 5px; display: flex; align-items: center; font-family: var(--font-mono); font-size: 7px; color: #14181c; letter-spacing: .06em; }
+  .cam-sheet .bubble-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 8px; }
+  .cam-sheet .bubble-line { display: flex; gap: 5px; align-items: center; }
+  .cam-sheet .bubble-line .qn { width: 11px; height: 11px; background: #14181c; color: #fff; border-radius: 2px; font-size: 6px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); flex-shrink: 0; }
+  .cam-sheet .bub { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #b8b2a2; flex-shrink: 0; }
+  .cam-sheet .bub.fill { background: #1f6f6b; border-color: #1f6f6b; }
+
+  .quality { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: oklch(0 0 0 / 0.5); border: 1px solid oklch(1 0 0 / 0.14); border-radius: 999px; padding: 8px 16px; font-size: 12px; z-index: 2; }
+  .quality .bars { display: flex; gap: 3px; align-items: flex-end; height: 16px; }
+  .quality .bars i { width: 4px; border-radius: 2px; background: oklch(0.85 0.12 43.2); }
+  .quality .bars i.filled { background: var(--success); }
+
+  /* bottom control deck — left: gallery · center: shutter · right: mode dropdown */
+  .cam-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px calc(10px + env(safe-area-inset-bottom)); flex-shrink: 0; border-top: 1px solid oklch(1 0 0 / 0.08); }
+  .ctrl-left, .ctrl-right { display: flex; align-items: center; min-width: 0; }
+  .btn-gallery { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: oklch(0.8 0.02 145 / 0.8); cursor: pointer; padding: 6px 10px; min-width: 64px; }
+  .btn-gallery svg { width: 21px; height: 21px; }
+  .btn-gallery span { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; }
+  .btn-gallery:hover { color: #fff; }
+
+  .ctrl-center { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .shutter { width: 62px; height: 62px; border-radius: 50%; border: 3px solid #fff; background: transparent; position: relative; cursor: pointer; }
+  .shutter::after { content: ""; position: absolute; inset: 5px; background: #fff; border-radius: 50%; transition: transform .1s; }
+  .shutter:active::after { transform: scale(.82); }
+  .stop-btn { min-height: 30px; padding: 0 14px; border-radius: 999px; border: 1px solid oklch(0.85 0.12 43.2); background: oklch(0 0 0 / 0.35); color: #f2c07a; font-weight: 600; font-size: 11px; font-family: var(--font-mono); letter-spacing: .05em; cursor: pointer; display: none; }
+  .stop-btn.show { display: inline-flex; align-items: center; gap: 7px; }
+  .batch-note { display: none; font-size: 10px; font-family: var(--font-mono); letter-spacing: .04em; color: oklch(0.72 0.02 145 / 0.7); }
+  .batch-note.show { display: block; }
+
+  /* mode dropdown (right) */
+  .mode-dd { position: relative; }
+  .mode-trigger { display: flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 12px 0 6px; border-radius: 999px; border: 1px solid oklch(1 0 0 / 0.16); background: oklch(1 0 0 / 0.08); color: #fff; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; cursor: pointer; }
+  .mode-trigger:hover { background: oklch(1 0 0 / 0.14); }
+  .mode-ico { width: 22px; height: 22px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; }
+  .mode-ico.manual { background: var(--warning); }
+  .mode-ico.batch { background: var(--info); }
+  .mode-trigger svg.chev { width: 12px; height: 12px; color: oklch(0.8 0.02 145 / 0.7); transition: transform .15s; }
+  .mode-dd.open .mode-trigger svg.chev { transform: rotate(180deg); }
+  .mode-menu { position: absolute; bottom: calc(100% + 10px); right: 0; width: 224px; display: none; flex-direction: column; gap: 4px; background: oklch(0.18 0.02 145 / 0.97); border: 1px solid oklch(1 0 0 / 0.14); border-radius: 12px; padding: 8px; box-shadow: 0 20px 40px -12px rgba(0,0,0,.6); z-index: 30; }
+  .mode-dd.open .mode-menu { display: flex; animation: fade .14s ease; }
+  .mode-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: none; border-radius: 8px; background: transparent; color: oklch(0.88 0.01 145); font-family: var(--font-sans); cursor: pointer; text-align: left; }
+  .mode-opt:hover { background: oklch(1 0 0 / 0.08); }
+  .mode-opt .m-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .mode-opt .m-txt { flex: 1; min-width: 0; }
+  .mode-opt .m-txt b { display: block; font-size: 13px; font-weight: 600; color: #fff; }
+  .mode-opt .m-txt small { display: block; font-size: 11px; color: oklch(0.72 0.02 145 / 0.75); margin-top: 1px; }
+  .mode-opt.active { background: color-mix(in srgb, var(--success) 16%, transparent); }
+  .mode-opt.active .m-txt b { color: #d9f5e4; }
+  .mode-check { color: #9ee6b8; font-weight: 700; opacity: 0; }
+  .mode-opt.active .mode-check { opacity: 1; }
+
+  /* ---- screen 2: gallery ---- */
+  .ca-tabs { display: flex; gap: 6px; padding: 12px 16px 0; flex-shrink: 0; }
+  .ca-tab { flex: 1; padding: 9px 12px; border-radius: 9px; border: none; text-align: center; font-weight: 600; font-size: 13px; color: oklch(0.72 0.02 145 / 0.7); background: transparent; cursor: pointer; font-family: var(--font-sans); }
+  .ca-tab.active { background: oklch(1 0 0 / 0.1); color: #fff; }
+  .ca-grid { flex: 1; overflow-y: auto; padding: 14px 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-content: start; }
+  .gcard { border: 1px solid oklch(1 0 0 / 0.12); border-radius: 12px; overflow: hidden; background: #1a1e1c; cursor: pointer; transition: border-color .15s; }
+  .gcard:hover { border-color: oklch(0.85 0.12 43.2); }
+  .gthumb { aspect-ratio: 3/4; background: #e8e4d9; position: relative; display: flex; align-items: center; justify-content: center; }
+  .gstatus { position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .gs-draft { background: var(--success); color: #04281a; }
+  .gs-review { background: var(--warning); color: #4a2c00; }
+  .gs-proc { background: oklch(0.85 0.01 145 / 0.9); color: #14181c; font-size: 10px; }
+  .gs-conf { background: var(--info); color: #fff; font-size: 11px; }
+  .gmeta { padding: 9px 12px; }
+  .gcid { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: #fff; }
+  .gwho { font-size: 11px; color: oklch(0.72 0.02 145 / 0.7); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ca-foot { padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid oklch(1 0 0 / 0.08); flex-shrink: 0; }
+
+  /* ---- screen 3: review ---- */
+  .rv-scroll { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+  .rv-photo { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid oklch(1 0 0 / 0.14); background: #e8e4d9; }
+  .rv-photo .inner { width: min(320px, 100%); margin: 0 auto; padding: 18px 12px; position: relative; }
+  .rv-zoom { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; z-index: 2; }
+  .zoom-btn { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.92); color: #14181c; border: none; display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  .detected-overlay { position: absolute; border: 1.5px solid var(--success); border-radius: 3px; background: color-mix(in srgb, var(--success) 8%, transparent); }
+  .detected-overlay.warn { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, transparent); }
+  .overlay-label { position: absolute; top: -17px; left: 0; font-family: var(--font-mono); font-size: 8px; letter-spacing: .06em; color: var(--success); background: rgba(0,0,0,.7); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  .detected-overlay.warn .overlay-label { color: var(--warning); }
+  .rv-meta { font-family: var(--font-mono); font-size: 10px; color: oklch(0.72 0.02 145 / 0.6); margin-top: 8px; }
+
+  .rv-card { background: #1a1e1c; border: 1px solid oklch(1 0 0 / 0.1); border-radius: 12px; padding: 14px; margin-top: 12px; }
+  .rv-card h4 { font-size: 12.5px; font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .rv-card h4 .edit { color: #9ee6b8; }
+  .rv-examinee-row { display: flex; align-items: center; gap: 12px; }
+  .rv-crop { width: 48px; height: 52px; border-radius: 8px; overflow: hidden; background: #d9d4c4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid oklch(1 0 0 / 0.14); }
+  .rv-crop .mini-sheet { width: 130%; height: auto; transform: scale(.62); transform-origin: top left; }
+  .rv-crop .mini-sheet .mrow { margin-bottom: 5px; }
+  .rv-name { font-weight: 600; font-size: 13.5px; color: #fff; }
+  .rv-sub { font-size: 10.5px; color: oklch(0.72 0.02 145 / 0.7); font-family: var(--font-mono); margin-top: 2px; }
+  .edit-link { color: #9ee6b8; font-weight: 600; font-size: 12px; cursor: pointer; background: none; border: none; font-family: var(--font-sans); }
+  .edit-link:hover { text-decoration: underline; }
+  .rv-note { font-size: 11px; color: oklch(0.72 0.02 145 / 0.6); margin-top: 10px; }
+
+  .rv-scores table { width: 100%; border-collapse: collapse; }
+  .rv-scores thead th { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; color: oklch(0.72 0.02 145 / 0.55); font-weight: 600; text-align: left; padding: 0 0 6px; background: transparent; border-bottom: 1px solid oklch(1 0 0 / 0.12); }
+  .rv-scores td { padding: 8px 0; border-bottom: 1px solid oklch(1 0 0 / 0.06); font-size: 13px; }
+  .rv-scores tr:last-child td { border-bottom: none; }
+  .rv-scores .area { font-weight: 600; color: #fff; }
+  .rv-scores .area small { display: block; font-size: 9px; color: oklch(0.72 0.02 145 / 0.6); font-family: var(--font-mono); }
+  .rv-scores .val { font-family: var(--font-mono); font-weight: 600; text-align: right; }
+  .rv-scores .conv { font-family: var(--font-mono); font-weight: 700; text-align: right; color: #9ee6b8; }
+
+  .rv-foot { display: flex; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid oklch(1 0 0 / 0.08); flex-shrink: 0; }
+  .rv-foot .btn { flex: 1; }
+  .btn-dark { background: oklch(1 0 0 / 0.08); border: 1px solid oklch(1 0 0 / 0.16); color: #fff; }
+  .btn-dark:hover { background: oklch(1 0 0 / 0.14); }
+
+  /* ---- modals (light sheets over dark app) ---- */
+  .dlg-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.55); display: none; align-items: flex-end; justify-content: center; }
+  .dlg-overlay.open { display: flex; }
+  .dlg { width: 100%; max-width: 480px; background: #fbfcf7; color: oklch(0.31 0.02 148.20); border-radius: 16px 16px 0 0; padding: 18px; box-shadow: 0 -12px 50px rgba(0,0,0,.5); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; animation: rise .2s ease; }
+  @media (min-width: 620px) { .dlg-overlay { align-items: center; padding: 24px; } .dlg { border-radius: 16px; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; }
+  .dlg-head h2 { font-size: 17px; font-weight: 600; }
+  .dlg-head .close { background: none; border: none; color: var(--muted-foreground); cursor: pointer; font-size: 16px; }
+  .dlg-body { overflow-y: auto; min-height: 0; }
+  .dlg-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-shrink: 0; }
+  .dlg-body p.body-copy { font-size: 13px; color: var(--muted-foreground); line-height: 1.6; }
+
+  .search-box { display: flex; align-items: center; gap: 8px; border: 1.5px solid oklch(0.75 0.02 77); border-radius: 10px; padding: 9px 12px; margin-bottom: 12px; }
+  .search-box svg { width: 14px; height: 14px; color: var(--muted-foreground); flex-shrink: 0; }
+  .search-box input { border: none; outline: none; background: transparent; font-size: 13px; width: 100%; font-family: var(--font-sans); color: var(--foreground); }
+  .result-list { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .result-item { padding: 10px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .result-item:last-child { border-bottom: none; }
+  .result-item:hover { background: var(--muted); }
+  .result-item .rid { color: var(--primary); font-family: var(--font-mono); font-weight: 700; font-size: 11.5px; }
+  .result-item .radio { margin-left: auto; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--input); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .result-item.selected .radio { border-color: var(--primary); }
+  .result-item.selected .radio::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+  .result-item.selected { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-foreground); }
+  .field input { border: none; border-bottom: 1.5px solid var(--input); padding: 4px 2px 7px; font-size: 13.5px; font-weight: 600; color: var(--foreground); outline: none; background: transparent; font-family: var(--font-sans); }
+  .field input:focus { border-bottom-color: var(--primary); }
+
+  .crop-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+  .crop { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #e8e4d9; }
+  .crop .crop-inner { padding: 9px 7px; transform: scale(1.5); transform-origin: top left; }
+  .crop .lbl { display: block; font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); margin-bottom: 5px; }
+  .crop .fake { font-size: 9px; color: #14181c; }
+
+  /* scores editor table */
+  .score-section + .score-section { margin-top: 18px; }
+  .score-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .score-head h3 { font-size: 13.5px; font-weight: 600; }
+  .score-head .frac { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: oklch(0.40 0.11 145); }
+  table.answers { width: 100%; border-collapse: collapse; }
+  table.answers thead th { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground); font-weight: 600; text-align: left; padding: 0 0 7px; background: transparent; border-bottom: 1px solid var(--border); }
+  table.answers td { padding: 7px 4px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); vertical-align: middle; }
+  .crop-cell { width: 66px; }
+  .crop-box { width: 60px; height: 27px; border-radius: 5px; border: 1px solid var(--border); overflow: hidden; position: relative; background: #e8e4d9; flex-shrink: 0; }
+  .crop-box .inner { display: flex; gap: 4px; align-items: center; position: absolute; inset: 0; padding: 4px 5px; transform: scale(1.25); transform-origin: left center; }
+  .crop-box .cq { font-family: var(--font-mono); font-size: 7px; background: #14181c; color: #fff; border-radius: 2px; width: 8px; height: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .crop-box .cb { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #8a8474; flex-shrink: 0; }
+  .crop-box .cb.fill { background: #1f6f6b; border-color: #1f6f6b; }
+  .detected { display: flex; align-items: center; gap: 6px; }
+  .detected .letter { font-weight: 700; font-size: 12px; color: var(--foreground); }
+  .detected .warn { color: var(--warning-foreground); display: flex; }
+  .fs-chip { font-family: var(--font-mono); font-size: 8px; letter-spacing: .05em; padding: 2px 5px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--muted-foreground) 45%, transparent); color: var(--muted-foreground); background: var(--card); cursor: pointer; }
+  .fs-chip:hover { color: var(--foreground); border-color: var(--foreground); }
+  .mark { font-weight: 700; font-family: var(--font-mono); }
+  .mark.zero { color: var(--destructive); }
+  .mark.one { color: oklch(0.40 0.11 145); }
+  .mark.dash { color: var(--muted-foreground); }
+  .editor-note { font-size: 11px; color: var(--muted-foreground); margin-top: 10px; }
+
+  /* toast */
+  .toast-region { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 110; display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%; max-width: 420px; pointer-events: none; }
+  .toast { background: #1a1e1c; border: 1px solid oklch(1 0 0 / 0.14); border-radius: 10px; padding: 11px 16px; font-size: 13px; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.5); display: flex; align-items: center; gap: 8px; animation: rise .2s ease; pointer-events: auto; }
+  .toast svg { width: 16px; height: 16px; color: #9ee6b8; }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 85; transform: translateX(-100%); transition: transform .22s ease; box-shadow: 0 0 40px rgba(0,0,0,.25); }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-backdrop.open { display: block; }
+    .hamburger { display: flex; }
+    .topbar { height: 60px; padding: 0 14px; }
+    main.scroll { padding: 18px 16px; }
+    .page-header { flex-direction: column; }
+    .page-header h1 { font-size: 24px; }
+    .actions { width: 100%; justify-content: flex-start; }
+    .field-grid { grid-template-columns: 1fr; }
+    .cam-sheet { width: 74vw; max-width: 300px; }
+    .shutter { width: 58px; height: 58px; }
+    .mode-menu { width: 208px; }
+    .ca-grid { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark">N</span>
+      <span class="brand-name">NEXIAM</span>
+    </div>
+    <nav>
+      <p class="nav-group-label">Examination</p>
+      <a class="nav-item" onclick="toggleSidebar(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Exam sessions</a>
+      <p class="nav-group-label">Scoring</p>
+      <a class="nav-item active" onclick="toggleSidebar(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Grading</a>
+      <p class="nav-group-label">Setup</p>
+      <a class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Scoring tables</a>
+    </nav>
+    <div class="user-block">
+      <div class="user-row">
+        <div class="avatar">DS</div>
+        <div class="user-meta">
+          <p class="user-name">D. Santos</p>
+          <p class="user-email">guidance.counselor@nexiam.test</p>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted-foreground)"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb" id="crumb">
+        <button class="hamburger" onclick="toggleSidebar(true)" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <a>Scoring</a>
+        <span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+        <strong>Session EX-2408-01</strong>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="notif-dot"></span></button>
+      </div>
+    </header>
+
+    <main class="scroll">
+      <!-- ============ SESSION PAGE (staff shell) ============ -->
+      <section class="page active" id="page-session">
+        <div class="page-header">
+          <div>
+            <h1>Session EX-2408-01 — Room B-204</h1>
+            <p class="desc">Aug 11, 2026 · 10:30 AM · Opened Aug 11, 2026</p>
+          </div>
+          <div class="actions">
+            <div class="card" style="padding: 8px 14px; display:flex; align-items:center; gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:var(--muted-foreground)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span class="muted" style="font-size:13px">6 of 8 scored</span>
+            </div>
+            <button class="btn btn-primary" onclick="openCapture()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>OMR capture</button>
+            <button class="btn btn-outline" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Finalize grading</button>
+          </div>
+        </div>
+
+        <div style="height:24px"></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px">
+          <div class="card" style="padding:12px 16px"><b style="font-size:22px">8</b><span style="font-size:11px; color:var(--muted-foreground); display:block; margin-top:2px">Assigned</span></div>
+          <div class="card" style="padding:12px 16px"><b style="font-size:22px">8</b><span style="font-size:11px; color:var(--muted-foreground); display:block; margin-top:2px">Present &amp; submitted</span></div>
+          <div class="card" style="padding:12px 16px"><b style="font-size:22px">0</b><span style="font-size:11px; color:var(--muted-foreground); display:block; margin-top:2px">Absent</span></div>
+          <div class="card" style="padding:12px 16px"><b style="font-size:22px">0</b><span style="font-size:11px; color:var(--muted-foreground); display:block; margin-top:2px">Present, no submission</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-pad" style="padding-bottom:16px">
+            <h2 style="font-size:17px; font-weight:600">Applicants</h2>
+            <p class="muted" style="font-size:13px; margin-top:4px">Click an applicant to input or edit aptitude area scores.</p>
+          </div>
+          <table>
+            <thead><tr><th>Reference</th><th>Name</th><th>Progress</th><th style="text-align:right">Action</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono" style="font-weight:500">A0231</td>
+                <td>Sarmiento, D.</td>
+                <td>
+                  <span class="badge badge-success">Complete</span>
+                  <span class="badge badge-outline" style="margin-left:6px">OMR</span>
+                </td>
+                <td style="text-align:right"><button class="btn btn-outline btn-sm">Edit scores</button></td>
+              </tr>
+              <tr>
+                <td class="mono" style="font-weight:500">A0232</td>
+                <td>Andrea, A.</td>
+                <td><span class="badge badge-warning">1 of 3 aptitude areas</span></td>
+                <td style="text-align:right"><button class="btn btn-outline btn-sm">Input scores</button></td>
+              </tr>
+              <tr>
+                <td class="mono" style="font-weight:500">A0233</td>
+                <td>Reyes, M.</td>
+                <td><span class="badge badge-outline">Not started</span></td>
+                <td style="text-align:right"><button class="btn btn-outline btn-sm">Input scores</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ================================================================
+     CAPTURE APP — mobile-first near-fullscreen flow
+     Screens: camera → gallery → review · modals: back-nav / examinee / scores / remove
+================================================================= -->
+<div id="captureApp">
+
+  <!-- ============ [1] CAMERA CAPTURE SCREEN ============ -->
+  <div class="ca-screen active" id="ca-camera">
+    <header class="ca-top">
+      <button class="ca-back" onclick="closeCapture()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div class="ca-title">Exam Session<small>EX-2408-01 · Room B-204</small></div>
+      <div class="ca-right"><span class="ca-count" id="captureCount">3 captured</span></div>
+    </header>
+
+    <div class="cam-stage">
+      <div class="cam-view">
+        <div class="scan-hint" id="scanHint">Align answer sheet within frame</div>
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="cam-sheet" id="camSheet">
+          <div class="sheet-head"><span class="tag">EXAM 2408 · APTITUDE 1</span><span class="logo"></span></div>
+          <div class="id-row"><div class="id-cell">A</div><div class="id-cell">0</div><div class="id-cell">2</div><div class="id-cell">3</div><div class="id-cell">1</div></div>
+          <div class="nd-row"><div class="nd-cell">S. DAVID</div><div class="nd-cell">09/25/03</div></div>
+          <div class="bubble-grid" id="liveGrid">
+            <div class="bubble-line"><span class="qn">1</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">2</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">3</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">4</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">5</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">6</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">7</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">8</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">9</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+            <div class="bubble-line"><span class="qn">10</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+          </div>
+        </div>
+        <div class="quality" id="qualityBar" style="display:none">
+          <span style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-family:var(--font-mono)" id="qualityText">Holding steady…</span>
+          <div class="bars"><i></i><i></i><i></i><i></i><i class="filled"></i><i class="filled"></i><i class="filled"></i><i class="filled"></i></div>
+        </div>
+      </div>
+
+      <!-- bottom control deck -->
+      <div class="cam-controls">
+        <div class="ctrl-left">
+          <button class="btn-gallery" onclick="caShow('gallery')" title="View other scans">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <span>Scans</span>
+          </button>
+        </div>
+
+        <div class="ctrl-center">
+          <span class="batch-note" id="batchNote">Batch running</span>
+          <button class="stop-btn" id="stopBtn" onclick="endBatch()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Stop</button>
+          <button class="shutter" id="shutter" onclick="capture()" aria-label="Capture"></button>
+        </div>
+
+        <div class="ctrl-right">
+          <div class="mode-dd" id="modeDropdown">
+            <button class="mode-trigger" onclick="toggleModeMenu()">
+              <span class="mode-ico" id="modeIco"></span>
+              <span id="modeLabel">Auto</span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="mode-menu" id="modeMenu">
+              <button class="mode-opt active" data-mode="auto" onclick="setMode('auto')">
+                <span class="m-dot" style="background:var(--success)"></span>
+                <span class="m-txt"><b>Auto</b><small>Capture → queued in background → next</small></span>
+                <span class="mode-check">✓</span>
+              </button>
+              <button class="mode-opt" data-mode="manual" onclick="setMode('manual')">
+                <span class="m-dot" style="background:var(--warning)"></span>
+                <span class="m-txt"><b>Manual</b><small>Capture → verify each sheet before saving</small></span>
+                <span class="mode-check">✓</span>
+              </button>
+              <button class="mode-opt" data-mode="batch" onclick="setMode('batch')">
+                <span class="m-dot" style="background:var(--info)"></span>
+                <span class="m-txt"><b>Batch</b><small>No capture clicks — auto-advances when steady</small></span>
+                <span class="mode-check">✓</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ [2] SCANS GALLERY / GRID ============ -->
+  <div class="ca-screen" id="ca-gallery">
+    <header class="ca-top">
+      <button class="ca-back" onclick="caBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div class="ca-title">Exam Session<small>This session's scans</small></div>
+    </header>
+
+    <div class="ca-tabs">
+      <button class="ca-tab active" data-tab="draft" onclick="setTab('draft')">Draft</button>
+      <button class="ca-tab" data-tab="all" onclick="setTab('all')">All</button>
+    </div>
+
+    <div class="ca-grid" id="gGrid"></div>
+
+    <div class="ca-foot">
+      <button class="btn btn-primary btn-block" onclick="caShow('camera')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>Capture</button>
+    </div>
+  </div>
+
+  <!-- ============ [3] SCAN REVIEW & DETAILS ============ -->
+  <div class="ca-screen" id="ca-review">
+    <header class="ca-top">
+      <button class="ca-back" onclick="openDialog('backnav')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div class="ca-title">Exam Session<small>Scan #0130</small></div>
+      <div class="ca-right">
+        <span class="badge badge-success">Draft</span>
+        <button class="icon-btn" style="color:oklch(0.8 0.02 145 / 0.8)" title="Remove scan" onclick="openDialog('remove')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+      </div>
+    </header>
+
+    <div class="rv-scroll">
+      <div class="rv-photo">
+        <div class="rv-zoom">
+          <button class="zoom-btn" onclick="toast('Zoom in — preview')">+</button>
+          <button class="zoom-btn" onclick="toast('Zoom out — preview')">−</button>
+        </div>
+        <div class="inner">
+          <div class="cam-sheet" style="width:100%; max-width:none; box-shadow:none">
+            <div class="sheet-head"><span class="tag">EXAM 2408 · APTITUDE 1</span><span class="logo"></span></div>
+            <div class="id-row">
+              <div class="id-cell" style="background:#1f6f6b; color:#fff">A</div>
+              <div class="id-cell" style="background:#1f6f6b; color:#fff">0</div>
+              <div class="id-cell" style="background:#1f6f6b; color:#fff">2</div>
+              <div class="id-cell" style="background:#1f6f6b; color:#fff">3</div>
+              <div class="id-cell" style="background:#1f6f6b; color:#fff">1</div>
+            </div>
+            <div class="nd-row"><div class="nd-cell" style="font-weight:600">S. DAVID</div><div class="nd-cell">09/25/03</div></div>
+            <div class="bubble-grid">
+              <div class="bubble-line"><span class="qn">1</span><span class="bub"></span><span class="bub"></span><span class="bub fill"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">2</span><span class="bub"></span><span class="bub fill"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">3</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">4</span><span class="bub"></span><span class="bub fill"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">5</span><span class="bub"></span><span class="bub fill"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">6</span><span class="bub"></span><span class="bub fill"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">7</span><span class="bub fill"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">8</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub fill"></span></div>
+              <div class="bubble-line"><span class="qn">9</span><span class="bub"></span><span class="bub"></span><span class="bub"></span><span class="bub"></span></div>
+              <div class="bubble-line"><span class="qn">10</span><span class="bub"></span><span class="bub"></span><span class="bub fill"></span><span class="bub"></span></div>
+            </div>
+          </div>
+          <div class="detected-overlay" style="top:15%; left:5%; width:56%; height:9%"><span class="overlay-label">applicant no · 0.98</span></div>
+          <div class="detected-overlay" style="top:26%; left:5%; width:38%; height:6%"><span class="overlay-label">name · 0.61</span></div>
+          <div class="detected-overlay warn" style="top:56%; left:8%; width:18%; height:6%"><span class="overlay-label">q3 ambiguous</span></div>
+        </div>
+      </div>
+      <p class="rv-meta">Grading.OMR.Sheet.0130 — AES-256-CBC · SHA-256 HMAC verified</p>
+
+      <div class="rv-card">
+        <h4><span>Examinee</span><button class="edit-link" onclick="openDialog('examinee')">Edit</button></h4>
+        <div class="rv-examinee-row">
+          <div class="rv-crop">
+            <div class="mini-sheet">
+              <div class="mrow"><i class="mbub fill"></i><i class="mbub"></i><i class="mbub"></i><i class="mbub"></i></div>
+              <div class="mrow"><i class="mbub"></i><i class="mbub"></i><i class="mbub"></i><i class="mbub"></i></div>
+              <div class="mrow"><i class="mbub"></i><i class="mbub fill"></i><i class="mbub"></i><i class="mbub"></i></div>
+            </div>
+          </div>
+          <div style="flex:1; min-width:0">
+            <div class="rv-name">Sarmiento, D.</div>
+            <div class="rv-sub">A0231 · applicant-no 0.98</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:oklch(0.72 0.02 145 / 0.6); flex-shrink:0"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <p class="rv-note">Cropped header snippet from the sheet photo — confirm this paper belongs to the matched applicant.</p>
+      </div>
+
+      <div class="rv-card rv-scores">
+        <h4><span>Scores</span><button class="edit-link" onclick="openDialog('scores')">Edit</button></h4>
+        <table>
+          <thead><tr><th>Area</th><th style="text-align:right">Detected</th><th style="text-align:right">Final</th></tr></thead>
+          <tbody>
+            <tr><td class="area">General Aptitude<small>GA</small></td><td class="val">20</td><td class="conv">20</td></tr>
+            <tr><td class="area">Verbal Ability<small>VA</small></td><td class="val">20</td><td class="conv">20</td></tr>
+            <tr><td class="area">Spelling Ability<small>SA</small></td><td class="val">30</td><td class="conv">30</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rv-foot">
+      <button class="btn btn-dark" onclick="toast('Re-detecting…')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Retry</button>
+      <button class="btn btn-primary" onclick="saveReview()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M20 6 9 17l-5-5"/></svg>Save</button>
+    </div>
+  </div>
+
+  <!-- ============ [6] BACK NAVIGATION MODAL — unsaved changes ============ -->
+  <div class="dlg-overlay" id="dlg-backnav">
+    <div class="dlg" style="max-width:400px">
+      <div class="dlg-head"><h2>Unsaved changes</h2><button class="close" onclick="closeDialog('backnav')">✕</button></div>
+      <div class="dlg-body">
+        <p class="body-copy">You have unsaved changes on this scan. Would you like to save as draft or discard?</p>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-ghost" onclick="discardReview()">Discard</button>
+        <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ [4] EXAMINEE SELECTION / EDIT MODAL ============ -->
+  <div class="dlg-overlay" id="dlg-examinee">
+    <div class="dlg">
+      <div class="dlg-head"><h2>Examinee</h2><button class="close" onclick="closeDialog('examinee')">✕</button></div>
+      <div class="dlg-body">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="Search by name or reference" oninput="filterRoster(this.value)">
+        </div>
+        <div class="result-list" id="rosterList">
+          <div class="result-item selected"><span class="rid">A0231</span><span>Escalante, D.</span><span class="radio"></span></div>
+          <div class="result-item"><span class="rid">A0231</span><span>Andres, A.</span><span class="radio"></span></div>
+          <div class="result-item"><span class="rid">A0232</span><span>Andrea, A.</span><span class="radio"></span></div>
+        </div>
+        <p class="muted" style="font-size:12px; margin-bottom:12px">Fields below are captured from the sheet — adjust if the scan is blurry.</p>
+        <div class="crop-strip" style="grid-template-columns:repeat(4,1fr)">
+          <div class="crop"><div class="crop-inner"><span class="lbl">Header</span><div class="fake" style="font-weight:600">S. David</div></div></div>
+          <div class="crop"><div class="crop-inner"><span class="lbl">Date</span><div class="fake" style="font-weight:600">09/25/03</div></div></div>
+          <div class="crop"><div class="crop-inner"><span class="lbl">Age</span><div class="fake" style="font-weight:600">21</div></div></div>
+          <div class="crop"><div class="crop-inner"><span class="lbl">Time</span><div class="fake" style="font-weight:600">10:30</div></div></div>
+        </div>
+        <div class="field-grid">
+          <div class="field"><label>Name</label><input value="S. David"></div>
+          <div class="field"><label>Age</label><input value="21"></div>
+          <div class="field"><label>Exam date</label><input value="09/25/2003"></div>
+          <div class="field"><label>Exam time</label><input value="10:30 AM"></div>
+        </div>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-ghost" onclick="closeDialog('examinee')">Cancel</button>
+        <button class="btn btn-primary" onclick="closeDialog('examinee'); toast('Bound to A0231 · Escalante, D.')">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ [5] SCORES DETAILED EDITOR MODAL ============ -->
+  <div class="dlg-overlay" id="dlg-scores">
+    <div class="dlg" style="max-width:520px">
+      <div class="dlg-head"><h2>Scores</h2><button class="close" onclick="closeDialog('scores')">✕</button></div>
+      <div class="dlg-body">
+        <div class="score-section">
+          <div class="score-head"><h3>Aptitude 1</h3><span class="frac">8/10</span></div>
+          <table class="answers">
+            <thead><tr><th>Scanned answer*</th><th>Detected answer</th><th>Mark</th></tr></thead>
+            <tbody>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">1</span><span class="cb"></span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">C</span><button class="fs-chip" onclick="toast('Force set answer for Q1')">FS</button></div></td><td><span class="mark zero">0</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">2</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q2')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">3</span><span class="cb"></span><span class="cb"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter" style="color:var(--warning-foreground)">⚠</span></div></td><td><span class="mark dash">—</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">4</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q4')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">5</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q5')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">6</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q6')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">7</span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">A</span><button class="fs-chip" onclick="toast('Force set answer for Q7')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">8</span><span class="cb"></span><span class="cb"></span><span class="cb"></span><span class="cb fill"></span></div></div></div></td><td><div class="detected"><span class="letter">D</span><button class="fs-chip" onclick="toast('Force set answer for Q8')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">9</span><span class="cb"></span><span class="cb"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter" style="color:var(--warning-foreground)">⚠</span></div></td><td><span class="mark dash">—</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">10</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">C</span><button class="fs-chip" onclick="toast('Force set answer for Q10')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="score-section">
+          <div class="score-head"><h3>Verbal Ability</h3><span class="frac">8/10</span></div>
+          <table class="answers">
+            <thead><tr><th>Scanned answer*</th><th>Detected answer</th><th>Mark</th></tr></thead>
+            <tbody>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">1</span><span class="cb"></span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">C</span><button class="fs-chip" onclick="toast('Force set answer for Q1')">FS</button></div></td><td><span class="mark zero">0</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">2</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q2')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">3</span><span class="cb"></span><span class="cb"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter" style="color:var(--warning-foreground)">⚠</span></div></td><td><span class="mark dash">—</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">4</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q4')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">5</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q5')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+              <tr><td><div class="crop-cell"><div class="crop-box"><div class="inner"><span class="cq">6</span><span class="cb"></span><span class="cb fill"></span><span class="cb"></span><span class="cb"></span></div></div></div></td><td><div class="detected"><span class="letter">B</span><button class="fs-chip" onclick="toast('Force set answer for Q6')">FS</button></div></td><td><span class="mark one">1</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="editor-note">*Cropped row snippet from the sheet photo. FS = force-set the detected answer.</p>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-ghost" onclick="closeDialog('scores')">Cancel</button>
+        <button class="btn btn-primary" onclick="closeDialog('scores'); toast('Item marks saved to draft')">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ REMOVE SCAN (destructive) ============ -->
+  <div class="dlg-overlay" id="dlg-remove">
+    <div class="dlg" style="max-width:400px">
+      <div class="dlg-head"><h2>Remove scan #0130?</h2><button class="close" onclick="closeDialog('remove')">✕</button></div>
+      <div class="dlg-body">
+        <p class="body-copy">This discards the scan and its encrypted photo from the session. <b>A0231 · Sarmiento, D.</b> will remain unscored — you can re-capture the sheet or score it manually.</p>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-ghost" onclick="closeDialog('remove')">Cancel</button>
+        <button class="btn btn-destructive" onclick="closeDialog('remove'); caShow('gallery'); toast('Scan removed — encrypted photo destroyed')">Remove scan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-region" id="toasts"></div>
+
+<script>
+  // ---------- Capture app ----------
+  const app = document.getElementById('captureApp');
+  const SCANS = [
+    { id: '#0133', status: 'proc', who: 'Auto capture · queued' },
+    { id: '#0132', status: 'draft', who: 'A0231 · Sarmiento, D.' },
+    { id: '#0131', status: 'draft', who: 'A0230 · Tan, J.' },
+    { id: '#0130', status: 'review', who: 'Unbound · 2 items flagged' },
+    { id: '#0129', status: 'review', who: 'Unbound · 2 items flagged' },
+    { id: '#0128', status: 'proc', who: 'Auto capture · queued' },
+    { id: '#0127', status: 'conf', who: 'A0230 · Tan, J.' },
+  ];
+  const GS_ICON = { draft: '*', review: '!', proc: '…', conf: '✓' };
+  let currentTab = 'draft';
+  let totalCaptures = 3;
+  let captureMode = 'auto';
+  let batchRunning = false;
+  let batchTimer = null;
+
+  function openCapture() { app.classList.add('open'); caShow('camera'); updateCount(); }
+  function closeCapture() { app.classList.remove('open'); endBatch(); }
+
+  function caShow(name) {
+    document.querySelectorAll('.ca-screen').forEach(s => s.classList.toggle('active', s.id === 'ca-' + name));
+  }
+  function caBack() {
+    const active = document.querySelector('.ca-screen.active');
+    if (active.id === 'ca-gallery') caShow('camera');
+    else if (active.id === 'ca-review') openDialog('backnav');
+  }
+
+  // ---------- Camera + modes ----------
+  function setMode(mode) {
+    captureMode = mode;
+    document.getElementById('modeLabel').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+    const ico = document.getElementById('modeIco');
+    ico.className = 'mode-ico' + (mode === 'manual' ? ' manual' : mode === 'batch' ? ' batch' : '');
+    document.querySelectorAll('#modeMenu .mode-opt').forEach(o => o.classList.toggle('active', o.dataset.mode === mode));
+    closeModeMenu();
+    endBatch();
+    if (mode === 'batch') startBatch();
+  }
+  function toggleModeMenu() { document.getElementById('modeDropdown').classList.toggle('open'); }
+  function closeModeMenu() { document.getElementById('modeDropdown').classList.remove('open'); }
+  document.addEventListener('click', e => {
+    if (!document.getElementById('modeDropdown').contains(e.target)) closeModeMenu();
+  });
+
+  function capture() {
+    if (captureMode === 'manual') {
+      addScan('proc');
+      caShow('review');
+      toast('Detected — verify examinee and items');
+    } else if (captureMode === 'auto') {
+      addScan('proc');
+      toast('Queued in background — capture the next sheet');
+    } else {
+      addScan('proc');
+      toast('Captured — auto-advancing');
+    }
+    fillLive();
+  }
+
+  function startBatch() {
+    batchRunning = true;
+    document.getElementById('qualityBar').style.display = 'flex';
+    document.getElementById('qualityText').textContent = 'Holding steady…';
+    document.getElementById('stopBtn').classList.add('show');
+    document.getElementById('batchNote').classList.add('show');
+    document.getElementById('scanHint').textContent = 'Batch mode — no capture click needed';
+    document.getElementById('shutter').style.opacity = '.4';
+    let i = 0;
+    batchTimer = setInterval(() => {
+      i++;
+      addScan('proc');
+      if (i >= 4) endBatch();
+    }, 2600);
+  }
+  function endBatch() {
+    batchRunning = false;
+    if (batchTimer) { clearInterval(batchTimer); batchTimer = null; }
+    document.getElementById('qualityBar').style.display = 'none';
+    document.getElementById('stopBtn').classList.remove('show');
+    document.getElementById('batchNote').classList.remove('show');
+    document.getElementById('shutter').style.opacity = '1';
+    document.getElementById('scanHint').textContent = 'Align answer sheet within frame';
+  }
+
+  function fillLive() {
+    const cells = document.querySelectorAll('#liveGrid .bub');
+    cells.forEach((c, i) => {
+      c.classList.remove('fill');
+      if (i % 3 === 0) c.classList.add('fill');
+    });
+  }
+
+  // ---------- Gallery ----------
+  function miniRows(pattern) {
+    const rows = [];
+    for (let r = 0; r < 4; r++) {
+      let b = '';
+      for (let i = 0; i < 4; i++) b += '<i class="mbub' + (pattern[(r + i) % pattern.length] ? ' fill' : '') + '"></i>';
+      rows.push('<div class="mrow">' + b + '</div>');
+    }
+    return rows.join('');
+  }
+  function renderGrid() {
+    const grid = document.getElementById('gGrid');
+    grid.innerHTML = '';
+    SCANS.forEach((s, idx) => {
+      if (currentTab === 'draft' && !['draft', 'proc'].includes(s.status)) return;
+      const card = document.createElement('div');
+      card.className = 'gcard';
+      card.innerHTML =
+        '<div class="gthumb"><div class="mini-sheet">' + miniRows(idx % 2 ? [1,0,1,0] : [0,1,0,1]) + '</div><span class="gstatus gs-' + s.status + '">' + GS_ICON[s.status] + '</span></div>' +
+        '<div class="gmeta"><div class="gcid">' + s.id + '</div><div class="gwho">' + s.who + '</div></div>';
+      card.onclick = () => { caShow('review'); toast('Opened ' + s.id + ' for review'); };
+      grid.appendChild(card);
+    });
+  }
+  function setTab(tab) { currentTab = tab; document.querySelectorAll('.ca-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab)); renderGrid(); }
+
+  function addScan(status) {
+    totalCaptures++;
+    updateCount();
+    SCANS.unshift({ id: '#' + (130 + totalCaptures), status, who: status === 'proc' ? 'Auto capture · queued' : 'draft' });
+    renderGrid();
+  }
+  function updateCount() {
+    document.getElementById('captureCount').textContent = totalCaptures + ' captured' + (batchRunning ? ' · batch running' : '');
+  }
+
+  // ---------- Review actions ----------
+  function saveReview() {
+    toast('Saved — score written with source=OMR');
+    caShow('camera');
+  }
+  function discardReview() {
+    closeDialog('backnav');
+    caShow('gallery');
+    toast('Changes discarded');
+  }
+  function saveDraft() {
+    closeDialog('backnav');
+    caShow('gallery');
+    toast('Saved as draft — review later from the gallery');
+  }
+
+  // ---------- Dialogs ----------
+  function openDialog(id) { document.getElementById('dlg-' + id).classList.add('open'); }
+  function closeDialog(id) { document.getElementById('dlg-' + id).classList.remove('open'); }
+  document.querySelectorAll('.dlg-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+  });
+  function filterRoster(q) {
+    document.querySelectorAll('#rosterList .result-item').forEach(item => {
+      item.style.display = item.textContent.toLowerCase().includes(q.toLowerCase()) ? 'flex' : 'none';
+    });
+  }
+  document.querySelectorAll('#rosterList .result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#rosterList .result-item').forEach(x => x.classList.remove('selected'));
+      item.classList.add('selected');
+    });
+  });
+
+  // ---------- Toast ----------
+  function toast(msg) {
+    const region = document.getElementById('toasts');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span>' + msg + '</span>';
+    region.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2600);
+  }
+
+  // ---------- Shell ----------
+  function toggleSidebar(open) {
+    document.getElementById('sidebar').classList.toggle('open', open);
+    document.getElementById('sidebarBackdrop').classList.toggle('open', open);
+  }
+
+  // init
+  document.getElementById('modeIco').className = 'mode-ico';
+  renderGrid();
+</script>
+</body>
+</html>

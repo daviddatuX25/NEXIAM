@@ -1,0 +1,176 @@
+{
+  "pageDimensions": [
+    2000,
+    2828
+  ],
+  "bubbleDimensions": [
+    28,
+    28
+  ],
+  "customLabels": {
+    "VERBAL": [
+      "VERBAL_Q_001..100"
+    ],
+    "QUANT": [
+      "QUANT_Q_001..100"
+    ],
+    "APPLICANT_NUMBER": [
+      "APPLICANT_NUMBER_1..10"
+    ]
+  },
+  "fieldBlocks": {
+    "ApplicantNumber": {
+      "fieldType": "QTYPE_INT",
+      "fieldLabels": [
+        "APPLICANT_NUMBER_1..10"
+      ],
+      "bubblesGap": 40,
+      "labelsGap": 42,
+      "origin": [
+        200,
+        340
+      ]
+    },
+    "VerbalPartA": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "VERBAL_Q_001..020"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        180,
+        820
+      ]
+    },
+    "VerbalPartB": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "VERBAL_Q_021..040"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        560,
+        820
+      ]
+    },
+    "VerbalPartC": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "VERBAL_Q_041..060"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        940,
+        820
+      ]
+    },
+    "VerbalPartD": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "VERBAL_Q_061..080"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        1320,
+        820
+      ]
+    },
+    "VerbalPartE": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "VERBAL_Q_081..100"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        1700,
+        820
+      ]
+    },
+    "QuantPartA": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "QUANT_Q_001..020"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        180,
+        1660
+      ]
+    },
+    "QuantPartB": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "QUANT_Q_021..040"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        560,
+        1660
+      ]
+    },
+    "QuantPartC": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "QUANT_Q_041..060"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        940,
+        1660
+      ]
+    },
+    "QuantPartD": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "QUANT_Q_061..080"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        1320,
+        1660
+      ]
+    },
+    "QuantPartE": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": [
+        "QUANT_Q_081..100"
+      ],
+      "bubblesGap": 46,
+      "labelsGap": 40,
+      "origin": [
+        1700,
+        1660
+      ]
+    }
+  },
+  "preProcessors": [
+    {
+      "name": "CropPage",
+      "options": {
+        "morphKernel": [
+          5,
+          5
+        ]
+      }
+    }
+  ]
+}

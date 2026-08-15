@@ -1,0 +1,187 @@
+{
+  "pages": [
+    {
+      "page_no": 1,
+      "pageDimensions": [
+        2060,
+        3144
+      ],
+      "fieldBlocks": {
+        "ApplicantNumber": {
+          "fieldType": "QTYPE_INT",
+          "fieldLabels": [
+            "APPLICANT_NUMBER_1..10"
+          ],
+          "bubblesGap": 60,
+          "labelsGap": 66,
+          "origin": [
+            200,
+            260
+          ]
+        },
+        "VerbalPartA": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "VERBAL_Q_001..025"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            180,
+            900
+          ]
+        },
+        "VerbalPartB": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "VERBAL_Q_026..050"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            620,
+            900
+          ]
+        },
+        "VerbalPartC": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "VERBAL_Q_051..075"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            1060,
+            900
+          ]
+        },
+        "VerbalPartD": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "VERBAL_Q_076..100"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            1500,
+            900
+          ]
+        }
+      },
+      "preProcessors": [
+        {
+          "name": "CropPage",
+          "options": {
+            "morphKernel": [
+              5,
+              5
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "page_no": 2,
+      "pageDimensions": [
+        2060,
+        3144
+      ],
+      "fieldBlocks": {
+        "ApplicantNumber": {
+          "fieldType": "QTYPE_INT",
+          "fieldLabels": [
+            "APPLICANT_NUMBER_1..10"
+          ],
+          "bubblesGap": 60,
+          "labelsGap": 66,
+          "origin": [
+            200,
+            260
+          ]
+        },
+        "QuantPartA": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "QUANT_Q_001..025"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            180,
+            900
+          ]
+        },
+        "QuantPartB": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "QUANT_Q_026..050"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            620,
+            900
+          ]
+        },
+        "QuantPartC": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "QUANT_Q_051..075"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            1060,
+            900
+          ]
+        },
+        "QuantPartD": {
+          "fieldType": "QTYPE_MCQ4",
+          "direction": "horizontal",
+          "fieldLabels": [
+            "QUANT_Q_076..100"
+          ],
+          "bubblesGap": 66,
+          "labelsGap": 80,
+          "origin": [
+            1500,
+            900
+          ]
+        }
+      },
+      "preProcessors": [
+        {
+          "name": "CropPage",
+          "options": {
+            "morphKernel": [
+              5,
+              5
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "bubbleDimensions": [
+    56,
+    56
+  ],
+  "customLabels": {
+    "VERBAL": [
+      "VERBAL_Q_001..100"
+    ],
+    "QUANT": [
+      "QUANT_Q_001..100"
+    ],
+    "APPLICANT_NUMBER": [
+      "APPLICANT_NUMBER_1..10"
+    ]
+  }
+}

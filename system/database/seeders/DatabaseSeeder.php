@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
             PrivacyPolicySeeder::class,
             IntakeGradeFieldSeeder::class,
             JourneyFixtureSeeder::class,
+            OmrDemoSeeder::class,
         ]);
 
         app(RecordAuditEvent::class)->handle('foundation.seed_applied', [

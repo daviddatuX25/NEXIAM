@@ -27,7 +27,7 @@
   }
 
   const breadcrumbs = [
-    { label: 'Exams', href: '/exams/sessions' },
+    { label: 'Exam Scheduling', href: '/exams/sessions' },
     { label: session.code ?? 'Session', href: `/exams/sessions/${session.id}` },
     { label: 'Edit' },
   ];

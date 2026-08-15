@@ -1,14 +1,44 @@
 # NEXIAM Project Context (permanent agent working rules)
 
-**Status:** ACTIVE — permanent AI/agent implementation context  
-**Entry point:** [`GREENFIELD-MASTER-REFERENCE.md`](GREENFIELD-MASTER-REFERENCE.md)  
-**Product PRD:** [`prd.md`](prd.md) (PROMOTED 2026-08-05; E2 cut-line = Tier A + REQ-VS)  
-**Active OpenSpec:** [`../openspec/changes/exam-session-scheduling/`](../openspec/changes/exam-session-scheduling/) (institutional-setup-readiness archived PASS 2026-08-06; admission-attempt-detail archived PASS; E2 parked incomplete under `openspec/changes/archive/`)  
-**Phase roadmap:** [`MASTER-DELIVERY-ROADMAP.md`](MASTER-DELIVERY-ROADMAP.md)  
-**Target code:** `system/`  
+**Status:** ACTIVE — permanent AI/agent implementation context
+**Entry point:** [`GREENFIELD-MASTER-REFERENCE.md`](GREENFIELD-MASTER-REFERENCE.md)
+**Product PRD:** [`prd.md`](prd.md) (PROMOTED 2026-08-05; E2 cut-line = Tier A + REQ-VS)
+**Active implementation OpenSpec:** `omr-scoring-capture` and its 2026-08-15 consolidation work remain owned by the OMR session. **Approved next planning package:** `2026-08-15-admission-model-program-head` — founder-reconciled Program Head/admission-support scope (D-ROLE-05/D-080/D-089–D-093), implementation **not started** and MUST NOT start until promoted as the sole active code change. Consultation/release base cut is complete; its OpenSpec is archived.
+**Nexi architecture:** [`greenfield-foundation/architecture/ai-assistant-foundation/`](greenfield-foundation/architecture/ai-assistant-foundation/) (FINAL; AD-3 pack-as-lens; AD-13 AiGateway; AD-25 knowledge archived)
+**Next:** finish/consolidate the active OMR cut, then promote `2026-08-15-admission-model-program-head` as the sole implementation change: capabilities/tables → Guidance pool + normal advised default/applicant provisional choice → consultation-embedded released-score charts/table + evidence tabs with no engine → PH metrics/tiered reuse + overlapping edge-follow-up/messages → Registrar sheet-received `enrolling` → PH terminal edge resolution where present → Registrar signed-paper final-program `enrolled` + quota variance → universal applicant QR + role-neutral action hub → seeds/HANDOFF/browser proof. Also open: result-sheet printing completion, E2 exit evidence G2–G4/H4, legacy parity ledger, and pre-existing suite-parity restoration. YuKee artifact/K-Means, deterministic/rule-based, BGE, and other real provider work remain later evidence-gated changes.
+**Phase roadmap:** [`MASTER-DELIVERY-ROADMAP.md`](MASTER-DELIVERY-ROADMAP.md)
+**Target code:** `system/`
 **Legacy evidence:** `legacy_codebase/application/` + `docs/legacy-reference/`
 
 This file is the durable reminder of *how* we work. Read it with the master reference at the start of every non-trivial task.
+
+## 0.1 Nexi skill / capability model (founder lock 2026-08-10)
+
+Non-negotiable for Assistant (and Inquiry) — also locked in active OpenSpec `nexi-exam-session-assistant/proposal.md` + `design.md`:
+
+1. **One auth** — Inertia and `/nexi/*` share the same cookie/session principal. Prompt/provider fields cannot spoof actor, session, or institution.
+2. **One core** — Controllers and Nexi unite on domain Actions/Queries (e.g. `Examination\Actions\*`). No AI-only domain write path.
+3. **Capability matrix** — Kernel registry rows wrap those Actions/Queries (deterministic wall ≈ FormRequest+Policy). Scale by adding Action + registry row, not duplicate AI endpoints.
+4. **Skill** — **not** “markdown as authority.” Skill = allowlist of capability versions + server engine/cursor (+ optional guidance digest for the model only). Off-allowlist tools are rejected even if the user holds that GF-21 cap globally.
+5. **Multi-step** — engine advances cursor after Kernel success; model only recommends among legal tools for the cursor.
+6. **Projections** — post-auth channel shaping (`http_page` / `nexi_safe` / provider), not a second rule engine.
+7. **Persistence** — Reads: no domain write (run/disclosure/usage may still be durable). Propose: persist `nexi_proposals`. Confirm→Command: domain write via the ordinary Action.
+
+**OS8 pilot:** `schedule.exam_session@1` → open/assign/publish confirm → same Actions as `/exams/sessions`. Applicant NL booking is **out of scope** (later `applicant.choose_slot`).
+
+## 0.2 Capability sync (pages ↔ seeds ↔ Nexi) — founder lock 2026-08-10
+
+One GF-21 capability matrix. Seeds (`CapabilityCatalog::roleHelperGrants`) only **grant** rows; they are not a second authz engine. Nexi Kernel rows must reuse the **same application capability keys** as the matching Inertia pages/Actions — never invent AI-only permissions.
+
+| Concept | Authority |
+|---|---|
+| Test Administrator | Capability **set** (D-016), not a Spatie role — `CapabilityCatalog::testAdministratorCapabilities()` |
+| Exam session pages + Nexi exam Assistant | Same key(s): `CapabilityCatalog::examSessionManagementCapabilities()` → today `guidance.exam.schedule` |
+| Proctor | Session **duty** (D-015), assigned by holders of `guidance.exam.proctor.assign` |
+| TA delegation | `guidance.ta.delegate` (outside TA set) grants/revokes full `testAdministratorCapabilities()` on clerk/support |
+| Role helpers (`guidance_counselor`, …) | Seed/personnel assignment only — never route middleware authority |
+
+Scale rule: new domain feature = Action + page gate + (optional) Kernel row on the **same** application capability. Do not fork a parallel “AI matrix.”
 
 ## 1. What authorizes work
 
@@ -161,6 +191,26 @@ Rules:
 - If the feature needs a mid-journey state the default seed does not provide, either extend the seeder **or** document the minimal staff clicks that produce it (and prefer extending the seeder when the state is reused).
 - Pest coverage alone is not enough — the handoff must still list human demo credentials.
 - Do not ship a “feature done” checkpoint without this section.
+
+## 3.8 Controller conventions — thin controllers (founder lock 2026-08-10)
+
+Legacy's worst smell was fat controllers with inline validation and role branching. Greenfield rule:
+
+1. **Form Requests own validation** — one request class per write shape under `app/Http/Requests/<Domain>/`; no inline `$request->validate()` in controllers.
+2. **Domain resolution in support classes** — role/office/eligibility derivation lives in domain `Support/*` classes, not the controller.
+3. **Actions own writes** — one action per write intent under `app/<Domain>/Actions/`.
+4. **Controllers delegate** — read projections + action calls only; target < ~120 lines; no business branching.
+5. **Explicit in plans** — every OpenSpec design must name the request class(es) and action(s) for each write path, so a fat controller cannot silently regrow.
+
+## 3.9 Staffing hierarchy (founder lock 2026-08-10)
+
+Office rank: **support (1) < clerk (2) < office lead (3: registrar_admin / guidance_counselor) < HR (4)**.
+
+- Office actors manage **strictly-lower** ranks in **their own office only**; peers and higher ranks are unreachable (server-enforced in every `Staffing\Actions` + `PersonnelController::edit` 403).
+- HR manages everyone (last-active-HR guard on deactivate/revoke).
+- Self-edit / self-deactivate are **profile-page** concerns, never Staff-directory actions (`/staff/profile`, read-only for now).
+- Password reset: **HR (anyone) + office leads (own office, lower rank)**. Self-service password → profile page (follow-up cut).
+- Support-staff roles are office-derived, never pickable; role reassignment of permanent helpers is HR-only.
 
 ## 4. Runtime and tooling rules
 

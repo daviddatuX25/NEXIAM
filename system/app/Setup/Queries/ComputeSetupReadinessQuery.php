@@ -29,6 +29,7 @@ final class ComputeSetupReadinessQuery
             $this->grades(),
             $this->aptitude(),
             $this->quotas(),
+            $this->omr(),
         ];
 
         $all = collect($categories)->pluck('checks')->flatten(1);
@@ -294,6 +295,62 @@ final class ComputeSetupReadinessQuery
                         : ($allCovered
                             ? "All {$activePrograms} active program(s) have quotas."
                             : "{$covered} of {$activePrograms} active program(s) have quotas."),
+                ),
+            ],
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function omr(): array
+    {
+        $activePair = \App\Models\Assessment\OmrTemplateBookletPair::query()
+            ->where('status', \App\Models\Assessment\OmrTemplateBookletPair::STATUS_ACTIVE)
+            ->exists();
+        $activeTemplate = \App\Models\Assessment\OmrAnswerSheetTemplateVersion::query()
+            ->where('status', \App\Models\Assessment\OmrAnswerSheetTemplateVersion::STATUS_ACTIVE)
+            ->exists();
+        $activeBooklet = \App\Models\Assessment\OmrQuestionBookletVersion::query()
+            ->where('status', \App\Models\Assessment\OmrQuestionBookletVersion::STATUS_ACTIVE)
+            ->exists();
+        $paper = (string) config('print.paper', 'long');
+
+        return $this->category(
+            key: 'omr',
+            label: 'OMR configuration',
+            href: '/setup/omr',
+            capability: 'assessment',
+            checks: [
+                $this->check(
+                    'An active template–booklet pair exists',
+                    $activePair,
+                    'critical',
+                    $activePair
+                        ? 'New capture batches can be opened with an approved pair.'
+                        : 'Register or author a template and booklet, then activate a pair.',
+                ),
+                $this->check(
+                    'An active answer-sheet template exists',
+                    $activeTemplate,
+                    'warning',
+                    $activeTemplate
+                        ? 'At least one template version is active.'
+                        : 'No template has been activated yet.',
+                ),
+                $this->check(
+                    'An active answer booklet exists',
+                    $activeBooklet,
+                    'warning',
+                    $activeBooklet
+                        ? 'At least one booklet version is active.'
+                        : 'No booklet has been activated yet.',
+                ),
+                $this->check(
+                    'Answer-sheet paper size configured',
+                    in_array($paper, ['long', 'legal'], true),
+                    'warning',
+                    "Printing paper is set to {$paper}.",
                 ),
             ],
         );

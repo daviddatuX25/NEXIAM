@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXIAM — Consultation & Release Business Model (AS-IS → TO-BE)</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2e; --panel2:#0f1729; --line:#22304d; --line2:#31456e;
+    --text:#e6edf7; --muted:#93a5c4; --accent:#5b8cff; --accent2:#7aa2ff;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --teal:#2dd4bf;
+    --mod:#8b5cf6; --cap:#f472b6; --build:#34d399; --gap:#f87171; --new:#fbbf24;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; line-height:1.45; padding:32px;}
+  .wrap{max-width:1240px; margin:0 auto;}
+  h1{font-size:26px; letter-spacing:.3px;}
+  h1 .dim{color:var(--muted); font-weight:400; font-size:16px; display:block; margin-top:4px;}
+  h2{font-size:19px; margin:34px 0 6px; color:var(--accent2); border-bottom:1px solid var(--line); padding-bottom:8px;}
+  h3{font-size:15px; margin:22px 0 8px; color:var(--text);}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px; max-width:900px;}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:14px 0 22px; padding:12px 14px; background:var(--panel); border:1px solid var(--line); border-radius:10px; font-size:12px;}
+  .legend .item{display:flex; align-items:center; gap:7px; color:var(--muted);}
+  .sw{width:13px; height:13px; border-radius:3px; display:inline-block;}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:14px 0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  @media(max-width:900px){ .grid2,.grid3{grid-template-columns:1fr;} }
+  .pill{display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; margin-right:6px;}
+  .pill.build{background:rgba(52,211,153,.13); color:var(--green); border:1px solid rgba(52,211,153,.35);}
+  .pill.gap{background:rgba(248,113,113,.13); color:var(--red); border:1px solid rgba(248,113,113,.35);}
+  .pill.new{background:rgba(251,191,36,.13); color:var(--amber); border:1px solid rgba(251,191,36,.35);}
+  .pill.gate{background:rgba(139,92,246,.13); color:var(--mod); border:1px solid rgba(139,92,246,.35);}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:9px 11px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.4px;}
+  td .m{color:var(--muted); font-size:12px;}
+  .ok{color:var(--green); font-weight:600;}
+  .no{color:var(--red); font-weight:600;}
+  .warn{color:var(--amber); font-weight:600;}
+  .foot{color:var(--muted); font-size:12px; margin-top:34px; border-top:1px solid var(--line); padding-top:14px;}
+  code{font-family:var(--mono); font-size:12px; background:var(--panel2); padding:2px 6px; border-radius:5px; color:var(--accent2);}
+  .note{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:13px; margin:12px 0;}
+  .note.warn{border-color:rgba(251,191,36,.4);}
+  .note.err{border-color:rgba(248,113,113,.4);}
+  svg{width:100%; height:auto; display:block; background:var(--panel2); border:1px solid var(--line); border-radius:14px; margin:14px 0;}
+  .svg-cap{font-size:12px; color:var(--muted); margin:-6px 0 18px;}
+  .mt{margin-top:16px;}
+  a{color:var(--accent2); text-decoration:none;}
+  .hl{background:rgba(91,140,255,.12); padding:0 4px; border-radius:4px; color:var(--accent2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>NEXIAM — Consultation &amp; Release Business Model
+    <span class="dim">AS-IS (what exists today) → TO-BE (F2F-default + online branch) · aligned to the real system modules (GF-18 LLD)</span>
+  </h1>
+
+  <div class="legend">
+    <span class="item"><span class="sw" style="background:var(--green)"></span> Built today</span>
+    <span class="item"><span class="sw" style="background:var(--amber)"></span> New / proposed in this design</span>
+    <span class="item"><span class="sw" style="background:var(--red)"></span> Missing gap (legacy had it)</span>
+    <span class="item"><span class="sw" style="background:var(--mod)"></span> Capability gate (GF-21)</span>
+    <span class="item"><span class="sw" style="background:var(--teal)"></span> Actor / role</span>
+    <span class="item"><span class="sw" style="background:var(--cap)"></span> Cross-aggregate projection</span>
+  </div>
+
+  <!-- 1. SYSTEM MODULE MAP -->
+  <h2>1 · Where consultation/release sits in the system</h2>
+  <p class="sub">The greenfield modular monolith (GF-18 §2/§3). Every row is a real module/aggregate in <code>app/</code>. Assessment (scoring) feeds Release; Release owns consultation + documents; Authorization gates everything; Audit underlies it all.</p>
+  <svg viewBox="0 0 1080 520" role="img" aria-label="System module map">
+    <defs>
+      <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#31456e"/></marker>
+    </defs>
+
+    <g font-family="Segoe UI" font-size="12.5">
+      <rect x="30" y="24" width="230" height="58" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="145" y="48" text-anchor="middle" font-weight="600">Admissions</text>
+      <text x="145" y="66" text-anchor="middle" fill="#93a5c4" font-size="11">Application intake · attempts · decisions</text>
+
+      <rect x="290" y="24" width="230" height="58" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="405" y="48" text-anchor="middle" font-weight="600">Examination</text>
+      <text x="405" y="66" text-anchor="middle" fill="#93a5c4" font-size="11">Scheduling · monitoring · proctor duty</text>
+
+      <rect x="550" y="24" width="230" height="58" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="665" y="48" text-anchor="middle" font-weight="600">Assessment</text>
+      <text x="665" y="66" text-anchor="middle" fill="#93a5c4" font-size="11">GradingSession · scores · OMR (review)</text>
+
+      <rect x="30" y="116" width="610" height="96" rx="12" fill="#0f1a33" stroke="#5b8cff" stroke-width="1.6"/>
+      <text x="48" y="140" font-weight="700" fill="#7aa2ff" font-size="13.5">Release &amp; Consultation  <tspan fill="#93a5c4" font-weight="400">(the focus of this model)</tspan></text>
+
+      <rect x="48" y="150" width="132" height="46" rx="7" fill="rgba(52,211,153,.08)" stroke="#34d399"/>
+      <text x="114" y="169" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">ConsultationDecision</text>
+      <text x="114" y="185" text-anchor="middle" font-size="10.5" fill="#93a5c4">decision only</text>
+
+      <rect x="196" y="150" width="132" height="46" rx="7" fill="rgba(52,211,153,.08)" stroke="#34d399"/>
+      <text x="262" y="169" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">ResultRelease</text>
+      <text x="262" y="185" text-anchor="middle" font-size="10.5" fill="#93a5c4">versioned</text>
+
+      <rect x="344" y="150" width="132" height="46" rx="7" fill="rgba(52,211,153,.08)" stroke="#34d399"/>
+      <text x="410" y="169" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">ResultDocument</text>
+      <text x="410" y="185" text-anchor="middle" font-size="10.5" fill="#93a5c4">record only</text>
+
+      <rect x="492" y="150" width="132" height="46" rx="7" fill="rgba(251,191,36,.08)" stroke="#fbbf24" stroke-dasharray="4,3"/>
+      <text x="558" y="169" text-anchor="middle" font-size="11.5" fill="#fbbf24" font-weight="600">ConsultationPlan</text>
+      <text x="558" y="185" text-anchor="middle" font-size="10.5" fill="#93a5c4">NEW aggregate</text>
+
+      <rect x="668" y="116" width="382" height="96" rx="12" fill="rgba(248,113,113,.05)" stroke="#f87171" stroke-dasharray="5,4"/>
+      <text x="684" y="140" font-weight="700" fill="#f87171" font-size="13">Missing today (ledger)</text>
+      <text x="684" y="162" font-size="11.5" fill="#e6edf7">· Batch / availability (F2F + online)</text>
+      <text x="684" y="180" font-size="11.5" fill="#e6edf7">· Assignment / reservation</text>
+      <text x="684" y="198" font-size="11.5" fill="#e6edf7">· Real document generation / printing</text>
+
+      <rect x="30" y="246" width="1020" height="150" rx="12" fill="#0f1729" stroke="#31456e"/>
+      <text x="48" y="272" font-weight="700" fill="#7aa2ff" font-size="13">Cross-cutting (bind every module)</text>
+
+      <rect x="48" y="284" width="230" height="44" rx="7" fill="#111a2e" stroke="#8b5cf6"/>
+      <text x="163" y="303" text-anchor="middle" font-size="11.5" fill="#c4b5fd" font-weight="600">Authorization</text>
+      <text x="163" y="319" text-anchor="middle" font-size="10.5" fill="#93a5c4">CapabilityAuthorizer · GF-21</text>
+
+      <rect x="296" y="284" width="230" height="44" rx="7" fill="#111a2e" stroke="#8b5cf6"/>
+      <text x="411" y="303" text-anchor="middle" font-size="11.5" fill="#c4b5fd" font-weight="600">Audit</text>
+      <text x="411" y="319" text-anchor="middle" font-size="10.5" fill="#93a5c4">RecordAuditEvent · canonical events</text>
+
+      <rect x="544" y="284" width="230" height="44" rx="7" fill="#111a2e" stroke="#8b5cf6"/>
+      <text x="659" y="303" text-anchor="middle" font-size="11.5" fill="#c4b5fd" font-weight="600">Notifications</text>
+      <text x="659" y="319" text-anchor="middle" font-size="10.5" fill="#93a5c4">Delivery outbox · after-commit</text>
+
+      <rect x="792" y="284" width="230" height="44" rx="7" fill="#111a2e" stroke="#8b5cf6"/>
+      <text x="907" y="303" text-anchor="middle" font-size="11.5" fill="#c4b5fd" font-weight="600">Applicant Portal</text>
+      <text x="907" y="319" text-anchor="middle" font-size="10.5" fill="#93a5c4">own-data scope</text>
+
+      <text x="48" y="376" font-size="11.5" fill="#93a5c4">Arrows: data / authority flows. Consultation &amp; Release is the terminal handoff of the admission-to-release pipeline.</text>
+      <line x1="265" y1="82" x2="335" y2="116" stroke="#31456e" marker-end="url(#ar)"/>
+      <line x1="520" y1="82" x2="410" y2="116" stroke="#31456e" marker-end="url(#ar)"/>
+    </g>
+  </svg>
+
+  <!-- 2. AS-IS -->
+  <h2>2 · AS-IS — what's actually built today</h2>
+  <p class="sub">Two aggregates exist (<code>ConsultationDecision</code>, <code>ResultRelease</code>) plus a document record. Everything else in the consultation workflow is <span class="no">missing</span>.</p>
+  <svg viewBox="0 0 1080 400" role="img" aria-label="AS-IS consultation release flow">
+    <defs><marker id="ar2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#31456e"/></marker></defs>
+    <g font-family="Segoe UI" font-size="12.5">
+      <text x="30" y="30" fill="#f87171" font-weight="700">What exists</text>
+      <text x="300" y="30" fill="#fbbf24" font-weight="700">What's missing</text>
+      <text x="700" y="30" fill="#34d399" font-weight="700">Outcome (works)</text>
+
+      <rect x="40" y="60" width="200" height="52" rx="8" fill="#111a2e" stroke="#34d399"/>
+      <text x="140" y="83" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">GradingSession</text>
+      <text x="140" y="100" text-anchor="middle" font-size="10.5" fill="#93a5c4">finalized scores</text>
+
+      <rect x="40" y="140" width="200" height="52" rx="8" fill="#111a2e" stroke="#34d399"/>
+      <text x="140" y="163" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">PrepareResultDocument</text>
+      <text x="140" y="180" text-anchor="middle" font-size="10.5" fill="#93a5c4">stores a record</text>
+
+      <rect x="40" y="220" width="200" height="52" rx="8" fill="#111a2e" stroke="#34d399"/>
+      <text x="140" y="243" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">ResultRelease</text>
+      <text x="140" y="260" text-anchor="middle" font-size="10.5" fill="#93a5c4">versioned · visible</text>
+
+      <rect x="40" y="300" width="200" height="52" rx="8" fill="#111a2e" stroke="#34d399"/>
+      <text x="140" y="323" text-anchor="middle" font-size="11.5" fill="#34d399" font-weight="600">ConsultationDecision</text>
+      <text x="140" y="340" text-anchor="middle" font-size="10.5" fill="#93a5c4">recorded</text>
+
+      <line x1="140" y1="112" x2="140" y2="140" stroke="#31456e" marker-end="url(#ar2)"/>
+      <line x1="140" y1="192" x2="140" y2="220" stroke="#31456e" marker-end="url(#ar2)"/>
+      <line x1="140" y1="272" x2="140" y2="300" stroke="#31456e" marker-end="url(#ar2)"/>
+
+      <rect x="300" y="60" width="250" height="52" rx="8" fill="rgba(251,191,36,.05)" stroke="#fbbf24" stroke-dasharray="4,3"/>
+      <text x="425" y="83" text-anchor="middle" font-size="11.5" fill="#fbbf24" font-weight="600">ConsultationPlan</text>
+      <text x="425" y="100" text-anchor="middle" font-size="10.5" fill="#93a5c4">F2F/online availability</text>
+
+      <rect x="300" y="140" width="250" height="52" rx="8" fill="rgba(251,191,36,.05)" stroke="#fbbf24" stroke-dasharray="4,3"/>
+      <text x="425" y="163" text-anchor="middle" font-size="11.5" fill="#fbbf24" font-weight="600">Batches (F2F) / Availability (online)</text>
+      <text x="425" y="180" text-anchor="middle" font-size="10.5" fill="#93a5c4">capacity · versioning</text>
+
+      <rect x="300" y="220" width="250" height="52" rx="8" fill="rgba(251,191,36,.05)" stroke="#fbbf24" stroke-dasharray="4,3"/>
+      <text x="425" y="243" text-anchor="middle" font-size="11.5" fill="#fbbf24" font-weight="600">Assignment / Reservation</text>
+      <text x="425" y="260" text-anchor="middle" font-size="10.5" fill="#93a5c4">staff_assigned · applicant_reserved</text>
+
+      <rect x="300" y="300" width="250" height="52" rx="8" fill="rgba(248,113,113,.05)" stroke="#f87171" stroke-dasharray="5,4"/>
+      <text x="425" y="323" text-anchor="middle" font-size="11.5" fill="#f87171" font-weight="600">Real document / print</text>
+      <text x="425" y="340" text-anchor="middle" font-size="10.5" fill="#93a5c4">slips · sheets · PDF/DOCX (legacy had it)</text>
+
+      <rect x="700" y="60" width="330" height="100" rx="10" fill="rgba(52,211,153,.06)" stroke="#34d399"/>
+      <text x="720" y="86" font-weight="600" fill="#34d399">The office can …</text>
+      <text x="720" y="108" font-size="11.5" fill="#e6edf7">· prepare a result record</text>
+      <text x="720" y="126" font-size="11.5" fill="#e6edf7">· release / unrelease (versioned)</text>
+      <text x="720" y="144" font-size="11.5" fill="#e6edf7">· record a consultation decision</text>
+
+      <rect x="700" y="180" width="330" height="100" rx="10" fill="rgba(248,113,113,.05)" stroke="#f87171" stroke-dasharray="5,4"/>
+      <text x="720" y="206" font-weight="600" fill="#f87171">The office cannot yet …</text>
+      <text x="720" y="228" font-size="11.5" fill="#e6edf7">· publish batches / office dates (F2F)</text>
+      <text x="720" y="246" font-size="11.5" fill="#e6edf7">· assign applicants to a batch</text>
+      <text x="720" y="264" font-size="11.5" fill="#e6edf7">· open online availability / let applicants reserve</text>
+      <text x="720" y="282" font-size="11.5" fill="#e6edf7">· actually generate / print result sheets or slips</text>
+    </g>
+  </svg>
+
+  <!-- 3. TO-BE -->
+  <h2>3 · TO-BE — F2F-default + online branch (GF-06 §8.1)</h2>
+  <p class="sub">The same Release module, two explicit branches. F2F (default): plan → batches → staff assignment. Online: plan → availability → applicant reservation. Both converge on the existing <span class="hl">ConsultationDecision</span> + <span class="hl">ResultRelease</span> (which gains a <code>mode</code>).</p>
+  <svg viewBox="0 0 1080 560" role="img" aria-label="TO-BE consultation branches">
+    <defs><marker id="ar3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#31456e"/></marker></defs>
+    <g font-family="Segoe UI" font-size="12">
+
+      <rect x="360" y="30" width="360" height="54" rx="10" fill="rgba(251,191,36,.10)" stroke="#fbbf24" stroke-width="1.6"/>
+      <text x="540" y="54" text-anchor="middle" font-weight="700" fill="#fbbf24">ConsultationPlan  <tspan fill="#93a5c4" font-weight="400">(cycle-scoped · mode: f2f | online | both)</tspan></text>
+      <text x="540" y="73" text-anchor="middle" fill="#93a5c4" font-size="10.5">draft → published → archived · versioned · audited</text>
+
+      <line x1="420" y1="84" x2="230" y2="120" stroke="#31456e" marker-end="url(#ar3)"/>
+      <line x1="660" y1="84" x2="850" y2="120" stroke="#31456e" marker-end="url(#ar3)"/>
+
+      <rect x="40" y="120" width="330" height="52" rx="9" fill="rgba(52,211,153,.06)" stroke="#34d399"/>
+      <text x="205" y="144" text-anchor="middle" font-weight="600" fill="#34d399">F2F branch  <tspan fill="#93a5c4" font-weight="400">· DEFAULT (GF-06 §8.1)</tspan></text>
+      <text x="205" y="161" text-anchor="middle" fill="#93a5c4" font-size="10.5">printed result sheets used during consultation</text>
+
+      <rect x="40" y="190" width="330" height="52" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="205" y="213" text-anchor="middle" font-weight="600">ConsultationBatch</text>
+      <text x="205" y="230" text-anchor="middle" fill="#93a5c4" font-size="10.5">office date · venue · capacity · scheduled→announced→completed</text>
+
+      <rect x="40" y="260" width="330" height="52" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="205" y="283" text-anchor="middle" font-weight="600">ConsultationAssignment</text>
+      <text x="205" y="300" text-anchor="middle" fill="#93a5c4" font-size="10.5">staff_assigned · one active batch per applicant</text>
+
+      <rect x="40" y="330" width="330" height="58" rx="9" fill="rgba(248,113,113,.05)" stroke="#f87171" stroke-dasharray="5,4"/>
+      <text x="205" y="353" text-anchor="middle" font-weight="600" fill="#f87171">BLOCK: result document must be ready</text>
+      <text x="205" y="372" text-anchor="middle" fill="#93a5c4" font-size="10.5">printed-prep precedes batch consultation (GF-06 §9)</text>
+
+      <rect x="710" y="120" width="330" height="52" rx="9" fill="rgba(251,191,36,.06)" stroke="#fbbf24"/>
+      <text x="875" y="144" text-anchor="middle" font-weight="600" fill="#fbbf24">Online branch  <tspan fill="#93a5c4" font-weight="400">· separate</tspan></text>
+      <text x="875" y="161" text-anchor="middle" fill="#93a5c4" font-size="10.5">office-owned availability window</text>
+
+      <rect x="710" y="190" width="330" height="52" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="875" y="213" text-anchor="middle" font-weight="600">ConsultationAvailability</text>
+      <text x="875" y="230" text-anchor="middle" fill="#93a5c4" font-size="10.5">opens_at · closes_at · capacity · FCFS</text>
+
+      <rect x="710" y="260" width="330" height="52" rx="9" fill="#111a2e" stroke="#22304d"/>
+      <text x="875" y="283" text-anchor="middle" font-weight="600">ConsultationReservation</text>
+      <text x="875" y="300" text-anchor="middle" fill="#93a5c4" font-size="10.5">applicant_reserved · idempotency · 1 slot/attempt</text>
+
+      <rect x="710" y="330" width="330" height="58" rx="9" fill="rgba(139,92,246,.06)" stroke="#8b5cf6"/>
+      <text x="875" y="353" text-anchor="middle" font-weight="600" fill="#c4b5fd">Applicant Portal</text>
+      <text x="875" y="372" text-anchor="middle" fill="#93a5c4" font-size="10.5">own-data scope · sees availability + own reservation</text>
+
+      <line x1="205" y1="388" x2="360" y2="430" stroke="#31456e" marker-end="url(#ar3)"/>
+      <line x1="875" y1="388" x2="720" y2="430" stroke="#31456e" marker-end="url(#ar3)"/>
+
+      <rect x="300" y="430" width="480" height="58" rx="10" fill="rgba(52,211,153,.08)" stroke="#34d399"/>
+      <text x="540" y="454" text-anchor="middle" font-weight="700" fill="#34d399">ConsultationDecision  ·  ResultRelease</text>
+      <text x="540" y="474" text-anchor="middle" fill="#93a5c4" font-size="10.5">terminal outcome · release carries mode (f2f/online) · neither overwrites consultation history</text>
+
+      <rect x="40" y="500" width="1000" height="44" rx="9" fill="#0f1729" stroke="#31456e"/>
+      <text x="540" y="527" text-anchor="middle" font-size="11.5" fill="#93a5c4">Shared spine: versioned state · capacity/concurrency · cancellation = status transition (no delete) · audit per transition · TA suggestions ≠ applicant selections (immutable separation)</text>
+    </g>
+  </svg>
+
+  <!-- 4. LEGACY CROSSWALK -->
+  <h2>4 · Legacy crosswalk — what legacy had, and the target rule</h2>
+  <table>
+    <tr><th>Legacy surface</th><th>Legacy shape</th><th>Disposition</th><th>Greenfield rule (GF-18 / 02-catalog)</th><th>Status</th></tr>
+    <tr>
+      <td>Consultation summary</td>
+      <td>single per-applicant row: status pending/draft/released, recommended course, comments, released_at</td>
+      <td>REWRITE</td>
+      <td>Split into <code>ConsultationPlan</code> / <code>ConsultationBatch</code> / <code>ConsultationAssignment</code> / <code>ConsultationDecision</code></td>
+      <td class="warn">Plan missing · decision built</td>
+    </tr>
+    <tr>
+      <td>Result release</td>
+      <td><code>summaries.release / unrelease</code>, bulk-release, release-all, by-applicant</td>
+      <td>REWRITE</td>
+      <td>Versioned <code>ResultRelease</code> with <code>mode</code>; explicit release/unrelease</td>
+      <td class="ok">Built (mode pending)</td>
+    </tr>
+    <tr>
+      <td>Result sheet templates</td>
+      <td>result-templates preview/validate/activate/deactivate</td>
+      <td>PRESERVE + REWRITE trust boundary</td>
+      <td>Versioned templates, typed placeholders, checksum, private artifacts</td>
+      <td class="no">Missing</td>
+    </tr>
+    <tr>
+      <td>Result sheet / admission slip print</td>
+      <td><code>result-sheet</code>, <code>result-sheet-pdf</code>, <code>bulk-*</code>, <code>mark-printed</code></td>
+      <td>PRESERVE behavior + REWRITE</td>
+      <td>GeneratedDocument aggregate: owner, template/version, checksum, print/distribution evidence</td>
+      <td class="no">Missing (BR-019: slip not required for answer-sheet identity)</td>
+    </tr>
+  </table>
+
+  <!-- 5. DECISIONS -->
+  <h2>5 · Open decisions (need founder disposition)</h2>
+  <div class="grid3">
+    <div class="card">
+      <span class="pill new">D1</span><strong>Build sequence</strong>
+      <p class="mt" style="color:var(--muted); font-size:13px">F2F first (the default), online branch second?</p>
+      <p style="font-size:12px; margin-top:8px">Recommended: <span class="ok">F2F-first</span> — matches GF-06 "F2F is the default mode" and de-risks the online reservation concurrency.</p>
+    </div>
+    <div class="card">
+      <span class="pill gate">D2</span><strong>Capability split</strong>
+      <p class="mt" style="color:var(--muted); font-size:13px">New <code>GUIDANCE_CONSULTATION_PLAN</code> for publish/assign, keep <code>GUIDANCE_CONSULTATION_DECIDE</code> for the final decision?</p>
+      <p style="font-size:12px; margin-top:8px">Recommended: <span class="ok">yes</span> — separates "runs the consultation office" from "records the outcome", same philosophy as the scheduling/monitoring split.</p>
+    </div>
+    <div class="card">
+      <span class="pill build">D3</span><strong>Release interlock</strong>
+      <p class="mt" style="color:var(--muted); font-size:13px">Add <code>ResultRelease.mode</code> (f2f/online) in this change, or defer?</p>
+      <p style="font-size:12px; margin-top:8px">Recommended: <span class="ok">in this change</span> — the two release branches are only distinguishable if release records carry the mode.</p>
+    </div>
+  </div>
+
+  <!-- 6. GAP LEDGER -->
+  <h2>6 · Full restoration ledger (legacy full-feature set vs greenfield)</h2>
+  <table>
+    <tr><th>Capability</th><th>Greenfield today</th><th>Gap</th></tr>
+    <tr><td><strong>Document generation / printing</strong></td><td class="warn">ResultDocument record only</td><td class="no">Slips, result sheets, templates, PDF/DOCX, bulk print — the biggest fully-missing pillar</td></tr>
+    <tr><td><strong>Consultation plan/availability</strong></td><td class="warn">Decision only</td><td class="no">Plan aggregate, batches, availability, assignment/reservation — this design</td></tr>
+    <tr><td><strong>Reports &amp; dashboards</strong></td><td class="ok">—</td><td class="warn">Roadmap E4 conditional (FR-055)</td></tr>
+    <tr><td><strong>Audit &amp; protected views</strong></td><td class="ok">RecordAuditEvent exists</td><td class="warn">No audit UI / checkpoint surface</td></tr>
+    <tr><td><strong>Bulk operations</strong></td><td class="warn">single-record only</td><td class="warn">bulk attendance/submission/release</td></tr>
+    <tr><td><strong>Settings / logs</strong></td><td class="ok">setup hub</td><td class="warn">institution/settings/logs surface</td></tr>
+    <tr><td><strong>Score import</strong></td><td class="warn">OMR review only</td><td class="warn">staged score import (PRD allows minimal)</td></tr>
+    <tr><td><strong>Google SSO</strong></td><td class="ok">email/password</td><td class="warn">legacy had it</td></tr>
+  </table>
+
+  <div class="note err">
+    <strong>Ground rule from GF-06 §8.1 / LLD §3.6:</strong> "F2F and online consultation are branches of one release contract, not one ambiguous state." The new <code>ConsultationPlan</code> aggregate must NOT become a single status enum — it owns availability; <code>ConsultationDecision</code> (outcome) and <code>ResultRelease</code> (visibility) stay separate and are never overwritten by a reservation/assignment.
+  </div>
+
+  <div class="foot">
+    Built from the actual system: modules per <code>docs/greenfield-foundation/18-module-and-domain-low-level-design.md</code> §2/§3; consultation/release contract per <code>06-workflows-and-state-transitions.md</code> §8.1/§9; legacy surface per <code>docs/legacy-reference/02-feature-replication-catalog.md</code> + legacy <code>ConsultationSummary</code> model &amp; migrations. Open the design at <code>openspec/changes/2026-08-12-consultation-plan-aggregate/</code>.
+  </div>
+
+</div>
+</body>
+</html>

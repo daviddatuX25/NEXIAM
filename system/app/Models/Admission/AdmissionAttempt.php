@@ -2,6 +2,11 @@
 
 namespace App\Models\Admission;
 
+use App\Models\Consultation\ConsultationAssignment;
+use App\Models\Examination\ExamAssignment;
+use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\PrivacyPolicy;
+use App\Models\Release\ResultDocument;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -72,19 +77,19 @@ class AdmissionAttempt extends Model
     }
 
     /**
-     * @return BelongsTo<\App\Models\Foundation\AcademicCycle, $this>
+     * @return BelongsTo<AcademicCycle, $this>
      */
     public function academicCycle(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Foundation\AcademicCycle::class);
+        return $this->belongsTo(AcademicCycle::class);
     }
 
     /**
-     * @return BelongsTo<\App\Models\Foundation\PrivacyPolicy, $this>
+     * @return BelongsTo<PrivacyPolicy, $this>
      */
     public function privacyPolicy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Foundation\PrivacyPolicy::class);
+        return $this->belongsTo(PrivacyPolicy::class);
     }
 
     /**
@@ -96,11 +101,27 @@ class AdmissionAttempt extends Model
     }
 
     /**
-     * @return HasMany<\App\Models\Examination\ExamAssignment, $this>
+     * @return HasMany<ExamAssignment, $this>
      */
     public function examAssignments(): HasMany
     {
-        return $this->hasMany(\App\Models\Examination\ExamAssignment::class);
+        return $this->hasMany(ExamAssignment::class);
+    }
+
+    /**
+     * @return HasMany<ResultDocument, $this>
+     */
+    public function resultDocuments(): HasMany
+    {
+        return $this->hasMany(ResultDocument::class);
+    }
+
+    /**
+     * @return HasMany<ConsultationAssignment, $this>
+     */
+    public function consultationAssignments(): HasMany
+    {
+        return $this->hasMany(ConsultationAssignment::class);
     }
 
     /**

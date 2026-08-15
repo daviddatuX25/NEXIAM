@@ -77,6 +77,7 @@
           <Table.Head>Code</Table.Head>
           <Table.Head>Name</Table.Head>
           <Table.Head>Version</Table.Head>
+          <Table.Head>Scoring</Table.Head>
           <Table.Head>Status</Table.Head>
           <Table.Head class="text-right">Action</Table.Head>
         </Table.Row>
@@ -88,14 +89,24 @@
             <Table.Cell>{a.name}</Table.Cell>
             <Table.Cell class="font-mono text-xs">{a.version}</Table.Cell>
             <Table.Cell>
+              <Badge variant="outline">
+                {a.max_items !== null ? `${a.max_items} · ${a.conversion_rows_count} row${a.conversion_rows_count === 1 ? '' : 's'}` : 'No table'}
+              </Badge>
+            </Table.Cell>
+            <Table.Cell>
               <Badge variant={a.is_active ? 'default' : 'secondary'}
                 >{a.is_active ? 'Active' : 'Inactive'}</Badge
               >
             </Table.Cell>
             <Table.Cell class="text-right">
-              <Button size="sm" variant="outline" onclick={() => toggleActive(a)}>
-                {a.is_active ? 'Deactivate' : 'Activate'}
-              </Button>
+              <span class="inline-flex gap-2">
+                <Link href={`/setup/aptitude/${a.id}/scoring`}>
+                  <Button size="sm" variant="outline">Scoring</Button>
+                </Link>
+                <Button size="sm" variant="outline" onclick={() => toggleActive(a)}>
+                  {a.is_active ? 'Deactivate' : 'Activate'}
+                </Button>
+              </span>
             </Table.Cell>
           </Table.Row>
         {/each}

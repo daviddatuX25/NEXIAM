@@ -2,51 +2,53 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Staff\StoreStaffAccountRequest;
+use App\Http\Requests\Staff\UpdateStaffAccountRequest;
 use App\Models\User;
 use App\Staffing\Actions\ActivateStaffAccount;
 use App\Staffing\Actions\CreateStaffAccount;
 use App\Staffing\Actions\DeactivateStaffAccount;
 use App\Staffing\Actions\SyncStaffRoles;
 use App\Staffing\Actions\UpdateStaffAssignment;
+use App\Staffing\Support\EligibleTaRecipients;
 use App\Staffing\Support\StaffRoleCeiling;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 
+/**
+ * Thin controller: read projections + action delegation.
+ * Validation lives in Store/UpdateStaffAccountRequest; role/office resolution
+ * lives in StaffRoleCeiling; domain writes in Staffing\Actions.
+ */
 class PersonnelController extends Controller
 {
-    public function index(Request $request, StaffRoleCeiling $ceiling): Response
+    public function index(Request $request, StaffRoleCeiling $ceiling, EligibleTaRecipients $ta, CapabilityAuthorizer $authorizer): Response
     {
         $actor = $request->user();
-        abort_unless($actor !== null && $ceiling->canManagePersonnel($actor), 403);
+        abort_unless($actor !== null, 403);
 
-        $query = User::query()
+        $users = User::query()
             ->whereHas('staffProfile')
-            ->with(['roles:id,name', 'staffProfile']);
-
-        if (! $ceiling->isFullHr($actor)) {
-            $query->whereHas('staffProfile', fn ($q) => $q->where('office', $actor->actorScope()->office));
-        }
-
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
+            ->with(['roles:id,name', 'staffProfile'])
+            ->when(! $ceiling->isFullHr($actor), fn ($q) => $q->whereHas(
+                'staffProfile',
+                fn ($q) => $q->where('office', $actor->actorScope()->office)
+            ))
+            ->when($request->input('search'), fn ($q, $search) => $q->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+            }))
+            ->when($request->input('role'), fn ($q, $role) => $q->whereHas('roles', fn ($q) => $q->where('name', $role)))
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
 
-        if ($role = $request->input('role')) {
-            $query->whereHas('roles', fn ($q) => $q->where('name', $role));
-        }
-
-        $users = $query->orderBy('name')->paginate(15)->withQueryString();
-
-        $assignable = $ceiling->assignableRoleHelpers($actor);
         $display = CapabilityCatalog::personnelRoleDisplayNames();
 
         return Inertia::render('Staff/Personnel/Index', [
@@ -61,13 +63,19 @@ class PersonnelController extends Controller
                     'name' => $r->name,
                     'display_name' => $display[$r->name] ?? $r->name,
                 ])->values(),
+                'ta_status' => $ta->taStatus($user),
+                'can_delegate_ta' => $ta->canDelegate($actor, $user),
+                'can_manage_user' => $ceiling->canManageUser($actor, $user),
+                'is_self' => $user->id === $actor->id,
             ]),
-            'roles' => collect($assignable)->map(fn (string $name) => [
+            'roles' => collect($ceiling->assignableRoleHelpers($actor))->map(fn (string $name) => [
                 'name' => $name,
                 'display_name' => $display[$name] ?? $name,
             ])->values(),
             'filters' => $request->only(['search', 'role']),
             'can_full_hr' => $ceiling->isFullHr($actor),
+            'can_manage_personnel' => $ceiling->canManagePersonnel($actor),
+            'can_delegate_ta' => $authorizer->allows($actor, CapabilityCatalog::GUIDANCE_TA_DELEGATE),
         ]);
     }
 
@@ -76,49 +84,47 @@ class PersonnelController extends Controller
         $actor = $request->user();
         abort_unless($actor !== null && $ceiling->canManagePersonnel($actor), 403);
 
-        $assignable = $ceiling->assignableRoleHelpers($actor);
+        $isHr = $ceiling->isFullHr($actor);
+        $office = (string) ($actor->actorScope()->office ?? 'hr');
         $display = CapabilityCatalog::personnelRoleDisplayNames();
+        $supportRole = StaffRoleCeiling::supportRoleForOffice($office);
 
         return Inertia::render('Staff/Personnel/Create', [
             'page_state' => 'ready',
-            'roles' => collect($assignable)->map(fn (string $name) => [
+            'roles' => collect($isHr ? $ceiling->permanentRoleHelpers() : [])->map(fn (string $name) => [
                 'name' => $name,
                 'display_name' => $display[$name] ?? $name,
             ])->values(),
-            'can_full_hr' => $ceiling->isFullHr($actor),
-            'default_office' => $actor->actorScope()->office ?? 'hr',
+            'can_full_hr' => $isHr,
+            'default_office' => $office,
+            'support_role' => $supportRole === null ? null : [
+                'name' => $supportRole,
+                'display_name' => $display[$supportRole] ?? $supportRole,
+            ],
             'institution_id' => $actor->actorScope()->institutionId,
         ]);
     }
 
-    public function store(Request $request, CreateStaffAccount $create, StaffRoleCeiling $ceiling): RedirectResponse
+    public function store(StoreStaffAccountRequest $request, CreateStaffAccount $create, StaffRoleCeiling $ceiling): RedirectResponse
     {
         $actor = $request->user();
-        abort_unless($actor !== null, 403);
+        $office = $ceiling->resolveCreateOffice($actor, $request->input('office'));
+        $roles = $ceiling->resolveCreateRoles($actor, $request->validated(), $office);
 
-        $assignable = $ceiling->assignableRoleHelpers($actor);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::in($assignable)],
-            'office' => ['required', 'string', 'max:64'],
-            'program_codes' => ['sometimes', 'array'],
-            'program_codes.*' => ['string', 'max:32'],
-        ]);
+        if ($roles === []) {
+            return back()->withErrors(['roles' => 'A valid role helper is required for this office.']);
+        }
 
         try {
             $create->handle(
                 $actor,
-                $validated['name'],
-                $validated['email'],
-                $validated['password'],
-                $validated['roles'],
-                $validated['office'],
+                $request->input('name'),
+                $request->input('email'),
+                $request->input('password'),
+                $roles,
+                $office,
                 (int) ($actor->actorScope()->institutionId ?? 0),
-                $validated['program_codes'] ?? [],
+                $request->input('program_codes', []),
                 $actor->actorScope()->activeCycleCode,
             );
         } catch (RuntimeException $e) {
@@ -134,13 +140,15 @@ class PersonnelController extends Controller
         abort_unless($actor !== null && $ceiling->canManagePersonnel($actor), 403);
         abort_unless($user->staffProfile !== null, 404);
 
-        if (! $ceiling->isFullHr($actor) && $user->staffProfile->office !== $actor->actorScope()->office) {
+        if (! $ceiling->canManageUser($actor, $user)) {
             abort(403);
         }
 
+        $isHr = $ceiling->isFullHr($actor);
         $user->load(['roles:id,name', 'staffProfile']);
-        $assignable = $ceiling->assignableRoleHelpers($actor);
         $display = CapabilityCatalog::personnelRoleDisplayNames();
+        $currentRoles = $user->roles->pluck('name')->values()->all();
+        $isSupport = collect($currentRoles)->contains(fn (string $r) => $ceiling->isSupportRole($r));
 
         return Inertia::render('Staff/Personnel/Edit', [
             'page_state' => 'ready',
@@ -151,50 +159,42 @@ class PersonnelController extends Controller
                 'status' => $user->staffProfile->status,
                 'office' => $user->staffProfile->office,
                 'program_codes' => $user->staffProfile->program_codes ?? [],
-                'roles' => $user->roles->pluck('name')->values(),
+                'roles' => $currentRoles,
             ],
-            'roles' => collect($assignable)->map(fn (string $name) => [
+            'roles' => collect($isHr && ! $isSupport ? $ceiling->permanentRoleHelpers() : [])->map(fn (string $name) => [
                 'name' => $name,
                 'display_name' => $display[$name] ?? $name,
             ])->values(),
-            'can_full_hr' => $ceiling->isFullHr($actor),
+            'can_full_hr' => $isHr,
+            'is_support' => $isSupport,
+            'can_reset_password' => $ceiling->canResetPassword($actor, $user),
         ]);
     }
 
     public function update(
-        Request $request,
+        UpdateStaffAccountRequest $request,
         User $user,
         UpdateStaffAssignment $update,
         SyncStaffRoles $syncRoles,
         StaffRoleCeiling $ceiling,
     ): RedirectResponse {
         $actor = $request->user();
-        abort_unless($actor !== null, 403);
-
-        $assignable = $ceiling->assignableRoleHelpers($actor);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'confirmed', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::in($assignable)],
-            'office' => ['required', 'string', 'max:64'],
-            'program_codes' => ['sometimes', 'array'],
-            'program_codes.*' => ['string', 'max:32'],
-        ]);
+        $office = $ceiling->resolveUpdateOffice($actor, $request->input('office'), $user->staffProfile?->office);
+        [$roles, $rolesChanged] = $ceiling->resolveUpdateRoles($actor, $user, $request->validated());
 
         try {
             $update->handle(
                 $actor,
                 $user,
-                $validated['name'],
-                $validated['email'],
-                $validated['password'] ?? null,
-                $validated['office'],
-                $validated['program_codes'] ?? null,
+                $request->input('name'),
+                $request->input('email'),
+                $request->input('password'),
+                $office,
+                $request->input('program_codes'),
             );
-            $syncRoles->handle($actor, $user->fresh(), $validated['roles']);
+            if ($rolesChanged) {
+                $syncRoles->handle($actor, $user->fresh(), $roles);
+            }
         } catch (RuntimeException $e) {
             return back()->withErrors(['roles' => $e->getMessage()]);
         }

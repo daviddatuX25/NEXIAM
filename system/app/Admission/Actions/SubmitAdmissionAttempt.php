@@ -8,16 +8,14 @@ use App\Admission\Support\ApplicantAccessKey;
 use App\Admission\Support\NormalizedIdentityKey;
 use App\Admission\Support\ReferenceCodeGenerator;
 use App\Foundation\Actions\RecordAuditEvent;
-use App\Jobs\Release\DispatchNotificationOutboxEntry;
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\Admission\AdmissionAttemptGradeValue;
 use App\Models\Admission\ApplicantIdentity;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\Institution;
 use App\Models\Foundation\IntakeGradeField;
 use App\Models\Foundation\PrivacyPolicy;
-use App\Models\Admission\AdmissionAttemptGradeValue;
-use App\Models\Release\NotificationOutbox;
 use Illuminate\Support\Facades\DB;
 
 class SubmitAdmissionAttempt
@@ -51,8 +49,6 @@ class SubmitAdmissionAttempt
             $intake->middleName,
         );
 
-        $outboxId = null;
-
         $result = DB::transaction(function () use (
             $institution,
             $cycle,
@@ -60,7 +56,6 @@ class SubmitAdmissionAttempt
             $intake,
             $normalizedKey,
             $actor,
-            &$outboxId,
         ): array {
             $identity = ApplicantIdentity::query()->firstOrCreate(
                 [
@@ -146,33 +141,11 @@ class SubmitAdmissionAttempt
                 'submit-'.$attempt->id,
             );
 
-            $outbox = NotificationOutbox::query()->create([
-                'source_type' => AdmissionAttempt::class,
-                'source_id' => $attempt->id,
-                'recipient_type' => 'email',
-                'recipient_id' => 0,
-                'channel' => 'mail',
-                'payload' => [
-                    'template' => 'admission.submitted',
-                    'email' => $intake->contactEmail,
-                    'reference_code' => $attempt->reference_code,
-                    'access_key' => $token,
-                ],
-                'status' => NotificationOutbox::STATUS_PENDING,
-                'idempotency_key' => 'notify-submit-'.$attempt->id,
-            ]);
-
-            $outboxId = $outbox->id;
-
             return [
                 'attempt' => $attempt->fresh(),
                 'access_token' => $token,
             ];
         });
-
-        if ($outboxId !== null) {
-            DispatchNotificationOutboxEntry::dispatchSync($outboxId);
-        }
 
         return $result;
     }

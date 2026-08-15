@@ -102,11 +102,11 @@ If Super Admin is retained:
 - Proctor access requires a current ExamSession assignment; it does not require or grant a permanent Proctor role.
 - Test Administrator is an audited capability overlay held by an authorized Guidance Counselor, Guidance Clerk, or Guidance Support Staff account; it is not a generic office role.
 - Registrar Support Staff is not Registrar Clerk-equivalent: it may accept/dismiss within explicit Registrar delegation and view statuses, but cannot use institutional/reference/setup pages.
-- Program Head access is program-scoped and read-only by default.
+- Program Head access is assigned-program and read-only by default; only D-087/D-080/D-089/D-092 permit own-quota write, tiered protected view, direct pre-enrolling decline, existing edge-follow-up resolution through enrolling, and bounded messaging. Registrar acceptance, scores/releases, paper-final-program changes, raw artifacts, and cross-program data remain denied.
 - Super Admin audit visibility does not imply routine authority to change scores, counseling decisions, admissions, or releases.
 - Every permission grant/revoke, duty assignment/revoke, denied protected action, and break-glass use produces audit evidence.
-- Every protected applicant-record, result-sheet, converted-score, consultation-history, or program-projection view records the actor, target applicant/aggregate, scope, timestamp, purpose/category, and outcome; a future applicant-facing access-history view may expose approved privacy-safe entries without weakening the underlying audit record.
-- Every accepted/dismissed application, application-window change/late override, slot-reservation open/close/finalize, manual assignment, direct-assessment start, exam publication, force-open/close, OMR identity/mark correction, offline replay/conflict resolution, assistant task proposal/confirmation/result, and audit-query/export emits attributable evidence.
+- Every protected applicant-record, result-sheet, converted-score, consultation-history, or program-projection view records the actor, target applicant/aggregate, scope, relationship basis, timestamp, purpose/category, correlation, and outcome. D-092 requires applicant-visible access history for protected PH record opens plus a user-facing notice deduplicated per PH/program/24h; deduplication never removes audit evidence.
+- Every accepted/dismissed application, application-window change/late override, slot-reservation open/close/finalize, manual assignment, direct-assessment start, exam publication, force-open/close, OMR identity/mark correction, offline replay/conflict resolution, Guidance pool/assisted default, applicant program selection/transfer, quota change, PH follow-up/decline, bounded case message, enrollment stamp/reversal, assistant proposal/confirmation/result, and audit-query/export emits attributable evidence.
 - Frontend hiding is never an authorization control.
 
 ## 5. Privacy and data-handling contract

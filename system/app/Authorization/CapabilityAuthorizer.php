@@ -52,6 +52,23 @@ class CapabilityAuthorizer
     }
 
     /**
+     * True if any listed capability is allowed (page/Kernel shared lists).
+     *
+     * @param  list<string>  $capabilities
+     * @param  array<string, mixed>  $scope
+     */
+    public function allowsAny(?Authenticatable $actor, array $capabilities, array $scope = []): bool
+    {
+        foreach ($capabilities as $capability) {
+            if ($this->allows($actor, $capability, $scope)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $scope
      */
     private function scopeAllows(ActorScope $actorScope, array $scope): bool

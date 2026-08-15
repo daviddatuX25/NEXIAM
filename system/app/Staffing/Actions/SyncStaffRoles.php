@@ -38,8 +38,8 @@ class SyncStaffRoles
             throw new RuntimeException('Target is not a staff account.');
         }
 
-        if (! $this->ceiling->isFullHr($actor) && $target->staffProfile->office !== $actor->actorScope()->office) {
-            throw new RuntimeException('Cannot sync roles outside actor office.');
+        if (! $this->ceiling->canManageUser($actor, $target)) {
+            throw new RuntimeException('Cannot sync roles for staff of equal/higher rank or outside actor office.');
         }
 
         if ($target->id === $actor->id && $target->hasRole('hr_administrator') && ! in_array('hr_administrator', $roles, true)) {

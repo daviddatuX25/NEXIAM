@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Applicant;
 
 use App\Admission\Support\ApplicantScope;
 use App\Examination\Actions\ReserveExamSlot;
+use App\Examination\Queries\ApplicantSlotCalendar;
 use App\Http\Controllers\Controller;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Examination\ExamAssignment;
@@ -16,6 +17,10 @@ use RuntimeException;
 
 class ApplicantScheduleController extends Controller
 {
+    public function __construct(private readonly ApplicantSlotCalendar $calendar)
+    {
+    }
+
     public function show(Request $request): Response
     {
         $user = $request->user();
@@ -96,13 +101,7 @@ class ApplicantScheduleController extends Controller
             );
         }
 
-        $sessions = ExamSession::query()
-            ->with('room:id,code,name,capacity')
-            ->openForReservation()
-            ->where('academic_cycle_id', $attempt->academic_cycle_id)
-            ->whereNotIn('status', [ExamSession::STATUS_CANCELLED, ExamSession::STATUS_COMPLETED])
-            ->orderBy('starts_at')
-            ->get();
+        $sessions = $this->calendar->openSlots($attempt);
 
         if ($sessions->isEmpty()) {
             return $this->renderSchedule(
@@ -113,31 +112,7 @@ class ApplicantScheduleController extends Controller
             );
         }
 
-        $calendarDays = $sessions
-            ->groupBy(fn (ExamSession $session) => $session->starts_at?->toDateString() ?? 'unknown')
-            ->map(function ($daySessions, string $date) {
-                return [
-                    'date' => $date,
-                    'slots' => $daySessions->map(function (ExamSession $session) {
-                        $assigned = ExamAssignment::query()->active()->where('exam_session_id', $session->id)->count();
-                        $capacity = (int) ($session->room?->capacity ?? 0);
-                        $remaining = max(0, $capacity - $assigned);
-
-                        return [
-                            'id' => $session->id,
-                            'code' => $session->code,
-                            'start_time' => $session->starts_at?->format('H:i'),
-                            'end_time' => $session->effective_end_at?->format('H:i'),
-                            'room' => $session->room?->name ?: $session->room?->code,
-                            'capacity' => $capacity,
-                            'remaining' => $remaining,
-                            'full' => $remaining < 1,
-                        ];
-                    })->values()->all(),
-                ];
-            })
-            ->values()
-            ->all();
+        $calendarDays = $this->calendar->calendarDays($attempt);
 
         return $this->renderSchedule(
             pageState: 'calendar_open',

@@ -71,16 +71,16 @@
     return end ? `${session.date} · ${start}–${end}` : `${session.date} · ${start}`;
   }
 
-  const breadcrumbs = [{ label: 'Exams' }];
+  const breadcrumbs = [{ label: 'Exam Scheduling' }];
 </script>
 
-<svelte:head><title>Exam sessions</title></svelte:head>
+<svelte:head><title>Exam scheduling</title></svelte:head>
 
 <StaffLayout {breadcrumbs}>
   <div class="min-w-0 space-y-6 p-4 sm:p-6">
     <PageHeaderBar
-      title="Exam sessions"
-      description="View and manage exam sessions by date and status. Create and edit on separate pages."
+      title="Exam scheduling"
+      description="Plan exam sessions: set room and date, assign applicants, and publish when ready. Conduct moves to Exam Monitoring."
     >
       {#snippet actions()}
         <div class="flex flex-wrap gap-2">

@@ -218,7 +218,7 @@ The connected slice must prove at minimum:
 - Registrar Support Staff versus Registrar Clerk setup-page denial;
 - Test Administrator capability versus ordinary Guidance access;
 - Proctor assignment and revocation;
-- Program Head program-scope and read-only behavior;
+- Program Head assigned-program scope, tiered summary/protected-record boundary, cross-program denial, and bounded D-080/D-087/D-089/D-092 exceptions;
 - Super Admin full audit-scope view with break-glass controls;
 - OMR uncertainty and correction scope;
 - RAG release/scope/refusal behavior;

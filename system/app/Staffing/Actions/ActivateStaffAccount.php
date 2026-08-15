@@ -28,8 +28,8 @@ class ActivateStaffAccount
             throw new RuntimeException('Target is not a staff account.');
         }
 
-        if (! $this->ceiling->isFullHr($actor) && $profile->office !== $actor->actorScope()->office) {
-            throw new RuntimeException('Cannot activate staff outside actor office.');
+        if (! $this->ceiling->canManageUser($actor, $target)) {
+            throw new RuntimeException('Cannot activate staff of equal/higher rank or outside actor office.');
         }
 
         return DB::transaction(function () use ($actor, $target, $profile): User {

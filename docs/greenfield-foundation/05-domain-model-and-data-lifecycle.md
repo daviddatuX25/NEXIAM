@@ -148,7 +148,7 @@ Exact transition contracts are defined in `06-workflows-and-state-transitions.md
 | INV-016 | Reopen/archive never cascades deletion of identity, assignments, scores, counseling, release, or audit history | Legacy destructive reopen |
 | INV-017 | Mandatory audit event and state mutation commit atomically where required; external effects are after-commit | Partial publish/release/notify failures |
 | INV-018 | Every external operation has an idempotency key and observable terminal/retry status | Swallowed/repeated integration failures |
-| INV-019 | Program Head queries are program-scoped projections; raw individual data requires explicit approval | Missing program ownership model |
+| INV-019 | Program Head queries are assigned-program projections: identified Potential rows require Registrar acceptance; protected record requires released result + applicant-acknowledged current selection or explicit targeted follow-up; other-program choices and raw artifacts never serialize | D-080/D-090 relationship model |
 | INV-020 | Secrets and one-time tokens are hashed/redacted; identifiers are not bearer secrets | Legacy plaintext token/auth ambiguity |
 
 ## 6. Proposed data lifecycle matrix

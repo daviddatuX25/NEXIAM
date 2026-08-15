@@ -13,6 +13,16 @@ class Institution extends Model
     ];
 
     /**
+     * The greenfield deployment is single-institution; catalog rows are scoped
+     * to this institution for uniqueness. Shared by Setup controllers and
+     * scoped-unique validation rules.
+     */
+    public static function current(): self
+    {
+        return static::query()->where('code', 'SYN-INST-001')->firstOrFail();
+    }
+
+    /**
      * @return HasMany<AcademicCycle, $this>
      */
     public function academicCycles(): HasMany

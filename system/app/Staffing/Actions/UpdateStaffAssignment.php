@@ -38,8 +38,12 @@ class UpdateStaffAssignment
             throw new RuntimeException('Target is not a staff account.');
         }
 
-        if (! $this->ceiling->isFullHr($actor) && $profile->office !== $actor->actorScope()->office) {
-            throw new RuntimeException('Cannot update staff outside actor office.');
+        if (! $this->ceiling->canManageUser($actor, $target)) {
+            throw new RuntimeException('Cannot update staff of equal/higher rank or outside actor office.');
+        }
+
+        if ($password !== null && $password !== '' && ! $this->ceiling->canResetPassword($actor, $target)) {
+            throw new RuntimeException('Only HR or the office lead may reset this account password.');
         }
 
         return DB::transaction(function () use ($actor, $target, $profile, $name, $email, $password, $office, $programCodes, $activeCycleCode): User {

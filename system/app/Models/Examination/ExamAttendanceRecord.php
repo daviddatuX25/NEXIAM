@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ExamAttendanceRecord extends Model
 {
+    public const OUTCOME_PRESENT = 'present';
+
+    public const OUTCOME_ABSENT = 'absent';
+
     protected $fillable = [
         'exam_assignment_id',
         'recorded_by_user_id',

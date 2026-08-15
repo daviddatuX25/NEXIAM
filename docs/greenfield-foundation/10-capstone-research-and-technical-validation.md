@@ -146,6 +146,17 @@ If the supplied artifact or specification cannot be verified:
 
 Cluster-to-program mapping is separate from cluster/profile computation. It requires Program Head validation and cannot be presented as model output.
 
+### 2026-08-15 delivery boundary — visualization first, engines later
+
+D-093 separates the consultation interface backbone from engine adoption:
+
+- the current admission-support change builds applicant-specific consultation tabs, real released per-domain score charts with same-value accessible tables, preferences, structured consultation evidence, independent future-analysis regions, and the human decision/pool/follow-up/history;
+- Path A YuKee artifact/K-Means compatibility is one later plugin and must reproduce the verified artifact/specification's attributable output and visualization contract;
+- Path B is a second, separately named transparent deterministic/rule-based plugin whose algorithm, thresholds, mappings, evaluation, and final name require a later planning change;
+- neither plugin, fake fixture engine, provider SDK, nor proposal-review workflow ships in the current change;
+- BGE remains a separate future research option, not a substitute name for either Path A or Path B;
+- future plugin outputs remain separate evidence objects and are never ensembled into a synthetic recommendation or permitted to write authoritative state.
+
 ## 6. BGE interest engine contract
 
 If retained:

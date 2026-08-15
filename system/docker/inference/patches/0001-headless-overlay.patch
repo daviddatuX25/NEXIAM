@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NEXIAM <engineering@nexiam.test>
+Date: Wed, 12 Aug 2026 00:00:00 +0000
+Subject: [PATCH] make provider imports headless and bind overlay coordinates
+
+The provider never opens debug windows, so importing screeninfo at module load
+must not make the worker depend on a desktop monitor. Keep debug rendering
+available when explicitly requested with conservative dimensions.
+
+The overlay branch previously used x/y only when a bubble was marked, then
+referenced those variables for the unmarked branch. Bind the shifted bubble
+origin before classification; this does not change geometry or thresholds.
+
+---
+ src/core.py               | 5 +++--
+ src/utils/interaction.py | 9 +++++----
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/src/core.py b/src/core.py
+--- a/src/core.py
++++ b/src/core.py
+@@ -344,17 +344,14 @@ class ImageInstanceOps:
+                     # TODO: get rid of total_q_box_no
+                     detected_bubbles = []
+                     for bubble in field_block_bubbles:
++                        x, y = bubble.x + field_block.shift, bubble.y
+                         bubble_is_marked = (
+                             per_q_strip_threshold > all_q_vals[total_q_box_no]
+                         )
+                         total_q_box_no += 1
+                         if bubble_is_marked:
+                             detected_bubbles.append(bubble)
+-                            x, y, field_value = (
+-                                bubble.x + field_block.shift,
+-                                bubble.y,
+-                                bubble.field_value,
+-                            )
++                            field_value = bubble.field_value
+                             cv2.rectangle(
+                                 final_marked,
+                                 (int(x + box_w / 12), int(y + box_h / 12)),
+
+diff --git a/src/utils/interaction.py b/src/utils/interaction.py
+--- a/src/utils/interaction.py
++++ b/src/utils/interaction.py
+@@ -1,7 +1,6 @@
+ from dataclasses import dataclass
+ 
+ import cv2
+-from screeninfo import get_monitors
+ 
+ from src.logger import logger
+ from src.utils.image import ImageUtils
+@@ -9,3 +8,2 @@
+-monitor_window = get_monitors()[0]
+ 
+ 
+@@ -13,6 +12,9 @@
+ class ImageMetrics:
+     # TODO: Move TEXT_SIZE, etc here and find a better class name
+-    window_width, window_height = monitor_window.width, monitor_window.height
++    # Provider mode never queries a desktop monitor at import time. These
++    # conservative values only position optional explicitly enabled previews.
++    window_width: int = 1920
++    window_height: int = 1080
+     # for positioning image windows
+     window_x, window_y = 0, 0
+     reset_pos = [0, 0]
+*** End Patch

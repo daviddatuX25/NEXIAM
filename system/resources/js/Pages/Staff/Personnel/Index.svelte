@@ -8,7 +8,7 @@
   import * as Select from '@/Components/ui/select';
   import * as Table from '@/Components/ui/table';
   import { Link, router } from '@inertiajs/svelte';
-  import { Plus, Pencil, Search } from 'lucide-svelte';
+  import { Plus, Pencil, Search, UserCog } from 'lucide-svelte';
 
   let {
     page_state = 'ready',
@@ -16,11 +16,14 @@
     roles = [],
     filters = {},
     can_full_hr = false,
+    can_manage_personnel = false,
+    can_delegate_ta = false,
   } = $props();
 
   let viewMode = $state('responsive');
   let filterSearch = $state(filters.search ?? '');
   let filterRole = $state(filters.role ?? '');
+  let busyTa = $state(null);
   let debounceTimer;
 
   function applyFilters() {
@@ -49,26 +52,52 @@
     router.post(`/staff/personnel/${id}/activate`);
   }
 
-  const breadcrumbs = [{ label: 'Personnel' }];
+  function grantTa(id) {
+    if (!confirm('Grant full Test Administrator capabilities to this staff member?')) return;
+    busyTa = id;
+    router.post(`/staff/personnel/${id}/grant-ta`, {}, {
+      onFinish: () => {
+        busyTa = null;
+      },
+    });
+  }
+
+  function revokeTa(id) {
+    if (!confirm('Revoke delegated Test Administrator capabilities? Role-helper base access remains.')) return;
+    busyTa = id;
+    router.post(`/staff/personnel/${id}/revoke-ta`, {}, {
+      onFinish: () => {
+        busyTa = null;
+      },
+    });
+  }
+
+  function taLabel(status) {
+    return { inherent: 'Inherent TA', delegated: 'Delegated TA', none: '—' }[status] ?? '—';
+  }
+
+  const breadcrumbs = [{ label: 'Staff' }];
 </script>
 
-<svelte:head><title>Personnel</title></svelte:head>
+<svelte:head><title>Staff</title></svelte:head>
 
 <StaffLayout {breadcrumbs}>
   <div class="space-y-6 min-w-0 p-6">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <PageHeaderBar
-        title="Personnel"
-        description={can_full_hr
-          ? 'Create and manage staff accounts and approved role helpers.'
-          : 'Create and manage support staff in your office.'}
+        title="Staff"
+        description={can_manage_personnel
+          ? 'Staff accounts by office — role helpers, Test Administrator overlay, and support-staff creation.'
+          : 'Office staff directory — view only. Account changes are managed by Staffing/HR and office leads.'}
       />
-      <Link href="/staff/personnel/create">
-        <Button class="min-h-11 gap-2">
-          <Plus class="h-4 w-4" />
-          Create staff
-        </Button>
-      </Link>
+      {#if can_manage_personnel}
+        <Link href="/staff/personnel/create">
+          <Button class="min-h-11 gap-2">
+            <Plus class="h-4 w-4" />
+            Create staff
+          </Button>
+        </Link>
+      {/if}
     </div>
 
     {#if page_state === 'empty' && !filterSearch && !filterRole}
@@ -119,6 +148,7 @@
               <Table.Head class="px-4 py-3">Email</Table.Head>
               <Table.Head class="px-4 py-3">Office</Table.Head>
               <Table.Head class="px-4 py-3">Roles</Table.Head>
+              <Table.Head class="px-4 py-3">Test Administrator</Table.Head>
               <Table.Head class="px-4 py-3">Status</Table.Head>
               <Table.Head class="px-4 py-3 text-center">Actions</Table.Head>
             </Table.Row>
@@ -128,7 +158,7 @@
               <Table.Row>
                 <Table.Cell class="px-4 py-3">{user.name}</Table.Cell>
                 <Table.Cell class="px-4 py-3">{user.email}</Table.Cell>
-                <Table.Cell class="px-4 py-3">{user.office}</Table.Cell>
+                <Table.Cell class="px-4 py-3 capitalize">{user.office}</Table.Cell>
                 <Table.Cell class="px-4 py-3">
                   <span class="inline-flex flex-wrap gap-1">
                     {#each user.roles ?? [] as r}
@@ -138,30 +168,88 @@
                     {/each}
                   </span>
                 </Table.Cell>
+                <Table.Cell class="px-4 py-3">
+                  <span class="inline-flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5">
+                      {#if user.ta_status === 'inherent'}
+                        <UserCog class="h-3.5 w-3.5 text-primary" />
+                      {/if}
+                      <span class={user.ta_status === 'none' ? 'text-muted-foreground' : 'font-medium'}>
+                        {taLabel(user.ta_status)}
+                      </span>
+                    </span>
+                    {#if can_delegate_ta && user.can_delegate_ta}
+                      {#if user.ta_status === 'delegated'}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          class="h-8 px-2 text-xs"
+                          disabled={busyTa === user.id}
+                          onclick={() => revokeTa(user.id)}
+                        >
+                          Revoke TA
+                        </Button>
+                      {:else}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="h-8 px-2 text-xs"
+                          disabled={busyTa === user.id}
+                          onclick={() => grantTa(user.id)}
+                        >
+                          Grant TA
+                        </Button>
+                      {/if}
+                    {/if}
+                  </span>
+                </Table.Cell>
                 <Table.Cell class="px-4 py-3 capitalize">{user.status}</Table.Cell>
                 <Table.Cell class="px-4 py-3">
-                  <div class="flex justify-center gap-2">
-                    <Link href={`/staff/personnel/${user.id}/edit`}>
-                      <Button variant="ghost" size="sm" class="h-8 px-2 text-xs">
+                  {#if user.is_self}
+                    <div class="flex justify-center gap-2">
+                      <Button variant="ghost" size="sm" class="h-8 px-2 text-xs" disabled title="Manage your own account from your profile page.">
                         <Pencil class="mr-1 h-3.5 w-3.5" />
                         Edit
                       </Button>
-                    </Link>
-                    {#if user.status === 'active'}
                       <Button
                         variant="ghost"
                         size="sm"
                         class="h-8 px-2 text-xs text-destructive"
-                        onclick={() => deactivate(user.id)}
+                        disabled
+                        title="Deactivate your own account from your profile page."
                       >
                         Deactivate
                       </Button>
-                    {:else}
-                      <Button variant="ghost" size="sm" class="h-8 px-2 text-xs" onclick={() => activate(user.id)}>
-                        Activate
-                      </Button>
-                    {/if}
-                  </div>
+                      <Link href="/staff/profile">
+                        <Button variant="outline" size="sm" class="h-8 px-2 text-xs">
+                          Manage Profile
+                        </Button>
+                      </Link>
+                    </div>
+                  {:else if can_manage_personnel && user.can_manage_user}
+                    <div class="flex justify-center gap-2">
+                      <Link href={`/staff/personnel/${user.id}/edit`}>
+                        <Button variant="ghost" size="sm" class="h-8 px-2 text-xs">
+                          <Pencil class="mr-1 h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                      </Link>
+                      {#if user.status === 'active'}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="h-8 px-2 text-xs text-destructive"
+                          onclick={() => deactivate(user.id)}
+                        >
+                          Deactivate
+                        </Button>
+                      {:else}
+                        <Button variant="ghost" size="sm" class="h-8 px-2 text-xs" onclick={() => activate(user.id)}>
+                          Activate
+                        </Button>
+                      {/if}
+                    </div>
+                  {/if}
                 </Table.Cell>
               </Table.Row>
             {/each}
@@ -176,16 +264,33 @@
               <div class="min-w-0">
                 <p class="truncate font-semibold">{user.name}</p>
                 <p class="truncate text-sm text-muted-foreground">{user.email}</p>
-                <p class="mt-1 text-xs capitalize text-muted-foreground">{user.office} · {user.status}</p>
+                <p class="mt-1 text-xs capitalize text-muted-foreground">
+                  {user.office} · {taLabel(user.ta_status)} · {user.status}
+                </p>
               </div>
               <div class="flex flex-wrap gap-2">
-                <Link href={`/staff/personnel/${user.id}/edit`}>
-                  <Button variant="outline" size="sm">Edit</Button>
-                </Link>
-                {#if user.status === 'active'}
-                  <Button variant="outline" size="sm" onclick={() => deactivate(user.id)}>Deactivate</Button>
-                {:else}
-                  <Button variant="outline" size="sm" onclick={() => activate(user.id)}>Activate</Button>
+                {#if user.is_self}
+                  <Button variant="outline" size="sm" disabled title="Manage your own account from your profile page.">Edit</Button>
+                  <Button variant="outline" size="sm" disabled title="Deactivate your own account from your profile page.">Deactivate</Button>
+                  <Link href="/staff/profile">
+                    <Button variant="outline" size="sm">Manage Profile</Button>
+                  </Link>
+                {:else if can_manage_personnel && user.can_manage_user}
+                  <Link href={`/staff/personnel/${user.id}/edit`}>
+                    <Button variant="outline" size="sm">Edit</Button>
+                  </Link>
+                  {#if user.status === 'active'}
+                    <Button variant="outline" size="sm" onclick={() => deactivate(user.id)}>Deactivate</Button>
+                  {:else}
+                    <Button variant="outline" size="sm" onclick={() => activate(user.id)}>Activate</Button>
+                  {/if}
+                {/if}
+                {#if can_delegate_ta && user.can_delegate_ta}
+                  {#if user.ta_status === 'delegated'}
+                    <Button variant="outline" size="sm" onclick={() => revokeTa(user.id)}>Revoke TA</Button>
+                  {:else}
+                    <Button variant="outline" size="sm" onclick={() => grantTa(user.id)}>Grant TA</Button>
+                  {/if}
                 {/if}
               </div>
             </li>

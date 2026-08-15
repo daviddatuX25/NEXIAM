@@ -17,7 +17,7 @@ This is a connected workflow, not a collection of disconnected dashboards.
 - Registrar Administrator, Registrar Clerk, or authorized Registrar Support Staff within approved Registrar capability and scope
 - Guidance Counselor, Guidance Clerk, or Guidance Support Staff holding the required Test Administrator capability
 - Staff member with temporary Proctor assignment
-- Program Head through a read-only program projection if D-ROLE-05 is approved
+- Program Head through assigned-program projections and the bounded D-080/D-087/D-089/D-092 record/quota/follow-up/message exceptions approved for the post-release expansion; never Registrar acceptance or score/release authority
 - Super Admin only for reasoned, time-bounded break-glass audit/support verification, not routine admission decisions
 
 ## 3. Slice boundaries

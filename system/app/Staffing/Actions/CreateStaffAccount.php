@@ -43,7 +43,16 @@ class CreateStaffAccount
             throw new RuntimeException('At least one role helper is required.');
         }
 
-        $this->ceiling->assertRolesAllowed($actor, $roles);
+        $allowed = $this->ceiling->assignableRoleHelpers($actor);
+        $support = StaffRoleCeiling::supportRoleForOffice($office);
+        if ($support !== null) {
+            $allowed[] = $support;
+        }
+        foreach ($roles as $role) {
+            if (! in_array($role, $allowed, true)) {
+                throw new RuntimeException("Role helper [{$role}] is outside the actor ceiling.");
+            }
+        }
 
         if ($institutionId < 1) {
             throw new RuntimeException('Institution is required.');

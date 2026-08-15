@@ -1,0 +1,42 @@
+{
+  "pageDimensions": [2000, 5000],
+  "bubbleDimensions": [28, 28],
+  "customLabels": {
+    "VERBAL": ["VERBAL_Q_001..100"],
+    "QUANT": ["QUANT_Q_001..100"],
+    "APPLICANT_NUMBER": ["APPLICANT_NUMBER_1..10"]
+  },
+  "fieldBlocks": {
+    "ApplicantNumber": {
+      "fieldType": "QTYPE_INT",
+      "fieldLabels": ["APPLICANT_NUMBER_1..10"],
+      "bubblesGap": 40,
+      "labelsGap": 42,
+      "origin": [90, 100]
+    },
+    "VerbalQuestions": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": ["VERBAL_Q_001..100"],
+      "bubblesGap": 50,
+      "labelsGap": 45,
+      "origin": [520, 100]
+    },
+    "QuantitativeQuestions": {
+      "fieldType": "QTYPE_MCQ4",
+      "direction": "horizontal",
+      "fieldLabels": ["QUANT_Q_001..100"],
+      "bubblesGap": 50,
+      "labelsGap": 45,
+      "origin": [1050, 100]
+    }
+  },
+  "preProcessors": [
+    {
+      "name": "CropPage",
+      "options": {
+        "morphKernel": [5, 5]
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ use App\Http\Requests\Release\ConsultationDecisionRequest;
 use App\Http\Requests\Release\ReleaseResultRequest;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Release\ResultDocument;
+use App\Models\Release\ResultRelease;
 use App\Release\Actions\PrepareResultDocument;
 use App\Release\Actions\RecordConsultationDecision;
 use App\Release\Actions\ReleaseResult;
@@ -32,6 +33,7 @@ class ReleaseController extends Controller
         return Inertia::render('Release/Consultation', [
             'page_state' => $attempts->isEmpty() ? 'empty' : 'ready',
             'attempts' => $attempts,
+            'can_plan' => $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN),
         ]);
     }
 
@@ -67,7 +69,13 @@ class ReleaseController extends Controller
             ->firstOrFail();
 
         try {
-            $action->handle($attempt, $document, $request->user(), $request->string('idempotency_key')->toString());
+            $action->handle(
+                $attempt,
+                $document,
+                $request->user(),
+                $request->string('idempotency_key')->toString(),
+                (string) ($request->validated()['mode'] ?? ReleaseResult::MODE_F2F),
+            );
         } catch (RuntimeException $exception) {
             return back()->withErrors(['release' => $exception->getMessage()])->with('page_state', 'validation');
         }
@@ -75,7 +83,7 @@ class ReleaseController extends Controller
         return back()->with('status', 'Release accepted; notification queued.');
     }
 
-    public function unrelease(Request $request, \App\Models\Release\ResultRelease $release, UnreleaseResult $action): RedirectResponse
+    public function unrelease(Request $request, ResultRelease $release, UnreleaseResult $action): RedirectResponse
     {
         $action->handle($release, $request->user(), $request->string('reason')->toString());
 

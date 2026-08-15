@@ -31,8 +31,8 @@ class RevokeStaffRole
             throw new RuntimeException('Target is not a staff account.');
         }
 
-        if (! $this->ceiling->isFullHr($actor) && $target->staffProfile->office !== $actor->actorScope()->office) {
-            throw new RuntimeException('Cannot revoke roles outside actor office.');
+        if (! $this->ceiling->canManageUser($actor, $target)) {
+            throw new RuntimeException('Cannot revoke roles from staff of equal/higher rank or outside actor office.');
         }
 
         // Only revoke helpers the actor could assign (ceiling).

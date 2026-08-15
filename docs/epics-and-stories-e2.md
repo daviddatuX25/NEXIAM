@@ -213,13 +213,69 @@ Story readiness follows master §11. Active OpenSpec: `e2-connected-admission-re
 
 ---
 
-## Epic E2-E7 — Explicit gated holds (planning stories, not E2 feature code)
+## Epic E2-E7 — Gated capability promotion
 
-### E2-S21 — Record gated REQ-VS holds for E3+
-- **Covers:** REQ-VS-010 (OMR), 024 (RAG), 025/029 (Program Head metrics/charts conditional)
-- **Disposition:** SPIKE/DEFER/EVIDENCE HOLD per [`08-e2-connected-slice-trace.md`](legacy-reference/08-e2-connected-slice-trace.md)
-- **Acceptance:** holds documented in OpenSpec non-goals; manual fallbacks proven by E2-S10; Nexi chrome remains presentation-only
-- **Tests:** none for gated providers; proof is documentation + manual-path tests
+### E2-S21 — Development-qualified OMRChecker proposals with production hold
+- **Status:** ACTIVE PHASE B PLAN — Phase A fake-provider capture shipped 2026-08-12
+- **FR/BR:** FR-039–041; NFR-041; BR-031, BR-035, BR-054, BR-060; REQ-VS-010, 032
+- **Value:** Test Administrators can develop and evaluate real marked-sheet proposals without making the detector a grading authority or falsely granting production clearance.
+- **Disposition:** REWRITE legacy automated-OMR goal; PRESERVE shipped capture/gallery/review shape; SPIKE pinned native-bundle activation, headless isolated detection, and aligned evidence; DEFER calibrated confidence, automatic acceptance, Batch/offline/multi-page/free-form OCR.
+- **Authz:** existing dedicated OMR capability plus session/sensitivity/lifecycle scope; worker repeats authority before invocation and cannot bind or score.
+- **Pages:** P-OMR-01 capture/gallery and P-OMR-02 sheet review; ordinary P-GRD-01 manual scoring remains the complete fallback.
+- **State/transaction:** upload creates one durable per-sheet run after commit; provider call occurs outside locks; persistence requires current run/claim/version; human review remains mandatory.
+- **GWT:** Given the generated pack and matching development qualification, When Manual/Auto capture uses OMRChecker, Then observed marks reach review through the existing UI and NEXIAM alone derives correctness/scores.
+- **GWT:** Given ambiguous marks, identity conflict, worker outage, timeout, malformed output, stale result, or revoked authority, When analysis executes, Then no score is written and a truthful retry/manual path remains.
+- **GWT:** Given only synthetic benchmark evidence, When production selects OMRChecker, Then readiness fails closed with no fake fallback.
+- **Tests:** Pest activation/envelope/run/adapter/state tests; Python native-bundle activation/worker/fixture tests; reproducible benchmark; Chromium Manual/Auto/outage proof.
+
+### E2-S22 — Keep remaining gated capabilities explicit
+- **Covers:** REQ-VS-024 (RAG), real provider/SDK activation (BR-022), and expanded analytics/exports beyond D-ROLE-05/D-080/D-090.
+- **Disposition:** SPIKE/DEFER/EVIDENCE HOLD per [`08-e2-connected-slice-trace.md`](legacy-reference/08-e2-connected-slice-trace.md) and `2026-08-15-admission-model-program-head`.
+- **Acceptance:** engine/provider holds remain documented; current consultation visualization uses only real released/application/consultation evidence; Nexi chrome remains presentation-only.
+
+## Epic E2-E8 — Admission support, program choice, and Program Head
+
+**Status:** APPROVED PLAN 2026-08-15 — implementation queued behind the sole active OMR cut.
+
+### E2-S23 — Promote capabilities and canonical admission-support states
+- **Covers:** FR-077–085; REQ-REP-003–010; D-ROLE-05/D-080/D-089–D-093.
+- **Acceptance:** capability rows, grants, state tables, constraints, projections, audit names, and denied-path tests exist before UI.
+
+### E2-S24 — Guidance pool and applicant program selection
+- **Covers:** FR-078–080; REQ-REP-004/005.
+- **Acceptance:** initial Guidance finalization atomically appends immutable pool/options + attributable pending advised default + FCFS reservation; applicant may acknowledge or transfer; commitment/idempotency guards prevent duplicate/overbook; later pool versions retain standing choice; paper finalization owns out-of-pool/quota variance.
+
+### E2-S25 — Program Head dashboard and canonical lists
+- **Covers:** FR-036/038/053; REQ-REP-001/005.
+- **Acceptance:** own-program metrics + Potential/Upcoming/Follow-up/Enrolling/Enrolled lists show definition/source/freshness/basis tags; cross-program access denied.
+
+### E2-S26 — Tiered candidate and protected record access
+- **Covers:** FR-037; REQ-REP-006; D-080.
+- **Acceptance:** Potential summary is minimal; protected view requires released result + strong assigned-program relationship; other program options/history and raw artifacts are absent; audit + applicant access history/notice emitted.
+
+### E2-S27 — Follow-up, PH decline, and reconsideration
+- **Covers:** FR-081; REQ-REP-007; D-089.
+- **Acceptance:** normal processing needs no PH action; direct PH selection decline is pre-enrolling; Guidance opens an edge follow-up before enrolling, assigned PH resolves it during enrolling, and it blocks enrolled only; decline writes canonical outcome/releases quota; reasons/audit/notices and overlap/race guards required.
+
+### E2-S28 — Bounded admission-support messaging
+- **Covers:** FR-054/082; D-092.
+- **Acceptance:** PH↔Guidance and current-selection/follow-up PH↔applicant threads enforce participants/scope; potential-only outreach denied; UI/server states are unread/ready/denied without a general inbox.
+
+### E2-S29 — Consultation-embedded admission-support visualization
+- **Covers:** FR-048–052/085; REQ-REP-010; D-093.
+- **Acceptance:** existing consultation selected-attempt workspace shows real released-score charts + same-value table, preferences, structured consultation evidence, independent future-analysis regions, and human decision/pool/follow-up/history; no provider/fake engine ships; YuKee and deterministic/rule-based plugins remain separate deferred changes; PH Tier B reuse remains bounded.
+
+### E2-S30 — Registrar admission-completion stamps
+- **Covers:** FR-083; REQ-REP-008; D-091.
+- **Acceptance:** Registrar starts enrolling on sheet submission after core milestones and may acknowledge the pending default; final enrolled requires terminal edge follow-up + signed-paper verification, records final program even outside pool/quota, releases reservation, reports variance, and enforces split freeze/reversal rules.
+
+### E2-S31 — Universal applicant QR and actor-specific action hub
+- **Covers:** FR-084; REQ-REP-009; D-092.
+- **Acceptance:** one portal/printed opaque applicant locator contains no sensitive fields, action, destination, or authority; authenticated Registrar, Guidance/TA, and PH receive only ordinary capability/duty/scope-derived destinations through scanner/manual fallback; invalid/expired/no-destination states reveal no applicant data; scan never mutates.
+
+### E2-S32 — Demonstration data and end-to-end proof
+- **Covers:** all E2-E8 stories.
+- **Acceptance:** deterministic founder/demo states—not a fake admission engine—staff/applicant credentials, URLs/reset steps, consultation chart/table and no-analysis evidence, same-QR role-menu isolation, targeted suites + full-suite blocker/status, and Chromium proof are recorded in HANDOFF.
 
 ---
 
@@ -248,4 +304,15 @@ Story readiness follows master §11. Active OpenSpec: `e2-connected-admission-re
 | E2-S19 | Notifications/toasts |
 | E2-S20 | Audit evidence |
 | E2-S20b | Browser quality |
-| E2-S21 | Gated holds |
+| E2-S21 | Development-qualified OMRChecker |
+| E2-S22 | Remaining gated holds |
+| E2-S23 | Promote capabilities and canonical admission-support states |
+| E2-S24 | Guidance pool and applicant program selection |
+| E2-S25 | Program Head dashboard and canonical lists |
+| E2-S26 | Tiered candidate and protected record access |
+| E2-S27 | Follow-up, PH decline, and reconsideration |
+| E2-S28 | Bounded admission-support messaging |
+| E2-S29 | Consultation-embedded admission-support visualization |
+| E2-S30 | Registrar admission-completion stamps |
+| E2-S31 | Universal applicant QR and actor-specific action hub |
+| E2-S32 | Demonstration data and end-to-end proof |

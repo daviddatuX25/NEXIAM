@@ -4,6 +4,7 @@ namespace App\Admission\Actions;
 
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Admission\Support\ApplicantAccessKey;
+use App\Admission\Support\ApplicantCapabilityGrants;
 use App\Models\Admission\ApplicantAccessChallenge;
 use App\Models\Admission\ApplicantAccount;
 use App\Models\User;
@@ -87,6 +88,8 @@ class AuthenticateApplicantWithAccessKey
             if ($user === null) {
                 throw new RuntimeException('Invalid access key or birthdate.');
             }
+
+            ApplicantCapabilityGrants::sync($user);
 
             $this->recordAuditEvent->handle('admission.applicant_login', [
                 'account_id' => $account->id,

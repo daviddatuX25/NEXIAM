@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property int|null $room_id
+ * @property int $academic_cycle_id
+ * @property string $code
+ * @property string $status
+ * @property string $booking_mode
+ * @property \Illuminate\Support\Carbon|null $starts_at
+ * @property \Illuminate\Support\Carbon|null $effective_end_at
+ * @property int $version
+ * @property \Illuminate\Support\Carbon|null $published_at
+ * @property \Illuminate\Support\Carbon|null $closed_at
+ * @property \Illuminate\Support\Carbon|null $reservation_opened_at
+ * @property \Illuminate\Support\Carbon|null $reservation_closed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class ExamSession extends Model
 {
     public const STATUS_DRAFT = 'draft';

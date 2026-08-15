@@ -42,6 +42,8 @@ abstract class TestCase extends BaseTestCase
         putenv('DB_URL');
         putenv('DB_HOST');
         putenv('INERTIA_DEVTOOLS_ENABLED=false');
+        putenv('QUEUE_CONNECTION=sync');
+        putenv('MAIL_MAILER=log');
 
         $_ENV['APP_ENV'] = 'testing';
         $_ENV['DB_CONNECTION'] = 'sqlite';
@@ -49,6 +51,8 @@ abstract class TestCase extends BaseTestCase
         $_ENV['DB_URL'] = '';
         $_ENV['DB_HOST'] = '';
         $_ENV['INERTIA_DEVTOOLS_ENABLED'] = 'false';
+        $_ENV['QUEUE_CONNECTION'] = 'sync';
+        $_ENV['MAIL_MAILER'] = 'log';
 
         $_SERVER['APP_ENV'] = 'testing';
         $_SERVER['DB_CONNECTION'] = 'sqlite';
@@ -56,6 +60,8 @@ abstract class TestCase extends BaseTestCase
         $_SERVER['DB_URL'] = '';
         $_SERVER['DB_HOST'] = '';
         $_SERVER['INERTIA_DEVTOOLS_ENABLED'] = 'false';
+        $_SERVER['QUEUE_CONNECTION'] = 'sync';
+        $_SERVER['MAIL_MAILER'] = 'log';
 
         // artisan test may already have created an immutable Env repository
         // from Compose's pgsql process environment; rebuild it for the test app.

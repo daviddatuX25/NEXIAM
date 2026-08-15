@@ -5,9 +5,10 @@
   import { Input } from '@/Components/ui/input';
   import { Link, useForm } from '@inertiajs/svelte';
 
-  let { roles = [], can_full_hr = false, default_office = 'hr' } = $props();
+  let { roles = [], can_full_hr = false, default_office = 'hr', support_role = null } = $props();
 
   let selectedRoles = $state([]);
+  let accountType = $state('permanent');
   let password = $state('');
   let passwordConfirmation = $state('');
 
@@ -17,6 +18,7 @@
     password: '',
     password_confirmation: '',
     roles: [],
+    account_type: 'permanent',
     office: default_office,
     program_codes: [],
   });
@@ -33,12 +35,13 @@
     e.preventDefault();
     form.password = password;
     form.password_confirmation = passwordConfirmation;
-    form.roles = selectedRoles;
+    form.account_type = accountType;
+    form.roles = can_full_hr && accountType === 'permanent' ? selectedRoles : [];
     form.post('/staff/personnel');
   }
 
   const breadcrumbs = [
-    { label: 'Personnel', href: '/staff/personnel' },
+    { label: 'Staff', href: '/staff/personnel' },
     { label: 'Create' },
   ];
 </script>
@@ -50,7 +53,7 @@
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Create staff</h1>
       <p class="text-sm text-muted-foreground">
-        Assign only approved role helpers. Test Administrator and Proctor are not granted here.
+        Support staff are the natural role for each office. Test Administrator and Proctor are never granted here.
       </p>
     </div>
 
@@ -80,29 +83,68 @@
           <Input id="office" bind:value={form.office} required />
           {#if form.errors?.office}<p class="text-sm text-destructive">{form.errors.office}</p>{/if}
         </div>
-      {:else}
-        <input type="hidden" bind:value={form.office} />
-        <p class="text-sm text-muted-foreground">Office: <span class="font-medium text-foreground">{default_office}</span></p>
-      {/if}
 
-      <div class="space-y-2">
-        <p class="text-sm font-medium">Roles</p>
-        <p class="text-xs text-muted-foreground">Select at least one approved role helper.</p>
-        <div class="flex flex-wrap gap-4 pt-2">
-          {#each roles as r}
+        <div class="space-y-2">
+          <p class="text-sm font-medium">Account type</p>
+          <div class="flex flex-wrap gap-4 pt-1">
             <label class="flex min-h-11 cursor-pointer items-center gap-2">
               <input
-                type="checkbox"
-                checked={selectedRoles.includes(r.name)}
-                onchange={() => toggleRole(r.name)}
-                class="h-4 w-4 rounded border-input accent-primary"
+                type="radio"
+                name="account_type"
+                value="permanent"
+                checked={accountType === 'permanent'}
+                onchange={() => (accountType = 'permanent')}
+                class="h-4 w-4 accent-primary"
               />
-              <span class="text-sm">{r.display_name}</span>
+              <span class="text-sm">Staff (pick role below)</span>
             </label>
-          {/each}
+            <label class="flex min-h-11 cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="account_type"
+                value="support"
+                checked={accountType === 'support'}
+                onchange={() => (accountType = 'support')}
+                class="h-4 w-4 accent-primary"
+              />
+              <span class="text-sm">Support staff (role follows office)</span>
+            </label>
+          </div>
+        </div>
+
+        {#if accountType === 'permanent'}
+          <div class="space-y-2">
+            <p class="text-sm font-medium">Roles</p>
+            <p class="text-xs text-muted-foreground">Select at least one approved role helper.</p>
+            <div class="flex flex-wrap gap-4 pt-2">
+              {#each roles as r}
+                <label class="flex min-h-11 cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedRoles.includes(r.name)}
+                    onchange={() => toggleRole(r.name)}
+                    class="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span class="text-sm">{r.display_name}</span>
+                </label>
+              {/each}
+            </div>
+            {#if form.errors?.roles}<p class="text-sm text-destructive">{form.errors.roles}</p>{/if}
+          </div>
+        {:else}
+          <p class="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+            {form.office} office support staff
+          </p>
+        {/if}
+      {:else}
+        <input type="hidden" bind:value={form.office} />
+        <div class="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          This account is created as
+          <span class="font-medium text-foreground">{support_role?.display_name ?? 'office support staff'}</span>
+          for the <span class="font-medium text-foreground">{default_office}</span> office.
         </div>
         {#if form.errors?.roles}<p class="text-sm text-destructive">{form.errors.roles}</p>{/if}
-      </div>
+      {/if}
 
       <div class="flex gap-2 pt-4">
         <Button type="submit" disabled={form.processing}>

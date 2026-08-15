@@ -38,14 +38,14 @@ COPY --from=vendor /usr/bin/composer /usr/bin/composer
 COPY --from=frontend /app/public/build ./public/build
 COPY . .
 
-# .env is dockerignored; seed a non-secret local file so artisan/pest boot
-# cleanly inside the image. Compose environment overrides DB/mail at runtime.
+# .env is dockerignored; seed the runtime key into the local server
+# environment so Laravel's built-in server and queue workers share it.
+ARG APP_KEY
 RUN if [ ! -f .env ]; then cp .env.example .env; fi \
+    && if [ -n "$APP_KEY" ]; then sed -i "s|^APP_KEY=.*|APP_KEY=$APP_KEY|" .env; else php artisan key:generate --force --no-interaction; fi \
     && composer dump-autoload --optimize \
-    && php artisan key:generate --force --no-interaction \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
     && chown -R www-data:www-data storage bootstrap/cache
-
 EXPOSE 8000
 
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

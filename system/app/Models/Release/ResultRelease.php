@@ -19,6 +19,7 @@ class ResultRelease extends Model
         'unreleased_at',
         'unrelease_reason',
         'idempotency_key',
+        'mode',
     ];
 
     /**

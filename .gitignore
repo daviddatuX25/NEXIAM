@@ -52,3 +52,8 @@ capstone/manuscript/diagrams/*.png
 # Agent / editor context
 .playwright-mcp/
 securecat-conventions-1.0.0.ctxpkg
+
+# lean-ctx probes
+.lc_probe.txt
+.lc_big_probe.txt
+.lean-ctx/

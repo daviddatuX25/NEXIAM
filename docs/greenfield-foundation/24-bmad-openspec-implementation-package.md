@@ -206,7 +206,7 @@ A change is done only when:
 
 - [x] Preserve legacy reference runtime separately under `legacy_codebase/application/`
 - [x] Isolate executable target at `system/`
-- [x] Confirm PHP 8.4, Laravel 13, Inertia 3, React 19, TypeScript, Tailwind 4, Pest 5, PostgreSQL 16
+- [x] Confirm PHP 8.4, Laravel 13, Inertia 3, Svelte 5, TypeScript, Tailwind 4, Pest 5, PostgreSQL 16
 - [x] E0 evidence report exists
 - [ ] E1 live Compose reset/seed + login spot-check
 - [x] Product promotion ([`../prd.md`](../prd.md), GF-03 PROMOTED 2026-08-05)

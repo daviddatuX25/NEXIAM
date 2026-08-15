@@ -11,7 +11,7 @@ The NEXIAM greenfield plan is not complete when it specifies tables, commands, a
 
 This contract promotes useful legacy evidence without treating legacy screens as authority. The inspected legacy frontend demonstrates staff/applicant shells, responsive sidebar navigation, top breadcrumb rendering, notification polling, toast/flash handling, Chart.js line/bar/doughnut charts, table/card view switching, URL-backed filters, schedule-assistant panels, AI chat, QR/camera states, and score-import preview. GF-22 defines the target behavior and corrects any legacy ambiguity.
 
-The target presentation baseline is PHP 8.4/Laravel 13, Inertia 3, React 19, TypeScript 5.9, and Tailwind 4 under the revised D-055. Exact component names and route URIs remain implementation decisions; the responsibility, state, security, and user-feedback rules below do not.
+The target presentation baseline is PHP 8.4/Laravel 13, Inertia 3, Svelte 5, TypeScript 5.9, and Tailwind 4 under the revised D-055 and the executable E1b checkpoint. Exact component names and route URIs remain implementation decisions; the responsibility, state, security, and user-feedback rules below do not.
 
 ## 2. Non-negotiable UX principles
 
@@ -355,7 +355,9 @@ Images remain private and scoped. Download/print is a separate audited capabilit
 
 ### 9.6 Consultation, result preparation, and release
 
-- Consultation decision is visibly human-owned and separate from model/Program Head/counselor suggestions.
+- Consultation decision is visibly human-owned. The selected-attempt workspace embeds the per-applicant admission-support backbone: overview/readiness, real released-score charts with same-value accessible tables, preferences, structured consultation evidence, independent future-analysis regions, human decision/pool/default, follow-up, and history.
+- No standalone suggestion page or fake provider result is required. `no_analysis`, `stale_input`, `unavailable`, and `invalid_output` are truthful states; manual consultation remains complete.
+- Future YuKee artifact/K-Means and deterministic/rule-based plugin outputs remain separately attributed and are never combined into one synthetic score/recommendation. PH Tier B may reuse only an assigned-program-safe read-only projection.
 - Internal result preview is watermarked and scoped. Generation/printing/distribution evidence is separate from external publication.
 - F2F flow shows batch consultation schedule and printed-result status. Online flow can release the approved digital result while consultation remains open through approved availability/reservation.
 - Release shows prerequisites, current release version, notification/delivery state, and reversal option only when authorized. Unrelease creates a superseding state; it does not erase history.
@@ -365,10 +367,14 @@ Images remain private and scoped. Download/print is a separate audited capabilit
 
 - A report page starts with scope, metric definitions, selected cycle/date range, freshness, and authorization context.
 - KPI cards, charts, tables, and exports use the same query snapshot and metric dictionary.
-- Demographic/program charts apply suppression/aggregation thresholds. Suppressed is not zero.
+- Demographic/public/broad report charts apply their approved suppression/aggregation thresholds; suppressed is not zero. D-ROLE-05 explicitly uses **no small-cell suppression** on the authenticated assigned-program PH dashboard, while default-deny, cross-program denial, protected-detail gating, and audit carry the privacy boundary.
 - A chart click drills into a server-authorized detail list; the breadcrumb and filter bar show the drill-down context.
 - Export controls identify format, scope, row/aggregate class, generation state, and audit status. Error/retry never claims a file exists when generation failed.
-- Program Head views are read-only and program-scoped. Super Admin audit views are clearly separate from routine reports.
+- Program Head surfaces use the management-list shape: program index → program dashboard (metrics/quota/canonical lists) → minimal candidate summary or authorized protected record. Every metric/list shows definition, source, `as of`, basis/stage tags, and distinct zero/no-data/stale/error/denied states.
+  - Potential preference/pool rows remain minimal; preference alone cannot open protected results or messaging.
+  - Protected view requires result release + applicant-acknowledged current selection or explicit targeted follow-up; preference/pool membership and unacknowledged defaults remain minimal. Other program names/options/history, raw sheets/scans/conversion tables, and unrelated notes must never serialize.
+  - Ordinary program choice shows no PH-approval control. Direct PH decline/new edge routing is pre-enrolling; an already-open edge follow-up remains actionable during enrolling and visibly blocks only enrolled. Registrar UI separates “start processing” from “finalize signed-paper enrollment,” names final-program/quota variance, and shows ordered reversal instead of doomed actions.
+  - One universal applicant QR is available across the journey. Camera/manual-code scan opens a role-neutral applicant action hub with server-authored Registrar, Guidance/TA, or PH destinations based on ordinary capability/duty/scope; invalid/expired/no-destination states reveal no applicant data, and scan never reports a business mutation.
 
 ### 9.8 RAG and bounded inquiry
 

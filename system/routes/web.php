@@ -1,17 +1,43 @@
 <?php
 
-use App\Http\Controllers\Admission\AdmissionController;
+use App\Http\Controllers\Admission\AdmissionActionController;
+use App\Http\Controllers\Admission\AdmissionReviewController;
+use App\Http\Controllers\Admission\ApplicantApplyController;
 use App\Http\Controllers\Applicant\ApplicantPortalController;
 use App\Http\Controllers\Assessment\GradingController;
+use App\Http\Controllers\PrintingController;
+use App\Http\Controllers\Assessment\GradingScoreController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Applicant\ApplicantScheduleController;
+use App\Http\Controllers\Applicant\ApplicantConsultationController;
+use App\Http\Controllers\Examination\ExamMonitoringController;
 use App\Http\Controllers\Examination\ExamSessionController;
-use App\Http\Controllers\Examination\ProctorController;
+use App\Http\Controllers\Consultation\ConsultationSessionController;
+use App\Http\Controllers\Registrar\EnrollmentEligibilityController;
+use App\Http\Controllers\Examination\ProctorDutyController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Release\ReleaseController;
-use App\Http\Controllers\Setup\SetupController;
+use App\Http\Controllers\Nexi\NexiConversationController;
+use App\Http\Controllers\Nexi\NexiProposalController;
+use App\Http\Controllers\Nexi\NexiRunController;
+use App\Http\Controllers\Nexi\NexiSkillController;
+use App\Http\Controllers\Nexi\NexiTurnController;
+use App\Http\Controllers\Notifications\NotificationController;
+use App\Http\Controllers\Knowledge\KnowledgeSourceController;
+use App\Http\Controllers\Setup\AcademicCycleController;
+use App\Http\Controllers\Setup\ApplicationWindowController;
+use App\Http\Controllers\Setup\AptitudeAreaController;
+use App\Http\Controllers\Setup\OmrConfigurationController;
+use App\Http\Controllers\Setup\IntakeGradeFieldController;
+use App\Http\Controllers\Setup\PrivacyPolicyController;
+use App\Http\Controllers\Setup\ProgramController;
+use App\Http\Controllers\Setup\ProgramQuotaController;
+use App\Http\Controllers\Setup\RoomController;
+use App\Http\Controllers\Setup\SetupDashboardController;
 use App\Http\Controllers\Staff\HomeController;
 use App\Http\Controllers\Staff\PersonnelController;
+use App\Http\Controllers\Staff\ProfileController;
+use App\Http\Controllers\Staff\TestAdministratorController;
 use App\Http\Middleware\EnsurePersonnelAccess;
 use App\Authorization\CapabilityCatalog;
 use Illuminate\Support\Facades\Route;
@@ -26,9 +52,9 @@ Route::get('/', function () {
 Route::get('/health', HealthController::class)->name('health');
 
 Route::prefix('apply')->group(function () {
-    Route::get('/', [AdmissionController::class, 'applyForm'])->name('apply.form');
-    Route::post('/', [AdmissionController::class, 'submit'])->name('apply.submit');
-    Route::get('/confirmation', [AdmissionController::class, 'confirmation'])->name('apply.confirmation');
+    Route::get('/', [ApplicantApplyController::class, 'applyForm'])->name('apply.form');
+    Route::post('/', [ApplicantApplyController::class, 'submit'])->name('apply.submit');
+    Route::get('/confirmation', [ApplicantApplyController::class, 'confirmation'])->name('apply.confirmation');
 });
 
 Route::middleware('guest')->prefix('applicant')->group(function () {
@@ -49,74 +75,110 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('/staff', HomeController::class)->name('staff.home');
 
-    Route::get('/setup', [SetupController::class, 'index'])->name('setup.index');
-    Route::get('/setup/programs', [SetupController::class, 'programs'])->name('setup.programs');
-    Route::post('/setup/programs', [SetupController::class, 'storeProgram'])->name('setup.programs.store');
-    Route::put('/setup/programs/{program}', [SetupController::class, 'updateProgram'])->name('setup.programs.update');
-    Route::get('/setup/rooms', [SetupController::class, 'rooms'])->name('setup.rooms');
-    Route::post('/setup/rooms', [SetupController::class, 'storeRoom'])->name('setup.rooms.store');
-    Route::put('/setup/rooms/{room}', [SetupController::class, 'updateRoom'])->name('setup.rooms.update');
-    Route::get('/setup/cycles', [SetupController::class, 'cycles'])->name('setup.cycles');
-    Route::get('/setup/cycles/create', [SetupController::class, 'createCycle'])->name('setup.cycles.create');
-    Route::post('/setup/cycles', [SetupController::class, 'storeCycle'])->name('setup.cycles.store');
-    Route::get('/setup/cycles/{cycle}/edit', [SetupController::class, 'editCycle'])->name('setup.cycles.edit');
-    Route::put('/setup/cycles/{cycle}', [SetupController::class, 'updateCycle'])->name('setup.cycles.update');
-    Route::post('/setup/cycles/{cycle}/activate', [SetupController::class, 'activateCycle'])->name('setup.cycles.activate');
-    Route::post('/setup/cycles/{cycle}/deactivate', [SetupController::class, 'deactivateCycle'])->name('setup.cycles.deactivate');
-    Route::post('/setup/windows', [SetupController::class, 'storeWindow'])->name('setup.windows.store');
-    Route::get('/setup/privacy', [SetupController::class, 'privacy'])->name('setup.privacy');
-    Route::post('/setup/privacy', [SetupController::class, 'storePrivacy'])->name('setup.privacy.store');
-    Route::post('/setup/privacy/{policy}/activate', [SetupController::class, 'activatePrivacy'])->name('setup.privacy.activate');
-    Route::get('/setup/grades', [SetupController::class, 'grades'])->name('setup.grades');
-    Route::post('/setup/grades', [SetupController::class, 'storeGrade'])->name('setup.grades.store');
-    Route::put('/setup/grades/{field}', [SetupController::class, 'updateGrade'])->name('setup.grades.update');
-    Route::get('/setup/aptitude', [SetupController::class, 'aptitude'])->name('setup.aptitude');
-    Route::post('/setup/aptitude', [SetupController::class, 'storeAptitude'])->name('setup.aptitude.store');
-    Route::put('/setup/aptitude/{area}', [SetupController::class, 'updateAptitude'])->name('setup.aptitude.update');
-    Route::get('/setup/quotas', [SetupController::class, 'quotas'])->name('setup.quotas');
-    Route::post('/setup/quotas', [SetupController::class, 'storeQuota'])->name('setup.quotas.store');
+    Route::prefix('nexi')->name('nexi.')->group(function () {
+        Route::post('/turns', [NexiTurnController::class, 'store'])->name('turns.store');
+        Route::post('/conversations/clear', [NexiConversationController::class, 'clear'])->name('conversations.clear');
+        Route::get('/conversations/{conversation}/snapshot', [NexiConversationController::class, 'snapshot'])->name('conversations.snapshot');
+        Route::get('/conversations/{conversation}/stream', [NexiConversationController::class, 'stream'])->name('conversations.stream');
+        Route::post('/runs/{run}/cancel', [NexiRunController::class, 'cancel'])->name('runs.cancel');
+        Route::post('/emergency-stop', [NexiRunController::class, 'emergencyStop'])->name('emergency-stop');
+        Route::post('/skills/start', [NexiSkillController::class, 'start'])->name('skills.start');
+        Route::post('/skills/invoke', [NexiSkillController::class, 'invoke'])->name('skills.invoke');
+        Route::post('/proposals/{proposal}/confirm', [NexiProposalController::class, 'confirm'])->name('proposals.confirm');
+        Route::post('/proposals/{proposal}/cancel', [NexiProposalController::class, 'cancel'])->name('proposals.cancel');
+    });
+
+    Route::prefix('knowledge')->name('knowledge.')->group(function () {
+        Route::get('/', [KnowledgeSourceController::class, 'index'])->name('index');
+        Route::get('/create', [KnowledgeSourceController::class, 'create'])->name('create');
+        Route::post('/', [KnowledgeSourceController::class, 'store'])->name('store');
+        Route::get('/{source}', [KnowledgeSourceController::class, 'show'])->name('show');
+        Route::post('/{source}/extract', [KnowledgeSourceController::class, 'extract'])->name('extract');
+        Route::post('/{source}/approve', [KnowledgeSourceController::class, 'approve'])->name('approve');
+        Route::post('/{source}/publish', [KnowledgeSourceController::class, 'publish'])->name('publish');
+        Route::post('/{source}/revoke', [KnowledgeSourceController::class, 'revoke'])->name('revoke');
+    });
+
+
+    Route::get('/setup', [SetupDashboardController::class, 'index'])->name('setup.index');
+    Route::get('/setup/programs', [ProgramController::class, 'programs'])->name('setup.programs');
+    Route::post('/setup/programs', [ProgramController::class, 'storeProgram'])->name('setup.programs.store');
+    Route::put('/setup/programs/{program}', [ProgramController::class, 'updateProgram'])->name('setup.programs.update');
+    Route::get('/setup/rooms', [RoomController::class, 'rooms'])->name('setup.rooms');
+    Route::post('/setup/rooms', [RoomController::class, 'storeRoom'])->name('setup.rooms.store');
+    Route::put('/setup/rooms/{room}', [RoomController::class, 'updateRoom'])->name('setup.rooms.update');
+    Route::get('/setup/cycles', [AcademicCycleController::class, 'cycles'])->name('setup.cycles');
+    Route::get('/setup/cycles/create', [AcademicCycleController::class, 'createCycle'])->name('setup.cycles.create');
+    Route::post('/setup/cycles', [AcademicCycleController::class, 'storeCycle'])->name('setup.cycles.store');
+    Route::get('/setup/cycles/{cycle}/edit', [AcademicCycleController::class, 'editCycle'])->name('setup.cycles.edit');
+    Route::put('/setup/cycles/{cycle}', [AcademicCycleController::class, 'updateCycle'])->name('setup.cycles.update');
+    Route::post('/setup/cycles/{cycle}/activate', [AcademicCycleController::class, 'activateCycle'])->name('setup.cycles.activate');
+    Route::post('/setup/cycles/{cycle}/deactivate', [AcademicCycleController::class, 'deactivateCycle'])->name('setup.cycles.deactivate');
+    Route::post('/setup/windows', [ApplicationWindowController::class, 'storeWindow'])->name('setup.windows.store');
+    Route::get('/setup/privacy', [PrivacyPolicyController::class, 'privacy'])->name('setup.privacy');
+    Route::post('/setup/privacy', [PrivacyPolicyController::class, 'storePrivacy'])->name('setup.privacy.store');
+    Route::post('/setup/privacy/{policy}/activate', [PrivacyPolicyController::class, 'activatePrivacy'])->name('setup.privacy.activate');
+    Route::get('/setup/grades', [IntakeGradeFieldController::class, 'grades'])->name('setup.grades');
+    Route::post('/setup/grades', [IntakeGradeFieldController::class, 'storeGrade'])->name('setup.grades.store');
+    Route::put('/setup/grades/{field}', [IntakeGradeFieldController::class, 'updateGrade'])->name('setup.grades.update');
+    Route::get('/setup/aptitude', [AptitudeAreaController::class, 'aptitude'])->name('setup.aptitude');
+    Route::post('/setup/aptitude', [AptitudeAreaController::class, 'storeAptitude'])->name('setup.aptitude.store');
+    Route::put('/setup/aptitude/{area}', [AptitudeAreaController::class, 'updateAptitude'])->name('setup.aptitude.update');
+    Route::get('/setup/aptitude/{area}/scoring', [AptitudeAreaController::class, 'scoring'])->name('setup.aptitude.scoring');
+    Route::put('/setup/aptitude/{area}/scoring', [AptitudeAreaController::class, 'storeScoring'])->name('setup.aptitude.scoring.update');
+    Route::get('/setup/quotas', [ProgramQuotaController::class, 'quotas'])->name('setup.quotas');
+    Route::post('/setup/quotas', [ProgramQuotaController::class, 'storeQuota'])->name('setup.quotas.store');
+
+    Route::get('/staff/profile', [ProfileController::class, 'show'])->name('staff.profile');
+
+    Route::get('/staff/personnel', [PersonnelController::class, 'index'])->name('staff.personnel.index');
 
     Route::middleware(EnsurePersonnelAccess::class)->prefix('staff/personnel')->name('staff.personnel.')->group(function () {
-        Route::get('/', [PersonnelController::class, 'index'])->name('index');
         Route::get('/create', [PersonnelController::class, 'create'])->name('create');
         Route::post('/', [PersonnelController::class, 'store'])->name('store');
         Route::get('/{user}/edit', [PersonnelController::class, 'edit'])->name('edit');
         Route::put('/{user}', [PersonnelController::class, 'update'])->name('update');
         Route::post('/{user}/deactivate', [PersonnelController::class, 'deactivate'])->name('deactivate');
         Route::post('/{user}/activate', [PersonnelController::class, 'activate'])->name('activate');
+        Route::post('/{user}/grant-ta', [TestAdministratorController::class, 'grant'])
+            ->middleware('capability:'.CapabilityCatalog::GUIDANCE_TA_DELEGATE)
+            ->name('grant-ta');
+        Route::post('/{user}/revoke-ta', [TestAdministratorController::class, 'revoke'])
+            ->middleware('capability:'.CapabilityCatalog::GUIDANCE_TA_DELEGATE)
+            ->name('revoke-ta');
     });
 
-    Route::get('/admissions', [AdmissionController::class, 'index'])
+    Route::get('/admissions', [AdmissionReviewController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_VIEW)
         ->name('admissions.index');
-    Route::get('/admissions/{attempt}', [AdmissionController::class, 'show'])
+    Route::get('/admissions/{attempt}', [AdmissionReviewController::class, 'show'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_VIEW)
         ->name('admissions.show');
-    Route::post('/admissions/{attempt}/accept', [AdmissionController::class, 'accept'])
+    Route::post('/admissions/{attempt}/accept', [AdmissionActionController::class, 'accept'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT)
         ->name('admissions.accept');
-    Route::post('/admissions/{attempt}/dismiss', [AdmissionController::class, 'dismiss'])
+    Route::post('/admissions/{attempt}/dismiss', [AdmissionActionController::class, 'dismiss'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_DISMISS)
         ->name('admissions.dismiss');
-    Route::post('/admissions/{attempt}/correct', [AdmissionController::class, 'correct'])
+    Route::post('/admissions/{attempt}/correct', [AdmissionActionController::class, 'correct'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT)
         ->name('admissions.correct');
-    Route::post('/admissions/{attempt}/request-correction', [AdmissionController::class, 'requestCorrection'])
+    Route::post('/admissions/{attempt}/request-correction', [AdmissionActionController::class, 'requestCorrection'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT)
         ->name('admissions.request-correction');
-    Route::post('/admissions/{attempt}/authorize-amendment', [AdmissionController::class, 'authorizeAmendment'])
+    Route::post('/admissions/{attempt}/authorize-amendment', [AdmissionActionController::class, 'authorizeAmendment'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT)
         ->name('admissions.authorize-amendment');
-    Route::post('/admissions/{attempt}/reconsider', [AdmissionController::class, 'reconsider'])
+    Route::post('/admissions/{attempt}/reconsider', [AdmissionActionController::class, 'reconsider'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT)
         ->name('admissions.reconsider');
-    Route::post('/admissions/{attempt}/reopen', [AdmissionController::class, 'reopen'])
+    Route::post('/admissions/{attempt}/reopen', [AdmissionActionController::class, 'reopen'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT)
         ->name('admissions.reopen');
-    Route::post('/admissions/{attempt}/archive', [AdmissionController::class, 'archive'])
+    Route::post('/admissions/{attempt}/archive', [AdmissionActionController::class, 'archive'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_DISMISS)
         ->name('admissions.archive');
-    Route::post('/admissions/{attempt}/reissue-access-key', [AdmissionController::class, 'reissueAccessKey'])
+    Route::post('/admissions/{attempt}/reissue-access-key', [AdmissionActionController::class, 'reissueAccessKey'])
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT)
         ->name('admissions.reissue-access-key');
 
@@ -125,11 +187,19 @@ Route::middleware('auth')->group(function () {
         ->name('applicant.schedule');
     Route::post('/applicant/schedule/reserve', [ApplicantScheduleController::class, 'reserve'])
         ->name('applicant.schedule.reserve');
+    Route::get('/applicant/consultation', [ApplicantConsultationController::class, 'show'])
+        ->name('applicant.consultation');
+    Route::post('/applicant/consultation/reserve', [ApplicantConsultationController::class, 'reserve'])
+        ->name('applicant.consultation.reserve');
     Route::get('/applicant/applications/{attempt}/correct', [ApplicantPortalController::class, 'correctionForm'])
         ->name('applicant.correction');
     Route::post('/applicant/applications/{attempt}/correct', [ApplicantPortalController::class, 'resubmitCorrection'])
         ->name('applicant.correction.store');
 
+    Route::get('/exams/monitoring', [ExamMonitoringController::class, 'monitoringIndex'])
+        ->name('exams.monitoring');
+    Route::get('/exams/sessions/{session}/monitoring', [ExamMonitoringController::class, 'monitoring'])
+        ->name('exams.sessions.monitoring');
     Route::get('/exams/sessions', [ExamSessionController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.index');
@@ -179,27 +249,118 @@ Route::middleware('auth')->group(function () {
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
         ->name('exams.sessions.close-reservation');
 
+    Route::get('/consultation/sessions', [ConsultationSessionController::class, 'index'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.index');
+    Route::get('/consultation/sessions/create', [ConsultationSessionController::class, 'create'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.create');
+    Route::post('/consultation/sessions', [ConsultationSessionController::class, 'store'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.store');
+    Route::get('/consultation/sessions/{session}', [ConsultationSessionController::class, 'show'])
+        ->name('consultation.sessions.show');
+    Route::get('/consultation/sessions/{session}/edit', [ConsultationSessionController::class, 'edit'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.edit');
+    Route::put('/consultation/sessions/{session}', [ConsultationSessionController::class, 'update'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.update');
+    Route::post('/consultation/sessions/{session}/assign', [ConsultationSessionController::class, 'assign'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.assign');
+    Route::post('/consultation/sessions/{session}/assignments/{assignment}/cancel', [ConsultationSessionController::class, 'cancelAssignment'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.assignments.cancel');
+    Route::post('/consultation/sessions/{session}/reassign', [ConsultationSessionController::class, 'reassign'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.reassign');
+    Route::post('/consultation/sessions/{session}/publish', [ConsultationSessionController::class, 'publish'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.publish');
+    Route::post('/consultation/sessions/{session}/unpublish', [ConsultationSessionController::class, 'unpublish'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.unpublish');
+    Route::post('/consultation/sessions/{session}/complete', [ConsultationSessionController::class, 'complete'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.complete');
+    Route::post('/consultation/sessions/{session}/cancel', [ConsultationSessionController::class, 'cancel'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.cancel');
+    Route::post('/consultation/sessions/{session}/open-reservation', [ConsultationSessionController::class, 'openReservation'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.reservation.open');
+    Route::post('/consultation/sessions/{session}/close-reservation', [ConsultationSessionController::class, 'closeReservation'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN)
+        ->name('consultation.sessions.reservation.close');
 
-    Route::get('/proctor', [ProctorController::class, 'dashboard'])
+    Route::get('/registrar/enrollment-eligibility', [EnrollmentEligibilityController::class, 'index'])
+        ->middleware('capability:'.CapabilityCatalog::REGISTRAR_ENROLLMENT_ELIGIBILITY)
+        ->name('registrar.enrollment-eligibility.index');
+    Route::get('/registrar/enrollment-eligibility/{attempt}', [EnrollmentEligibilityController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::REGISTRAR_ENROLLMENT_ELIGIBILITY)
+        ->name('registrar.enrollment-eligibility.show');
+
+
+    Route::post('/exams/sessions/{session}/proctor-duty', [ProctorDutyController::class, 'assignDuty'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN)
-        ->name('proctor.dashboard');
-    Route::post('/exams/sessions/{session}/proctor', [ProctorController::class, 'assignDuty'])
+        ->name('proctor-duty.assign');
+    Route::post('/proctor-duty/{duty}/revoke', [ProctorDutyController::class, 'revoke'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN)
-        ->name('proctor.assign');
-    Route::post('/proctor/duties/{duty}/revoke', [ProctorController::class, 'revoke'])
-        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN)
-        ->name('proctor.revoke');
-    Route::post('/proctor/assignments/{assignment}/attendance', [ProctorController::class, 'recordAttendance'])
-        ->name('proctor.attendance');
-    Route::post('/proctor/assignments/{assignment}/submission', [ProctorController::class, 'recordSubmission'])
-        ->name('proctor.submission');
+        ->name('proctor-duty.revoke');
+    Route::post('/exams/sessions/{session}/monitoring/assignments/{assignment}/attendance', [ProctorDutyController::class, 'recordAttendance'])
+        ->name('exams.sessions.monitoring.attendance');
+    Route::post('/exams/sessions/{session}/monitoring/assignments/{assignment}/submission', [ProctorDutyController::class, 'recordSubmission'])
+        ->name('exams.sessions.monitoring.submission');
 
     Route::get('/grading', [GradingController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
         ->name('grading.index');
-    Route::post('/grading/sessions/{gradingSession}/scores', [GradingController::class, 'recordScore'])
+    Route::post('/grading', [GradingController::class, 'store'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
-        ->name('grading.score');
+        ->name('grading.store');
+    Route::get('/grading/sessions/{gradingSession}', [GradingController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
+        ->name('grading.sessions.show');
+    Route::get('/grading/sessions/{gradingSession}/omr', [GradingController::class, 'omr'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr');
+    Route::get('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/image', [GradingController::class, 'omrImage'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.image');
+    Route::get('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/pages/{page}/image', [GradingController::class, 'omrImage'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.pages.image');
+    Route::post('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/pages/{page}/replace', [GradingController::class, 'replaceOmrSheetPage'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.pages.replace');
+    Route::post('/grading/sessions/{gradingSession}/omr/batches', [GradingController::class, 'storeOmrBatch'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.batches.store');
+    Route::post('/grading/sessions/{gradingSession}/omr/sheets', [GradingController::class, 'storeOmrSheet'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.store');
+    Route::post('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/review', [GradingController::class, 'reviewOmrSheet'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.review');
+    Route::post('/grading/sessions/{gradingSession}/omr/batches/{batch}/confirm', [GradingController::class, 'confirmOmrBatch'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.batches.confirm');
+    Route::post('/grading/sessions/{gradingSession}/omr/batches/{batch}/reject', [GradingController::class, 'rejectOmrBatch'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.batches.reject');
+    Route::post('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/retry', [GradingController::class, 'retryOmrSheet'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.retry');
+    Route::get('/grading/sessions/{gradingSession}/attempts/{attempt}', [GradingScoreController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
+        ->name('grading.sessions.attempts.scores');
+    Route::put('/grading/sessions/{gradingSession}/attempts/{attempt}/scores', [GradingScoreController::class, 'update'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
+        ->name('grading.sessions.attempts.scores.update');
+    Route::delete('/grading/sessions/{gradingSession}/attempts/{attempt}/scores', [GradingScoreController::class, 'destroy'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
+        ->name('grading.sessions.attempts.scores.destroy');
     Route::post('/grading/sessions/{gradingSession}/finalize', [GradingController::class, 'finalize'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
         ->name('grading.finalize');
@@ -223,9 +384,43 @@ Route::middleware('auth')->group(function () {
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.unrelease');
 
+    Route::get('/printing/jobs/{printJob}', [PrintingController::class, 'show'])
+        ->middleware('auth')
+        ->name('printing.jobs.show');
+    Route::get('/printing/jobs/{printJob}/download', [PrintingController::class, 'download'])
+        ->middleware('auth')
+        ->name('printing.jobs.download');
+
+    Route::get('/setup/omr', [OmrConfigurationController::class, 'index'])->name('setup.omr.index');
+    Route::get('/setup/omr/intake', [OmrConfigurationController::class, 'intake'])->name('setup.omr.intake');
+    Route::post('/setup/omr/bundles', [OmrConfigurationController::class, 'storeBundle'])->name('setup.omr.bundles.store');
+    Route::get('/setup/omr/templates', [OmrConfigurationController::class, 'templatesIndex'])->name('setup.omr.templates.index');
+    Route::get('/setup/omr/templates/builder', [OmrConfigurationController::class, 'builder'])->name('setup.omr.templates.builder');
+    Route::post('/setup/omr/templates', [OmrConfigurationController::class, 'storeAuthoredTemplate'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.store');
+    Route::get('/setup/omr/templates/{template}', [OmrConfigurationController::class, 'showTemplate'])->name('setup.omr.templates.show');
+    Route::get('/setup/omr/templates/{version}/preview', [OmrConfigurationController::class, 'previewVersion'])->name('setup.omr.templates.preview');
+    Route::post('/setup/omr/templates/preview-draft', [OmrConfigurationController::class, 'previewDraft'])->name('setup.omr.templates.preview_draft');
+    Route::post('/setup/omr/layout/preview', [OmrConfigurationController::class, 'layoutPreview'])->name('setup.omr.layout.preview');
+    Route::post('/setup/omr/templates/{version}/overlay', [OmrConfigurationController::class, 'storeOverlay'])->name('setup.omr.templates.overlay');
+    Route::get('/setup/omr/booklets', [OmrConfigurationController::class, 'booklets'])->name('setup.omr.booklets');
+    Route::get('/setup/omr/booklets/create', [OmrConfigurationController::class, 'bookletCreate'])->name('setup.omr.booklets.create');
+    Route::get('/setup/omr/booklets/{booklet}', [OmrConfigurationController::class, 'bookletShow'])->name('setup.omr.booklets.show');
+    Route::post('/setup/omr/booklets', [OmrConfigurationController::class, 'storeBooklet'])->name('setup.omr.booklets.store');
+    Route::post('/setup/omr/booklets/{version}/copy', [OmrConfigurationController::class, 'copyBooklet'])->name('setup.omr.booklets.copy');
+    Route::get('/setup/omr/pairs', [OmrConfigurationController::class, 'pairs'])->name('setup.omr.pairs');
+
     Route::get('/ui-kit', function () {
         return Inertia::render('UiKit/Gallery');
     })->name('ui-kit.gallery');
+
+    Route::middleware('capability:'.CapabilityCatalog::NOTIFY_READ_OWN)->prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/{delivery}/read', [NotificationController::class, 'markRead'])->name('read');
+        Route::post('/read-all', [NotificationController::class, 'readAll'])->name('read-all');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+    });
 
     Route::get('/foundation/capability-probe', function () {
         return response()->json(['ok' => true, 'capability' => 'foundation.probe']);

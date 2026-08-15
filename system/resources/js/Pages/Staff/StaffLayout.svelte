@@ -16,27 +16,29 @@
     ChevronRight,
     Menu,
     LayoutDashboard,
-    Blocks,
     Sun,
     Moon,
     Users,
     ClipboardList,
     Calendar,
+    Activity,
     Shield,
     FileCheck,
     MessagesSquare,
     Send,
+    BookOpen,
+    Settings,
   } from 'lucide-svelte';
   import { isStaffNavActive } from '@/Pages/Staff/staff-nav.js';
   import ToastManager from '@/Components/kit/ToastManager.svelte';
-  import NexiAssistPanel from '@/Components/kit/Nexi/NexiAssistPanel.svelte';
+  import NotificationBell from '@/Components/kit/NotificationBell.svelte';
+  import NexiDock from '@/Components/kit/Nexi/NexiDock.svelte';
   import { Button } from '@/Components/ui/button';
 
   let { children, breadcrumbs = [] } = $props();
 
   const page = usePage();
   const user = $derived(page.props.auth?.user ?? null);
-  const nexi = $derived(page.props.nexi ?? { enabled: false, mode: 'disabled' });
   const headTitle = $derived(
     breadcrumbs.length > 0
       ? `${breadcrumbs[breadcrumbs.length - 1].label} - NEXIAM`
@@ -65,25 +67,36 @@
 
   const iconMap = {
     LayoutDashboard,
-    Blocks,
     Users,
     ClipboardList,
     Calendar,
+    Activity,
     Shield,
     FileCheck,
     MessagesSquare,
     Send,
+    BookOpen,
+    Settings,
   };
 
-  const navItems = $derived(
+  const navSections = $derived(
     (page.props.staff_navigation ?? [
-      { href: '/staff', label: 'Home', icon: 'LayoutDashboard', match: 'exact', group: 'workspace' },
-      { href: '/ui-kit', label: 'UI Kit', icon: 'Blocks', match: 'prefix', group: 'system' },
-    ]).map((item) => ({
-      ...item,
-      icon: iconMap[item.icon] ?? LayoutDashboard,
+      {
+        label: null,
+        items: [
+          { href: '/staff', label: 'Home', icon: 'LayoutDashboard', match: 'exact' },
+        ],
+      },
+    ]).map((section) => ({
+      ...section,
+      items: (section.items ?? []).map((item) => ({
+        ...item,
+        icon: iconMap[item.icon] ?? LayoutDashboard,
+      })),
     }))
   );
+
+  const navItems = $derived(navSections.flatMap((section) => section.items));
 
   function closeDropdowns() {
     userDropdownOpen = false;
@@ -124,18 +137,27 @@
         </Button>
       </div>
 
-      <nav class="flex-1 overflow-y-auto scrollbar-hide p-2 space-y-0.5">
-        {#each navItems as item}
-          <Link
-            href={item.href}
-            class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 {isNavActive(item)
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-foreground/80 hover:text-foreground hover:bg-accent'}"
-            onclick={closeDropdowns}
-          >
-            <item.icon class="w-4 h-4 shrink-0" />
-            {item.label}
-          </Link>
+      <nav class="flex-1 overflow-y-auto scrollbar-hide p-2 space-y-1">
+        {#each navSections as section}
+          <div class="space-y-0.5">
+            {#if section.label}
+              <p class="px-3 pt-2 pb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                {section.label}
+              </p>
+            {/if}
+            {#each section.items as item}
+              <Link
+                href={item.href}
+                class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 {isNavActive(item)
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-foreground/80 hover:text-foreground hover:bg-accent'}"
+                onclick={closeDropdowns}
+              >
+                <item.icon class="w-4 h-4 shrink-0" />
+                {item.label}
+              </Link>
+            {/each}
+          </div>
         {/each}
       </nav>
     </div>
@@ -261,6 +283,7 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-4">
+        <NotificationBell />
         <Button variant="ghost" size="icon" onclick={toggleTheme} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} class="rounded-full min-h-[44px] min-w-[44px]">
           <Sun class="h-5 w-5 dark:hidden" />
           <Moon class="h-5 w-5 hidden dark:block" />
@@ -278,16 +301,7 @@
   </div>
 </div>
 
-{#if nexi.enabled}
-  <NexiAssistPanel
-    enabled={nexi.enabled}
-    mode={nexi.mode ?? 'degraded'}
-    disclosure={nexi.disclosure}
-    defaultInteraction={nexi.default_interaction ?? 'assistant'}
-    interactionModes={nexi.interaction_modes ?? []}
-    usage={nexi.usage ?? { used: 0, limit: 50, unit: 'asks', period: 'today' }}
-  />
-{/if}
+<NexiDock />
 
 <style>
   .scrollbar-hide {

@@ -135,6 +135,20 @@ DTOs must not contain raw passwords/challenge verifiers after the command bounda
 | `ReverseResultRelease` | Current release, reason, expected version | Approved correction authority | Reversal/supersession/audit | Correction notification |
 | `MarkNotificationRead` | Notification delivery, expected version | Recipient own-data capability | Read state | None |
 | `ConfirmGuidanceInquiry` | Refusal/fallback reference, confirmation, message, idempotency key | Applicant own-data capability, conditional | Inquiry creation/idempotency | Guidance notification |
+| `UpsertProgramQuota` | Program, capacity, reason, expected version, idempotency key | Assigned PH or authorized Guidance/TA per D-087 | Locked quota version + immutable change history/audit | PH notice when Guidance/TA changed it |
+| `SetGuidanceProgramPool` | Attempt, complete option program IDs/order, advised default program, source/proposal refs, reason, expected pool/selection versions, idempotency key | `guidance.selection.manage`; released + advised attempt | New immutable pool version plus separate attributable `guidance_default` provisional selection and FCFS quota reservation; preferences/proposals unchanged | Applicant options + pending-ack notice |
+| `SelectApplicantProgram` | Attempt, pool/version, program, expected selection version, idempotency key | Applicant OWN (`applicant.program.select`) or assisted Guidance recording attributable applicant instruction | FCFS/idempotent create or atomic transfer before enrolling; one provisional selection | Selection/change/conflict notice |
+| `AcknowledgeAssistedProgramSelection` | Current selection/version, channel/evidence, idempotency key | Applicant OWN; Guidance recording attributable in-person acknowledgement; or Registrar recording submitted-sheet confirmation with `StampAttemptEnrolling` | Pending acknowledgement → active; recorder/channel/time retained; same commitment/quota reservation reused | Eligibility/selection notice |
+| `TransferApplicantProgramSelection` | Attempt, pool/version, source selection/version, destination program, idempotency key | Applicant OWN or assisted Guidance with attributable applicant instruction; before enrolling | Deterministic dual-lock transfer; destination reserved + source released atomically | Change/full/conflict notice |
+| `CancelApplicantProgramSelection` | Attempt, current selection/version, reason, optional attributable applicant instruction, idempotency key | Applicant OWN; Guidance only for pending default or recorded applicant instruction; before enrolling | Current selection cancelled + quota released atomically; pool/history unchanged | Cancellation/reconsideration notice |
+| `OpenProgramFollowUp` | Attempt, program, reason, requested action, expected version, idempotency key | `guidance.follow_up.manage`; before enrolling | One open follow-up for attempt/program/cycle + audit | PH/applicant notice |
+| `ResolveProgramFollowUp` | Follow-up, outcome (`cleared_by_ph`, `declined_by_ph`, `appearance_requested`), reason, expected version, idempotency key | Assigned PH (`program.head.follow_up.resolve`); allowed while enrolling | Terminal/non-terminal follow-up version + audit; decline appends canonical program-decline outcome and atomically releases eligible provisional reservation | Applicant/Guidance/PH notice |
+| `DeclineApplicantProgramSelection` | Current acknowledged selection or selection explicitly targeted by open follow-up, reason, expected version, idempotency key | Assigned PH (`program.head.selection.decline`) before enrolling | Declined selection + quota release + current-pool program-unavailable outcome + reconsideration atomically | Applicant + Guidance notice |
+| `SendAdmissionSupportMessage` | Thread subject, body, expected version, idempotency key | `record.thread.participate` or bounded `program.head.message` relationship | Message/read-state/audit under server-owned participants | Recipient notification |
+| `MarkAdmissionSupportMessageRead` | Thread/message cursor, expected read version, idempotency key | `record.thread.participate`; current subject relationship | Recipient read projection + audit; message history unchanged | None |
+| `StampAttemptEnrolling` | Attempt, sheet received reference, provisional/default selection, optional applicant-confirmation evidence, reason/source, expected versions, idempotency key | `registrar.enrollment.stamp` | Immutable enrolling event after acceptance + exam/grading + release + advice; may atomically acknowledge pending default; open PH follow-up is displayed but does not block | Applicant/Guidance notice |
+| `StampAttemptEnrolled` | Attempt, current enrolling stamp/version, signed-paper reference/hash, final program, verifier, reason/source, expected versions, idempotency key | `registrar.enrollment.stamp` | Requires terminal PH follow-up if one exists; immutable enrolled event paper-finalizes the provisional selection, may adjust out-of-pool/full/unconfigured final program, releases prior reservation, leaves configured capacity unchanged, and snapshots variance | Applicant/Guidance + PH variance notice |
+| `ReverseEnrollmentStamp` | Current stamp, reason, expected version, idempotency key | `registrar.enrollment.stamp` correction authority | Append-only reversal/correction event and recomputed projection; current `enrolled` must reverse before `enrolling` | Applicant/Guidance notice |
 | `ProposeAssistantAction` | Actor context, typed action name, validated fields, target reference, idempotency key | Same capability/scope required by the equivalent UI command | Stored proposal with citations/context and confirmation requirement | None |
 | `ConfirmAssistantAction` | Action request, confirmation, expected version, idempotency key | Same capability/scope required by the equivalent UI command | Execute the existing application command, never a model-defined mutation | Existing command effects and audit |
 | `ActivateBreakGlassSession` | Reason/category, non-wildcard capability allowlist, target/purpose, duration, reviewer/alert target, confirmation, idempotency key | Super Admin/approved break-glass activator with strong authentication | Time-bound `break_glass_sessions` row and audit before exceptional access is usable | Alert/reviewer notification |
@@ -156,7 +170,15 @@ DTOs must not contain raw passwords/challenge verifiers after the command bounda
 | `ProctorRosterQuery` | Active ProctorAssignment + session | Permitted roster/attendance/submission fields |
 | `GradingWorkspaceQuery` | Guidance assessment scope | Scores, missing/invalid areas, import rows, version state |
 | `ConsultationWorkspaceQuery` | Guidance scope | Decision evidence, signals, availability, release prerequisites |
-| `ProgramHeadProjectionQuery` | Program scope + approved metric version | Aggregates/approved consultation-facing evidence with freshness metadata |
+| `ProgramHeadProjectionQuery` | Assigned program + cycle + approved metric/list definition versions | Defined/fresh metrics, quota, Potential/Upcoming/Follow-up/Enrolling/Enrolled rows with basis/stage tags; no protected detail |
+| `ProgramHeadCandidateQuery` | Assigned program + attempt + relationship/purpose | Minimal Potential summary or bounded D-080 protected record; prohibited fields absent; view audit/access-history/notice intent |
+| `ApplicantProgramChoiceQuery` | Applicant OWN attempt | Current Guidance pool, acknowledged/pending selection, quota availability/full, decline/reconsideration and permitted commands |
+| `AdmissionSupportThreadQuery` | Actor + subject relationship + cursor | Only server-authorized PH↔Guidance or PH↔applicant thread/messages/read state |
+| `ApplicantAccessHistoryQuery` | Applicant OWN attempt | Privacy-safe protected-view history and deduplicated notices |
+| `RegistrarEnrollmentEligibilityQuery` | Registrar office + attempt/action-hub destination | Facts-only milestone/selection/follow-up/stamp state; no counselor notes/engine rationale/messages |
+| `ConsultationAdmissionSupportQuery` | Authorized Guidance + selected attempt | Readiness, released score chart/table projection, preferences, structured consultation evidence, independent future-analysis regions, human decision/pool/follow-up/history; no engine mutation |
+| `ResolveApplicantQrQuery` | Authenticated actor + universal signed locator | Verify locator/expiry/window, resolve attempt without exposing payload data, and return only actor-authorized destination identifiers; never mutate |
+| `ApplicantActionMenuQuery` | Authenticated actor + resolved attempt + current duty/scope | Server-authored Registrar, Guidance/TA, or PH destinations/actions permitted by ordinary capability and case state; no QR-derived authority |
 | `AuditAccessQuery` | Super Admin full audit scope or approved review scope | Redacted protected-view/mutation evidence, with audit-of-audit evidence |
 | `ExamSlotPlanQuery` | Test Administrator scope or Applicant own reservation scope | Reservation state, capacity, finalization/publication state |
 | `AssistantContextQuery` | Actor-scoped policy/own-data/task context | Citations plus typed action affordances; no hidden fields |
@@ -219,6 +241,23 @@ Candidate event types:
 - `ResultReleaseReversed`;
 - `NotificationIntentCreated`;
 - `ProtectedViewAccessed`;
+- `ProgramHeadRecordViewed`;
+- `GuidanceProgramPoolSet`;
+- `ProgramQuotaChanged`;
+- `ApplicantProgramSelected`;
+- `AssistedProgramSelectionAcknowledged`;
+- `ApplicantProgramSelectionTransferred`;
+- `ApplicantProgramSelectionCancelled`;
+- `ApplicantProgramSelectionDeclined`;
+- `ProgramDeclineRecorded`;
+- `ProgramFollowUpOpened`;
+- `ProgramFollowUpResolved`;
+- `AdmissionSupportMessageSent`;
+- `AdmissionSupportMessageRead`;
+- `AttemptEnrollingStamped`;
+- `AttemptEnrolledStamped`;
+- `EnrollmentStampReversed`;
+- `ApplicantQrResolved`;
 - `AssistantActionProposed`;
 - `AssistantActionConfirmed`;
 - `AssistantActionCompleted`;

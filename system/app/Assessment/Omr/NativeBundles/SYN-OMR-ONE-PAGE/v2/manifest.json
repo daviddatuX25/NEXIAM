@@ -1,0 +1,16 @@
+{
+  "bundle_version": "nexiam.omr.native-bundle.v1",
+  "template_code": "SYN-OMR-ONE-PAGE",
+  "template_version": 2,
+  "synthetic": true,
+  "engine": {
+    "name": "OMRChecker",
+    "commit": "de3f6982822895491be760325fd43e65e90fa293",
+    "patch_set": "nexiam-headless-overlay-v1"
+  },
+  "files": {
+    "template.json": "83dfe317e577c9d415ffb50bb8b919ad961051a6336843ecdeea0635aa855c58",
+    "config.json": "32e41924754ac3bb4c5f88db0f685c4fea723dde1b8b99687de705d8f470aa60",
+    "reference.svg": "ae0cc13eda4e88bd25ad8baed252e9acfb5571dac689c291541f86fce09af2ac"
+  }
+}

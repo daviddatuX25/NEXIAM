@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Ai\Http\NexiSessionViewBuilder;
+use App\Models\User;
+use App\Notifications\NotificationProjection;
 use App\Support\Navigation\StaffNavigationBuilder;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -21,23 +24,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-
-        $interactionModes = collect(config('nexi.interaction_modes', []))
-            ->filter(fn (array $mode): bool => (bool) ($mode['enabled'] ?? false))
-            ->map(fn (array $mode): array => [
-                'key' => (string) $mode['key'],
-                'label' => (string) $mode['label'],
-            ])
-            ->values()
-            ->all();
-
-        $defaultInteraction = (string) config('nexi.default_interaction', 'assistant');
-        $allowedKeys = array_column($interactionModes, 'key');
-        if ($allowedKeys !== [] && ! in_array($defaultInteraction, $allowedKeys, true)) {
-            $defaultInteraction = $allowedKeys[0];
-        }
-
-        $usage = config('nexi.usage', []);
+        $nexiView = app(NexiSessionViewBuilder::class)->build($request);
 
         return [
             ...parent::share($request),
@@ -56,37 +43,68 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
             ],
 
+            /*
+             * Own-data notification bell share (GF-22 §5.5). The client polls
+             * with usePoll(30_000, () => ({ only: ['notifications'] })) so the
+             * badge/list refresh without a full navigation.
+             */
+            'notifications' => $user instanceof User
+                ? fn () => app(NotificationProjection::class)->forUser($user)
+                : null,
+
             'staff_navigation' => $this->staffNavigation($request),
 
             /*
-             * Nexi presentation seam (GF-22 / master §8.4–8.5).
-             * Provider/RAG remain E3 — UI is assistive chrome with typed-action previews only.
+             * Transitional Nexi share (OpenSpec ai-assistant-foundation):
+             * - `session` is the typed NexiSessionView v1 contract
+             * - top-level enabled/mode/disclosure string keep the locked chrome mounting
+             *   until NexiDock lands (frontend tree currently permission-blocked for this agent)
              */
-            'nexi' => [
-                'enabled' => (bool) config('nexi.enabled', true),
-                'mode' => (string) config('nexi.mode', 'degraded'),
-                'disclosure' => (string) config(
-                    'nexi.disclosure',
-                    'Nexi is an assistant. It cannot grant access or change records without a confirmed typed command.'
-                ),
-                'default_interaction' => $defaultInteraction,
-                'interaction_modes' => $interactionModes,
-                'usage' => [
-                    'used' => (int) ($usage['used'] ?? 0),
-                    'limit' => (int) ($usage['limit'] ?? 0),
-                    'unit' => (string) ($usage['unit'] ?? 'asks'),
-                    'period' => (string) ($usage['period'] ?? 'today'),
-                ],
-            ],
+            'nexi' => $this->nexiShare($nexiView),
         ];
     }
 
-
     /**
-     * @return list<array{href: string, label: string, icon: string, match: string, group: string}>
+     * @return list<array{label: string|null, items: list<array{href: string, label: string, icon: string, match: string}>}>
      */
     private function staffNavigation(Request $request): array
     {
         return app(StaffNavigationBuilder::class)->for($request->user());
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function nexiShare(?\App\Ai\Http\NexiSessionView $view): ?array
+    {
+        if ($view === null) {
+            return null;
+        }
+
+        $session = $view->toArray();
+        $visible = $session['availability'] !== 'hidden';
+
+        $modes = [];
+        foreach ($session['modes'] as $key) {
+            $modes[] = [
+                'key' => $key,
+                'label' => $key === 'inquiry' ? 'Inquiry' : 'Assistant',
+            ];
+        }
+
+        return [
+            'enabled' => $visible,
+            'mode' => $visible ? 'degraded' : 'disabled',
+            'disclosure' => $session['disclosure']['text'],
+            'default_interaction' => $session['active_mode'],
+            'interaction_modes' => $modes,
+            'usage' => [
+                'used' => $session['usage']['used'] ?? 0,
+                'limit' => $session['usage']['limit'] ?? 0,
+                'unit' => $session['usage']['unit'] ?? 'asks',
+                'period' => 'policy',
+            ],
+            'session' => $session,
+        ];
     }
 }

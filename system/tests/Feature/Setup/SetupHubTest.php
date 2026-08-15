@@ -14,12 +14,14 @@ test('setup hub allows registrar clerk with shared setup capability', function (
             ->component('Setup/Index')
             ->where('capabilities.setup', true)
             ->where('capabilities.assessment', false)
-            ->has('readiness.categories', 7)
+            ->has('readiness.categories', 8)
             ->where('readiness.categories.5.key', 'aptitude')
             ->where('readiness.categories.5.capability', 'assessment')
             ->where('readiness.categories.3.key', 'privacy')
             ->where('readiness.categories.3.href', '/setup/privacy')
             ->where('readiness.categories.5.href', '/setup/aptitude')
+            ->where('readiness.categories.7.key', 'omr')
+            ->where('readiness.categories.7.href', '/setup/omr')
         );
 });
 

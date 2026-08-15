@@ -13,14 +13,14 @@
   import { usePage } from '@inertiajs/svelte';
   import { ChevronDown, ChevronRight, Menu, LayoutDashboard, Blocks, Sun, Moon } from 'lucide-svelte';
   import ToastManager from '@/Components/kit/ToastManager.svelte';
-  import NexiAssistPanel from '@/Components/kit/Nexi/NexiAssistPanel.svelte';
+  import NotificationBell from '@/Components/kit/NotificationBell.svelte';
+  import NexiDock from '@/Components/kit/Nexi/NexiDock.svelte';
   import { Button } from '@/Components/ui/button';
 
   let { children, breadcrumbs = [] } = $props();
 
   const page = usePage();
   const user = $derived(page.props.auth?.user ?? null);
-  const nexi = $derived(page.props.nexi ?? { enabled: false, mode: 'disabled' });
   const headTitle = $derived(
     breadcrumbs.length > 0
       ? `${breadcrumbs[breadcrumbs.length - 1].label} - NEXIAM`
@@ -243,6 +243,7 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-4">
+        <NotificationBell />
         <Button variant="ghost" size="icon" onclick={toggleTheme} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} class="rounded-full min-h-[44px] min-w-[44px]">
           <Sun class="h-5 w-5 dark:hidden" />
           <Moon class="h-5 w-5 hidden dark:block" />
@@ -260,16 +261,7 @@
   </div>
 </div>
 
-{#if nexi.enabled}
-  <NexiAssistPanel
-    enabled={nexi.enabled}
-    mode={nexi.mode ?? 'degraded'}
-    disclosure={nexi.disclosure}
-    defaultInteraction={nexi.default_interaction ?? 'assistant'}
-    interactionModes={nexi.interaction_modes ?? []}
-    usage={nexi.usage ?? { used: 0, limit: 50, unit: 'asks', period: 'today' }}
-  />
-{/if}
+<NexiDock />
 
 <style>
   .scrollbar-hide {

@@ -3,6 +3,7 @@
 namespace App\Models\Assessment;
 
 use App\Models\Examination\ExamSession;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +22,8 @@ class GradingSession extends Model
         'version',
         'opened_at',
         'finalized_at',
+        'opened_by_user_id',
+        'finalized_by_user_id',
     ];
 
     /**
@@ -40,6 +43,22 @@ class GradingSession extends Model
     public function examSession(): BelongsTo
     {
         return $this->belongsTo(ExamSession::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function openedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'opened_by_user_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function finalizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finalized_by_user_id');
     }
 
     /**
