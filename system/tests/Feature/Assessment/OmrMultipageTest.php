@@ -15,7 +15,7 @@ use function hash;
 
 test('omr page exposes sheet and per-page image urls with both route params', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()
@@ -52,7 +52,7 @@ test('omr page exposes sheet and per-page image urls with both route params', fu
 
 test('merge records per-page birthdate conflicts with value evidence', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $code = 'DOB-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8));
     $bundleDir = base_path('app/Assessment/Omr/NativeBundles/'.$code);
@@ -114,7 +114,7 @@ test('merge records per-page birthdate conflicts with value evidence', function 
 
 test('invalid merged birthdate is flagged as a review issue', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $code = 'DOB-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8));
     $bundleDir = base_path('app/Assessment/Omr/NativeBundles/'.$code);
@@ -169,7 +169,7 @@ test('invalid merged birthdate is flagged as a review issue', function (): void 
 
 test('two-page capture merges into one reviewed sheet', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()
@@ -204,7 +204,7 @@ test('two-page capture merges into one reviewed sheet', function (): void {
 
 test('duplicate page upload is refused', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()
@@ -231,7 +231,7 @@ test('duplicate page upload is refused', function (): void {
 
 test('incomplete two-page set never analyzes', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()
@@ -257,7 +257,7 @@ test('incomplete two-page set never analyzes', function (): void {
 
 test('captured page can be replaced before the set is enqueued', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()
@@ -292,7 +292,7 @@ test('captured page can be replaced before the set is enqueued', function (): vo
 
 test('replacement is refused once the set is enqueued', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()
@@ -320,7 +320,7 @@ test('replacement is refused once the set is enqueued', function (): void {
 
 test('solver-generated two-page bundle runs through capture and merge', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $code = 'SLV-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8));
 

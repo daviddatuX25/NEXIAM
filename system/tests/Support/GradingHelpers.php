@@ -92,6 +92,19 @@ function buildGradingFixture(TestCase $test, int $applicantCount = 1, bool $clos
 }
 
 /**
+ * Build a grading fixture with the seeded OMR configuration available.
+ *
+ * @return array{guidance: User, registrar: User, session: ExamSession, attempts: array<int, AdmissionAttempt>, grading: ?GradingSession}
+ */
+function buildOmrGradingFixture(TestCase $test, int $applicantCount = 1, bool $close = true): array
+{
+    $fixture = buildGradingFixture($test, $applicantCount, $close);
+    seedE2OmrFoundation();
+
+    return $fixture;
+}
+
+/**
  * @return array<int, int>
  */
 function activeAreas(): array

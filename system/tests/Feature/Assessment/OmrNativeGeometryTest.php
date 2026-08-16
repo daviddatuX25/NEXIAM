@@ -28,6 +28,7 @@ function omrNativeRectsOverlap(array $left, array $right): bool
 
 test('native projections replace hand-calculated seed geometry', function (): void {
     seedE2Foundation();
+    seedE2OmrFoundation();
 
     $version = OmrAnswerSheetTemplateVersion::query()
         ->whereHas('template', fn ($query) => $query->where('code', 'SYN-OMR-ONE-PAGE'))

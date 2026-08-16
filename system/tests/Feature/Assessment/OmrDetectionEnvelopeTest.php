@@ -237,7 +237,7 @@ test('validator lets typed failure outcomes through for the caller to handle', f
 
 test('analysis persists a v2 observation proposal with NEXIAM-derived scores', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)->firstOrFail();

@@ -5,11 +5,29 @@ use App\Admission\Data\AdmissionIntakeData;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\Institution;
+use Database\Seeders\AdmissionSupportDemoSeeder;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\JourneyFixtureSeeder;
+use Database\Seeders\OmrDemoSeeder;
 
 function seedE2Foundation(): void
 {
-    (new DatabaseSeeder)->run();
+    (new DatabaseSeeder)->run(DatabaseSeeder::testSeeders());
+}
+
+function seedE2JourneyFoundation(): void
+{
+    (new JourneyFixtureSeeder)->run();
+}
+
+function seedE2OmrFoundation(): void
+{
+    (new OmrDemoSeeder)->run();
+}
+
+function seedE2AdmissionSupportFoundation(): void
+{
+    (new AdmissionSupportDemoSeeder)->run();
 }
 
 function submitSyntheticApplicant(?string $email = null, string $lastName = 'Applicant'): array

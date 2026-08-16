@@ -14,7 +14,7 @@ use RuntimeException;
 
 test('blank sheet action queues a job with pinned inputs and dedupes duplicates', function (): void {
     Queue::fake();
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
     $templateVersion = OmrAnswerSheetTemplateVersion::query()
@@ -35,7 +35,7 @@ test('blank sheet action queues a job with pinned inputs and dedupes duplicates'
 
 test('render job produces a ready pdf for the long-bond bundle', function (): void {
     Storage::fake('local');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
     $templateVersion = OmrAnswerSheetTemplateVersion::query()->where('version', 4)->firstOrFail();
@@ -70,7 +70,7 @@ test('render job produces a ready pdf for the long-bond bundle', function (): vo
 test('render job uses the selected DB snapshot and print overlay', function (): void {
     Queue::fake();
     Storage::fake('local');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
     $templateVersion = OmrAnswerSheetTemplateVersion::query()->where('version', 4)->firstOrFail();
@@ -102,7 +102,7 @@ test('render job uses the selected DB snapshot and print overlay', function (): 
 
 test('download refuses non-ready jobs and denies without capability', function (): void {
     Storage::fake('local');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $registrar = $fixture['registrar'];
 

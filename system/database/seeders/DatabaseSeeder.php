@@ -9,7 +9,21 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    public function run(): void
+    /**
+     * @return list<class-string<Seeder>>
+     */
+    public static function testSeeders(): array
+    {
+        return [
+            ReferenceCatalogSeeder::class,
+            CapabilityCatalogSeeder::class,
+            StaffIdentitySeeder::class,
+            PrivacyPolicySeeder::class,
+            IntakeGradeFieldSeeder::class,
+        ];
+    }
+
+    public function run(?array $seeders = null): void
     {
         $institution = Institution::query()->updateOrCreate(
             ['code' => 'SYN-INST-001'],
@@ -29,7 +43,7 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        $this->call([
+        $this->call($seeders ?? [
             ReferenceCatalogSeeder::class,
             CapabilityCatalogSeeder::class,
             StaffIdentitySeeder::class,

@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 test('template preview returns the shared-renderer PDF with private headers', function (): void {
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $clerk = App\Models\User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
     $version = OmrAnswerSheetTemplateVersion::query()

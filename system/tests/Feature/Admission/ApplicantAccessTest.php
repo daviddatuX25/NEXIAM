@@ -132,6 +132,7 @@ test('applicant can logout and returns to applicant login', function (): void {
 
 test('seeded demo accepted applicant can sign in with fixed access key', function (): void {
     seedE2Foundation();
+    seedE2JourneyFoundation();
 
     $accepted = config('seed.applicants.accepted');
 
@@ -139,7 +140,7 @@ test('seeded demo accepted applicant can sign in with fixed access key', functio
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Applicant/Login')
-            ->where('demo.access_key', $accepted['access_key'])
+            ->where('demo.access_key', 'PORT-DEFL')
         );
 
     $this->post(route('applicant.login.store'), [

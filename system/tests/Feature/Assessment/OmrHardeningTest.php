@@ -29,6 +29,7 @@ function hardeningOmrFixture(TestCase $test, ?array $fixture = null): array
 {
     Storage::fake('sensitive');
     $fixture ??= buildGradingFixture($test);
+    seedE2OmrFoundation();
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)->firstOrFail();
