@@ -4,8 +4,9 @@ use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\Room;
-use App\Notifications\NotificationDelivery;
 use App\Models\User;
+use App\Notifications\NotificationDelivery;
+use Database\Seeders\JourneyFixtureSeeder;
 
 function acceptApplicant(string $email, string $lastName = 'Applicant'): array
 {
@@ -33,7 +34,7 @@ function loginAsApplicant(array $result): void
     test()->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.schedule'));
+    ])->assertRedirect(route('applicant.portal'));
 }
 
 function createDraftSession(User $guidance, string $code, ?Room $room = null, int $daysAhead = 10, string $start = '09:00', string $end = '11:00'): ExamSession
@@ -321,7 +322,7 @@ test('capability deny blocks open reservation', function (): void {
 
 test('accepted demo applicant sees waiting or calendar schedule states', function (): void {
     seedE2Foundation();
-    $this->seed(\Database\Seeders\JourneyFixtureSeeder::class);
+    $this->seed(JourneyFixtureSeeder::class);
 
     $demo = config('seed.applicants.accepted');
     expect($demo)->not->toBeNull();
@@ -333,7 +334,7 @@ test('accepted demo applicant sees waiting or calendar schedule states', functio
     $this->post(route('applicant.login.store'), [
         'access_key' => $demo['access_key'],
         'birthdate' => $demo['birthdate'],
-    ])->assertRedirect(route('applicant.schedule'));
+    ])->assertRedirect(route('applicant.portal'));
 
     $this->get(route('applicant.schedule'))
         ->assertOk()
@@ -385,5 +386,8 @@ test('applicant portal home redirects to status schedule', function (): void {
     loginAsApplicant($result);
 
     $this->get(route('applicant.portal'))
-        ->assertRedirect(route('applicant.schedule'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Applicant/Portal')
+            ->where('page_state', 'ready'));
 });

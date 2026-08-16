@@ -480,6 +480,7 @@ final class RunOmrSheetAnalysis
         $perArea = [];
         $applicantNumbers = [];
         $birthdates = [];
+        $applicantConfidences = [];
         $confidences = [];
         $identityConflict = false;
         $perPageApplicantNumbers = [];
@@ -493,6 +494,7 @@ final class RunOmrSheetAnalysis
             $number = $proposal['applicant_number_proposal'] ?? null;
             if ($number !== null) {
                 $applicantNumbers[] = (string) $number;
+                $applicantConfidences[] = $proposal['applicant_number_confidence'] ?? null;
             }
             $perPageApplicantNumbers['page_'.($index + 1)] = $number;
             $birthdate = $proposal['birthdate_proposal'] ?? null;
@@ -551,7 +553,7 @@ final class RunOmrSheetAnalysis
             'field_block_shifts' => [],
             'aligned_image' => null,
             'applicant_number_proposal' => $uniqueNumbers === [] ? null : $uniqueNumbers[0],
-            'applicant_number_confidence' => $uniqueNumbers === [] ? 0.0 : 1.0,
+            'applicant_number_confidence' => $uniqueNumbers === [] ? 0.0 : $this->minConfidence($applicantConfidences),
             'birthdate_proposal' => $uniqueBirthdates === [] ? null : $uniqueBirthdates[0],
             'sheet_confidence' => $this->minConfidence($confidences),
             'per_area_scores' => $perArea,
@@ -562,7 +564,7 @@ final class RunOmrSheetAnalysis
         return [
             'proposal' => $merged,
             'applicant_number' => $uniqueNumbers === [] ? null : $uniqueNumbers[0],
-            'applicant_number_confidence' => $uniqueNumbers === [] ? null : 1.0,
+            'applicant_number_confidence' => $uniqueNumbers === [] ? null : $this->minConfidence($applicantConfidences),
             'birthdate' => $uniqueBirthdates === [] ? null : $uniqueBirthdates[0],
             'sheet_confidence' => $merged['sheet_confidence'],
             'identity_conflict' => $identityConflict,

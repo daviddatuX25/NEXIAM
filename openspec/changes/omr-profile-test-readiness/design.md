@@ -52,6 +52,26 @@ The OMR stack already has a server-owned `OmrTemplateLayoutSolver` that turns a 
 - **[Risk] Re-running a partially failed seed can leave staged artifacts or orphan draft rows.** → Guard on natural keys, use existing save/activation actions, and clean only known profile artifacts before rebuilding an incomplete profile.
 - **[Risk] Capture fixtures can be mistaken for provider confidence.** → Keep fake fixture metadata explicit; real-engine confidence remains null until qualification.
 
+## Physical Readiness Extension
+
+6. **Keep camera guidance in NEXIAM, not OMRChecker.**
+   - OMRChecker receives a completed image and returns observations; it does not own webcam access, live framing, focus, exposure, blur, or capture readiness.
+   - NEXIAM owns a conservative preflight overlay: camera permission/device state, live stream, sheet-in-frame guide, page count, upload fallback, and an explicit `Ready to capture` state. It must not claim OMR-quality readiness from pixels it cannot validate.
+
+7. **Make the review contract explicit before physical acceptance.**
+   - Persisted provider states remain `marked`, `blank`, `ambiguous`, and `unreadable`; the review UI must show the state, question, crop, issue, and confidence qualification status.
+   - A null real-engine confidence is `Unqualified`, never zero. Staff review remains mandatory until a qualification run establishes thresholds.
+
+8. **Use aligned evidence only when its coordinate frame is verified.**
+   - The review image endpoint prefers the provider aligned image. Crop regions must be interpreted in that image coordinate frame; otherwise the UI falls back to the captured image or marks evidence unavailable.
+   - A targeted regression must prove identity and item crop bounds against the served evidence dimensions, including scaled input and aligned output.
+
+9. **Do not commit unresolved required issues silently.**
+   - Blank, ambiguous, unreadable, and unresolved identity issues remain visible to staff. Batch confirmation must require explicit resolution/abstention or an approved manual score adjustment for every required issue.
+
+10. **Physical acceptance is a gate, not a test fixture.**
+   - Baseline, blank, double-mark, erase, rotation, shadow, fold, and wrong-input scans must be recorded against expected gallery/review outcomes before production use.
+
 ## Migration Plan
 
 1. Add the new OpenSpec artifacts and focused tests.

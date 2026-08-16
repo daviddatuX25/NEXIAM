@@ -2,13 +2,18 @@
 
 use App\Assessment\Actions\Omr\ActivateOmrConfiguration;
 use App\Assessment\Actions\Omr\RegisterNativeBundle;
+use App\Assessment\Actions\Omr\RetireOmrConfiguration;
+use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
+use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
+use App\Assessment\Omr\NativeBundle;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
+use App\Models\Assessment\OmrQuestionBooklet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateBookletPair;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use App\Models\Foundation\AptitudeArea;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 test('bundle intake registers a draft version in the canonical store', function (): void {
     $fixture = buildGradingFixture($this);
@@ -42,7 +47,7 @@ test('bundle intake registers a draft version in the canonical store', function 
         expect(fn () => app(RegisterNativeBundle::class)->handle($code, $files, $guidance))
             ->toThrow(RuntimeException::class, 'already exists');
     } finally {
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
     }
 });
 
@@ -70,12 +75,12 @@ test('authored booklet questions activate instead of being key-generated', funct
         $templateVersion = app(RegisterNativeBundle::class)->handle($code, $files, $guidance);
         expect($templateVersion->status)->toBe('draft');
 
-        // Author a booklet draft with complete keys (global positions 1..200).
-        $booklet = App\Models\Assessment\OmrQuestionBooklet::query()->create([
+        // Author a booklet draft with complete keys for every active area.
+        $booklet = OmrQuestionBooklet::query()->create([
             'code' => 'REAL-BOOKLET-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 6)),
             'name' => 'Authored demo booklet',
         ]);
-        $draft = App\Models\Assessment\OmrQuestionBookletVersion::query()->create([
+        $draft = OmrQuestionBookletVersion::query()->create([
             'booklet_id' => $booklet->id,
             'version' => 1,
             'status' => 'draft',
@@ -94,12 +99,15 @@ test('authored booklet questions activate instead of being key-generated', funct
             }
         }
 
+        $expectedQuestionCount = $areas->sum(fn (AptitudeArea $area): int => (int) $area->max_items);
+        $expectedBCount = $areas->sum(fn (AptitudeArea $area): int => intdiv((int) $area->max_items + 2, 4));
         $activated = app(ActivateOmrConfiguration::class)->handle($templateVersion, $draft, $guidance);
+        $templateQuestionCount = $templateVersion->areas()->withCount('questions')->get()->sum('questions_count');
 
         expect($activated->status)->toBe('active')
-            ->and($draft->fresh()->questions()->count())->toBe(200)
-            ->and($draft->fresh()->questions()->whereNull('template_question_id')->count())->toBe(0)
-            ->and($draft->fresh()->questions()->where('correct_option_code', 'B')->count())->toBe(50);
+            ->and($draft->fresh()->questions()->count())->toBe($expectedQuestionCount)
+            ->and($draft->fresh()->questions()->whereNull('template_question_id')->count())->toBe($expectedQuestionCount - $templateQuestionCount)
+            ->and($draft->fresh()->questions()->where('correct_option_code', 'B')->count())->toBe($expectedBCount);
     } finally {
         exec('rm -rf '.escapeshellarg($bundleDir));
     }
@@ -117,7 +125,7 @@ test('authored booklet save validates contiguity, digests the key, and edits dra
 
     $code = 'BKLT-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8));
 
-    $version = app(\App\Assessment\Actions\Omr\SaveAuthoredBookletVersion::class)
+    $version = app(SaveAuthoredBookletVersion::class)
         ->handle($code, 'Authored booklet', $questions, $guidance);
 
     expect($version->status)->toBe('draft')
@@ -126,7 +134,7 @@ test('authored booklet save validates contiguity, digests the key, and edits dra
         ->and($version->answer_key_hash)->toBe(hash('sha256', "1|{$areas[0]->id}|A\n2|{$areas[1]->id}|B"));
 
     // gaps are refused
-    expect(fn () => app(\App\Assessment\Actions\Omr\SaveAuthoredBookletVersion::class)
+    expect(fn () => app(SaveAuthoredBookletVersion::class)
         ->handle($code, 'Authored booklet', [
             ['area_id' => $areas[0]->id, 'position' => 1, 'correct_option_code' => 'A'],
             ['area_id' => $areas[0]->id, 'position' => 3, 'correct_option_code' => 'B'],
@@ -134,7 +142,7 @@ test('authored booklet save validates contiguity, digests the key, and edits dra
         ->toThrow(RuntimeException::class, 'contiguous');
 
     // editing the draft rewrites the same version instead of appending
-    $edited = app(\App\Assessment\Actions\Omr\SaveAuthoredBookletVersion::class)
+    $edited = app(SaveAuthoredBookletVersion::class)
         ->handle($code, 'Authored booklet', [
             ['area_id' => $areas[0]->id, 'position' => 1, 'correct_option_code' => 'C'],
         ], $guidance);
@@ -144,14 +152,14 @@ test('authored booklet save validates contiguity, digests the key, and edits dra
 });
 
 test('retirement flips pairs, cascades through versions, and audits', function (): void {
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
     $pair = OmrTemplateBookletPair::query()
         ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
         ->firstOrFail();
 
-    app(\App\Assessment\Actions\Omr\RetireOmrConfiguration::class)
+    app(RetireOmrConfiguration::class)
         ->handle('pair', $pair->id, $guidance);
 
     expect($pair->refresh()->status)->toBe(OmrTemplateBookletPair::STATUS_RETIRED)
@@ -164,7 +172,7 @@ test('retirement flips pairs, cascades through versions, and audits', function (
         ->firstOrFail();
     $activePairIds = $activeTemplate->pairs()->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)->pluck('id')->all();
 
-    app(\App\Assessment\Actions\Omr\RetireOmrConfiguration::class)
+    app(RetireOmrConfiguration::class)
         ->handle('template_version', $activeTemplate->id, $guidance);
     expect($activeTemplate->refresh()->status)->toBe(OmrAnswerSheetTemplateVersion::STATUS_RETIRED)
         ->and(OmrTemplateBookletPair::query()->whereIn('id', $activePairIds)->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)->exists())->toBeFalse()
@@ -208,7 +216,7 @@ test('authored template builder output registers through the unchanged verify pa
     ];
 
     try {
-        $version = app(\App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft::class)
+        $version = app(SaveAuthoredTemplateDraft::class)
             ->handle($code, 'Builder output', $templateJson, $guidance);
 
         expect($version->status)->toBe('draft')
@@ -217,12 +225,12 @@ test('authored template builder output registers through the unchanged verify pa
             ->and($version->native_bundle_hash)->not->toBeNull()
             // Artifacts are staged immutably on the private durable disk, and
             // the load path resolves them through the unchanged NativeBundle.
-            ->and(\Illuminate\Support\Facades\Storage::disk('local')->exists('omr-bundles/'.$code.'/v1/template.json'))->toBeTrue()
-            ->and(\Illuminate\Support\Facades\Storage::disk('local')->exists('omr-bundles/'.$code.'/v1/reference-page-1.svg'))->toBeTrue()
-            ->and(\App\Assessment\Omr\NativeBundle::load($code, 1)->template['pages'])->toHaveCount(1);
+            ->and(Storage::disk('local')->exists('omr-bundles/'.$code.'/v1/template.json'))->toBeTrue()
+            ->and(Storage::disk('local')->exists('omr-bundles/'.$code.'/v1/reference-page-1.svg'))->toBeTrue()
+            ->and(NativeBundle::load($code, 1)->template['pages'])->toHaveCount(1);
 
         // invalid geometry (no pages) is refused before anything is written
-        expect(fn () => app(\App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft::class)
+        expect(fn () => app(SaveAuthoredTemplateDraft::class)
             ->handle('BLDR-BAD-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 4)), 'Bad', ['bubbleDimensions' => [120, 120]], $guidance))
             ->toThrow(RuntimeException::class, 'at least one page');
     } finally {

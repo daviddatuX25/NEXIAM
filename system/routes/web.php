@@ -358,6 +358,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/review', [GradingController::class, 'reviewOmrSheet'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('grading.sessions.omr.sheets.review');
+    Route::post('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/issues/{issue}/resolve', [GradingController::class, 'resolveOmrIssue'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.sheets.issues.resolve');
     Route::post('/grading/sessions/{gradingSession}/omr/batches/{batch}/confirm', [GradingController::class, 'confirmOmrBatch'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('grading.sessions.omr.batches.confirm');

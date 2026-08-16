@@ -4,6 +4,7 @@ use App\Assessment\Actions\Omr\ConfirmOmrCaptureBatch;
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
 use App\Assessment\Actions\Omr\RetryOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ReviewOmrCaptureSheet;
+use App\Assessment\Actions\Omr\ResolveOmrCaptureSheetIssue;
 use App\Assessment\Actions\Omr\RunOmrSheetAnalysis;
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Models\Assessment\OmrCaptureBatch;
@@ -11,12 +12,10 @@ use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrProcessingRun;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Support\SensitiveAssetStore;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
-
-use function hash;
 
 /**
  * Creates an open batch, a queued sheet with a valid sensitive asset, and a
@@ -158,7 +157,7 @@ test('database refuses a second binding to the same examinee', function (): void
         'captured_at' => now(),
         'proposal_json' => $first->proposal_json,
         'reviewed_json' => $first->reviewed_json,
-    ]))->toThrow(Illuminate\Database\UniqueConstraintViolationException::class);
+    ]))->toThrow(UniqueConstraintViolationException::class);
 });
 
 test('sweeper recovers an expired claimed run and re-analyzes', function (): void {
@@ -257,4 +256,33 @@ test('aligned derivative is encrypted, persisted, and served when the provider e
     $response->assertOk()
         ->assertHeader('Content-Type', 'image/png')
         ->assertHeader('Cache-Control', 'no-store, private');
+});
+
+test('required detection issues must be resolved before confirmation', function (): void {
+    $fixture = buildGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    $attemptId = (int) $fixture['attempts'][0]->id;
+
+    [$batch, $sheet, $run] = hardeningOmrFixture($this, $fixture);
+    app(RunOmrSheetAnalysis::class)->handle($run->id);
+    $sheet->refresh();
+    $issue = $sheet->issues()->create([
+        'issue_code' => 'identity_conflict',
+        'severity' => 'required',
+        'state' => 'open',
+        'version' => 0,
+        'area_code' => 'VERBAL',
+        'question_no' => 1,
+    ]);
+
+    app(ReviewOmrCaptureSheet::class)->handle($sheet, $guidance, null, [], $attemptId);
+
+    expect(fn () => app(ConfirmOmrCaptureBatch::class)->handle($batch, $guidance))
+        ->toThrow(RuntimeException::class, 'Resolve required OMR issues');
+
+    app(ResolveOmrCaptureSheetIssue::class)->handle($issue, $guidance, 'manual_review', 'Staff verified the mark against the evidence.');
+
+    $issue->refresh();
+    expect($issue->state)->toBe('resolved')
+        ->and($issue->resolution_code)->toBe('manual_review');
 });

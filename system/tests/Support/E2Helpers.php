@@ -5,6 +5,7 @@ use App\Admission\Data\AdmissionIntakeData;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\Institution;
+use App\Models\User;
 use Database\Seeders\AdmissionSupportDemoSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\JourneyFixtureSeeder;
@@ -12,6 +13,16 @@ use Database\Seeders\OmrDemoSeeder;
 
 function seedE2Foundation(): void
 {
+    // RefreshDatabase rolls this transaction back between tests, so the
+    // sentinel remains an isolation-safe guard while avoiding duplicate
+    // catalog, role, and policy writes inside one test.
+    if (Institution::query()->where('code', 'SYN-INST-001')->exists()
+        && AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->exists()
+        && ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->exists()
+        && User::query()->where('email', 'guidance.counselor@nexiam.test')->exists()) {
+        return;
+    }
+
     (new DatabaseSeeder)->run(DatabaseSeeder::testSeeders());
 }
 

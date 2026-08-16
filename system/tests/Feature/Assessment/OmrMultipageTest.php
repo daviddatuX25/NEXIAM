@@ -1,17 +1,19 @@
 <?php
 
+use App\Assessment\Actions\Omr\ActivateOmrConfiguration;
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
+use App\Assessment\Actions\Omr\ReplaceOmrSheetPage;
+use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
+use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
 use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
+use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrCaptureSheetPage;
 use App\Models\Assessment\OmrTemplateBookletPair;
-use App\Support\SensitiveAssetStore;
+use App\Models\Foundation\AptitudeArea;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
-
-use function hash;
 
 test('omr page exposes sheet and per-page image urls with both route params', function (): void {
     Storage::fake('sensitive');
@@ -76,17 +78,17 @@ test('merge records per-page birthdate conflicts with value evidence', function 
                 ['page_no' => 2, 'pageDimensions' => [2060, 3144], 'fieldBlocks' => [...$identity, ...$bands('VERBAL', 1)], 'preProcessors' => [['name' => 'CropPage', 'options' => ['morphKernel' => [5, 5]]]]],
             ],
         ];
-        $draft = app(\App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft::class)->handle($code, 'Merge birthdate demo', $templateJson, $guidance);
-        $quant = \App\Models\Foundation\AptitudeArea::query()->where('code', 'QUANT')->firstOrFail();
-        $verbal = \App\Models\Foundation\AptitudeArea::query()->where('code', 'VERBAL')->firstOrFail();
+        $draft = app(SaveAuthoredTemplateDraft::class)->handle($code, 'Merge birthdate demo', $templateJson, $guidance);
+        $quant = AptitudeArea::query()->where('code', 'QUANT')->firstOrFail();
+        $verbal = AptitudeArea::query()->where('code', 'VERBAL')->firstOrFail();
         $questions = [];
         foreach ([[$verbal, 1], [$quant, 101]] as [$area, $offset]) {
             foreach (range(1, (int) $area->max_items) as $i) {
                 $questions[] = ['area_id' => $area->id, 'position' => $offset + $i - 1, 'correct_option_code' => ['A', 'B', 'C', 'D'][($i - 1) % 4]];
             }
         }
-        $bkVersion = app(\App\Assessment\Actions\Omr\SaveAuthoredBookletVersion::class)->handle('DOB-BK-'.$code, 'Merge birthdate booklet', $questions, $guidance);
-        $pair = app(\App\Assessment\Actions\Omr\ActivateOmrConfiguration::class)->handle($draft, $bkVersion, $guidance);
+        $bkVersion = app(SaveAuthoredBookletVersion::class)->handle('DOB-BK-'.$code, 'Merge birthdate booklet', $questions, $guidance);
+        $pair = app(ActivateOmrConfiguration::class)->handle($draft, $bkVersion, $guidance);
 
         $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, (int) $pair->template_version_id, (int) $pair->booklet_version_id, 'dob-conflict-'.uniqid());
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
@@ -108,7 +110,7 @@ test('merge records per-page birthdate conflicts with value evidence', function 
             ->and($conflict->evidence_json['per_page_applicant_numbers'])
             ->toBe(['page_1' => null, 'page_2' => null]);
     } finally {
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
     }
 });
 
@@ -137,14 +139,14 @@ test('invalid merged birthdate is flagged as a review issue', function (): void 
                 'preProcessors' => [['name' => 'CropPage', 'options' => ['morphKernel' => [5, 5]]]],
             ]],
         ];
-        $draft = app(\App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft::class)->handle($code, 'Invalid birthdate demo', $templateJson, $guidance);
-        $quant = \App\Models\Foundation\AptitudeArea::query()->where('code', 'QUANT')->firstOrFail();
+        $draft = app(SaveAuthoredTemplateDraft::class)->handle($code, 'Invalid birthdate demo', $templateJson, $guidance);
+        $quant = AptitudeArea::query()->where('code', 'QUANT')->firstOrFail();
         $questions = [];
         foreach (range(1, (int) $quant->max_items) as $i) {
             $questions[] = ['area_id' => $quant->id, 'position' => $i, 'correct_option_code' => ['A', 'B', 'C', 'D'][($i - 1) % 4]];
         }
-        $bkVersion = app(\App\Assessment\Actions\Omr\SaveAuthoredBookletVersion::class)->handle('DOB-BK-'.$code, 'Invalid birthdate booklet', $questions, $guidance);
-        $pair = app(\App\Assessment\Actions\Omr\ActivateOmrConfiguration::class)->handle($draft, $bkVersion, $guidance);
+        $bkVersion = app(SaveAuthoredBookletVersion::class)->handle('DOB-BK-'.$code, 'Invalid birthdate booklet', $questions, $guidance);
+        $pair = app(ActivateOmrConfiguration::class)->handle($draft, $bkVersion, $guidance);
 
         $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, (int) $pair->template_version_id, (int) $pair->booklet_version_id, 'dob-invalid-'.uniqid());
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
@@ -160,12 +162,9 @@ test('invalid merged birthdate is flagged as a review issue', function (): void 
         $issue = $sheet->issues()->where('issue_code', 'birthdate_invalid')->firstOrFail();
         expect($issue->evidence_json['detected_birthdate'])->toBe('13322010');
     } finally {
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
     }
 });
-
-
-
 
 test('two-page capture merges into one reviewed sheet', function (): void {
     Storage::fake('sensitive');
@@ -280,7 +279,7 @@ test('captured page can be replaced before the set is enqueued', function (): vo
     $page = $sheet->pages()->where('page_no', 1)->firstOrFail();
     $oldPath = (string) $page->asset_path;
 
-    app(\App\Assessment\Actions\Omr\ReplaceOmrSheetPage::class)->handle($sheet, 1, $replacement, 'image/png', $guidance);
+    app(ReplaceOmrSheetPage::class)->handle($sheet, 1, $replacement, 'image/png', $guidance);
     $page->refresh();
 
     expect($page->asset_path)->not->toBe($oldPath)
@@ -314,7 +313,7 @@ test('replacement is refused once the set is enqueued', function (): void {
     $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 2);
 
     expect(in_array($sheet->status, [OmrCaptureSheet::STATUS_QUEUED, OmrCaptureSheet::STATUS_PROCESSING, OmrCaptureSheet::STATUS_NEEDS_REVIEW], true))->toBeTrue()
-        ->and(fn () => app(\App\Assessment\Actions\Omr\ReplaceOmrSheetPage::class)->handle($sheet, 1, $bytes, 'image/png', $guidance))
+        ->and(fn () => app(ReplaceOmrSheetPage::class)->handle($sheet, 1, $bytes, 'image/png', $guidance))
         ->toThrow(RuntimeException::class, 'not-yet-enqueued');
 });
 
@@ -336,20 +335,20 @@ test('solver-generated two-page bundle runs through capture and merge', function
     ];
 
     try {
-        $draft = app(\App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft::class)->handle($code, 'Solver recognition sheet', [], $guidance, null, false, $blueprint);
+        $draft = app(SaveAuthoredTemplateDraft::class)->handle($code, 'Solver recognition sheet', [], $guidance, null, false, $blueprint);
         expect($draft->template_json_hash)->toBeString()
-            ->and($draft->layout_solver_version)->toBe(\App\Assessment\Omr\Layout\OmrTemplateLayoutSolver::SOLVER_VERSION);
+            ->and($draft->layout_solver_version)->toBe(OmrTemplateLayoutSolver::SOLVER_VERSION);
 
-        $verbal = \App\Models\Foundation\AptitudeArea::query()->where('code', 'VERBAL')->firstOrFail();
-        $quant = \App\Models\Foundation\AptitudeArea::query()->where('code', 'QUANT')->firstOrFail();
+        $verbal = AptitudeArea::query()->where('code', 'VERBAL')->firstOrFail();
+        $quant = AptitudeArea::query()->where('code', 'QUANT')->firstOrFail();
         $questions = [];
         foreach ([[$verbal, 1], [$quant, 101]] as [$area, $offset]) {
             foreach (range(1, (int) $area->max_items) as $i) {
                 $questions[] = ['area_id' => $area->id, 'position' => $offset + $i - 1, 'correct_option_code' => ['A', 'B', 'C', 'D'][($i - 1) % 4]];
             }
         }
-        $bk = app(\App\Assessment\Actions\Omr\SaveAuthoredBookletVersion::class)->handle('SLV-BK-'.$code, 'Solver recognition booklet', $questions, $guidance);
-        $pair = app(\App\Assessment\Actions\Omr\ActivateOmrConfiguration::class)->handle($draft, $bk, $guidance);
+        $bk = app(SaveAuthoredBookletVersion::class)->handle('SLV-BK-'.$code, 'Solver recognition booklet', $questions, $guidance);
+        $pair = app(ActivateOmrConfiguration::class)->handle($draft, $bk, $guidance);
 
         $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, (int) $pair->template_version_id, (int) $pair->booklet_version_id, 'solver-sheet-'.uniqid());
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
@@ -363,6 +362,6 @@ test('solver-generated two-page bundle runs through capture and merge', function
             ->and(count($sheet->proposal_json['items'] ?? []))->toBe(200)
             ->and($sheet->proposal_json['pages'])->toBe(2);
     } finally {
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
     }
 });

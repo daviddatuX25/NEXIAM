@@ -11,7 +11,7 @@ test('staff can view the login page', function (): void {
 });
 
 test('staff can authenticate and reach the staff home', function (): void {
-    $this->seed();
+    seedE2Foundation();
 
     $response = $this->post('/login', [
         'email' => 'registrar.clerk@nexiam.test',
@@ -47,7 +47,7 @@ test('invalid credentials are rejected', function (): void {
 });
 
 test('authenticated staff can logout', function (): void {
-    $this->seed();
+    seedE2Foundation();
     $user = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
 
     $this->actingAs($user)

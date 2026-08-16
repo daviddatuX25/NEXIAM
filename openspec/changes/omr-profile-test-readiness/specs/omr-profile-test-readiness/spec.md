@@ -102,3 +102,49 @@ The OMR test suite SHALL cover the profile solver contract, persisted pair and a
 
 - **WHEN** an authenticated guidance counselor visits the profile grading OMR route
 - **THEN** the response includes the seeded review, incomplete-page, and retryable failure states
+
+### Requirement: NEXIAM SHALL provide conservative camera capture guidance
+
+The capture page SHALL own camera permission, device selection, live preview, sheet framing guidance, page progress, and upload fallback. OMRChecker SHALL remain an image-analysis provider and SHALL NOT be treated as a live camera overlay or focus/readiness service. The UI SHALL distinguish camera unavailable, requesting, ready-to-capture, and uploading states without claiming that OMR quality has been proven.
+
+#### Scenario: Camera readiness is visible before capture
+
+- **WHEN** the staff member opens a capture batch with camera access available
+- **THEN** the page shows a live stream, a printable-sheet framing guide, the current page number, and a `Ready to capture` state before enabling capture
+
+#### Scenario: Upload remains available without camera access
+
+- **WHEN** camera permission is denied or no camera is available
+- **THEN** the page shows the unavailable state and keeps image-file upload available
+
+### Requirement: Review SHALL expose provider state and evidence issues
+
+Each detected item SHALL expose its question number, evidence crop, detected option, provider state, confidence qualification status, and associated required issues. Real-engine null confidence SHALL render as `Unqualified`, not `0%`; the review surface SHALL preserve the distinction between marked, blank, ambiguous, and unreadable.
+
+#### Scenario: Ambiguous mark is explicit
+
+- **WHEN** the provider returns an ambiguous item
+- **THEN** the review row shows `Ambiguous`, no selected answer, the evidence crop, and the required issue
+
+#### Scenario: Real confidence is not yet qualified
+
+- **WHEN** the real provider returns a null item or sheet confidence
+- **THEN** the review shows `Unqualified` and does not imply a measured zero confidence
+
+### Requirement: Confirmation SHALL protect unresolved required issues
+
+The system SHALL NOT silently commit a reviewed batch while required OMR issues remain unresolved. Staff SHALL explicitly resolve the issue, abstain the sheet, or provide an approved manual score adjustment before confirmation. Roster binding SHALL remain mandatory for non-abstained sheets.
+
+#### Scenario: Required issue blocks silent confirmation
+
+- **WHEN** a reviewed sheet still has an open required blank, ambiguous, unreadable, or identity issue
+- **THEN** batch confirmation refuses with the affected sheet/question identifiers and leaves score records unchanged
+
+### Requirement: Physical acceptance SHALL cover capture quality
+
+The readiness evidence SHALL include real printed-sheet scans for baseline marks, blank input, double marks, erasures, rotation, uneven light, folded corners, and wrong-paper input. Each case SHALL record the gallery state, review state, evidence alignment, detected identity, per-item state, and final staff action.
+
+#### Scenario: Baseline physical scan reaches review
+
+- **WHEN** a correctly printed and shaded profile sheet is uploaded through the active pair
+- **THEN** the sheet reaches `Needs review`, identity and item crops align to the served evidence image, and the proposal matches the physical marks before staff confirmation

@@ -29,7 +29,7 @@ test('health endpoint reports database readiness', function (): void {
 });
 
 test('apply page exposes programs and open window without slice meta labels', function (): void {
-    $this->seed();
+    seedE2Foundation();
 
     $this->get('/apply')
         ->assertSuccessful()

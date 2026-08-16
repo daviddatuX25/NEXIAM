@@ -3,12 +3,6 @@
 use App\Assessment\Omr\Layout\OmrTemplateLayoutException;
 use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 
-use function array_filter;
-use function array_map;
-use function array_merge;
-use function array_values;
-use function json_decode;
-
 function section(string $area, int $from, int $to, mixed $break = null): array
 {
     return ['area_code' => $area, 'question_from' => $from, 'question_to' => $to, 'option_count' => 4, 'break_before' => $break];
@@ -30,7 +24,7 @@ function questionBlocks(array $page): array
     return array_values(array_filter($page['fieldBlocks'], fn (array $b): bool => $b['fieldType'] === 'QTYPE_MCQ4'));
 }
 
-$solver = new OmrTemplateLayoutSolver();
+$solver = new OmrTemplateLayoutSolver;
 
 test('4-column solve matches the canonical shipped sheet geometry', function () use ($solver): void {
     $result = $solver->solve(blueprint(sections: [section('VERBAL', 1, 100)]));
@@ -209,7 +203,6 @@ test('legal paper derives its own dimensions and page capacity', function () use
         ->and($result->pages)->toHaveCount(1); // 101 rows still fit one legal page (28 rows/column × 4)
 });
 
-
 test('six-column compact profile fits six domains of 25 questions on one long-bond page', function () use ($solver): void {
     $sections = array_map(
         static fn (int $domain): array => section('AREA'.str_pad((string) $domain, 2, '0', STR_PAD_LEFT), 1, 25),
@@ -228,7 +221,7 @@ test('six-column compact profile fits six domains of 25 questions on one long-bo
         ->and(array_map(fn (array $block): int => $block['bubblesGap'], $blocks))->toBe([52, 52, 52, 52, 52, 52]);
 
     $identityBlocks = array_values(array_filter($result->pages[0]['fieldBlocks'], fn (array $block): bool => $block['fieldType'] === 'QTYPE_INT'));
-    expect($identityBlocks[0]['origin'])->toBe([200, 390])
+    expect($identityBlocks[0]['origin'])->toBe([200, 300])
         ->and($identityBlocks[0]['bubblesGap'])->toBe(52);
 
     $rightmostBubble = 1780 + (3 * 52) + 40;

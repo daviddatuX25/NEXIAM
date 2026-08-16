@@ -61,6 +61,11 @@ final class ReviewOmrCaptureSheet
                 return $sheet;
             }
 
+            $openRequiredIssues = $sheet->issues()
+                ->where('state', 'open')
+                ->whereIn('severity', ['required', 'terminal'])
+                ->get();
+
             $proposals = $sheet->proposedScores();
             $areas = AptitudeArea::query()->where('is_active', true)->get()->keyBy('id');
 
@@ -88,6 +93,25 @@ final class ReviewOmrCaptureSheet
 
             if ($abstained && $reason === '') {
                 throw new RuntimeException('An abstention reason is required.');
+            }
+
+
+            if ($openRequiredIssues->isNotEmpty() && ($abstained || $adjustedScores !== [])) {
+                $resolutionCode = $abstained ? 'abstained' : 'manual_score_adjustment';
+                $resolutionReason = $abstained
+                    ? $reason
+                    : 'Required issue resolved by approved manual score adjustment.';
+
+                foreach ($openRequiredIssues as $issue) {
+                    $issue->update([
+                        'state' => 'resolved',
+                        'resolution_code' => $resolutionCode,
+                        'resolution_reason' => $resolutionReason,
+                        'resolved_by_user_id' => $actor->id,
+                        'resolved_at' => now(),
+                        'version' => (int) $issue->version + 1,
+                    ]);
+                }
             }
 
             $sheet->update([

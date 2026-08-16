@@ -27,6 +27,7 @@
   let videoEl = $state(null);
   let cameraStream = $state(null);
   let cameraRequested = false;
+  let cameraUnavailableReason = $state(camera_enabled ? null : 'device');
   let settingsOpen = $state(false);
   let selectedDeviceId = $state('');
   let cameraDevices = $state([]);
@@ -39,6 +40,8 @@
   let startingBatch = $state(false);
   let savingReview = $state(false);
   let confirmingBatch = $state(false);
+  let abstainReason = $state('');
+  let resolvingIssueId = $state(null);
 
   const sheets = $derived(batch?.sheets ?? []);
   const gallery = $derived(sheets);
@@ -92,6 +95,7 @@
   }));
   const editAttemptId = $derived(selectedAttemptId ?? selectedSheet?.admission_attempt_id ?? null);
   const boundApplicant = $derived(roster.find((applicant) => String(applicant.id) === String(editAttemptId)) ?? null);
+  const requiredIssues = $derived((selectedSheet?.issues ?? []).filter((issue) => issue.state === 'open' && ['required', 'terminal'].includes(issue.severity)));
 
   function getInitials(name) {
     if (!name) return '?';
@@ -158,23 +162,43 @@
     return `/grading/sessions/${session.id}/attempts/${editAttemptId}${areaId ? `#area-${areaId}` : ''}`;
   }
 
+  function itemStateLabel(item) {
+    return { marked: 'Marked', blank: 'Blank', ambiguous: 'Ambiguous', unreadable: 'Unreadable' }[item.state] ?? 'Unavailable';
+  }
+
+  function issueLabel(issue) {
+    return {
+      ambiguous_mark: 'Ambiguous mark',
+      unreadable: 'Unreadable item',
+      blank_mark: 'Blank mark',
+      low_confidence: 'Low confidence',
+      identity_unresolved: 'Identity unresolved',
+      identity_conflict: 'Identity conflict',
+      no_geometry: 'No geometry',
+      sheet_misaligned: 'Sheet misaligned',
+    }[issue.issue_code] ?? issue.issue_code;
+  }
+
   function itemMark(item) {
-    if (!item.detected_answer) return { label: 'Unavailable', tone: 'neutral' };
-    if (item.confidence < 0.5) return { label: 'Review', tone: 'warning' };
+    const state = itemStateLabel(item);
+    if (item.state !== 'marked') return { label: state, tone: item.state === 'ambiguous' || item.state === 'unreadable' ? 'warning' : 'neutral' };
+    if (item.confidence != null && item.confidence < 0.5) return { label: 'Review', tone: 'warning' };
     return item.detected_answer === item.correct_option_code
       ? { label: 'Correct', tone: 'success' }
       : { label: 'Incorrect', tone: 'danger' };
   }
 
   function itemScore(item) {
-    if (!item.detected_answer || item.confidence < 0.5) return '—';
+    if (item.state !== 'marked' || !item.detected_answer || item.confidence == null || item.confidence < 0.5) return '—';
     return item.detected_answer === item.correct_option_code ? '1' : '0';
   }
 
+  function confidenceLabel(value) {
+    return value == null ? 'Unqualified' : `${Math.round(value * 100)}%`;
+  }
+
   function identityConfidenceLabel(sheet) {
-    return sheet?.identity_confidence == null
-      ? 'not detected'
-      : `${Math.round(sheet.identity_confidence * 100)}%`;
+    return confidenceLabel(sheet?.identity_confidence);
   }
 
   function isMediaStream(value) {
@@ -272,11 +296,13 @@
 
   async function requestCamera(userInitiated = false) {
     if (!camera_enabled) {
+      cameraUnavailableReason = 'device';
       cameraState = 'unavailable';
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
+      cameraUnavailableReason = 'device';
       cameraState = 'unavailable';
       if (userInitiated) {
         toastError('Camera is not available on this device or HTTPS is required.');
@@ -312,13 +338,19 @@
           ? currentDeviceId
           : '';
       }
+      cameraUnavailableReason = null;
       cameraState = 'ready';
     } catch (error) {
-      console.error('Camera access denied', error);
+      console.error('Camera access failed', error);
+      cameraUnavailableReason = error?.name === 'NotAllowedError' || error?.name === 'SecurityError'
+        ? 'permission'
+        : 'device';
       cameraState = 'unavailable';
       if (userInitiated) {
         selectedDeviceId = '';
-        toastError('That camera could not be opened. Pick another camera or use file upload.');
+        toastError(cameraUnavailableReason === 'permission'
+          ? 'Camera permission is unavailable. Allow access or use file upload.'
+          : 'That camera could not be opened. Pick another camera or use file upload.');
       }
     }
   }
@@ -392,6 +424,7 @@
     if (!file || !batch) return;
 
     if (!activeSetId) activeSetId = crypto.randomUUID();
+    cameraState = 'uploading';
     toastInfo(`Uploading page ${currentPage} of ${pageCount}…`);
     router.post(`/grading/sessions/${session.id}/omr/sheets`, {
       image: file,
@@ -402,7 +435,10 @@
       forceFormData: true,
       onSuccess: finishSetAndAdvance,
       onError: (errors) => { toastError(errors.omr ?? 'The sheet could not be uploaded.'); },
-      onFinish,
+      onFinish: () => {
+        cameraState = cameraStream ? 'ready' : 'unavailable';
+        onFinish?.();
+      },
     });
   }
 
@@ -495,16 +531,22 @@
     selectedSheet = sheet;
     selectedAttemptId = sheet.admission_attempt_id ?? null;
     activeReviewPage = 1;
+    abstainReason = '';
     screen = 'review';
   }
 
   function saveReview(action = 'confirm') {
     if (!selectedSheet || savingReview) return;
+    if (action === 'abstain' && !abstainReason.trim()) {
+      toastError('Enter a reason before marking this sheet for manual follow-up.');
+      return;
+    }
     savingReview = true;
     toastInfo('Saving sheet review…');
     router.post(`/grading/sessions/${session.id}/omr/sheets/${selectedSheet.id}/review`, {
       action,
       admission_attempt_id: selectedAttemptId,
+      ...(action === 'abstain' ? { abstain_reason: abstainReason.trim() } : {}),
     }, {
       onSuccess: () => {
         screen = 'gallery';
@@ -516,6 +558,25 @@
       },
       onError: (errors) => { toastError(errors.omr ?? 'The review could not be saved.'); },
       onFinish: () => { savingReview = false; },
+    });
+  }
+
+  function resolveIssue(issue, resolutionCode = 'manual_review') {
+    if (!selectedSheet || resolvingIssueId === issue.id) return;
+    const reason = abstainReason.trim();
+    if (!reason) {
+      toastError('Enter a manual follow-up reason before resolving an issue.');
+      return;
+    }
+
+    resolvingIssueId = issue.id;
+    router.post(`/grading/sessions/${session.id}/omr/sheets/${selectedSheet.id}/issues/${issue.id}/resolve`, {
+      resolution_code: resolutionCode,
+      resolution_reason: reason,
+    }, {
+      onSuccess: () => toastSuccess(`${issueLabel(issue)} resolved.`),
+      onError: (errors) => toastError(errors.omr ?? 'The issue could not be resolved.'),
+      onFinish: () => { resolvingIssueId = null; },
     });
   }
 
@@ -676,20 +737,27 @@
       >
         <div class="camera-stage">
           {#if cameraState === 'ready'}
-            <div class="scan-hint"><ScanLine size={14} /> Align answer sheet inside frame</div>
+            <div class="scan-hint"><ScanLine size={14} /> Align all four sheet corners inside the frame</div>
             <div class="frame frame-tl"></div><div class="frame frame-tr"></div>
             <div class="frame frame-bl"></div><div class="frame frame-br"></div>
             <video class="camera-feed" bind:this={videoEl} autoplay playsinline muted aria-label="Live camera preview"></video>
+            <div class="camera-readiness" role="status" aria-live="polite">
+              <span class="readiness-dot"></span>
+              <span><strong>Ready to capture</strong><small>Keep the sheet flat, fully visible, and well lit.</small></span>
+            </div>
             {#if pageCount > 1}
               <div class="page-badge" role="status">Page {currentPage} of {pageCount}</div>
             {/if}
-            <p class="camera-caption">Camera stream active</p>
+            <p class="camera-caption">Camera stream active · OMR quality is verified after upload</p>
           {:else if cameraState === 'requesting'}
-            <div class="camera-message"><RefreshCw class="spin" size={24} /><strong>Requesting camera access…</strong></div>
+            <div class="camera-message"><RefreshCw class="spin" size={24} /><strong>Requesting camera access…</strong><small>Allow camera access to capture in place.</small></div>
+          {:else if cameraState === 'uploading'}
+            <div class="camera-message"><Upload size={28} class="muted-stage-icon" /><strong>Uploading page {currentPage} of {pageCount}…</strong><small>Keep this window open while the scan is analyzed.</small></div>
           {:else}
             <div class="camera-message">
               <Camera size={32} class="muted-stage-icon" />
-              <strong>Camera feed inactive</strong>
+              <strong>{cameraUnavailableReason === 'permission' ? 'Camera permission unavailable' : 'Camera device unavailable'}</strong>
+              <small>{cameraUnavailableReason === 'permission' ? 'Allow camera access in the browser, or use file upload.' : 'Connect a camera or use file upload instead.'}</small>
               <button class="primary-button stage-upload-btn" type="button" onclick={triggerUpload}>
                 <Upload size={15} /> Upload image file
               </button>
@@ -763,7 +831,7 @@
                 {/each}
               </div>
             {/if}
-            <p class="review-meta">{selectedSheet?.id ? `Grading.OMR.Sheet.${String(selectedSheet.id).padStart(4, '0')}` : 'OMR evidence'} · {evidenceLabel(selectedSheet)} · {provider.name} v{provider.version} · private evidence</p>
+            <p class="review-meta">{selectedSheet?.id ? `Grading.OMR.Sheet.${String(selectedSheet.id).padStart(4, '0')}` : 'OMR evidence'} · {evidenceLabel(selectedSheet)} · sheet confidence {confidenceLabel(selectedSheet?.confidence)} · {provider.name} v{provider.version} · private evidence</p>
 
             <div class="review-card identity-card">
               <div class="review-card-heading"><h2>Examinee</h2>{#if editAttemptId}<a class="edit-link" href={manualScoresHref()}>Edit</a>{/if}</div>
@@ -797,6 +865,22 @@
               </select>
             </label>
 
+            {#if requiredIssues.length > 0}
+              <div class="review-card issue-card" role="alert">
+                <div class="review-card-heading"><div><h2>Required detection issues</h2><p>Resolve these observations before confirming the batch, or abstain with a reason.</p></div><span class="issue-count">{requiredIssues.length} open</span></div>
+                <ul class="issue-list">
+                  {#each requiredIssues as issue}
+                    <li>
+                      <div><strong>{issueLabel(issue)}</strong><span>{issue.area_code ?? 'Sheet'}{issue.question_no ? ` · Item ${issue.question_no}` : ''}{issue.page_no ? ` · Page ${issue.page_no}` : ''}</span></div>
+                      <div class="issue-actions">
+                        <button type="button" class="table-edit" onclick={() => resolveIssue(issue)} disabled={resolvingIssueId === issue.id}>{resolvingIssueId === issue.id ? 'Resolving…' : 'Resolve manually'}</button>
+                      </div>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
+
             {#if scoreRows.length > 0}
               <div class="review-card review-scores">
                 <div class="review-card-heading"><h2>Scores</h2>{#if editAttemptId}<a class="edit-link" href={manualScoresHref()}>Edit scores</a>{/if}</div>
@@ -807,7 +891,7 @@
                       {#each scoreRows as row}
                         <tr>
                           <td><strong>{row.areaName}</strong><small>{row.areaCode}</small></td>
-                          <td class="mono">{row.proposal.score} <span class="confidence">{Math.round((row.proposal.confidence ?? 0) * 100)}%</span></td>
+                          <td class="mono">{row.proposal.score} <span class="confidence">{confidenceLabel(row.proposal.confidence)}</span></td>
                           <td class="final-score">{selectedSheet?.reviewed?.per_area_scores?.[row.areaId]?.score ?? row.proposal.score}</td>
                         </tr>
                       {/each}
@@ -829,7 +913,7 @@
                         <tr>
                           <td><div class="item-evidence"><div class="item-crop">{#if hasImageEvidence(selectedSheet) && item.region}<img src={selectedSheet.image_url} style={cropStyle(item.region)} alt={`Cropped item ${item.question_no} evidence`} onerror={() => markImageUnavailable(selectedSheet)} />{:else}<span>{hasImageEvidence(selectedSheet) ? '—' : 'No image'}</span>{/if}</div><div><strong>Item {item.question_no}</strong><small>{item.area_code ?? item.area_name ?? 'Aptitude area'}</small></div></div></td>
                           <td><span class="answer-chip {item.detected_answer ? '' : 'empty'}">{item.detected_answer ?? '—'}</span></td>
-                          <td class="confidence">{item.confidence == null ? '—' : `${Math.round(item.confidence * 100)}%`}</td>
+                          <td class="confidence">{confidenceLabel(item.confidence)}</td>
                           <td><span class="item-mark {mark.tone}">{mark.label}</span></td>
                           <td class="item-score">{itemScore(item)}</td>
                           <td>{#if editAttemptId}<a class="table-edit" href={manualScoresHref(item.area_id)}>Correct</a>{:else}<span class="muted-text">Bind first</span>{/if}</td>
@@ -843,9 +927,18 @@
               {/if}
             </div>
 
+            {#if requiredIssues.length > 0}
+              <label class="abstain-field">
+                <span>Manual follow-up reason</span>
+                <textarea bind:value={abstainReason} maxlength="255" placeholder="Explain why this sheet needs manual scoring or another scan"></textarea>
+              </label>
+            {/if}
             <div class="review-actions">
               <button class="outline-button" type="button" onclick={openGallery}><ChevronLeft size={16} /> Back to scans</button>
-              <button class="primary-button" type="button" onclick={() => saveReview()} disabled={savingReview || !selectedAttemptId}><Check size={16} /> {savingReview ? 'Saving…' : 'Save review'}</button>
+              {#if requiredIssues.length > 0}
+                <button class="outline-button" type="button" onclick={() => saveReview('abstain')} disabled={savingReview || !selectedAttemptId}><Info size={16} /> {savingReview ? 'Saving…' : 'Abstain for manual follow-up'}</button>
+              {/if}
+              <button class="primary-button" type="button" onclick={() => saveReview()} disabled={savingReview || !selectedAttemptId || requiredIssues.length > 0}><Check size={16} /> {savingReview ? 'Saving…' : 'Save review'}</button>
             </div>
           </section>
         {:else}
@@ -1081,6 +1174,11 @@
   .camera-footer { flex-shrink: 0; display: flex; justify-content: center; gap: 19px; padding: 0 16px 18px; background: var(--omr-surface-solid); }
   .camera-feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .scan-hint { position: absolute; top: 18px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 7px; color: var(--omr-stage-text); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; opacity: .82; }
+  .camera-readiness { position: absolute; left: 50%; bottom: 21%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 9px; max-width: min(88%, 360px); padding: 8px 12px; border: 1px solid color-mix(in oklab, var(--omr-primary) 52%, white 16%); border-radius: 999px; background: color-mix(in oklab, var(--omr-stage-deep) 82%, transparent); color: var(--omr-stage-text); box-shadow: 0 4px 18px rgba(0, 0, 0, .2); }
+  .camera-readiness > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .camera-readiness strong { color: white; font-size: 11px; letter-spacing: .03em; }
+  .camera-readiness small { color: color-mix(in oklab, var(--omr-stage-text) 82%, transparent); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .readiness-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #65c18c; box-shadow: 0 0 0 4px color-mix(in oklab, #65c18c 18%, transparent); }
   .frame { width: 31px; height: 31px; position: absolute; opacity: .9; border-color: color-mix(in oklab, var(--primary) 70%, white); }
   .frame-tl { top: 12%; left: 8%; border-left: 2px solid; border-top: 2px solid; }
   .frame-tr { top: 12%; right: 8%; border-right: 2px solid; border-top: 2px solid; }
@@ -1195,6 +1293,16 @@
   .identity-copy span { color: var(--omr-muted); font-size: 11px; line-height: 1.4; }
   .identity-arrow { flex: 0 0 auto; color: var(--omr-muted); }
   .review-note { margin: 14px 0 0; color: var(--omr-muted); font-size: 11px; line-height: 1.5; }
+  .issue-card { border-color: color-mix(in oklab, #b7791f 42%, var(--omr-border)); background: color-mix(in oklab, #b7791f 5%, var(--omr-surface-solid)); }
+  .issue-count { color: #966515; font: 700 10px var(--font-mono); text-transform: uppercase; white-space: nowrap; }
+  .issue-list { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+  .issue-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid color-mix(in oklab, #b7791f 22%, var(--omr-border)); border-radius: var(--radius-md); }
+  .issue-list strong { display: block; color: var(--omr-text); font-size: 12px; }
+  .issue-list span { display: block; margin-top: 3px; color: var(--omr-muted); font: 10px var(--font-mono); }
+  .issue-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .abstain-field { display: grid; gap: 7px; margin-top: 16px; }
+  .abstain-field span { color: var(--omr-text); font-size: 12px; font-weight: 650; }
+  .abstain-field textarea { min-height: 72px; resize: vertical; border: 1px solid var(--omr-border); border-radius: var(--radius-md); background: var(--omr-surface-solid); color: var(--omr-text); padding: 9px 10px; font: 12px var(--font-sans); }
   .score-table-wrap, .item-table-wrap { overflow-x: auto; margin-top: 14px; }
   .score-table, .item-table { width: 100%; min-width: 540px; border-collapse: collapse; color: var(--omr-text); font-size: 12px; }
   .score-table th, .item-table th { padding: 9px 10px; border-bottom: 1px solid var(--omr-border); color: var(--omr-muted); font: 10px var(--font-mono); letter-spacing: .05em; text-align: left; text-transform: uppercase; white-space: nowrap; }

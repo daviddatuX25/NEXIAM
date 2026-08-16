@@ -64,10 +64,9 @@ final class OmrTemplateLayoutSolver
 
     private const IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 60, 'labelsGap' => 66, 'origin' => [200, 260]];
     private const IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 60, 'labelsGap' => 66, 'origin' => [1000, 260]];
-    // Reserve the EDQ header above compact identity labels and keep a clear
-    // separation from the six answer columns below.
-    private const COMPACT_IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [200, 390]];
-    private const COMPACT_IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [1000, 390]];
+    // Keep compact native identity grids clear of the EDQ overlay and answer flow.
+    private const COMPACT_IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [200, 300]];
+    private const COMPACT_IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [1000, 300]];
 
     /**
      * Validate a blueprint without solving. Returns an empty list when valid.

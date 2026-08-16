@@ -11,6 +11,8 @@ use App\Models\Assessment\GradingSession;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\AptitudeArea;
+use App\Models\Foundation\Program;
+use App\Models\Foundation\ProgramQuota;
 use App\Models\Foundation\Room;
 use App\Models\User;
 use App\Release\Actions\PrepareResultDocument;
@@ -38,6 +40,13 @@ function buildReleasedAdvisedAttempt(object $test, string $email, int $roomVaria
     $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
     $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
     $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
+    foreach ([DEFAULT_PROGRAM, OTHER_PROGRAM] as $programCode) {
+        $program = Program::query()->where('code', $programCode)->firstOrFail();
+        ProgramQuota::query()->updateOrCreate(
+            ['program_id' => $program->id, 'academic_cycle_id' => $cycle->id],
+            ['slots' => 5],
+        );
+    }
     $room = Room::query()->where('code', $roomVariant === 0 ? 'RM-101' : 'RM-LabA')->firstOrFail();
 
     $test->actingAs($registrar)->post(route('admissions.accept', $attempt), ['expected_version' => 1]);

@@ -10,11 +10,11 @@ class OmrCaptureSheetIssue extends Model
 {
     protected $table = 'omr_capture_sheet_issues';
 
-    protected $fillable = ['sheet_id', 'area_code', 'question_no', 'issue_code', 'severity', 'state', 'evidence_json', 'resolution_code', 'resolution_reason', 'resolved_by_user_id', 'resolved_at', 'version'];
+    protected $fillable = ['sheet_id', 'page_no', 'area_code', 'question_no', 'issue_code', 'severity', 'state', 'evidence_json', 'resolution_code', 'resolution_reason', 'resolved_by_user_id', 'resolved_at', 'version'];
 
     protected function casts(): array
     {
-        return ['question_no' => 'integer', 'evidence_json' => 'array', 'resolved_at' => 'datetime', 'version' => 'integer'];
+        return ['page_no' => 'integer', 'question_no' => 'integer', 'evidence_json' => 'array', 'resolved_at' => 'datetime', 'version' => 'integer'];
     }
 
     public function sheet(): BelongsTo

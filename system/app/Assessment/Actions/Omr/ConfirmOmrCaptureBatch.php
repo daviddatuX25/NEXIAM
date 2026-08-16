@@ -82,10 +82,20 @@ final class ConfirmOmrCaptureBatch
                 if ($sheet->status !== OmrCaptureSheet::STATUS_REVIEWED) {
                     $unreviewed[] = '#'.$sheet->id;
                 }
+
             }
 
             if ($unreviewed !== []) {
                 throw new RuntimeException('Sheets '.implode(', ', $unreviewed).' must be reviewed before confirming the batch.');
+            }
+
+            foreach ($sheets as $sheet) {
+                /** @var OmrCaptureSheet $sheet */
+                if ($sheet->status !== OmrCaptureSheet::STATUS_COMMITTED
+                    && ! $sheet->wasAbstained()
+                    && $sheet->hasOpenRequiredIssues()) {
+                    throw new RuntimeException('Resolve required OMR issues on sheet #'.$sheet->id.' before confirming.');
+                }
             }
 
             foreach ($sheets as $sheet) {
@@ -176,7 +186,9 @@ final class ConfirmOmrCaptureBatch
                 'converted_score' => $converted,
                 'source' => ScoreRecord::SOURCE_OMR,
                 'capture_sheet_id' => $sheet->id,
-                'confidence' => (float) ($proposal['confidence'] ?? 1.0),
+                'confidence' => array_key_exists('confidence', $proposal) && is_numeric($proposal['confidence'])
+                    ? (float) $proposal['confidence']
+                    : null,
                 'recorded_by_user_id' => $actor->id,
                 'idempotency_key' => 'omr:'.$sheet->batch_id.':'.$sheet->admission_attempt_id.':'.$areaId,
             ]);

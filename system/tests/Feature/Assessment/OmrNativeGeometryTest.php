@@ -3,8 +3,8 @@
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 
 /**
- * @param array{x: float, y: float, w: float, h: float} $outer
- * @param array{x: float, y: float, w: float, h: float} $inner
+ * @param  array{x: float, y: float, w: float, h: float}  $outer
+ * @param  array{x: float, y: float, w: float, h: float}  $inner
  */
 function omrNativeRectContains(array $outer, array $inner): bool
 {
@@ -15,15 +15,15 @@ function omrNativeRectContains(array $outer, array $inner): bool
 }
 
 /**
- * @param array{x: float, y: float, w: float, h: float} $left
- * @param array{x: float, y: float, w: float, h: float} $right
+ * @param  array{x: float, y: float, w: float, h: float}  $left
+ * @param  array{x: float, y: float, w: float, h: float}  $right
  */
 function omrNativeRectsOverlap(array $left, array $right): bool
 {
     return $left['x'] < $right['x'] + $right['w']
-        && $left['x'] + $left['w'] > $right['x']
+        && $right['x'] < $left['x'] + $left['w']
         && $left['y'] < $right['y'] + $right['h']
-        && $left['y'] + $left['h'] > $right['y'];
+        && $right['y'] < $left['y'] + $left['h'];
 }
 
 test('native projections replace hand-calculated seed geometry', function (): void {

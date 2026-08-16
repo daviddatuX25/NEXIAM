@@ -5,16 +5,15 @@ use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
-use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Assessment\OmrQuestionBookletVersion;
+use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Printing\BundleRenderer;
 use Database\Seeders\OmrDemoBatchSeeder;
 use Database\Seeders\OmrDemoSeeder;
 use Illuminate\Support\Facades\Storage;
 
-
 test('profile pair persists one bounded page and a matching 150-question key', function (): void {
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
     $template = OmrAnswerSheetTemplate::query()->where('code', 'SYN-OMR-PROFILE-150')->firstOrFail();
@@ -51,7 +50,7 @@ test('profile pair persists one bounded page and a matching 150-question key', f
             'LANGUAGE_Q_001..025',
         ])
         ->and($page['fieldBlocks'][0]['fieldLabels'])->toBe(['APPLICANT_NUMBER_1..10'])
-        ->and($page['fieldBlocks'][0]['origin'])->toBe([200, 390])
+        ->and($page['fieldBlocks'][0]['origin'])->toBe([200, 300])
         ->and($questionBlocks[0]['origin'])->toBe([120, 940])
         ->and($page['fieldBlocks'][0]['origin'][1] + (9 * 52) + 40)->toBeLessThan($questionBlocks[0]['origin'][1])
         ->and(array_values(array_filter($page['fieldBlocks'], static fn (array $block): bool => $block['fieldType'] === 'QTYPE_INT')))->toHaveCount(1)
@@ -113,10 +112,9 @@ test('profile pair persists one bounded page and a matching 150-question key', f
         ->assertHeader('Cache-Control', 'no-store, private');
 });
 
-
 test('profile capture seed exposes all review states without fake confidence', function (): void {
     Storage::fake('sensitive');
-    $fixture = buildGradingFixture($this);
+    $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
     (new OmrDemoBatchSeeder)->run();

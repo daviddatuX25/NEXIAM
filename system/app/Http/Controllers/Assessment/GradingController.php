@@ -8,9 +8,11 @@ use App\Assessment\Actions\Omr\RejectOmrCaptureBatch;
 use App\Assessment\Actions\Omr\ReplaceOmrSheetPage;
 use App\Assessment\Actions\Omr\RetryOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ReviewOmrCaptureSheet;
+use App\Assessment\Actions\Omr\ResolveOmrCaptureSheetIssue;
 use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
 use App\Http\Requests\Assessment\ReviewOmrSheetRequest;
 use App\Http\Requests\Assessment\StoreOmrBatchRequest;
+use App\Http\Requests\Assessment\ResolveOmrSheetIssueRequest;
 use App\Http\Requests\Assessment\StoreOmrSheetRequest;
 use App\Assessment\Actions\FinalizeGradingSession;
 use App\Assessment\Actions\OpenGradingSession;
@@ -23,6 +25,7 @@ use App\Models\Assessment\GradingSession;
 use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrCaptureSheetPage;
+use App\Models\Assessment\OmrCaptureSheetIssue;
 use App\Models\Assessment\ScoreRecord;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamAttendanceRecord;
@@ -202,7 +205,7 @@ class GradingController extends Controller
                 'templateVersion.areas.aptitudeArea',
                 'bookletVersion.questions.templateQuestion',
                 'bookletVersion.questions.aptitudeArea',
-                'sheets' => fn ($query) => $query->orderByDesc('created_at')->with('pages'),
+                'sheets' => fn ($query) => $query->orderByDesc('created_at')->with(['pages', 'issues']),
             ])
             ->first();
         $template = $batch?->templateVersion;
@@ -298,6 +301,18 @@ class GradingController extends Controller
                     'admission_attempt_id' => $sheet->admission_attempt_id,
                     'proposal' => $sheet->proposal_json,
                     'reviewed' => $sheet->reviewed_json,
+                    'issues' => $sheet->issues->map(fn (OmrCaptureSheetIssue $issue): array => [
+                        'id' => $issue->id,
+                        'page_no' => $issue->page_no,
+                        'area_code' => $issue->area_code,
+                        'question_no' => $issue->question_no,
+                        'issue_code' => $issue->issue_code,
+                        'severity' => $issue->severity,
+                        'state' => $issue->state,
+                        'evidence' => $issue->evidence_json,
+                        'resolution_code' => $issue->resolution_code,
+                        'resolution_reason' => $issue->resolution_reason,
+                    ])->values()->all(),
                     'image_url' => route('grading.sessions.omr.sheets.image', [
                         'gradingSession' => $gradingSession,
                         'sheet' => $sheet,
@@ -433,6 +448,33 @@ class GradingController extends Controller
         }
 
         return back()->with('status', sprintf('Scan #%d review saved.', $capture->id));
+    }
+
+    public function resolveOmrIssue(
+        ResolveOmrSheetIssueRequest $request,
+        GradingSession $gradingSession,
+        int $sheet,
+        int $issue,
+        ResolveOmrCaptureSheetIssue $action,
+    ): RedirectResponse {
+        $capture = OmrCaptureSheet::query()
+            ->whereKey($sheet)
+            ->whereHas('batch', fn ($query) => $query->where('grading_session_id', $gradingSession->id))
+            ->firstOrFail();
+        $captureIssue = $capture->issues()->whereKey($issue)->firstOrFail();
+
+        try {
+            $action->handle(
+                $captureIssue,
+                $request->user(),
+                (string) $request->input('resolution_code'),
+                (string) $request->input('resolution_reason'),
+            );
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['omr' => $exception->getMessage()]);
+        }
+
+        return back()->with('status', sprintf('OMR issue #%d resolved.', $captureIssue->id));
     }
 
     public function confirmOmrBatch(

@@ -2,25 +2,26 @@
 
 use App\Assessment\Actions\Omr\ActivateOmrConfiguration;
 use App\Assessment\Actions\Omr\CopyBookletVersionToDraft;
-use App\Assessment\Actions\Omr\RegisterNativeBundle;
 use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
 use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
+use App\Assessment\Actions\Omr\SolveOmrTemplateLayout;
+use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 use App\Assessment\Omr\NativeBundle;
-use App\Assessment\Omr\NativeManifestDeriver;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrQuestionBooklet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Foundation\AptitudeArea;
+use App\Models\User;
 use App\Printing\BundleRenderer;
 use App\Printing\RenderBundlePdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 test('template preview returns the shared-renderer PDF with private headers', function (): void {
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
-    $clerk = App\Models\User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
+    $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
     $version = OmrAnswerSheetTemplateVersion::query()
         ->where('status', OmrAnswerSheetTemplateVersion::STATUS_ACTIVE)
         ->where('version', 4)
@@ -176,8 +177,8 @@ test('overlay save edits drafts in place and copies active versions to a draft',
         expect($newDraft)->not->toBeNull()
             ->and($newDraft->id)->not->toBe($draft->id);
     } finally {
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/OVL-BK-'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/OVL-BK-'.$code);
     }
 });
 
@@ -309,7 +310,7 @@ test('birthdate grid derives and projects identity regions at activation', funct
         expect(fn () => app(SaveAuthoredTemplateDraft::class)->handle('DOB-BAD-'.$code, 'Bad birthdate', $bad, $guidance))
             ->toThrow(RuntimeException::class, 'six positions');
     } finally {
-        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
+        Storage::disk('local')->deleteDirectory('omr-bundles/'.$code);
     }
 });
 
@@ -326,7 +327,7 @@ test('blueprint save solves server-side and persists layout metadata', function 
         'sections' => [['area_code' => 'VERBAL', 'question_from' => 1, 'question_to' => 100, 'option_count' => 4, 'break_before' => null]],
     ];
 
-    $solved = app(\App\Assessment\Actions\Omr\SolveOmrTemplateLayout::class)->handle($blueprint);
+    $solved = app(SolveOmrTemplateLayout::class)->handle($blueprint);
 
     $version = app(SaveAuthoredTemplateDraft::class)->handle(
         $code,
@@ -340,7 +341,7 @@ test('blueprint save solves server-side and persists layout metadata', function 
 
     expect($version->layout_blueprint_json)->not->toBeNull()
         ->and($version->layout_blueprint_hash)->toBe($solved->blueprintHash)
-        ->and($version->layout_solver_version)->toBe(\App\Assessment\Omr\Layout\OmrTemplateLayoutSolver::SOLVER_VERSION)
+        ->and($version->layout_solver_version)->toBe(OmrTemplateLayoutSolver::SOLVER_VERSION)
         ->and($version->template_json_hash)->toBe($solved->templateJsonHash)
         ->and($version->native_bundle_json['template']['pages'])->toHaveCount(1);
 
@@ -349,7 +350,7 @@ test('blueprint save solves server-side and persists layout metadata', function 
     expect($questionLabels[0]['fieldLabels'][0])->toBe('VERBAL_Q_001..025');
 
     // The staged bundle is readable through the durable store.
-    $loaded = \App\Assessment\Omr\NativeBundle::load($code, 1);
+    $loaded = NativeBundle::load($code, 1);
     expect($loaded->template['pages'])->toHaveCount(1);
 });
 

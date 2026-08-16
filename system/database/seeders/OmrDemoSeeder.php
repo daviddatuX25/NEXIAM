@@ -339,6 +339,8 @@ class OmrDemoSeeder extends Seeder
                     'birthdate_placeholder' => 'MMDDYYYY',
                     'footer_lines' => [],
                     'show_calibration' => false,
+                    'show_frame' => false,
+                    'edq_layout' => ['columns' => 3, 'gap_mm' => 4, 'reserve_native_identity' => true],
                     'name_box_label' => 'NAME (PRINT):',
                     'per_page' => [],
                 ],

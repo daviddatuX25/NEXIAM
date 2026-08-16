@@ -10,7 +10,7 @@ use App\Models\Foundation\Operation;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
+
 
 test('deterministic seed creates synthetic institution and cycle', function (): void {
     Artisan::call('db:seed', ['--force' => true]);

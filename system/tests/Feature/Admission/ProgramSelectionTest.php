@@ -9,7 +9,7 @@ use App\Models\Admission\ProgramSelection;
 use App\Models\Foundation\Program;
 use App\Models\Foundation\ProgramQuota;
 use App\Models\User;
-use RuntimeException;
+
 
 test('guidance sets pool with advised default reserving quota', function (): void {
     [$attempt, , $guidance] = buildReleasedAdvisedAttempt($this, 'pool-set@example.test');

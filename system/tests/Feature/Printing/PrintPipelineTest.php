@@ -1,6 +1,7 @@
 <?php
 
 use App\Assessment\Omr\NativeBundle;
+use App\Foundation\Actions\RecordAuditEvent;
 use App\Jobs\Printing\RenderPrintJob;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Printing\PrintJob;
@@ -8,9 +9,9 @@ use App\Printing\Actions\RenderBlankOmrSheets;
 use App\Printing\BundleRenderer;
 use App\Printing\DomPdfPrintRenderer;
 use App\Printing\PrintRenderer;
+use App\Support\SensitiveAssetStore;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 
 test('blank sheet action queues a job with pinned inputs and dedupes duplicates', function (): void {
     Queue::fake();
@@ -43,8 +44,8 @@ test('render job produces a ready pdf for the long-bond bundle', function (): vo
 
     (new RenderPrintJob($job->id))->handle(
         app(DomPdfPrintRenderer::class),
-        app(\App\Support\SensitiveAssetStore::class),
-        app(\App\Foundation\Actions\RecordAuditEvent::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
 
     $job->refresh();
@@ -91,14 +92,13 @@ test('render job uses the selected DB snapshot and print overlay', function (): 
 
     (new RenderPrintJob($job->id))->handle(
         $renderer,
-        app(\App\Support\SensitiveAssetStore::class),
-        app(\App\Foundation\Actions\RecordAuditEvent::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
 
     expect($renderer->html)->toContain('DOWNLOAD PROOF')
         ->and($job->fresh()->status)->toBe(PrintJob::STATUS_READY);
 });
-
 
 test('download refuses non-ready jobs and denies without capability', function (): void {
     Storage::fake('local');
@@ -220,6 +220,35 @@ test('renderer preserves the compact profile name line above identity grids', fu
         ->and($html)->toContain('NAME (PRINT):')
         ->and($html)->toContain('left:155.6mm;top:23.71mm;width:50mm;height:8mm;border:0.3mm solid #000;')
         ->and($html)->not->toContain('top:23.71mm;width:80mm;height:8mm;border:0.3mm solid #000;');
+});
+
+test('renderer places reserved EDQ content clear of native identity grids', function (): void {
+    $template = [
+        'bubbleDimensions' => [40, 40],
+        'pageDimensions' => [2060, 3144],
+        'fieldBlocks' => [
+            'ApplicantNumber' => [
+                'fieldType' => 'QTYPE_INT',
+                'fieldLabels' => ['APPLICANT_NUMBER_1..10'],
+                'origin' => [200, 300],
+                'bubblesGap' => 52,
+                'labelsGap' => 66,
+            ],
+        ],
+    ];
+
+    $html = app(BundleRenderer::class)->renderHtml($template, [
+        'overlay' => [
+            'edq_header' => true,
+            'edq_layout' => ['columns' => 3, 'gap_mm' => 4, 'reserve_native_identity' => true],
+            'exam_information_lines' => ['EXAM: __________'],
+            'instructions_lines' => ['Shade one answer per question.'],
+        ],
+    ]);
+
+    expect($html)->toContain('left:91.54mm;top:20mm;width:')
+        ->and($html)->toContain('EXAM INFORMATION')
+        ->and($html)->toContain('IDENTITY');
 });
 
 test('renderer keeps a manual name field on every v4 and v5 page', function (): void {

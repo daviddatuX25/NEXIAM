@@ -41,12 +41,14 @@
     header_lines: [],
     edq_header: false,
     edq_header_label: '',
+    edq_layout: { columns: 3, gap_mm: 4, reserve_native_identity: false },
     exam_information_lines: [],
     instructions_lines: [],
     birthdate_label: '',
     birthdate_placeholder: 'MMDDYYYY',
     footer_lines: [],
     show_calibration: true,
+    show_frame: true,
     name_box_label: '',
     per_page: [],
   });
@@ -74,12 +76,18 @@
         header_lines: Array.isArray(ov.header_lines) ? ov.header_lines : [],
         edq_header: ov.edq_header === true,
         edq_header_label: ov.edq_header_label ?? '',
+        edq_layout: {
+          columns: Math.min(3, Math.max(1, Number(ov.edq_layout?.columns ?? 3))),
+          gap_mm: Math.min(10, Math.max(2, Number(ov.edq_layout?.gap_mm ?? 4))),
+          reserve_native_identity: ov.edq_layout?.reserve_native_identity === true,
+        },
         exam_information_lines: Array.isArray(ov.exam_information_lines) ? ov.exam_information_lines : [],
         instructions_lines: Array.isArray(ov.instructions_lines) ? ov.instructions_lines : [],
         birthdate_label: ov.birthdate_label ?? '',
         birthdate_placeholder: ov.birthdate_placeholder ?? 'MMDDYYYY',
         footer_lines: Array.isArray(ov.footer_lines) ? ov.footer_lines : [],
         show_calibration: ov.show_calibration !== false,
+        show_frame: ov.show_frame !== false,
         name_box_label: ov.name_box_label ?? '',
         per_page: Array.isArray(ov.per_page) ? ov.per_page : [],
       };
@@ -171,8 +179,6 @@
     let leftMm = 80 / 242 * 25.4 + 2;
     let widthMm = 80;
 
-    // Match BundleRenderer: compact identity bands and full headers use the
-    // unused upper-right area instead of hiding the manual fallback field.
     if (!topPlacementSafe || BUBBLE <= 40) {
       widthMm = 50;
       leftMm = (width * 25.4) / 242 - 80 / 242 * 25.4 - widthMm - 2;
@@ -187,6 +193,55 @@
       width: geometryUnits(widthMm),
       height: geometryUnits(8),
     };
+  }
+
+  function edqPreviewMetrics(page, pageIndex, width) {
+    const headerLines = nonEmptyLines(overlay.header_lines);
+    const note = overlay.per_page.find((item) => Number(item?.page_no) === pageIndex + 1)?.note?.trim() ?? '';
+    const pageLabelTopMm = 9 + headerLines.length * 5;
+    const afterHeaderMm = note ? pageLabelTopMm + 10 : pageLabelTopMm + 5;
+    const gridTopMm = afterHeaderMm + (overlay.edq_header_label.trim() ? 6 : 2);
+    const columns = Math.min(3, Math.max(1, Number(overlay.edq_layout.columns)));
+    const reserveNativeIdentity = overlay.edq_layout.reserve_native_identity === true;
+    let renderColumns = columns;
+    const gapMm = Math.min(10, Math.max(2, Number(overlay.edq_layout.gap_mm)));
+    let gridLeftMm = 80 / 242 * 25.4;
+    if (reserveNativeIdentity) {
+      let nativeRightPx = 0;
+      for (const block of page.fieldBlocks ?? []) {
+        if (block.fieldType !== 'QTYPE_INT') continue;
+        const label = String(block.fieldLabels?.[0] ?? '');
+        const count = label.startsWith('BIRTHDATE_') ? 6 : 10;
+        const labelGap = Number(block.labelsGap ?? IDENTITY_LABELS_GAP);
+        nativeRightPx = Math.max(nativeRightPx, Number(block.origin?.[0] ?? 0) + Math.max(0, count - 1) * labelGap + BUBBLE);
+      }
+      if (nativeRightPx > 0) {
+        renderColumns = Math.max(1, columns - 1);
+        gridLeftMm = Math.min((width * 25.4) / 242 - 80 / 242 * 25.4, nativeRightPx / 242 * 25.4 + 4);
+      }
+    }
+    const cellWidthMm = ((width * 25.4) / 242 - 80 / 242 * 25.4 - gridLeftMm) / renderColumns;
+    const items = [];
+    const examLines = nonEmptyLines(overlay.exam_information_lines);
+    const instructionLines = nonEmptyLines(overlay.instructions_lines);
+    if (examLines.length) items.push({ kind: 'text', label: 'EXAM INFORMATION', lines: examLines });
+    if (instructionLines.length) items.push({ kind: 'text', label: 'INSTRUCTIONS', lines: instructionLines });
+    items.push({ kind: 'identity', label: 'IDENTITY', lines: [] });
+    const rowHeights = [];
+    for (let index = 0; index < items.length; index += renderColumns) {
+      rowHeights.push(Math.max(...items.slice(index, index + renderColumns).map((item) => item.kind === 'identity' ? 30.5 : 3.5 + item.lines.length * 3.5)));
+    }
+    const cells = [];
+    let itemIndex = 0;
+    let rowTop = gridTopMm;
+    for (const rowHeight of rowHeights) {
+      items.slice(itemIndex, itemIndex + renderColumns).forEach((item, column) => {
+        cells.push({ ...item, x: gridLeftMm + column * (cellWidthMm + gapMm), y: rowTop, width: cellWidthMm });
+      });
+      itemIndex += renderColumns;
+      rowTop += rowHeight + gapMm;
+    }
+    return { labelY: gridTopMm - 6, cells, bottom: rowTop - gapMm };
   }
 
   function csrfToken() {
@@ -239,6 +294,11 @@
       ...(overlay.edq_header ? {
         edq_header: true,
         ...(overlay.edq_header_label.trim() ? { edq_header_label: overlay.edq_header_label.trim() } : {}),
+        edq_layout: {
+          columns: Math.min(3, Math.max(1, Number(overlay.edq_layout.columns))),
+          gap_mm: Math.min(10, Math.max(2, Number(overlay.edq_layout.gap_mm))),
+          reserve_native_identity: overlay.edq_layout.reserve_native_identity === true,
+        },
         exam_information_lines: overlay.exam_information_lines.filter((l) => l.trim()),
         instructions_lines: overlay.instructions_lines.filter((l) => l.trim()),
         birthdate_label: overlay.birthdate_label.trim() || 'BIRTHDATE:',
@@ -246,6 +306,7 @@
       } : {}),
       footer_lines: overlay.footer_lines.filter((l) => l.trim()),
       show_calibration: overlay.show_calibration,
+      show_frame: overlay.show_frame,
       ...(overlay.name_box_label.trim() ? { name_box_label: overlay.name_box_label.trim() } : {}),
       per_page: overlay.per_page.filter((p) => p && String(p.note ?? '').trim()),
     };
@@ -345,8 +406,8 @@
 
   let BUBBLE = $derived(blueprint.columns === 6 ? 40 : 56);
   let MCQ_GAP = $derived(blueprint.columns === 6 ? 52 : 66);
-  const IDENTITY_LABELS_GAP = 66;
-  const IDENTITY_BUBBLES_GAP = 60;
+  let IDENTITY_LABELS_GAP = $derived(blueprint.columns === 6 ? 66 : 66);
+  let IDENTITY_BUBBLES_GAP = $derived(blueprint.columns === 6 ? 52 : 60);
   const ROW_PITCH = 80;
 </script>
 
@@ -575,6 +636,38 @@
                 <Label class="text-xs text-muted-foreground">EDQ label</Label>
                 <Input value={overlay.edq_header_label} oninput={(e) => (overlay.edq_header_label = e.currentTarget.value)} placeholder="EDQ / HEADER ZONE" disabled={locked} />
               </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="space-y-1">
+                  <Label class="text-xs text-muted-foreground">EDQ columns</Label>
+                  <select
+                    class={numberInput}
+                    value={overlay.edq_layout.columns}
+                    onchange={(e) => (overlay.edq_layout = { ...overlay.edq_layout, columns: Number(e.currentTarget.value) })}
+                    disabled={locked}
+                  >
+                    {#each [1, 2, 3] as columns}
+                      <option value={columns}>{columns} column{columns === 1 ? '' : 's'}</option>
+                    {/each}
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <Label class="text-xs text-muted-foreground">Column gap (mm)</Label>
+                  <input
+                    class={numberInput}
+                    type="number"
+                    min="2"
+                    max="10"
+                    step="0.5"
+                    value={overlay.edq_layout.gap_mm}
+                    oninput={(e) => (overlay.edq_layout = { ...overlay.edq_layout, gap_mm: Number(e.currentTarget.value) })}
+                    disabled={locked}
+                  />
+                </div>
+              </div>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={overlay.edq_layout.reserve_native_identity} onchange={(e) => (overlay.edq_layout = { ...overlay.edq_layout, reserve_native_identity: e.currentTarget.checked })} disabled={locked} />
+                Reserve first EDQ column for native identity
+              </label>
               <div class="space-y-1">
                 <Label class="text-xs text-muted-foreground">Exam information (one per line)</Label>
                 <textarea class={numberInput} rows="2" value={overlay.exam_information_lines.join('\n')} oninput={(e) => (overlay.exam_information_lines = e.currentTarget.value.split('\n'))} disabled={locked}></textarea>
@@ -601,6 +694,10 @@
             <label class="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={overlay.show_calibration} onchange={(e) => (overlay.show_calibration = e.currentTarget.checked)} disabled={locked} />
               Show calibration strip
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={overlay.show_frame} onchange={(e) => (overlay.show_frame = e.currentTarget.checked)} disabled={locked} />
+              Show answer-sheet frame
             </label>
             <div class="space-y-1">
               <Label class="text-xs text-muted-foreground">Name box label</Label>
@@ -632,6 +729,7 @@
           {#each projection.layout.pages as page, pageIndex}
             {@const [w, h] = page.pageDimensions}
             {@const chrome = overlayMetrics(page, pageIndex, w)}
+            {@const edq = overlay.edq_header ? edqPreviewMetrics(page, pageIndex, w) : null}
             <svg viewBox={`0 0 ${w} ${h}`} class="mb-3 w-full rounded border">
               <rect x="0" y="0" width={w} height={h} fill="white" />
               <rect x="80" y="80" width={w - 160} height={h - 160} fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="24 16" />
@@ -639,21 +737,29 @@
               {#each nonEmptyLines(overlay.header_lines).slice(0, 2) as line, lineIndex}
                 <text x={w / 2} y={105 + lineIndex * 28} font-size="22" font-weight="bold" text-anchor="middle" fill="currentColor">{line}</text>
               {/each}
-              {#if overlay.edq_header}
-                <rect x="80" y="80" width={w - 160} height="820" fill="none" stroke="currentColor" stroke-width="3" />
-                <text x="100" y="220" font-size="20" font-weight="bold" fill="currentColor">{overlay.edq_header_label.trim() || 'EDQ / HEADER ZONE'}</text>
-                {#each nonEmptyLines(overlay.exam_information_lines).slice(0, 2) as line, lineIndex}
-                  <text x="120" y={255 + lineIndex * 24} font-size="18" fill="currentColor">{line}</text>
+              {#if overlay.edq_header && edq}
+                <text x={geometryUnits(80 / 242 * 25.4)} y={geometryUnits(edq.labelY)} font-size="20" font-weight="bold" fill="currentColor">{overlay.edq_header_label.trim() || 'EDQ / HEADER ZONE'}</text>
+                {#each edq.cells as cell}
+                  <text x={geometryUnits(cell.x)} y={geometryUnits(cell.y + 2.8)} font-size="18" font-weight="bold" fill="currentColor">{cell.label}</text>
+                  {#if cell.kind === 'identity'}
+                    <text x={geometryUnits(cell.x)} y={geometryUnits(cell.y + 6.3)} font-size="18" font-weight="bold" fill="currentColor">{overlay.name_box_label.trim() || 'NAME (PRINT):'}</text>
+                    <rect x={geometryUnits(cell.x)} y={geometryUnits(cell.y + 7)} width={geometryUnits(cell.width)} height={geometryUnits(8)} fill="none" stroke="currentColor" stroke-width="3" />
+                    <text x={geometryUnits(cell.x)} y={geometryUnits(cell.y + 21.3)} font-size="18" font-weight="bold" fill="currentColor">{overlay.birthdate_label.trim() || 'BIRTHDATE:'}</text>
+                    <rect x={geometryUnits(cell.x)} y={geometryUnits(cell.y + 22)} width={geometryUnits(cell.width)} height={geometryUnits(8)} fill="none" stroke="currentColor" stroke-width="3" />
+                    <text x={geometryUnits(cell.x + cell.width / 2)} y={geometryUnits(cell.y + 27.2)} font-size="16" text-anchor="middle" fill="currentColor">{overlay.birthdate_placeholder.trim() || 'MMDDYYYY'}</text>
+                  {:else}
+                    {#each cell.lines as line, lineIndex}
+                      <text x={geometryUnits(cell.x)} y={geometryUnits(cell.y + 6 + lineIndex * 3.5)} font-size="18" fill="currentColor">{line}</text>
+                    {/each}
+                  {/if}
                 {/each}
-                {#each nonEmptyLines(overlay.instructions_lines).slice(0, 2) as line, lineIndex}
-                  <text x="120" y={325 + lineIndex * 24} font-size="18" fill="currentColor">{line}</text>
-                {/each}
-                <text x={chrome.x} y={chrome.labelY + geometryUnits(15)} font-size="24" font-weight="bold" fill="currentColor">{overlay.birthdate_label.trim() || 'BIRTHDATE:'}</text>
-                <rect x={chrome.x} y={chrome.y + geometryUnits(15)} width={chrome.width} height={chrome.height} fill="none" stroke="currentColor" stroke-width="3" />
-                <text x={chrome.x + chrome.width / 2} y={chrome.y + geometryUnits(15) + chrome.height / 2 + 8} font-size="20" text-anchor="middle" fill="currentColor">{overlay.birthdate_placeholder.trim() || 'MMDDYYYY'}</text>
+              {:else}
+                <text x={chrome.x} y={chrome.labelY} font-size="24" font-weight="bold" fill="currentColor">{chrome.label}</text>
+                <rect x={chrome.x} y={chrome.y} width={chrome.width} height={chrome.height} fill="none" stroke="currentColor" stroke-width="3" />
               {/if}
-              <text x={chrome.x} y={chrome.labelY} font-size="24" font-weight="bold" fill="currentColor">{chrome.label}</text>
-              <rect x={chrome.x} y={chrome.y} width={chrome.width} height={chrome.height} fill="none" stroke="currentColor" stroke-width="3" />
+              {#if overlay.show_frame}
+                <rect x="80" y="80" width={w - 160} height={h - 160} fill="none" stroke="currentColor" stroke-width="6" />
+              {/if}
               <!-- One dashed printable-margin guide; the PDF uses a solid frame. -->
               {#each page.fieldBlocks as block}
                 {@const origin = block.origin}

@@ -130,13 +130,17 @@ docker compose exec -T app php artisan config:show app.name
 # 4. Pagkatapos magpalit ng PHP/JS code → rebuild (kailangan talaga, nasa image ang code)
 docker compose build app && docker compose up -d --force-recreate app queue
 
-# 5. Tests — buong suite (mabilis, in-memory sqlite, HOST code ang ginagamit)
+# 5. Tests — buong suite (in-memory sqlite, HOST code ang ginagamit)
 docker run --rm --entrypoint php -v "$PWD:/work" -w /work nexiam-system-app artisan test --compact
 
-# 6. Tests — isang file lang
+# 6. Tests — buong suite, 2 isolated workers (recommended local speed path)
+docker compose run --rm --no-deps app php artisan test --compact --parallel --processes=2
+# Composer equivalent inside the app container: composer run test:parallel
+
+# 7. Tests — isang file lang
 docker run --rm --entrypoint php -v "$PWD:/work" -w /work nexiam-system-app artisan test --compact tests/Feature/Examination/
 
-# 7. Quality gates (bago mag-commit ng PHP)
+# 8. Quality gates (bago mag-commit ng PHP)
 docker compose exec -T app vendor/bin/pint --dirty
 ```
 

@@ -3,17 +3,18 @@
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Models\User;
+use Spatie\Permission\Models\Permission;
 
 test('capability catalog seeds stable GF capability keys', function (): void {
-    $this->seed();
+    seedE2Foundation();
 
     foreach (CapabilityCatalog::all() as $capability) {
-        expect(\Spatie\Permission\Models\Permission::query()->where('name', $capability)->exists())->toBeTrue();
+        expect(Permission::query()->where('name', $capability)->exists())->toBeTrue();
     }
 });
 
 test('authorizer enforces office scope mismatch', function (): void {
-    $this->seed();
+    seedE2Foundation();
     $user = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
 
     $allowed = app(CapabilityAuthorizer::class)->decide(
@@ -33,7 +34,7 @@ test('authorizer enforces office scope mismatch', function (): void {
 });
 
 test('guidance counselor receives guidance + shared setup grants via helper role (D-087)', function (): void {
-    $this->seed();
+    seedE2Foundation();
     $user = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
 
     expect($user->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_RELEASE))->toBeTrue()

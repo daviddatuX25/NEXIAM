@@ -12,6 +12,9 @@ The requested one-page 150-item answer sheet is geometrically implemented and vi
 - Seed a profile-specific capture batch with deterministic review, incomplete-page, and retryable failure states.
 - Add focused regression coverage for persisted geometry, answer-key alignment, idempotent seeding, header rendering, and capture visibility.
 - Verify the generated PDF and captured profile page visually on every page before handoff.
+- Add a physical-readiness gate: NEXIAM owns conservative camera framing and capture states; OMRChecker remains a completed-image analysis provider.
+- Make provider states, evidence crops, required issues, and unqualified confidence explicit in review before any batch commit.
+- Prove crop coordinate parity against aligned evidence and execute a recorded physical acceptance matrix before production use.
 
 ## Capabilities
 
@@ -28,4 +31,5 @@ The requested one-page 150-item answer sheet is geometrically implemented and vi
 - `system/database/seeders/OmrDemoSeeder.php` and `OmrDemoBatchSeeder.php` gain idempotent profile fixtures.
 - OMR template/booklet activation and capture projections gain regression coverage for the profile pair.
 - The setup template list, print preview, and grading capture surfaces gain a durable profile dataset without changing existing v1–v5 demo pairs.
+- Capture review gains explicit physical-evidence and issue-resolution gates; the worker contract remains proposal-only and confidence remains unqualified until calibration evidence exists.
 - No provider seam, recognition contract, authorization boundary, or production OMR engine behavior changes.

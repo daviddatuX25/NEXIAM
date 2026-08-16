@@ -34,3 +34,15 @@
 - [x] 6.3 Remove profile footer instructions and calibration copy while keeping v4/v5 legacy overlays unchanged.
 - [x] 6.4 Add regression assertions for header content, no native birthdate fields, no footer/calibration copy, and non-overlap with answer geometry.
 - [x] 6.5 Re-render the profile PDF and visually inspect the full page plus top and bottom crops.
+- [x] 6.6 Reserve the native identity footprint before placing configurable EDQ columns, keeping builder preview and PDF output aligned.
+
+## 7. Physical capture readiness
+
+- [x] 7.1 Keep camera framing/readiness guidance in NEXIAM; document that OMRChecker analyzes completed images only.
+- [x] 7.2 Add camera preflight states: permission/device unavailable, requesting, ready-to-capture, uploading, and page progress; retain upload fallback.
+- [x] 7.3 Expose provider item states and required issues in review rows; show explicit marked/blank/ambiguous/unreadable labels.
+- [x] 7.4 Render null real-engine confidence as `Unqualified` at sheet, area, identity, and item levels.
+- [x] 7.5 Verify served aligned-image dimensions and crop coordinate frame; add targeted identity/item crop regression coverage.
+- [x] 7.6 Block batch confirmation for unresolved required OMR issues unless staff resolves, abstains, or applies an approved manual score adjustment.
+- [ ] 7.7 Run the physical acceptance matrix: baseline, blank, double mark, erase, rotation, shadow, fold, wrong paper; record outcomes in HANDOFF.md.
+- [x] 7.8 Browser-verify the preflight, upload, review evidence, issue, and confirmation states with targeted checks only.
