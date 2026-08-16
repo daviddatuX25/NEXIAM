@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Foundation;
 
+use Database\Seeders\ApplicantPortalDemoSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -42,6 +43,15 @@ class ResetCommand extends Command
 
         $this->info('Refreshing greenfield schema...');
         Artisan::call('migrate:fresh', ['--force' => true, '--seed' => true]);
+        $this->line(Artisan::output());
+
+        // Applicant-portal demo (status-spine hub scenarios) is dev-reset-only:
+        // it reserves quota, which would perturb quota-edge tests if it ran in
+        // the default DatabaseSeeder seed.
+        Artisan::call('db:seed', [
+            '--class' => ApplicantPortalDemoSeeder::class,
+            '--force' => true,
+        ]);
         $this->line(Artisan::output());
 
         $privateRoot = storage_path('app/private');

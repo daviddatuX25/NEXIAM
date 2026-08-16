@@ -43,6 +43,7 @@
         "clsx": "^2.1.1",
         "lucide-svelte": "^0.574.0",
         "motion": "^12.43.0",
+        "qrcode": "^1.5.4",
         "svelte": "^5.51.3",
         "tailwind-merge": "^3.4.1",
         "tailwind-variants": "^3.2.2"

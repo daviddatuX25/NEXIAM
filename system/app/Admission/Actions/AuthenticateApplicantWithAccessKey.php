@@ -2,9 +2,9 @@
 
 namespace App\Admission\Actions;
 
-use App\Foundation\Actions\RecordAuditEvent;
 use App\Admission\Support\ApplicantAccessKey;
 use App\Admission\Support\ApplicantCapabilityGrants;
+use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\ApplicantAccessChallenge;
 use App\Models\Admission\ApplicantAccount;
 use App\Models\User;
@@ -18,9 +18,7 @@ use RuntimeException;
  */
 class AuthenticateApplicantWithAccessKey
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(string $accessKey, string $birthdate): User
     {

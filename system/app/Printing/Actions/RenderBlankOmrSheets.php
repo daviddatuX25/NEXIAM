@@ -46,6 +46,7 @@ final class RenderBlankOmrSheets
         $bundle = NativeBundle::load((string) $templateVersion->template->code, (int) $templateVersion->version);
 
         $pinnedInput = [
+            'template_version_id' => $templateVersion->id,
             'bundle_code' => $bundle->code,
             'bundle_version' => $bundle->version,
             'bundle_hash' => $bundle->bundleHash,

@@ -6,10 +6,11 @@
   import ApplicantLayout from '@/Pages/Applicant/ApplicantLayout.svelte';
   import SchedulePipeline from '@/Pages/Applicant/SchedulePipeline.svelte';
   import E2PageState from '@/Pages/Admission/E2PageState.svelte';
+  import ReservationSlotList from '@/Components/applicant/ReservationSlotList.svelte';
+  import ReservationConfirmSheet from '@/Components/applicant/ReservationConfirmSheet.svelte';
   import { Badge } from '@/Components/ui/badge';
   import { Button } from '@/Components/ui/button';
   import * as Card from '@/Components/ui/card';
-  import * as Dialog from '@/Components/ui/dialog';
   import { Link, router } from '@inertiajs/svelte';
   import { CalendarDays, CheckCircle2, Clock3, MapPin, ShieldAlert } from 'lucide-svelte';
 
@@ -76,6 +77,38 @@
   function monthShort(dateStr) {
     return new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, { month: 'short' });
   }
+
+  const slotGroups = $derived(
+    calendar_days.map((day) => ({
+      date: day.date,
+      label: String(dayNumber(day.date)),
+      caption: `${weekday(day.date)} · ${monthShort(day.date)} · ${day.date}`,
+      slots: day.slots.map((slot) => ({
+        id: slot.id,
+        timeLabel: `${slot.start_time}${slot.end_time ? `–${slot.end_time}` : ''}`,
+        venue: slot.room ?? null,
+        code: slot.code,
+        remaining: slot.remaining,
+        capacity: slot.capacity,
+        full: slot.full,
+      })),
+    })),
+  );
+
+  const confirmRows = $derived(
+    selectedSlot
+      ? [
+          { label: 'Session', value: selectedSlot.code },
+          { label: 'Seats left', value: String(selectedSlot.remaining) },
+        ]
+      : [],
+  );
+
+  const confirmDescription = $derived(
+    selectedSlot
+      ? `Book ${selectedSlot.start_time}${selectedSlot.end_time ? `–${selectedSlot.end_time}` : ''} at ${selectedSlot.room ?? 'the assigned room'}?`
+      : 'Confirm your selected exam slot.',
+  );
 </script>
 
 <svelte:head><title>Your status</title></svelte:head>
@@ -144,54 +177,10 @@
           </div>
         </Card.Header>
         <Card.Content class="space-y-4 pt-4">
-          {#if calendar_days.length === 0}
+          {#if slotGroups.length === 0}
             <p class="text-sm text-muted-foreground">No open sessions yet. Check back soon.</p>
           {:else}
-            {#each calendar_days as day (day.date)}
-              <section class="space-y-2">
-                <div class="flex items-baseline gap-2">
-                  <span class="text-2xl font-semibold tabular-nums">{dayNumber(day.date)}</span>
-                  <div>
-                    <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {weekday(day.date)} · {monthShort(day.date)}
-                    </p>
-                    <p class="text-xs text-muted-foreground">{day.date}</p>
-                  </div>
-                </div>
-                <ul class="space-y-2">
-                  {#each day.slots as slot (slot.id)}
-                    <li>
-                      <button
-                        type="button"
-                        class="flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left text-sm transition
-                          {slot.full
-                            ? 'cursor-not-allowed border-border/50 bg-muted/40 text-muted-foreground'
-                            : 'border-border hover:border-primary/50 hover:bg-muted/20'}"
-                        disabled={slot.full}
-                        onclick={() => openConfirm(slot)}
-                      >
-                        <CalendarDays class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        <span class="min-w-0 flex-1 space-y-0.5">
-                          <span class="block font-medium">
-                            {slot.start_time}{#if slot.end_time}–{slot.end_time}{/if}
-                          </span>
-                          <span class="block text-xs text-muted-foreground">
-                            {slot.room ?? 'Room TBD'} · {slot.code}
-                          </span>
-                          <span class="block text-xs">
-                            {#if slot.full}
-                              Full
-                            {:else}
-                              {slot.remaining} of {slot.capacity} seats left
-                            {/if}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  {/each}
-                </ul>
-              </section>
-            {/each}
+            <ReservationSlotList groups={slotGroups} onSelect={openConfirm} />
           {/if}
           <p class="flex gap-2 text-xs leading-relaxed text-muted-foreground">
             <ShieldAlert class="mt-0.5 size-3.5 shrink-0" />
@@ -261,39 +250,18 @@
     {/if}
   </div>
 
-  <Dialog.Root bind:open={confirmOpen}>
-    <Dialog.Content class="sm:max-w-md">
-      <Dialog.Header>
-        <Dialog.Title>Confirm exam seat</Dialog.Title>
-        <Dialog.Description>
-          {#if selectedSlot}
-            Book {selectedSlot.start_time}{#if selectedSlot.end_time}–{selectedSlot.end_time}{/if}
-            at {selectedSlot.room ?? 'the assigned room'}?
-          {:else}
-            Confirm your selected exam slot.
-          {/if}
-        </Dialog.Description>
-      </Dialog.Header>
-      {#if selectedSlot}
-        <dl class="space-y-1 text-sm">
-          <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground">Session</dt>
-            <dd>{selectedSlot.code}</dd>
-          </div>
-          <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground">Seats left</dt>
-            <dd>{selectedSlot.remaining}</dd>
-          </div>
-        </dl>
-      {/if}
-      <Dialog.Footer>
-        <Button type="button" variant="outline" class="min-h-11" onclick={() => (confirmOpen = false)}>
-          Back
-        </Button>
-        <Button type="button" class="min-h-11" disabled={reserving || !selectedSlot} onclick={confirmReserve}>
-          {reserving ? 'Booking…' : 'Confirm seat'}
-        </Button>
-      </Dialog.Footer>
-    </Dialog.Content>
-  </Dialog.Root>
+  <ReservationConfirmSheet
+    open={confirmOpen}
+    title="Confirm exam seat"
+    description={confirmDescription}
+    rows={confirmRows}
+    confirmLabel="Confirm seat"
+    busyLabel="Booking…"
+    busy={reserving}
+    onConfirm={confirmReserve}
+    onClose={() => {
+      confirmOpen = false;
+      selectedSlot = null;
+    }}
+  />
 </ApplicantLayout>

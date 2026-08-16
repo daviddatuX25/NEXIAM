@@ -38,7 +38,10 @@ test('staff navigation includes staff page for all staff', function (): void {
     expect($hrHrefs)->toContain('/staff/personnel')
         ->and($clerkHrefs)->toContain('/staff/personnel')
         ->and($guidanceHrefs)->toContain('/staff/personnel')
-        ->and($clerkHrefs)->toContain('/admissions');
+        ->and($clerkHrefs)->toContain('/admissions')
+        ->and($hrHrefs)->not->toContain('/staff/scan')
+        ->and($clerkHrefs)->not->toContain('/staff/scan')
+        ->and($guidanceHrefs)->not->toContain('/staff/scan');
 });
 
 test('exam navigation separates scheduling from monitoring and drops standalone proctor', function (): void {

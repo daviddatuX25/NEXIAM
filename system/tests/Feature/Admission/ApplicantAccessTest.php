@@ -1,8 +1,11 @@
 <?php
 
-use App\Admission\Support\ApplicantAccessKey;
 use App\Admission\Actions\AuthenticateApplicantWithAccessKey;
+use App\Admission\Support\ApplicantAccessKey;
 use App\Models\Admission\ApplicantAccessChallenge;
+use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\ApplicationWindow;
+use App\Models\Foundation\AuditEvent;
 use App\Models\User;
 
 test('access key plus birthdate authenticates and keeps key reusable', function (): void {
@@ -58,7 +61,7 @@ test('http applicant login redirects to portal', function (): void {
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.schedule'));
+    ])->assertRedirect(route('applicant.portal'));
 
     $this->assertAuthenticated();
     expect(User::query()->where('email', 'http-login@example.test')->exists())->toBeTrue();
@@ -67,8 +70,8 @@ test('http applicant login redirects to portal', function (): void {
 test('confirmation flash exposes access key once after submit', function (): void {
     seedE2Foundation();
 
-    $cycle = \App\Models\Foundation\AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
-    $window = \App\Models\Foundation\ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
+    $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
+    $window = ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
 
     $response = $this->post(route('apply.submit'), [
         'academic_cycle_id' => $cycle->id,
@@ -113,7 +116,7 @@ test('applicant can logout and returns to applicant login', function (): void {
     $this->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.schedule'));
+    ])->assertRedirect(route('applicant.portal'));
 
     $this->assertAuthenticated();
 
@@ -122,7 +125,7 @@ test('applicant can logout and returns to applicant login', function (): void {
 
     $this->assertGuest();
 
-    expect(\App\Models\Foundation\AuditEvent::query()
+    expect(AuditEvent::query()
         ->where('event_type', 'auth.applicant_logout')
         ->exists())->toBeTrue();
 });
@@ -142,7 +145,7 @@ test('seeded demo accepted applicant can sign in with fixed access key', functio
     $this->post(route('applicant.login.store'), [
         'access_key' => $accepted['access_key'],
         'birthdate' => $accepted['birthdate'],
-    ])->assertRedirect(route('applicant.schedule'));
+    ])->assertRedirect(route('applicant.portal'));
 
     $this->assertAuthenticated();
 

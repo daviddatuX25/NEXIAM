@@ -20,10 +20,10 @@
     { label: 'Template builder' },
   ];
 
-  // Blueprint-first: new templates open in the blueprint editor; drafts that
-  // carry a layout blueprint keep it; legacy geometry drafts open the
-  // advanced template editor. The toggle is an explicit escape hatch.
-  let mode = $state(draft_version ? (draft_version.layout_blueprint_json ? 'blueprint' : 'template') : 'blueprint');
+  // New templates and blueprint drafts use semantic layout editing. Legacy
+  // geometry drafts stay in Advanced mode until an explicit conversion exists.
+  const legacyDraft = Boolean(draft_version && !draft_version.layout_blueprint_json);
+  let mode = $state(legacyDraft ? 'template' : 'blueprint');
 </script>
 
 <StaffLayout {breadcrumbs}>
@@ -36,6 +36,8 @@
         <Button
           variant={mode === 'blueprint' ? 'default' : 'outline'}
           size="sm"
+          disabled={legacyDraft}
+          title={legacyDraft ? 'Legacy geometry drafts must be edited in Advanced mode.' : undefined}
           onclick={() => (mode = 'blueprint')}
         >
           Layout

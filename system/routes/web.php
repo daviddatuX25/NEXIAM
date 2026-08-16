@@ -1,55 +1,70 @@
 <?php
 
+use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Admission\AdmissionActionController;
 use App\Http\Controllers\Admission\AdmissionReviewController;
 use App\Http\Controllers\Admission\ApplicantApplyController;
+use App\Http\Controllers\Admission\ProgramPoolController;
+use App\Http\Controllers\Applicant\ApplicantConsultationController;
 use App\Http\Controllers\Applicant\ApplicantPortalController;
+use App\Http\Controllers\Applicant\ApplicantProgramChoiceController;
+use App\Http\Controllers\Applicant\ApplicantQrController;
+use App\Http\Controllers\Applicant\ApplicantScheduleController;
 use App\Http\Controllers\Assessment\GradingController;
-use App\Http\Controllers\PrintingController;
 use App\Http\Controllers\Assessment\GradingScoreController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Applicant\ApplicantScheduleController;
-use App\Http\Controllers\Applicant\ApplicantConsultationController;
+use App\Http\Controllers\Consultation\ConsultationSessionController;
 use App\Http\Controllers\Examination\ExamMonitoringController;
 use App\Http\Controllers\Examination\ExamSessionController;
-use App\Http\Controllers\Consultation\ConsultationSessionController;
-use App\Http\Controllers\Registrar\EnrollmentEligibilityController;
 use App\Http\Controllers\Examination\ProctorDutyController;
 use App\Http\Controllers\HealthController;
-use App\Http\Controllers\Release\ReleaseController;
+use App\Http\Controllers\Knowledge\KnowledgeSourceController;
 use App\Http\Controllers\Nexi\NexiConversationController;
 use App\Http\Controllers\Nexi\NexiProposalController;
 use App\Http\Controllers\Nexi\NexiRunController;
 use App\Http\Controllers\Nexi\NexiSkillController;
 use App\Http\Controllers\Nexi\NexiTurnController;
 use App\Http\Controllers\Notifications\NotificationController;
-use App\Http\Controllers\Knowledge\KnowledgeSourceController;
+use App\Http\Controllers\PrintingController;
+use App\Http\Controllers\ProgramHead\ProgramHeadActionController;
+use App\Http\Controllers\ProgramHead\ProgramHeadController;
+use App\Http\Controllers\Registrar\EnrollmentEligibilityController;
+use App\Http\Controllers\Registrar\EnrollmentStampController;
+use App\Http\Controllers\Release\ReleaseController;
 use App\Http\Controllers\Setup\AcademicCycleController;
 use App\Http\Controllers\Setup\ApplicationWindowController;
 use App\Http\Controllers\Setup\AptitudeAreaController;
-use App\Http\Controllers\Setup\OmrConfigurationController;
 use App\Http\Controllers\Setup\IntakeGradeFieldController;
+use App\Http\Controllers\Setup\OmrConfigurationController;
 use App\Http\Controllers\Setup\PrivacyPolicyController;
 use App\Http\Controllers\Setup\ProgramController;
 use App\Http\Controllers\Setup\ProgramQuotaController;
 use App\Http\Controllers\Setup\RoomController;
 use App\Http\Controllers\Setup\SetupDashboardController;
+use App\Http\Controllers\Staff\ApplicantQrController as StaffQrController;
 use App\Http\Controllers\Staff\HomeController;
 use App\Http\Controllers\Staff\PersonnelController;
 use App\Http\Controllers\Staff\ProfileController;
 use App\Http\Controllers\Staff\TestAdministratorController;
 use App\Http\Middleware\EnsurePersonnelAccess;
-use App\Authorization\CapabilityCatalog;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $cycle = \App\Models\Foundation\AcademicCycle::active();
+
     return Inertia::render('Home', [
         'institutionName' => 'ISPSC Tagudin',
+        'activeSeason' => $cycle === null ? null : [
+            'name' => $cycle->staffLabel(),
+            'window' => $cycle->applicationWindowLabel(),
+        ],
     ]);
 })->name('home');
 
 Route::get('/health', HealthController::class)->name('health');
+
+
 
 Route::prefix('apply')->group(function () {
     Route::get('/', [ApplicantApplyController::class, 'applyForm'])->name('apply.form');
@@ -98,7 +113,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/{source}/publish', [KnowledgeSourceController::class, 'publish'])->name('publish');
         Route::post('/{source}/revoke', [KnowledgeSourceController::class, 'revoke'])->name('revoke');
     });
-
 
     Route::get('/setup', [SetupDashboardController::class, 'index'])->name('setup.index');
     Route::get('/setup/programs', [ProgramController::class, 'programs'])->name('setup.programs');
@@ -195,6 +209,8 @@ Route::middleware('auth')->group(function () {
         ->name('applicant.correction');
     Route::post('/applicant/applications/{attempt}/correct', [ApplicantPortalController::class, 'resubmitCorrection'])
         ->name('applicant.correction.store');
+    Route::get('/applicant/applications/{attempt}', [ApplicantPortalController::class, 'applicationShow'])
+        ->name('applicant.application');
 
     Route::get('/exams/monitoring', [ExamMonitoringController::class, 'monitoringIndex'])
         ->name('exams.monitoring');
@@ -301,7 +317,6 @@ Route::middleware('auth')->group(function () {
         ->middleware('capability:'.CapabilityCatalog::REGISTRAR_ENROLLMENT_ELIGIBILITY)
         ->name('registrar.enrollment-eligibility.show');
 
-
     Route::post('/exams/sessions/{session}/proctor-duty', [ProctorDutyController::class, 'assignDuty'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN)
         ->name('proctor-duty.assign');
@@ -371,6 +386,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/consultation/{attempt}/decision', [ReleaseController::class, 'recordDecision'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_CONSULTATION_DECIDE)
         ->name('consultation.decision');
+    // Shared per-applicant admission-support workspace (Guidance + PH).
+    Route::get('/consultation/applicants/{attempt}', [\App\Http\Controllers\Admission\AdmissionSupportController::class, 'show'])
+        ->middleware('auth')
+        ->name('admission-support.show');
+    Route::get('/consultation/applicants/{attempt}/support', [\App\Http\Controllers\Admission\AdmissionSupportController::class, 'supportJson'])
+        ->middleware('auth')
+        ->name('admission-support.support');
     Route::post('/release/{attempt}/prepare', [ReleaseController::class, 'prepareDocument'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_PREPARE)
         ->name('release.prepare');
@@ -410,6 +432,82 @@ Route::middleware('auth')->group(function () {
     Route::post('/setup/omr/booklets', [OmrConfigurationController::class, 'storeBooklet'])->name('setup.omr.booklets.store');
     Route::post('/setup/omr/booklets/{version}/copy', [OmrConfigurationController::class, 'copyBooklet'])->name('setup.omr.booklets.copy');
     Route::get('/setup/omr/pairs', [OmrConfigurationController::class, 'pairs'])->name('setup.omr.pairs');
+
+    // Admission support: Guidance pool + targeted follow-up (D-090/D-089).
+    Route::post('/consultation/{attempt}/program-pool', [ProgramPoolController::class, 'setPool'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SELECTION_MANAGE)
+        ->name('program-pool.set');
+    Route::post('/consultation/{attempt}/follow-up', [ProgramPoolController::class, 'openFollowUp'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_FOLLOW_UP_MANAGE)
+        ->name('program-follow-up.open');
+
+    // Applicant program choice (OWN scope).
+    Route::get('/applicant/program-choice', [ApplicantProgramChoiceController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
+        ->name('applicant.program-choice');
+    Route::post('/applicant/program-choice/acknowledge', [ApplicantProgramChoiceController::class, 'acknowledge'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
+        ->name('applicant.program-choice.acknowledge');
+    Route::post('/applicant/program-choice/select', [ApplicantProgramChoiceController::class, 'select'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
+        ->name('applicant.program-choice.select');
+    Route::post('/applicant/program-choice/transfer', [ApplicantProgramChoiceController::class, 'transfer'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
+        ->name('applicant.program-choice.transfer');
+    Route::post('/applicant/program-choice/cancel', [ApplicantProgramChoiceController::class, 'cancel'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
+        ->name('applicant.program-choice.cancel');
+
+    // Program Head assigned-program workspace (PROGRAM scope).
+    Route::get('/staff/programs', [ProgramHeadController::class, 'index'])
+        ->middleware('capability:'.CapabilityCatalog::PROGRAM_HEAD_VIEW)
+        ->name('program-head.index');
+    Route::get('/staff/programs/{program:code}', [ProgramHeadController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::PROGRAM_HEAD_VIEW)
+        ->name('program-head.show');
+    Route::get('/staff/programs/{program:code}/applicants/{attempt}', [ProgramHeadController::class, 'applicantShow'])
+        ->middleware('capability:'.CapabilityCatalog::PROGRAM_HEAD_VIEW)
+        ->name('program-head.applicants.show');
+    Route::post('/staff/programs/{program:code}/applicants/{attempt}/decline', [ProgramHeadActionController::class, 'declineSelection'])
+        ->middleware('capability:'.CapabilityCatalog::PROGRAM_HEAD_SELECTION_DECLINE)
+        ->name('program-head.applicants.decline');
+    Route::post('/staff/programs/{program:code}/follow-ups/{followUp}/resolve', [ProgramHeadActionController::class, 'resolveFollowUp'])
+        ->middleware('capability:'.CapabilityCatalog::PROGRAM_HEAD_FOLLOW_UP_RESOLVE)
+        ->name('program-head.follow-ups.resolve');
+    Route::post('/staff/programs/{program:code}/applicants/{attempt}/threads', [ProgramHeadActionController::class, 'openInternalThread'])
+        ->middleware('capability:'.CapabilityCatalog::PROGRAM_HEAD_MESSAGE)
+        ->name('program-head.threads.open');
+    Route::post('/threads/{thread}/messages', [ProgramHeadActionController::class, 'sendMessage'])
+        ->middleware('capability:'.CapabilityCatalog::RECORD_THREAD_PARTICIPATE)
+        ->name('threads.messages.store');
+    Route::post('/threads/{thread}/read', [ProgramHeadActionController::class, 'markRead'])
+        ->middleware('capability:'.CapabilityCatalog::RECORD_THREAD_PARTICIPATE)
+        ->name('threads.read');
+
+    // Registrar enrollment stamps (OFFICE duty).
+    Route::post('/registrar/enrollment-eligibility/{attempt}/enrolling', [EnrollmentStampController::class, 'stampEnrolling'])
+        ->middleware('capability:'.CapabilityCatalog::REGISTRAR_ENROLLMENT_STAMP)
+        ->name('enrollment.stamp-enrolling');
+    Route::post('/registrar/enrollment-eligibility/{attempt}/enrolled', [EnrollmentStampController::class, 'stampEnrolled'])
+        ->middleware('capability:'.CapabilityCatalog::REGISTRAR_ENROLLMENT_STAMP)
+        ->name('enrollment.stamp-enrolled');
+    Route::post('/registrar/enrollment-eligibility/{attempt}/reverse', [EnrollmentStampController::class, 'reverse'])
+        ->middleware('capability:'.CapabilityCatalog::REGISTRAR_ENROLLMENT_STAMP)
+        ->name('enrollment.reverse');
+
+    // Universal applicant QR (D-092).
+    Route::get('/staff/scan', [StaffQrController::class, 'scan'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_QR_RESOLVE)
+        ->name('staff.scan');
+    Route::post('/staff/scan/resolve', [StaffQrController::class, 'resolve'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_QR_RESOLVE)
+        ->name('staff.scan.resolve');
+    Route::get('/applicant/qr', [ApplicantQrController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
+        ->name('applicant.qr');
+    Route::get('/applicant/admission-support', [ApplicantQrController::class, 'admissionSupport'])
+        ->middleware('capability:'.CapabilityCatalog::RECORD_THREAD_PARTICIPATE)
+        ->name('applicant.admission-support');
 
     Route::get('/ui-kit', function () {
         return Inertia::render('UiKit/Gallery');

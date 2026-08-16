@@ -1,6 +1,13 @@
 <?php
 
+use App\Admission\Exceptions\DuplicateAdmissionAttemptException;
 use App\Admission\Support\ApplicantAccessKey;
+use App\Models\Admission\ApplicantIdentity;
+use App\Models\Examination\ExamAssignment;
+use App\Models\Examination\ExamAttendanceRecord;
+use App\Models\Examination\ExamSession;
+use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\Room;
 use App\Models\User;
 
 test('public submit creates attempt and hashed challenge only', function (): void {
@@ -27,7 +34,7 @@ test('duplicate identity in same cycle returns conflict', function (): void {
     submitSyntheticApplicant('dup@example.test');
 
     expect(fn () => submitSyntheticApplicant('dup@example.test'))
-        ->toThrow(\App\Admission\Exceptions\DuplicateAdmissionAttemptException::class);
+        ->toThrow(DuplicateAdmissionAttemptException::class);
 });
 
 test('registrar accept requires capability', function (): void {
@@ -61,8 +68,8 @@ test('attendance idempotency returns same record', function (): void {
     $this->actingAs($registrar)
         ->post(route('admissions.accept', $result['attempt']), ['expected_version' => 1]);
 
-    $cycle = \App\Models\Foundation\AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
-    $room = \App\Models\Foundation\Room::query()->where('code', 'RM-101')->firstOrFail();
+    $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
+    $room = Room::query()->where('code', 'RM-101')->firstOrFail();
 
     $this->actingAs($guidance)->post(route('exams.sessions.store'), [
         'academic_cycle_id' => $cycle->id,
@@ -72,7 +79,7 @@ test('attendance idempotency returns same record', function (): void {
         'effective_end_at' => now()->addHour()->toDateTimeString(),
     ]);
 
-    $session = \App\Models\Examination\ExamSession::query()->firstOrFail();
+    $session = ExamSession::query()->firstOrFail();
 
     $this->actingAs($guidance)->post(route('exams.sessions.assign', $session), [
         'admission_attempt_id' => $result['attempt']->id,
@@ -91,7 +98,7 @@ test('attendance idempotency returns same record', function (): void {
         'idempotency_key' => 'proctor-1',
     ]);
 
-    $assignment = \App\Models\Examination\ExamAssignment::query()->firstOrFail();
+    $assignment = ExamAssignment::query()->firstOrFail();
     $session = $assignment->examSession;
 
     $this->actingAs($clerk)->post(route('exams.sessions.monitoring.attendance', [$session, $assignment]), [
@@ -99,14 +106,14 @@ test('attendance idempotency returns same record', function (): void {
         'idempotency_key' => 'att-1',
     ])->assertRedirect();
 
-    $first = \App\Models\Examination\ExamAttendanceRecord::query()->count();
+    $first = ExamAttendanceRecord::query()->count();
 
     $this->actingAs($clerk)->post(route('exams.sessions.monitoring.attendance', [$session, $assignment]), [
         'outcome' => 'present',
         'idempotency_key' => 'att-1',
     ])->assertRedirect();
 
-    expect(\App\Models\Examination\ExamAttendanceRecord::query()->count())->toBe($first);
+    expect(ExamAttendanceRecord::query()->count())->toBe($first);
 });
 
 test('proctor without duty is denied', function (): void {
@@ -118,8 +125,8 @@ test('proctor without duty is denied', function (): void {
 
     $this->actingAs($registrar)->post(route('admissions.accept', $result['attempt']), ['expected_version' => 1]);
 
-    $cycle = \App\Models\Foundation\AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
-    $room = \App\Models\Foundation\Room::query()->where('code', 'RM-101')->firstOrFail();
+    $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
+    $room = Room::query()->where('code', 'RM-101')->firstOrFail();
 
     $this->actingAs($guidance)->post(route('exams.sessions.store'), [
         'academic_cycle_id' => $cycle->id,
@@ -129,13 +136,13 @@ test('proctor without duty is denied', function (): void {
         'effective_end_at' => now()->addHour()->toDateTimeString(),
     ]);
 
-    $session = \App\Models\Examination\ExamSession::query()->latest('id')->firstOrFail();
+    $session = ExamSession::query()->latest('id')->firstOrFail();
     $this->actingAs($guidance)->post(route('exams.sessions.assign', $session), [
         'admission_attempt_id' => $result['attempt']->id,
     ]);
     $this->actingAs($guidance)->post(route('exams.sessions.publish', $session), ['expected_version' => 1]);
 
-    $assignment = \App\Models\Examination\ExamAssignment::query()->latest('id')->firstOrFail();
+    $assignment = ExamAssignment::query()->latest('id')->firstOrFail();
     $session = $assignment->examSession;
 
     $this->actingAs($hr)->post(route('exams.sessions.monitoring.attendance', [$session, $assignment]), [
@@ -165,7 +172,7 @@ test('reopen is non-destructive and restores pending without deleting identity',
         ->assertRedirect();
 
     expect($result['attempt']->fresh()->status)->toBe('pending')
-        ->and(\App\Models\Admission\ApplicantIdentity::query()->whereKey($identityId)->exists())->toBeTrue();
+        ->and(ApplicantIdentity::query()->whereKey($identityId)->exists())->toBeTrue();
 });
 
 test('submit persists academic and program preference fields from legacy intake contract', function (): void {

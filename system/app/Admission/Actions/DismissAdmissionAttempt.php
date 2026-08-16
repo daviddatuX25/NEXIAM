@@ -10,9 +10,7 @@ use RuntimeException;
 
 class DismissAdmissionAttempt
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(AdmissionAttempt $attempt, User $actor, string $reason, int $expectedVersion): AdmissionAttempt
     {

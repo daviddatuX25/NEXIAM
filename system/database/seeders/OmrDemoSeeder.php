@@ -17,6 +17,7 @@ use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 use function array_filter;
@@ -44,6 +45,7 @@ class OmrDemoSeeder extends Seeder
         }
 
         $this->seedAuthoredV5WithBirthdate();
+        $this->seedCompactProfile();
         $this->seedDraftBookletB();
         $this->retireFirstPair();
     }
@@ -243,6 +245,167 @@ class OmrDemoSeeder extends Seeder
     }
 
     /**
+     * Seeds the canonical one-page six-domain profile through the server-owned
+     * layout solver, then pairs it with a matching authored answer key.
+     */
+    private function seedCompactProfile(): void
+    {
+        $templateCode = 'SYN-OMR-PROFILE-150';
+        $bookletCode = 'SYN-OMR-PROFILE-KEY';
+        $areaCodes = ['PROFILE_VERBAL', 'PROFILE_QUANT', 'LOGIC', 'SPATIAL', 'MEMORY', 'LANGUAGE'];
+        $expectedSections = [];
+        foreach ($areaCodes as $index => $areaCode) {
+            $expectedSections[] = [
+                'area_code' => $areaCode,
+                'question_from' => 1,
+                'question_to' => 25,
+                'option_count' => 4,
+                'break_before' => $index === 0 ? null : 'next_column',
+            ];
+        }
+
+        $alreadyPaired = OmrTemplateBookletPair::query()
+            ->whereHas('templateVersion', fn ($query) => $query->whereHas('template', fn ($template) => $template->where('code', $templateCode)))
+            ->whereHas('bookletVersion', fn ($query) => $query->whereHas('booklet', fn ($booklet) => $booklet->where('code', $bookletCode)))
+            ->exists();
+
+        if ($alreadyPaired) {
+            return;
+        }
+
+        $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+        $areas = AptitudeArea::query()
+            ->whereIn('code', $areaCodes)
+            ->where('is_active', true)
+            ->get()
+            ->keyBy('code');
+
+        if ($areas->count() !== count($areaCodes)) {
+            throw new RuntimeException('Synthetic OMR compact profile requires all six active aptitude areas.');
+        }
+
+        $template = OmrAnswerSheetTemplate::query()->where('code', $templateCode)->first();
+        $draft = $template === null
+            ? null
+            : OmrAnswerSheetTemplateVersion::query()
+                ->where('template_id', $template->id)
+                ->where('status', OmrAnswerSheetTemplateVersion::STATUS_DRAFT)
+                ->latest('version')
+                ->first();
+
+        if ($draft !== null) {
+            $savedBlueprint = is_array($draft->layout_blueprint_json) ? $draft->layout_blueprint_json : [];
+            $blueprintMatches = ($savedBlueprint['schema'] ?? null) === 'nexiam.omr.layout-blueprint.v1'
+                && ($savedBlueprint['paper'] ?? null) === 'long'
+                && ($savedBlueprint['columns'] ?? null) === 6
+                && ($savedBlueprint['identity'] ?? null) === [
+                    'applicant_number' => true,
+                    'birthdate' => false,
+                    'repeat_on_every_page' => true,
+                ]
+                && ($savedBlueprint['sections'] ?? null) === $expectedSections;
+            if (! $blueprintMatches) {
+                Storage::disk('local')->deleteDirectory('omr-bundles/'.$templateCode.'/v'.$draft->version);
+                $draft->delete();
+                $draft = null;
+            }
+        }
+
+        if ($draft === null) {
+            $sections = [];
+            foreach ($areaCodes as $index => $areaCode) {
+                $sections[] = [
+                    'area_code' => $areaCode,
+                    'question_from' => 1,
+                    'question_to' => 25,
+                    'option_count' => 4,
+                    'break_before' => $index === 0 ? null : 'next_column',
+                ];
+            }
+
+            $draft = app(SaveAuthoredTemplateDraft::class)->handle(
+                $templateCode,
+                'Synthetic compact aptitude profile (150 items)',
+                [],
+                $actor,
+                [
+                    'title' => 'NEXIAM ANSWER SHEET',
+                    'header_lines' => ['SIX-DOMAIN PRACTICE PROFILE'],
+                    'edq_header' => true,
+                    'edq_header_label' => 'EDQ / HEADER ZONE',
+                    'exam_information_lines' => ['EXAM: __________ · BATCH: __________'],
+                    'instructions_lines' => ['Shade one answer per question.'],
+                    'birthdate_label' => 'BIRTHDATE:',
+                    'birthdate_placeholder' => 'MMDDYYYY',
+                    'footer_lines' => [],
+                    'show_calibration' => false,
+                    'name_box_label' => 'NAME (PRINT):',
+                    'per_page' => [],
+                ],
+                true,
+                [
+                    'schema' => 'nexiam.omr.layout-blueprint.v1',
+                    'paper' => 'long',
+                    'columns' => 6,
+                    'identity' => [
+                        'applicant_number' => true,
+                        'birthdate' => false,
+                        'repeat_on_every_page' => true,
+                    ],
+                    'sections' => $sections,
+                ],
+            );
+        }
+
+        $booklet = OmrQuestionBooklet::query()->firstOrCreate(
+            ['code' => $bookletCode],
+            ['name' => 'Synthetic compact aptitude profile answer key'],
+        );
+        $questions = [];
+        $position = 1;
+        foreach ($areaCodes as $areaCode) {
+            for ($questionNo = 1; $questionNo <= 25; $questionNo++) {
+                $questions[] = [
+                    'area_id' => (int) $areas[$areaCode]->id,
+                    'question_no' => $questionNo,
+                    'position' => $position,
+                    'correct_option_code' => ['A', 'B', 'C', 'D'][($position - 1) % 4],
+                ];
+                $position++;
+            }
+        }
+
+        $bookletDraft = OmrQuestionBookletVersion::query()
+            ->where('booklet_id', $booklet->id)
+            ->where('status', OmrQuestionBookletVersion::STATUS_DRAFT)
+            ->latest('version')
+            ->first();
+        $bookletVersion = $bookletDraft;
+        $bookletMatches = $bookletDraft !== null && $bookletDraft->questions()->count() === count($questions);
+        if ($bookletMatches) {
+            foreach ($bookletDraft->questions()->orderBy('question_position')->get(['aptitude_area_id', 'question_position', 'correct_option_code']) as $index => $row) {
+                $expected = $questions[$index];
+                if ((int) $row->aptitude_area_id !== (int) $expected['area_id']
+                    || (int) $row->question_position !== (int) $expected['position']
+                    || (string) $row->correct_option_code !== (string) $expected['correct_option_code']) {
+                    $bookletMatches = false;
+                    break;
+                }
+            }
+        }
+        if (! $bookletMatches) {
+            $bookletVersion = app(SaveAuthoredBookletVersion::class)->handle(
+                $bookletCode,
+                'Synthetic compact aptitude profile answer key',
+                $questions,
+                $actor,
+            );
+        }
+
+        app(ActivateOmrConfiguration::class)->handle($draft->fresh(), $bookletVersion->fresh(), $actor);
+        $this->command?->info('Synthetic compact OMR profile ready: '.$templateCode.' + '.$bookletCode.' (150 items, one page).');
+    }
+    /**
      * Seeds an unpaired QUANT-only draft booklet (all-A key) so the
      * "unpaired drafts" banner and draft editing have live data.
      */
@@ -275,7 +438,9 @@ class OmrDemoSeeder extends Seeder
     {
         $pair = OmrTemplateBookletPair::query()
             ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
-            ->whereHas('templateVersion', fn ($query) => $query->where('version', 1))
+            ->whereHas('templateVersion', fn ($query) => $query
+                ->where('version', 1)
+                ->whereHas('template', fn ($template) => $template->where('code', 'SYN-OMR-ONE-PAGE')))
             ->first();
 
         if ($pair === null) {

@@ -32,9 +32,12 @@ final class OmrTemplateLayoutSolver
     public const MARGIN = 80;
     public const ROW_PITCH = 80;
     public const MCQ4_OPTION_GAP = 66;
+    public const COMPACT_BUBBLE = 40;
+    public const COMPACT_MCQ4_OPTION_GAP = 52;
     public const IDENTITY_LABELS_GAP = 66;
     public const IDENTITY_BUBBLES_GAP = 60;
     public const FLOW_TOP = 900;
+    public const COMPACT_FLOW_TOP = 940;
     public const FLOW_BOTTOM_RESERVE = 230;
 
     /** @var array<string, array{0: int, 1: int}> */
@@ -46,11 +49,14 @@ final class OmrTemplateLayoutSolver
     /**
      * Versioned column origins (px). The 4-column set matches the shipped
      * v4/v5 long-bond sheets exactly; 3- and 2-column sets use the same
-     * 400px band + 40px gap geometry centered in the printable width.
+     * 400px band + 40px gap geometry centered in the printable width. The
+     * six-column set is the compact one-page profile: 40px bubbles, 52px
+     * option pitch, and 16px inter-block clearance inside the printable area.
      *
      * @var array<int, list<int>>
      */
     private const COLUMN_X = [
+        6 => [120, 452, 784, 1116, 1448, 1780],
         4 => [180, 620, 1060, 1500],
         3 => [380, 820, 1260],
         2 => [610, 1050],
@@ -58,6 +64,10 @@ final class OmrTemplateLayoutSolver
 
     private const IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 60, 'labelsGap' => 66, 'origin' => [200, 260]];
     private const IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 60, 'labelsGap' => 66, 'origin' => [1000, 260]];
+    // Reserve the EDQ header above compact identity labels and keep a clear
+    // separation from the six answer columns below.
+    private const COMPACT_IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [200, 390]];
+    private const COMPACT_IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [1000, 390]];
 
     /**
      * Validate a blueprint without solving. Returns an empty list when valid.
@@ -88,10 +98,12 @@ final class OmrTemplateLayoutSolver
         [$width, $height] = self::PAPERS[$normalized['paper']];
         $columns = self::COLUMN_X[$normalized['columns']];
         $columnCount = count($columns);
+        $geometry = $this->geometryForColumns($columnCount);
+        $flowTop = $columnCount === 6 ? self::COMPACT_FLOW_TOP : self::FLOW_TOP;
         $flowBottom = $height - self::FLOW_BOTTOM_RESERVE;
         $pageCount = 1;
         $column = 0;
-        $y = self::FLOW_TOP;
+        $y = $flowTop;
         $placed = [];
 
         foreach ($normalized['sections'] as $sectionIndex => $section) {
@@ -102,16 +114,16 @@ final class OmrTemplateLayoutSolver
                 if ($break === 'next_column') {
                     if ($column < $columnCount - 1) {
                         $column++;
-                        $y = self::FLOW_TOP;
+                        $y = $flowTop;
                     } else {
                         $pageCount++;
                         $column = 0;
-                        $y = self::FLOW_TOP;
+                        $y = $flowTop;
                     }
                 } elseif ($break === 'next_page') {
                     $pageCount++;
                     $column = 0;
-                    $y = self::FLOW_TOP;
+                    $y = $flowTop;
                 } else {
                     $target = $break['column'] - 1; // authoring is 1-based
                     if ($target < $column) {
@@ -121,9 +133,9 @@ final class OmrTemplateLayoutSolver
                     }
                     if ($target > $column) {
                         $column = $target;
-                        $y = self::FLOW_TOP;
+                        $y = $flowTop;
                     }
-                    $available = $flowBottom - $y - self::BUBBLE;
+                    $available = $flowBottom - $y - $geometry['bubble'];
                     if (($rowCount - 1) * self::ROW_PITCH > $available) {
                         throw new OmrTemplateLayoutException([
                             new LayoutDiagnostic('section_does_not_fit_pinned_column', sprintf('Section %d (%s_Q_%d..%d) does not fit the remaining capacity of column %d.', $sectionIndex + 1, $section['area_code'], $section['question_from'], $section['question_to'], $target + 1), ['section' => $sectionIndex + 1, 'column' => $target + 1, 'rows' => $rowCount]),
@@ -133,14 +145,14 @@ final class OmrTemplateLayoutSolver
             }
 
             for ($question = $section['question_from']; $question <= $section['question_to']; $question++) {
-                if ($y + self::BUBBLE > $flowBottom) {
+                if ($y + $geometry['bubble'] > $flowBottom) {
                     if ($column < $columnCount - 1) {
                         $column++;
-                        $y = self::FLOW_TOP;
+                        $y = $flowTop;
                     } else {
                         $pageCount++;
                         $column = 0;
-                        $y = self::FLOW_TOP;
+                        $y = $flowTop;
                     }
                 }
 
@@ -156,8 +168,8 @@ final class OmrTemplateLayoutSolver
             }
         }
 
-        $pages = $this->buildPages($normalized, $placed, $columns, $width, $height);
-        $template = $this->sortRecursive($this->canonicalTemplate($pages, $width, $height));
+        $pages = $this->buildPages($normalized, $placed, $columns, $width, $height, $geometry);
+        $template = $this->sortRecursive($this->canonicalTemplate($pages, $width, $height, $geometry['bubble']));
         $canonicalJson = $this->encode($template);
 
         return new SolvedOmrTemplateLayout(
@@ -190,8 +202,8 @@ final class OmrTemplateLayoutSolver
         }
 
         $columns = $blueprint['columns'] ?? 4;
-        if (! in_array($columns, [2, 3, 4], true)) {
-            $diagnostics[] = new LayoutDiagnostic('unsupported_columns', sprintf('Unsupported column count "%s". Supported: 2, 3, 4.', (string) $columns));
+        if (! in_array($columns, [2, 3, 4, 6], true)) {
+            $diagnostics[] = new LayoutDiagnostic('unsupported_columns', sprintf('Unsupported column count "%s". Supported: 2, 3, 4, 6.', (string) $columns));
         }
 
         $identity = is_array($blueprint['identity'] ?? null) ? $blueprint['identity'] : [];
@@ -290,9 +302,10 @@ final class OmrTemplateLayoutSolver
      * @param  array<string, mixed>  $normalized
      * @param  list<array<string, mixed>>  $placed
      * @param  list<int>  $columns
+     * @param  array{bubble: int, mcq_option_gap: int}  $geometry
      * @return list<array<string, mixed>>
      */
-    private function buildPages(array $normalized, array $placed, array $columns, int $width, int $height): array
+    private function buildPages(array $normalized, array $placed, array $columns, int $width, int $height, array $geometry): array
     {
         $pageCount = 0;
         foreach ($placed as $row) {
@@ -304,11 +317,13 @@ final class OmrTemplateLayoutSolver
         $pages = [];
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
             $blocks = [];
+            $identityApplicant = $geometry['bubble'] === self::COMPACT_BUBBLE ? self::COMPACT_IDENTITY_APPLICANT : self::IDENTITY_APPLICANT;
+            $identityBirthdate = $geometry['bubble'] === self::COMPACT_BUBBLE ? self::COMPACT_IDENTITY_BIRTHDATE : self::IDENTITY_BIRTHDATE;
             if ($normalized['identity']['applicant_number'] && ($repeatIdentity || $pageNo === 1)) {
-                $blocks[] = self::IDENTITY_APPLICANT;
+                $blocks[] = $identityApplicant;
             }
             if ($normalized['identity']['birthdate'] && ($repeatIdentity || $pageNo === 1)) {
-                $blocks[] = self::IDENTITY_BIRTHDATE;
+                $blocks[] = $identityBirthdate;
             }
 
             $pageRows = array_values(array_filter($placed, static fn (array $row): bool => (int) $row['page'] === $pageNo));
@@ -340,7 +355,7 @@ final class OmrTemplateLayoutSolver
                     'fieldType' => 'QTYPE_MCQ4',
                     'direction' => 'horizontal',
                     'fieldLabels' => [sprintf('%s_Q_%03d..%03d', $group['area_code'], $group['question_from'], $group['question_to'])],
-                    'bubblesGap' => self::MCQ4_OPTION_GAP,
+                    'bubblesGap' => $geometry['mcq_option_gap'],
                     'labelsGap' => self::ROW_PITCH,
                     'origin' => [$group['x'], $group['y']],
                 ];
@@ -361,13 +376,23 @@ final class OmrTemplateLayoutSolver
      * @param  list<array<string, mixed>>  $pages
      * @return array<string, mixed>
      */
-    private function canonicalTemplate(array $pages, int $width, int $height): array
+    private function canonicalTemplate(array $pages, int $width, int $height, int $bubble): array
     {
         return [
-            'bubbleDimensions' => [self::BUBBLE, self::BUBBLE],
+            'bubbleDimensions' => [$bubble, $bubble],
             'pageDimensions' => [$width, $height],
             'pages' => $pages,
         ];
+    }
+
+    /**
+     * @return array{bubble: int, mcq_option_gap: int}
+     */
+    private function geometryForColumns(int $columnCount): array
+    {
+        return $columnCount === 6
+            ? ['bubble' => self::COMPACT_BUBBLE, 'mcq_option_gap' => self::COMPACT_MCQ4_OPTION_GAP]
+            : ['bubble' => self::BUBBLE, 'mcq_option_gap' => self::MCQ4_OPTION_GAP];
     }
 
     /**

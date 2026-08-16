@@ -11,9 +11,7 @@ use RuntimeException;
 /** Soft archive — retains identity and operational history. */
 class ArchiveAdmissionAttempt
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(AdmissionAttempt $attempt, User $actor, int $expectedVersion): AdmissionAttempt
     {

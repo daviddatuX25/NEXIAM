@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\Foundation\AuditEvent;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -132,7 +133,7 @@ test('registrar office correct from needs_correction returns pending with audit'
         ->and($fresh->correction_notes)->toBe('Applicant visited office; Form 138 verified')
         ->and($fresh->version)->toBe(3);
 
-    $audit = \App\Models\Foundation\AuditEvent::query()
+    $audit = AuditEvent::query()
         ->where('event_type', 'admission.attempt_corrected')
         ->latest('id')
         ->first();

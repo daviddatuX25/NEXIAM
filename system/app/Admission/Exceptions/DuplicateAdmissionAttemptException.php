@@ -4,6 +4,4 @@ namespace App\Admission\Exceptions;
 
 use RuntimeException;
 
-class DuplicateAdmissionAttemptException extends RuntimeException
-{
-}
+class DuplicateAdmissionAttemptException extends RuntimeException {}

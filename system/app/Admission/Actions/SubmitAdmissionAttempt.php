@@ -24,8 +24,7 @@ class SubmitAdmissionAttempt
         private readonly ReferenceCodeGenerator $referenceCodeGenerator,
         private readonly RecordAuditEvent $recordAuditEvent,
         private readonly IssueApplicantAccessChallenge $issueChallenge,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{attempt: AdmissionAttempt, access_token: string}

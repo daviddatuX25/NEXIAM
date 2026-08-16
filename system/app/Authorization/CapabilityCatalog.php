@@ -56,6 +56,34 @@ final class CapabilityCatalog
     public const REGISTRAR_ENROLLMENT_ELIGIBILITY = 'registrar.enrollment.eligibility';
 
     /**
+     * D-089–D-093 admission-support capability set (GF-04/GF-21).
+     * Scope: PROGRAM for PH keys, OWN for applicant keys; office duty for Registrar stamp.
+     */
+    public const PROGRAM_HEAD_VIEW = 'program.head.view';
+
+    public const PROGRAM_HEAD_FOLLOW_UP_RESOLVE = 'program.head.follow_up.resolve';
+
+    public const PROGRAM_HEAD_SELECTION_DECLINE = 'program.head.selection.decline';
+
+    public const PROGRAM_HEAD_MESSAGE = 'program.head.message';
+
+    public const GUIDANCE_SELECTION_MANAGE = 'guidance.selection.manage';
+
+    public const GUIDANCE_FOLLOW_UP_MANAGE = 'guidance.follow_up.manage';
+
+    /** Server-owned case relationship decides participants (PH<->Guidance internal, or current selection/follow-up applicant thread). */
+    public const RECORD_THREAD_PARTICIPATE = 'record.thread.participate';
+
+    /** Applicant-owned program choice (OWN scope) — granted directly at login, like exam slots. */
+    public const APPLICANT_PROGRAM_SELECT = 'applicant.program.select';
+
+    /** Registrar-only enrolling/enrolled stamps + reasoned correction (OFFICE duty). */
+    public const REGISTRAR_ENROLLMENT_STAMP = 'registrar.enrollment.stamp';
+
+    /** Authenticated staff QR resolver gate; never grants business authority (D-092). */
+    public const APPLICANT_QR_RESOLVE = 'applicant.qr.resolve';
+
+    /**
      * Grant/revoke the Test Administrator set on eligible Guidance clerk/support (D-016).
      * Intentionally outside {@see testAdministratorCapabilities()} so delegates cannot chain-grant.
      */
@@ -135,6 +163,16 @@ final class CapabilityCatalog
             self::REGISTRAR_APPLICATIONS_DISMISS,
             self::REGISTRAR_APPLICATIONS_CORRECT,
             self::REGISTRAR_ENROLLMENT_ELIGIBILITY,
+            self::PROGRAM_HEAD_VIEW,
+            self::PROGRAM_HEAD_FOLLOW_UP_RESOLVE,
+            self::PROGRAM_HEAD_SELECTION_DECLINE,
+            self::PROGRAM_HEAD_MESSAGE,
+            self::GUIDANCE_SELECTION_MANAGE,
+            self::GUIDANCE_FOLLOW_UP_MANAGE,
+            self::RECORD_THREAD_PARTICIPATE,
+            self::APPLICANT_PROGRAM_SELECT,
+            self::REGISTRAR_ENROLLMENT_STAMP,
+            self::APPLICANT_QR_RESOLVE,
             self::REGISTRAR_SETUP_MANAGE,
             self::PROGRAM_QUOTA_MANAGE,
             self::GUIDANCE_ASSESSMENT_CATALOG,
@@ -208,6 +246,8 @@ final class CapabilityCatalog
             self::REGISTRAR_APPLICATIONS_DISMISS,
             self::REGISTRAR_APPLICATIONS_CORRECT,
             self::REGISTRAR_ENROLLMENT_ELIGIBILITY,
+            self::REGISTRAR_ENROLLMENT_STAMP,
+            self::APPLICANT_QR_RESOLVE,
             self::NOTIFY_READ_OWN,
         ];
 
@@ -216,6 +256,10 @@ final class CapabilityCatalog
             self::FOUNDATION_PROBE,
             self::NOTIFY_READ_OWN,
             ...self::testAdministratorCapabilities(),
+            self::GUIDANCE_SELECTION_MANAGE,
+            self::GUIDANCE_FOLLOW_UP_MANAGE,
+            self::RECORD_THREAD_PARTICIPATE,
+            self::APPLICANT_QR_RESOLVE,
         ];
 
         // Delegated exam-ops subset (not full TA): may use exam session pages + Nexi schedule
@@ -226,6 +270,7 @@ final class CapabilityCatalog
             self::GUIDANCE_EXAM_SCHEDULE,
             self::GUIDANCE_SCORING_MANUAL,
             self::GUIDANCE_RESULTS_PREPARE,
+            self::APPLICANT_QR_RESOLVE,
         ];
 
         return [
@@ -272,12 +317,19 @@ final class CapabilityCatalog
                 self::NOTIFY_READ_OWN,
                 self::GUIDANCE_EXAM_SCHEDULE,
                 self::GUIDANCE_SCORING_MANUAL,
+                self::APPLICANT_QR_RESOLVE,
                 self::KNOWLEDGE_SOURCES_MANAGE,
             ],
             'program_head' => [
                 self::FOUNDATION_PROBE,
                 self::NOTIFY_READ_OWN,
                 self::PROGRAM_QUOTA_MANAGE,
+                self::PROGRAM_HEAD_VIEW,
+                self::PROGRAM_HEAD_FOLLOW_UP_RESOLVE,
+                self::PROGRAM_HEAD_SELECTION_DECLINE,
+                self::PROGRAM_HEAD_MESSAGE,
+                self::RECORD_THREAD_PARTICIPATE,
+                self::APPLICANT_QR_RESOLVE,
             ],
         ];
     }

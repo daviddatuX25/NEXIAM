@@ -41,7 +41,7 @@ function slotSkillLogin(array $result): void
     test()->post(route('applicant.login.store'), [
         'access_key' => $result['access_token'],
         'birthdate' => '2001-01-01',
-    ])->assertRedirect(route('applicant.schedule'));
+    ])->assertRedirect(route('applicant.portal'));
 }
 
 function slotSkillSession(User $guidance, string $code): ExamSession

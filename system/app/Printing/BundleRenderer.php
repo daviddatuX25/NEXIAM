@@ -54,7 +54,9 @@ final class BundleRenderer
             .'body{margin:0;padding:0;font-family:DejaVu Sans,sans-serif;}'
             .'.sheet{position:relative;overflow:hidden;page-break-after:always;}'
             .'.sheet:last-child{page-break-after:auto;}'
-            .'.bubble{position:absolute;border:0.35mm solid #000;border-radius:50%;}'
+            // Diameter is the complete printed mark envelope; the outline must
+            // not expand the native OMR rectangle or make adjacent marks touch.
+            .'.bubble{box-sizing:border-box;position:absolute;border:0.35mm solid #000;border-radius:50%;}'
             .'.label{position:absolute;font-size:9pt;text-align:center;}'
             .'.lbl-left{position:absolute;font-size:8pt;text-align:right;}'
             .'</style></head><body>';
@@ -69,14 +71,19 @@ final class BundleRenderer
             $sheetHeight = $pageMmH - 0.2;
             $html .= '<div class="sheet" style="width:'.$pageMmW.'mm;height:'.$sheetHeight.'mm;">';
             $inset = round((80 / self::PPI) * 25.4, 2); // 80px geometry margin in mm
-            $html .= '<div style="position:absolute;left:'.$inset.'mm;top:'.$inset.'mm;width:'.round($pageMmW - 2 * $inset, 2).'mm;height:'.round($pageMmH - 2 * $inset, 2).'mm;border:0.7mm solid #000;"></div>';
+            // Frame is emitted after header geometry is known.
 
-            $title = trim((string) ($overlay['title'] ?? 'SYNTHETIC NEXIAM OMR ANSWER SHEET'));
+            $title = trim((string) ($overlay['title'] ?? ''));
+            $title = $title !== '' ? $title : 'SYNTHETIC NEXIAM OMR ANSWER SHEET';
             $html .= '<div class="label" style="left:0;top:4mm;width:'.$pageMmW.'mm;font-size:11pt;font-weight:bold;">'.e($title).'</div>';
 
             $headerTop = 9;
             foreach ((array) ($overlay['header_lines'] ?? []) as $headerLine) {
-                $html .= '<div class="label" style="left:0;top:'.$headerTop.'mm;width:'.$pageMmW.'mm;font-weight:bold;">'.e((string) $headerLine).'</div>';
+                $line = trim((string) $headerLine);
+                if ($line === '') {
+                    continue;
+                }
+                $html .= '<div class="label" style="left:0;top:'.$headerTop.'mm;width:'.$pageMmW.'mm;font-weight:bold;">'.e($line).'</div>';
                 $headerTop += 5;
             }
             $html .= '<div class="label" style="left:0;top:'.$headerTop.'mm;width:'.$pageMmW.'mm;font-weight:bold;">PAGE '.$pageNo.' OF '.$total.'</div>';
@@ -90,32 +97,96 @@ final class BundleRenderer
                 }
             }
             if ($perPageNote !== null) {
-                $html .= '<div class="label" style="left:0;top:'.$headerTop.'mm;width:'.$pageMmW.'mm;">'.e($perPageNote).'</div>';
+                $html .= '<div class="label" style="left:0;top:'.$headerTop.'mm;width:'.$pageMmW.'mm;font-size:8pt;line-height:3mm;height:3mm;">'.e($perPageNote).'</div>';
                 $headerTop += 5;
             }
 
-            $nameBoxLabel = trim((string) ($overlay['name_box_label'] ?? 'NAME (PRINT):'));
+            $isEdqHeader = (bool) ($overlay['edq_header'] ?? false);
+            if ($isEdqHeader) {
+                $edqLabel = trim((string) ($overlay['edq_header_label'] ?? 'EDQ / HEADER ZONE'));
+                if ($edqLabel !== '') {
+                    $html .= '<div class="label" style="left:'.$inset.'mm;top:'.$headerTop.'mm;width:70mm;text-align:left;font-size:8pt;font-weight:bold;">'.e($edqLabel).'</div>';
+                    $headerTop += 4;
+                }
 
-            // Name box must never collide with the first field block (whose
-            // digit/option labels sit 5.5mm above the bubbles) or the frame:
-            // bottom 2mm above the topmost label, and hidden when the header
-            // stack leaves no clean gap.
+                foreach ([
+                    ['lines' => $overlay['exam_information_lines'] ?? [], 'label' => 'EXAM INFORMATION'],
+                    ['lines' => $overlay['instructions_lines'] ?? [], 'label' => 'INSTRUCTIONS'],
+                ] as $headerBlock) {
+                    $lines = array_values(array_filter(array_map(static fn (mixed $line): string => trim((string) $line), (array) $headerBlock['lines']), static fn (string $line): bool => $line !== ''));
+                    if ($lines === []) {
+                        continue;
+                    }
+                    $html .= '<div class="label" style="left:'.($inset + 2).'mm;top:'.$headerTop.'mm;width:72mm;text-align:left;font-size:7.5pt;font-weight:bold;">'.e($headerBlock['label']).'</div>';
+                    $headerTop += 3.5;
+                    foreach ($lines as $line) {
+                        $html .= '<div class="label" style="left:'.($inset + 2).'mm;top:'.$headerTop.'mm;width:72mm;text-align:left;font-size:7.5pt;">'.e($line).'</div>';
+                        $headerTop += 3.5;
+                    }
+                }
+            }
+
+            $nameBoxLabel = trim((string) ($overlay['name_box_label'] ?? ''));
+            $nameBoxLabel = $nameBoxLabel !== '' ? $nameBoxLabel : 'NAME (PRINT):';
+
+            // Prefer the gap above the first field block. If the header stack
+            // fills that gap, or compact identity labels occupy it, use the
+            // unused upper-right band instead of suppressing the manual fallback.
             $firstBlockTopMm = null;
+            $firstAnswerLabelTopMm = null;
             foreach ((array) ($page['fieldBlocks'] ?? []) as $block) {
-                $blockTop = (float) (($block['origin'] ?? [0, 99999])[1] ?? 99999) * 25.4 / self::PPI;
+                $originY = (float) (($block['origin'] ?? [0, 99999])[1] ?? 99999);
+                $labelTop = $originY - 9 * self::PPI / 72 - 8;
+                $blockTop = $labelTop * 25.4 / self::PPI;
                 $firstBlockTopMm = $firstBlockTopMm === null ? $blockTop : min($firstBlockTopMm, $blockTop);
+                if ((string) ($block['fieldType'] ?? '') !== 'QTYPE_INT') {
+                    $firstAnswerLabelTopMm = $firstAnswerLabelTopMm === null ? $blockTop : min($firstAnswerLabelTopMm, $blockTop);
+                }
             }
-            $nameBoxBottom = $firstBlockTopMm !== null ? max(0, $firstBlockTopMm - 7.5) : null;
-            $nameBoxTop = $nameBoxBottom !== null ? $nameBoxBottom - 8 : null;
-            if ($nameBoxTop !== null && $nameBoxTop >= $headerTop + 1) {
-                $nameBoxLeft = $inset + 2;
-                $html .= '<div class="label" style="left:'.$nameBoxLeft.'mm;top:'.$nameBoxTop.'mm;width:60mm;text-align:left;font-weight:bold;">'.e($nameBoxLabel).'</div>';
-                $html .= '<div style="position:absolute;left:'.$nameBoxLeft.'mm;top:'.($nameBoxTop + 3.5).'mm;width:80mm;height:8mm;border:0.3mm solid #000;"></div>';
+
+            $nameBoxBottom = $firstBlockTopMm !== null ? round(max(0, $firstBlockTopMm - (8 / self::PPI * 25.4)), 2) : null;
+            $nameBoxTop = $nameBoxBottom !== null ? round($nameBoxBottom - 8, 2) : null;
+            $topPlacementSafe = $nameBoxTop !== null && $nameBoxTop >= $headerTop + 1;
+            $nameBoxLeft = $inset + 2;
+            $nameBoxWidthMm = 80.0;
+
+            if ($isEdqHeader || ! $topPlacementSafe || (float) ($bubble[0] ?? 0) <= 40.0) {
+                $nameBoxWidthMm = 50.0;
+                $nameBoxLeft = round($pageMmW - $inset - $nameBoxWidthMm - 2, 2);
+                $nameBoxTop = round(max($headerTop + 2, $nameBoxTop ?? ($inset + 2)), 2);
             }
+
+            $html .= '<div class="label" style="left:'.$nameBoxLeft.'mm;top:'.$nameBoxTop.'mm;width:'.$nameBoxWidthMm.'mm;text-align:left;font-weight:bold;">'.e($nameBoxLabel).'</div>';
+            $html .= '<div style="position:absolute;left:'.$nameBoxLeft.'mm;top:'.($nameBoxTop + 3.5).'mm;width:'.$nameBoxWidthMm.'mm;height:8mm;border:0.3mm solid #000;"></div>';
+
+            if ($isEdqHeader) {
+                $birthdateLabel = trim((string) ($overlay['birthdate_label'] ?? 'BIRTHDATE:'));
+                $birthdatePlaceholder = trim((string) ($overlay['birthdate_placeholder'] ?? 'MMDDYYYY'));
+                $birthdateTop = $nameBoxTop + 15;
+                $html .= '<div class="label" style="left:'.$nameBoxLeft.'mm;top:'.$birthdateTop.'mm;width:'.$nameBoxWidthMm.'mm;text-align:left;font-weight:bold;">'.e($birthdateLabel).'</div>';
+                $html .= '<div style="position:absolute;left:'.$nameBoxLeft.'mm;top:'.($birthdateTop + 3.5).'mm;width:'.$nameBoxWidthMm.'mm;height:8mm;border:0.3mm solid #000;"></div>';
+                $html .= '<div class="label" style="left:'.$nameBoxLeft.'mm;top:'.($birthdateTop + 5).'mm;width:'.$nameBoxWidthMm.'mm;font-size:8pt;color:#555;">'.e($birthdatePlaceholder).'</div>';
+            }
+
+            // Keep the frame below the header stack and above the first field labels.
+            $frameTopMm = max($inset, $headerTop + 1);
+            if ($firstBlockTopMm !== null) {
+                $frameTopMm = min($frameTopMm, $firstBlockTopMm - 0.5);
+            }
+            $frameTopMm = max($inset, round($frameTopMm, 2));
+            $frameHeightMm = max(0, round($pageMmH - $inset - $frameTopMm, 2));
+            if ($isEdqHeader && $firstAnswerLabelTopMm !== null) {
+                $answerFrameTopMm = max($inset, round($firstAnswerLabelTopMm - 1, 2));
+                $headerFrameHeightMm = max(0, round($answerFrameTopMm - $inset - 1, 2));
+                $html .= '<div style="position:absolute;left:'.$inset.'mm;top:'.$inset.'mm;width:'.round($pageMmW - 2 * $inset, 2).'mm;height:'.$headerFrameHeightMm.'mm;border:0.7mm solid #000;"></div>';
+                $frameTopMm = $answerFrameTopMm;
+                $frameHeightMm = max(0, round($pageMmH - $inset - $frameTopMm, 2));
+            }
+            $html .= '<div style="position:absolute;left:'.$inset.'mm;top:'.$frameTopMm.'mm;width:'.round($pageMmW - 2 * $inset, 2).'mm;height:'.$frameHeightMm.'mm;border:0.7mm solid #000;"></div>';
 
             // Footer lines stack up from the calibration strip, always inside
             // the border frame and never below the last field block.
-            $footerAnchor = $pageMmH - $inset - 4;
+            $footerAnchor = $pageMmH - $inset - 6;
             foreach ((array) ($overlay['footer_lines'] ?? []) as $index => $footerLine) {
                 $html .= '<div class="label" style="left:0;top:'.($footerAnchor - ($index + 1) * 5).'mm;width:'.$pageMmW.'mm;font-size:8pt;">'.e((string) $footerLine).'</div>';
             }
@@ -130,17 +201,20 @@ final class BundleRenderer
                     $labels = [...$labels, ...NativeBundle::expandLabel((string) $decl)];
                 }
 
-                $isIdentity = str_starts_with($labels[0] ?? '', 'APPLICANT_NUMBER_');
+                $isIdentity = (string) ($block['fieldType'] ?? '') === 'QTYPE_INT';
 
-                if ($isIdentity) {
-                    // vertical: labels (digit positions) across x, values (0..9) down y
+                if (! $horizontal) {
+                    // Native vertical grids place declared labels across x and
+                    // option values down y. Identity and vertical question grids
+                    // share coordinates; only their printed label text differs.
                     foreach ($labels as $col => $label) {
                         foreach ($values as $row => $value) {
                             $x = $origin[0] + $col * $labelGap;
                             $y = $origin[1] + $row * $bubbleGap;
                             $html .= $this->bubbleHtml($x, $y, $bubble[0], $pageMmW, $pageMmH);
                             if ($row === 0) {
-                                $html .= $this->labelHtml($x + $bubble[0] / 2, $origin[1] - 5.5, (string) ($col + 1), $pageMmW);
+                                $topLabel = $isIdentity ? (string) ($col + 1) : (string) $this->questionNo($label, $col);
+                                $html .= $this->labelHtml($x + $bubble[0] / 2, $origin[1], $topLabel, $pageMmW);
                             }
                             if ($col === 0) {
                                 $html .= $this->labelLeftHtml($origin[0] - 3, $y + $bubble[1] / 2, (string) $value, $pageMmW);
@@ -153,7 +227,7 @@ final class BundleRenderer
                 // question block (horizontal): options across x, one row per label down y
                 foreach ($values as $opt => $value) {
                     $x = $origin[0] + $opt * $bubbleGap;
-                    $html .= $this->labelHtml($x + $bubble[0] / 2, $origin[1] - 5.5, (string) $value, $pageMmW);
+                    $html .= $this->labelHtml($x + $bubble[0] / 2, $origin[1], (string) $value, $pageMmW);
                 }
                 foreach ($labels as $row => $label) {
                     $y = $origin[1] + $row * $labelGap;
@@ -166,10 +240,12 @@ final class BundleRenderer
                 }
             }
 
-            // Calibration strip lives in the bottom margin (below the border
-            // frame) so it never collides with answer bubbles or footers.
-            $html .= '<div class="label" style="left:0;top:'.($pageMmH - $inset + 1.5).'mm;width:'.$pageMmW.'mm;font-size:8pt;">Print at 100% scale · do NOT fit to page · calibration bar = 100mm</div>';
-            $html .= '<div style="position:absolute;left:'.($pageMmW / 2 - 50).'mm;top:'.($pageMmH - $inset + 5.2).'mm;width:100mm;height:2.5mm;background:#000;"></div>';
+            // Legacy overlays keep the calibration strip; compact EDQ profiles
+            // can explicitly leave the lower margin blank.
+            if (($overlay['show_calibration'] ?? true) !== false) {
+                $html .= '<div class="label" style="left:0;top:'.($pageMmH - $inset + 1.5).'mm;width:'.$pageMmW.'mm;font-size:8pt;">Print at 100% scale · do NOT fit to page · calibration bar = 100mm</div>';
+                $html .= '<div style="position:absolute;left:'.($pageMmW / 2 - 50).'mm;top:'.($pageMmH - $inset + 5.2).'mm;width:100mm;height:2.5mm;background:#000;"></div>';
+            }
             $html .= '</div>';
         }
 
@@ -196,11 +272,14 @@ final class BundleRenderer
         return '<div class="bubble" style="left:'.$mm($x).'mm;top:'.$mm($y).'mm;width:'.$mm($diameter).'mm;height:'.$mm($diameter).'mm;"></div>';
     }
 
-    private function labelHtml(float $centerX, float $topY, string $text, float $pageW): string
+    private function labelHtml(float $centerX, float $originY, string $text, float $pageW): string
     {
         $mm = fn (float $px): float => round($px / self::PPI * 25.4, 2);
+        $fontSizePt = 9.0;
+        $labelHeightMm = $fontSizePt * 25.4 / 72;
+        $topPx = $originY - $fontSizePt * self::PPI / 72 - 8;
 
-        return '<div class="label" style="left:'.($mm($centerX) - 3).'mm;top:'.$mm($topY).'mm;width:6mm;">'.e($text).'</div>';
+        return '<div class="label" style="left:'.($mm($centerX) - 3).'mm;top:'.$mm($topPx).'mm;width:6mm;height:'.$labelHeightMm.'mm;line-height:'.$labelHeightMm.'mm;">'.e($text).'</div>';
     }
 
     private function labelLeftHtml(float $rightX, float $centerY, string $text, float $pageW): string

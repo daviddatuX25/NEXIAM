@@ -2,6 +2,7 @@
 
 namespace App\Models\Admission;
 
+use App\Models\Foundation\AcademicCycle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,10 +14,10 @@ class AdmissionReferenceCounter extends Model
     ];
 
     /**
-     * @return BelongsTo<\App\Models\Foundation\AcademicCycle, $this>
+     * @return BelongsTo<AcademicCycle, $this>
      */
     public function academicCycle(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Foundation\AcademicCycle::class);
+        return $this->belongsTo(AcademicCycle::class);
     }
 }

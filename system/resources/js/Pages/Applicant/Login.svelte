@@ -49,11 +49,24 @@
           email.
         </Card.Description>
         {#if demo?.access_key}
-          <p class="mt-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {demo.label ?? 'Synthetic demo'}: key
-            <span class="font-mono text-foreground">{demo.access_key}</span>
-            · birthdate <span class="font-mono text-foreground">{demo.birthdate}</span>
-          </p>
+          <div class="mt-2 space-y-1.5 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <p>
+              {demo.label ?? 'Synthetic demo'}: key
+              <span class="font-mono text-foreground">{demo.access_key}</span>
+              · birthdate <span class="font-mono text-foreground">{demo.birthdate}</span>
+            </p>
+            {#if demo.portals?.length}
+              <ul class="space-y-0.5">
+                {#each demo.portals as portal (portal.key)}
+                  <li>
+                    <span class="font-mono text-foreground">{portal.key}</span>
+                    — {portal.label}
+                  </li>
+                {/each}
+              </ul>
+              <p>Other keys require the portal demo seed (`foundation:reset --force`).</p>
+            {/if}
+          </div>
         {/if}
       </Card.Header>
       <Card.Content>

@@ -5,10 +5,11 @@
    */
   import ApplicantLayout from '@/Pages/Applicant/ApplicantLayout.svelte';
   import E2PageState from '@/Pages/Admission/E2PageState.svelte';
+  import ReservationSlotList from '@/Components/applicant/ReservationSlotList.svelte';
+  import ReservationConfirmSheet from '@/Components/applicant/ReservationConfirmSheet.svelte';
   import { Badge } from '@/Components/ui/badge';
   import { Button } from '@/Components/ui/button';
   import * as Card from '@/Components/ui/card';
-  import * as Dialog from '@/Components/ui/dialog';
   import { router } from '@inertiajs/svelte';
   import { CalendarDays, CheckCircle2, Clock3, MapPin, ShieldAlert } from 'lucide-svelte';
 
@@ -72,6 +73,36 @@
       minute: '2-digit',
     });
   }
+
+  const slotGroups = $derived([
+    {
+      date: null,
+      slots: sessions.map((session) => ({
+        id: session.id,
+        timeLabel: dateLabel(session.scheduled_at),
+        venue: session.room ?? null,
+        code: session.code,
+        remaining: session.remaining,
+        capacity: session.capacity,
+        full: session.full,
+      })),
+    },
+  ]);
+
+  const confirmRows = $derived(
+    selectedSession
+      ? [
+          { label: 'Session', value: selectedSession.code },
+          { label: 'Seats left', value: String(selectedSession.remaining) },
+        ]
+      : [],
+  );
+
+  const confirmDescription = $derived(
+    selectedSession
+      ? `Reserve ${dateLabel(selectedSession.scheduled_at)} at ${selectedSession.room ?? 'the assigned room'}?`
+      : 'Confirm your selected consultation session.',
+  );
 </script>
 
 <svelte:head><title>Consultation schedule</title></svelte:head>
@@ -103,39 +134,10 @@
           </div>
         </Card.Header>
         <Card.Content class="space-y-4 pt-4">
-          {#if sessions.length === 0}
+          {#if slotGroups[0].slots.length === 0}
             <p class="text-sm text-muted-foreground">No open sessions yet. Check back soon.</p>
           {:else}
-            <ul class="space-y-2">
-              {#each sessions as session (session.id)}
-                <li>
-                  <button
-                    type="button"
-                    class="flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left text-sm transition
-                      {session.full
-                        ? 'cursor-not-allowed border-border/50 bg-muted/40 text-muted-foreground'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/20'}"
-                    disabled={session.full}
-                    onclick={() => openConfirm(session)}
-                  >
-                    <CalendarDays class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    <span class="min-w-0 flex-1 space-y-0.5">
-                      <span class="block font-medium">{dateLabel(session.scheduled_at)}</span>
-                      <span class="block text-xs text-muted-foreground">
-                        {session.room ?? 'Room TBD'} · {session.code}
-                      </span>
-                      <span class="block text-xs">
-                        {#if session.full}
-                          Full
-                        {:else}
-                          {session.remaining} of {session.capacity} seats left
-                        {/if}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
+            <ReservationSlotList groups={slotGroups} onSelect={openConfirm} />
           {/if}
           <p class="flex gap-2 text-xs leading-relaxed text-muted-foreground">
             <ShieldAlert class="mt-0.5 size-3.5 shrink-0" />
@@ -204,38 +206,18 @@
     {/if}
   </div>
 
-  <Dialog.Root bind:open={confirmOpen}>
-    <Dialog.Content class="sm:max-w-md">
-      <Dialog.Header>
-        <Dialog.Title>Confirm consultation</Dialog.Title>
-        <Dialog.Description>
-          {#if selectedSession}
-            Reserve {dateLabel(selectedSession.scheduled_at)} at {selectedSession.room ?? 'the assigned room'}?
-          {:else}
-            Confirm your selected consultation session.
-          {/if}
-        </Dialog.Description>
-      </Dialog.Header>
-      {#if selectedSession}
-        <dl class="space-y-1 text-sm">
-          <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground">Session</dt>
-            <dd>{selectedSession.code}</dd>
-          </div>
-          <div class="flex justify-between gap-4">
-            <dt class="text-muted-foreground">Seats left</dt>
-            <dd>{selectedSession.remaining}</dd>
-          </div>
-        </dl>
-      {/if}
-      <Dialog.Footer>
-        <Button type="button" variant="outline" class="min-h-11" onclick={() => (confirmOpen = false)}>
-          Back
-        </Button>
-        <Button type="button" class="min-h-11" disabled={reserving || !selectedSession} onclick={confirmReserve}>
-          {reserving ? 'Booking…' : 'Confirm consultation'}
-        </Button>
-      </Dialog.Footer>
-    </Dialog.Content>
-  </Dialog.Root>
+  <ReservationConfirmSheet
+    open={confirmOpen}
+    title="Confirm consultation"
+    description={confirmDescription}
+    rows={confirmRows}
+    confirmLabel="Confirm consultation"
+    busyLabel="Booking…"
+    busy={reserving}
+    onConfirm={confirmReserve}
+    onClose={() => {
+      confirmOpen = false;
+      selectedSession = null;
+    }}
+  />
 </ApplicantLayout>

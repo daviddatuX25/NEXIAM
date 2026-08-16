@@ -2,6 +2,7 @@
 
 namespace App\Models\Admission;
 
+use App\Models\Foundation\Institution;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,11 +34,11 @@ class ApplicantIdentity extends Model
     }
 
     /**
-     * @return BelongsTo<\App\Models\Foundation\Institution, $this>
+     * @return BelongsTo<Institution, $this>
      */
     public function institution(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Foundation\Institution::class);
+        return $this->belongsTo(Institution::class);
     }
 
     /**

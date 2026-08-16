@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class IssueApplicantAccessChallenge
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(
         ApplicantIdentity $identity,

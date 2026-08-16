@@ -279,7 +279,7 @@ class OmrConfigurationController extends Controller
             ])->values()->all(),
             'paper_options' => [
                 ['value' => 'long', 'label' => 'Long bond 8.5×13in (216×330mm)', 'dimensions' => [2060, 3144]],
-                ['value' => 'legal', 'label' => 'US Legal 8.5×14in (216×356mm)', 'dimensions' => [2060, 3402]],
+                ['value' => 'legal', 'label' => 'US Legal 8.5×14in (216×356mm)', 'dimensions' => [2060, 3392]],
             ],
             'engine' => [
                 'name' => (string) config('omr.omrchecker.engine_name'),

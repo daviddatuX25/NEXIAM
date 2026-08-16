@@ -127,7 +127,11 @@ test('applicant portal scopes to own attempts', function (): void {
 
     $this->actingAs($userA)
         ->get(route('applicant.portal'))
-        ->assertRedirect(route('applicant.schedule'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Applicant/Portal')
+            ->where('identity.applicant_no', $a['attempt']->reference_code)
+        );
 
     $this->actingAs($userA)
         ->get(route('applicant.schedule'))

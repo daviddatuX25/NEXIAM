@@ -37,8 +37,7 @@ final class AdmissionIntakeData
         public readonly ?string $zipCode = null,
         public readonly bool $termsAccepted = false,
         public readonly ?int $privacyPolicyId = null,
-    ) {
-    }
+    ) {}
 
     public function primaryProgramCode(): string
     {

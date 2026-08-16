@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Release;
 
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
+use App\Consultation\Queries\ConsultationAdmissionSupportQuery;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Release\ConsultationDecisionRequest;
 use App\Http\Requests\Release\ReleaseResultRequest;
@@ -14,6 +15,7 @@ use App\Release\Actions\PrepareResultDocument;
 use App\Release\Actions\RecordConsultationDecision;
 use App\Release\Actions\ReleaseResult;
 use App\Release\Actions\UnreleaseResult;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,17 +24,45 @@ use RuntimeException;
 
 class ReleaseController extends Controller
 {
-    public function consultation(Request $request, CapabilityAuthorizer $authorizer): Response
+    public function consultation(Request $request, CapabilityAuthorizer $authorizer, \App\Consultation\Queries\ConsultationDashboardQuery $dashboard): Response|\Illuminate\Http\RedirectResponse
     {
         if (! $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_CONSULTATION_DECIDE)) {
-            return Inertia::render('Release/Consultation', ['page_state' => 'denied', 'attempts' => []]);
+            return Inertia::render('Release/Consultation', ['page_state' => 'denied', 'dashboard' => null]);
         }
 
-        $attempts = AdmissionAttempt::query()->where('status', AdmissionAttempt::STATUS_ACCEPTED)->limit(30)->get(['id', 'reference_code']);
+        $cycle = $request->user()->actorScope()->activeCycleCode;
+        $query = trim((string) $request->string('q'));
+
+        $searchResults = [];
+        if ($query !== '') {
+            $matches = AdmissionAttempt::query()
+                ->where('status', AdmissionAttempt::STATUS_ACCEPTED)
+                ->where(function ($inner) use ($query) {
+                    $inner->where('reference_code', 'ilike', "%{$query}%")
+                        ->orWhereHas('identity', fn ($id) => $id
+                            ->where('first_name', 'ilike', "%{$query}%")
+                            ->orWhere('last_name', 'ilike', "%{$query}%"));
+                })
+                ->limit(20)
+                ->with('identity')
+                ->get();
+
+            if ($matches->count() === 1) {
+                return redirect()->route('admission-support.show', $matches->first());
+            }
+
+            $searchResults = $matches->map(fn (AdmissionAttempt $a) => [
+                'attempt_id' => $a->id,
+                'reference_code' => $a->reference_code,
+                'name' => $a->identity ? trim($a->identity->first_name.' '.$a->identity->last_name) : $a->reference_code,
+            ])->values()->all();
+        }
 
         return Inertia::render('Release/Consultation', [
-            'page_state' => $attempts->isEmpty() ? 'empty' : 'ready',
-            'attempts' => $attempts,
+            'page_state' => 'ready',
+            'dashboard' => $dashboard->for($cycle),
+            'search_query' => $query,
+            'search_results' => $searchResults,
             'can_plan' => $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN),
         ]);
     }

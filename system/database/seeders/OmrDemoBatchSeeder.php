@@ -9,11 +9,14 @@ use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrCaptureSheetPage;
 use App\Models\Assessment\OmrTemplateBookletPair;
+use App\Models\Foundation\AptitudeArea;
+use App\Support\SensitiveAssetStore;
 use App\Models\Examination\ExamAssignment;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 use function array_map;
 use function base64_decode;
@@ -42,8 +45,16 @@ class OmrDemoBatchSeeder extends Seeder
         $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         $pair = OmrTemplateBookletPair::query()
             ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
-            ->whereHas('templateVersion', fn ($query) => $query->where('version', 5))
+            ->whereHas('templateVersion.template', fn ($query) => $query->where('code', 'SYN-OMR-PROFILE-150'))
             ->first();
+        $profilePair = $pair !== null;
+
+        if ($pair === null) {
+            $pair = OmrTemplateBookletPair::query()
+                ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
+                ->whereHas('templateVersion', fn ($query) => $query->where('version', 5))
+                ->first();
+        }
 
         if ($pair === null) {
             $pair = OmrTemplateBookletPair::query()
@@ -85,65 +96,103 @@ class OmrDemoBatchSeeder extends Seeder
         );
 
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        $assetStore = app(SensitiveAssetStore::class);
+        $assetHmac = $assetStore->hmac($bytes);
 
         $assignment = ExamAssignment::query()
             ->where('exam_session_id', $session->exam_session_id)
             ->whereHas('admissionAttempt', fn ($query) => $query->whereNotNull('applicant_identity_id'))
             ->first();
 
-        $items = $this->items(200);
+        $pageCount = $profilePair ? 1 : 2;
+        $items = $profilePair ? $this->profileItems() : $this->items(200);
+        $pageItems = $profilePair ? $items : $this->items(100);
 
-        // 1. Needs-review two-page set (clean, ready to bind and confirm).
+        // 1. Needs-review set (clean, ready to bind and confirm).
+        $reviewClientCaptureId = (string) Str::uuid();
+        $reviewAssetPath = $pageCount === 1 ? 'omr/demo/review-'.$reviewClientCaptureId.'.bin' : null;
         $reviewSheet = OmrCaptureSheet::query()->create([
             'batch_id' => $batch->id,
             'status' => OmrCaptureSheet::STATUS_NEEDS_REVIEW,
             'capture_mode' => OmrCaptureSheet::MODE_AUTO,
             'version' => 1,
-            'expected_page_count' => 2,
-            'client_capture_id' => (string) Str::uuid(),
-            'admission_attempt_id' => $assignment?->admission_attempt_id,
-            'detected_applicant_number' => '1234567890',
-            'detected_applicant_confidence' => 0.97,
-            'detected_birthdate' => '01012010',
-            'sheet_confidence' => 0.92,
-            'proposal_json' => $this->proposal($items),
-            'captured_by_user_id' => $actor->id,
-            'captured_at' => now()->subMinutes(20),
-        ]);
-        foreach ([1, 2] as $pageNo) {
-            OmrCaptureSheetPage::query()->create([
-                'sheet_id' => $reviewSheet->id,
-                'page_no' => $pageNo,
-                'status' => OmrCaptureSheetPage::STATUS_SUCCEEDED,
-                'asset_path' => 'omr/demo/'.$reviewSheet->id.'-p'.$pageNo.'.bin',
-                'asset_hmac' => hash('sha256', $bytes),
+            'expected_page_count' => $pageCount,
+            'client_capture_id' => $reviewClientCaptureId,
+            ...($pageCount === 1 ? [
+                'asset_path' => $reviewAssetPath,
+                'asset_hmac' => $assetHmac,
                 'asset_hmac_key_id' => 'omr-demo-v1',
                 'asset_format_version' => 'v1',
                 'asset_key_id' => 'omr-demo-v1',
                 'asset_state' => OmrCaptureSheet::ASSET_LIVE,
                 'original_mime' => 'image/png',
                 'original_bytes' => strlen($bytes),
-                'proposal_json' => $this->pageProposal($pageNo),
+            ] : []),
+            'admission_attempt_id' => $assignment?->admission_attempt_id,
+            'detected_applicant_number' => '1234567890',
+            'detected_applicant_confidence' => $profilePair ? null : 0.97,
+            'detected_birthdate' => $profilePair ? null : '01012010',
+            'sheet_confidence' => $profilePair ? null : 0.92,
+            'proposal_json' => $this->proposal($items, $pageCount, ! $profilePair),
+            'captured_by_user_id' => $actor->id,
+            'captured_at' => now()->subMinutes(20),
+        ]);
+        if ($reviewAssetPath !== null) {
+            $assetStore->store($bytes, $reviewAssetPath);
+        }
+        foreach (range(1, $pageCount) as $pageNo) {
+            $pageAssetPath = 'omr/demo/'.$reviewSheet->id.'-p'.$pageNo.'.bin';
+            $assetStore->store($bytes, $pageAssetPath);
+            OmrCaptureSheetPage::query()->create([
+                'sheet_id' => $reviewSheet->id,
+                'page_no' => $pageNo,
+                'status' => OmrCaptureSheetPage::STATUS_SUCCEEDED,
+                'asset_path' => $pageAssetPath,
+                'asset_hmac' => $assetHmac,
+                'asset_hmac_key_id' => 'omr-demo-v1',
+                'asset_format_version' => 'v1',
+                'asset_key_id' => 'omr-demo-v1',
+                'asset_state' => OmrCaptureSheet::ASSET_LIVE,
+                'original_mime' => 'image/png',
+                'original_bytes' => strlen($bytes),
+                'proposal_json' => $this->pageProposal($pageNo, $pageItems, $pageCount, ! $profilePair),
             ]);
         }
 
-        // 2. Incomplete two-page set (resumable from page 2).
+        // 2. Incomplete set (resumable from page 2 when using the two-page pair).
+        $pendingClientCaptureId = (string) Str::uuid();
+        $pendingAssetPath = $pageCount === 1 ? 'omr/demo/pending-'.$pendingClientCaptureId.'.bin' : null;
         $pendingSheet = OmrCaptureSheet::query()->create([
             'batch_id' => $batch->id,
             'status' => OmrCaptureSheet::STATUS_PENDING_PAGES,
             'capture_mode' => OmrCaptureSheet::MODE_AUTO,
             'version' => 0,
-            'expected_page_count' => 2,
-            'client_capture_id' => (string) Str::uuid(),
+            'expected_page_count' => $pageCount,
+            'client_capture_id' => $pendingClientCaptureId,
+            ...($pageCount === 1 ? [
+                'asset_path' => $pendingAssetPath,
+                'asset_hmac' => $assetHmac,
+                'asset_hmac_key_id' => 'omr-demo-v1',
+                'asset_format_version' => 'v1',
+                'asset_key_id' => 'omr-demo-v1',
+                'asset_state' => OmrCaptureSheet::ASSET_LIVE,
+                'original_mime' => 'image/png',
+                'original_bytes' => strlen($bytes),
+            ] : []),
             'captured_by_user_id' => $actor->id,
             'captured_at' => now()->subMinutes(8),
         ]);
+        if ($pendingAssetPath !== null) {
+            $assetStore->store($bytes, $pendingAssetPath);
+        }
+        $pendingPageAssetPath = 'omr/demo/'.$pendingSheet->id.'-p1.bin';
+        $assetStore->store($bytes, $pendingPageAssetPath);
         OmrCaptureSheetPage::query()->create([
             'sheet_id' => $pendingSheet->id,
             'page_no' => 1,
             'status' => OmrCaptureSheetPage::STATUS_QUEUED,
-            'asset_path' => 'omr/demo/'.$pendingSheet->id.'-p1.bin',
-            'asset_hmac' => hash('sha256', $bytes),
+            'asset_path' => $pendingPageAssetPath,
+            'asset_hmac' => $assetHmac,
             'asset_hmac_key_id' => 'omr-demo-v1',
             'asset_format_version' => 'v1',
             'asset_key_id' => 'omr-demo-v1',
@@ -153,6 +202,7 @@ class OmrDemoBatchSeeder extends Seeder
         ]);
 
         // 3. Terminal-failed sheet (retry-able from the gallery card).
+        $failedAssetPath = 'omr/demo/'.$batch->id.'-failed.bin';
         $failedSheet = OmrCaptureSheet::query()->create([
             'batch_id' => $batch->id,
             'status' => OmrCaptureSheet::STATUS_FAILED_TERMINAL,
@@ -160,8 +210,8 @@ class OmrDemoBatchSeeder extends Seeder
             'version' => 1,
             'expected_page_count' => 1,
             'client_capture_id' => (string) Str::uuid(),
-            'asset_path' => 'omr/demo/'.$batch->id.'-failed.bin',
-            'asset_hmac' => hash('sha256', $bytes),
+            'asset_path' => $failedAssetPath,
+            'asset_hmac' => $assetHmac,
             'asset_hmac_key_id' => 'omr-demo-v1',
             'asset_format_version' => 'v1',
             'asset_key_id' => 'omr-demo-v1',
@@ -171,12 +221,15 @@ class OmrDemoBatchSeeder extends Seeder
             'captured_by_user_id' => $actor->id,
             'captured_at' => now()->subMinutes(30),
         ]);
+        $assetStore->store($bytes, $failedAssetPath);
+        $failedPageAssetPath = 'omr/demo/'.$failedSheet->id.'-p1.bin';
+        $assetStore->store($bytes, $failedPageAssetPath);
         OmrCaptureSheetPage::query()->create([
             'sheet_id' => $failedSheet->id,
             'page_no' => 1,
             'status' => OmrCaptureSheetPage::STATUS_FAILED_TERMINAL,
-            'asset_path' => 'omr/demo/'.$failedSheet->id.'-p1.bin',
-            'asset_hmac' => hash('sha256', $bytes),
+            'asset_path' => $failedPageAssetPath,
+            'asset_hmac' => $assetHmac,
             'asset_hmac_key_id' => 'omr-demo-v1',
             'asset_format_version' => 'v1',
             'asset_key_id' => 'omr-demo-v1',
@@ -186,6 +239,38 @@ class OmrDemoBatchSeeder extends Seeder
         ]);
 
         $this->command?->info(sprintf('OMR demo batch #%d ready: 1 needs-review, 1 incomplete, 1 failed.', $batch->id));
+    }
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function profileItems(): array
+    {
+        $areaCodes = ['PROFILE_VERBAL', 'PROFILE_QUANT', 'LOGIC', 'SPATIAL', 'MEMORY', 'LANGUAGE'];
+        $areas = AptitudeArea::query()->whereIn('code', $areaCodes)->where('is_active', true)->get()->keyBy('code');
+        if ($areas->count() !== count($areaCodes)) {
+            throw new RuntimeException('Synthetic OMR profile capture requires all six active aptitude areas.');
+        }
+
+        $items = [];
+        $position = 1;
+        foreach ($areaCodes as $areaCode) {
+            for ($questionNo = 1; $questionNo <= 25; $questionNo++) {
+                $option = ['A', 'B', 'C', 'D'][($position - 1) % 4];
+                $items[] = [
+                    'position' => $position,
+                    'question_no' => $questionNo,
+                    'area_id' => (int) $areas[$areaCode]->id,
+                    'area_code' => $areaCode,
+                    'detected_answer' => $option,
+                    'correct_option_code' => $option,
+                    'confidence' => null,
+                    'region' => ['x' => 0.1, 'y' => 0.1, 'w' => 0.02, 'h' => 0.02],
+                ];
+                $position++;
+            }
+        }
+
+        return $items;
     }
 
     /**
@@ -214,8 +299,23 @@ class OmrDemoBatchSeeder extends Seeder
      * @param  list<array<string, mixed>>  $items
      * @return array<string, mixed>
      */
-    private function proposal(array $items): array
+    private function proposal(array $items, int $pageCount, bool $includeProviderConfidence = true): array
     {
+        $perAreaScores = [];
+        $perAreaIndexes = [];
+        foreach ($items as $item) {
+            $areaCode = (string) ($item['area_code'] ?? '');
+            if (! isset($perAreaIndexes[$areaCode])) {
+                $perAreaIndexes[$areaCode] = count($perAreaIndexes) + 1;
+                $perAreaScores[(string) $perAreaIndexes[$areaCode]] = [
+                    'score' => 0,
+                    'confidence' => $includeProviderConfidence ? 0.9 : null,
+                    'area_code' => $areaCode,
+                ];
+            }
+            $perAreaScores[(string) $perAreaIndexes[$areaCode]]['score']++;
+        }
+
         return [
             'envelope' => OmrDetectionRequest::ENVELOPE_VERSION,
             'provider' => 'nexiam.fake',
@@ -228,24 +328,22 @@ class OmrDemoBatchSeeder extends Seeder
             'field_block_shifts' => [],
             'aligned_image' => null,
             'applicant_number_proposal' => '1234567890',
-            'applicant_number_confidence' => 0.97,
-            'birthdate_proposal' => '01012010',
-            'sheet_confidence' => 0.92,
-            'per_area_scores' => [
-                '1' => ['score' => 100, 'confidence' => 0.9, 'area_code' => 'VERBAL'],
-                '2' => ['score' => 100, 'confidence' => 0.9, 'area_code' => 'QUANT'],
-            ],
+            'applicant_number_confidence' => $includeProviderConfidence ? 0.97 : null,
+            'birthdate_proposal' => $includeProviderConfidence ? '01012010' : null,
+            'sheet_confidence' => $includeProviderConfidence ? 0.92 : null,
+            'per_area_scores' => $perAreaScores,
             'items' => $items,
-            'pages' => 2,
+            'pages' => $pageCount,
         ];
     }
 
     /**
+     * @param  list<array<string, mixed>>  $pageItems
      * @return array<string, mixed>
      */
-    private function pageProposal(int $pageNo): array
+    private function pageProposal(int $pageNo, array $pageItems, int $pageCount, bool $includeProviderConfidence = true): array
     {
-        $items = array_map(fn (array $item): array => [...$item, 'page' => $pageNo], $this->items(100));
+        $items = array_map(fn (array $item): array => [...$item, 'page' => $pageNo], $pageItems);
 
         return [
             'envelope' => OmrDetectionRequest::ENVELOPE_VERSION,
@@ -259,12 +357,12 @@ class OmrDemoBatchSeeder extends Seeder
             'field_block_shifts' => [],
             'aligned_image' => null,
             'applicant_number_proposal' => '1234567890',
-            'applicant_number_confidence' => 0.97,
-            'birthdate_proposal' => '01012010',
-            'sheet_confidence' => 0.92,
+            'applicant_number_confidence' => $includeProviderConfidence ? 0.97 : null,
+            'birthdate_proposal' => $includeProviderConfidence ? '01012010' : null,
+            'sheet_confidence' => $includeProviderConfidence ? 0.92 : null,
             'per_area_scores' => [],
             'items' => $items,
-            'pages' => 2,
+            'pages' => $pageCount,
         ];
     }
 }

@@ -51,8 +51,14 @@ class ReferenceCatalogSeeder extends Seeder
         }
 
         foreach ([
-            ['code' => 'VERBAL', 'name' => 'Verbal Reasoning', 'version' => 1],
-            ['code' => 'QUANT', 'name' => 'Quantitative Reasoning', 'version' => 1],
+            ['code' => 'VERBAL', 'name' => 'Verbal Reasoning', 'version' => 1, 'max_items' => 100],
+            ['code' => 'QUANT', 'name' => 'Quantitative Reasoning', 'version' => 1, 'max_items' => 100],
+            ['code' => 'PROFILE_VERBAL', 'name' => 'Profile Verbal Reasoning', 'version' => 1, 'max_items' => 25],
+            ['code' => 'PROFILE_QUANT', 'name' => 'Profile Quantitative Reasoning', 'version' => 1, 'max_items' => 25],
+            ['code' => 'LOGIC', 'name' => 'Logical Reasoning', 'version' => 1, 'max_items' => 25],
+            ['code' => 'SPATIAL', 'name' => 'Spatial Reasoning', 'version' => 1, 'max_items' => 25],
+            ['code' => 'MEMORY', 'name' => 'Memory Recall', 'version' => 1, 'max_items' => 25],
+            ['code' => 'LANGUAGE', 'name' => 'Language Usage', 'version' => 1, 'max_items' => 25],
         ] as $area) {
             $aptitude = AptitudeArea::query()->updateOrCreate(
                 [
@@ -62,7 +68,7 @@ class ReferenceCatalogSeeder extends Seeder
                 [
                     'name' => $area['name'],
                     'scoring_method' => AptitudeArea::SCORING_METHOD_CONVERSION_TABLE,
-                    'max_items' => 100,
+                    'max_items' => $area['max_items'],
                     'is_active' => true,
                 ],
             );

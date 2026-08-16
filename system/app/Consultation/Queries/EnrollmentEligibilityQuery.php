@@ -92,6 +92,22 @@ final class EnrollmentEligibilityQuery
             ->values()
             ->all();
 
+        // D-090/D-091 admission facts: selection, follow-up, stamp state.
+        $selection = \App\Models\Admission\ProgramSelection::query()
+            ->where('admission_attempt_id', $attempt->id)
+            ->whereIn('status', \App\Models\Admission\ProgramSelection::NON_TERMINAL_STATUSES)
+            ->with('program')
+            ->latest('id')
+            ->first();
+
+        $followUps = \App\Models\Admission\ProgramFollowUp::query()
+            ->where('admission_attempt_id', $attempt->id)
+            ->whereIn('status', \App\Models\Admission\ProgramFollowUp::OPEN_STATUSES)
+            ->with('program')
+            ->get();
+
+        $stamp = \App\Admission\Support\AttemptProgramFacts::activeStamp($attempt);
+
         return [
             'id' => $attempt->id,
             'reference_number' => $attempt->reference_code,
@@ -105,6 +121,27 @@ final class EnrollmentEligibilityQuery
             'released_at' => $release?->getAttributeValue('released_at')?->toIso8601String(),
             'eligible' => $missing === [],
             'missing' => $missing,
+            'selection' => $selection === null ? null : [
+                'program_code' => $selection->program?->code,
+                'status' => $selection->status,
+                'source' => $selection->source,
+                'acknowledged' => $selection->applicant_acknowledged_at !== null,
+            ],
+            'follow_ups' => $followUps->map(fn ($f) => [
+                'program_code' => $f->program?->code,
+                'status' => $f->status,
+            ])->all(),
+            'stamp' => $stamp === null ? null : [
+                'state' => $stamp->stamp_type,
+                'provisional_program' => $stamp->provisionalProgram?->code,
+                'final_program' => $stamp->finalProgram?->code,
+                'paper_reference' => $stamp->paper_reference,
+            ],
+            // D-091: an open follow-up blocks only the final enrolled stamp.
+            'may_start_enrolling' => $missing === [] && $stamp === null,
+            'may_finalize_enrolled' => $stamp !== null
+                && $stamp->stamp_type === \App\Models\Admission\EnrollmentStamp::STAMP_ENROLLING
+                && $followUps->isEmpty(),
         ];
     }
 }

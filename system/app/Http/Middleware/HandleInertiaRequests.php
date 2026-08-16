@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                 : null,
 
             'staff_navigation' => $this->staffNavigation($request),
+            'applicant_navigation' => fn () => app(\App\Applicant\Support\ApplicantNavigationBuilder::class)->for($user),
 
             /*
              * Transitional Nexi share (OpenSpec ai-assistant-foundation):

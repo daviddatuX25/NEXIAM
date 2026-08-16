@@ -45,6 +45,7 @@ final class StaffNavigationBuilder
             return $sections;
         }
 
+
         $admissions = array_merge(
             $this->when($this->allows($user, CapabilityCatalog::REGISTRAR_APPLICATIONS_VIEW), [
                 'href' => '/admissions',
@@ -125,8 +126,18 @@ final class StaffNavigationBuilder
             ]],
         );
 
-        if ($system !== []) {
-            $sections[] = ['label' => 'System', 'items' => $system];
+        $sections[] = ['label' => 'System', 'items' => $system];
+
+        if ($this->allows($user, CapabilityCatalog::PROGRAM_HEAD_VIEW)) {
+            $sections[] = [
+                'label' => 'Program Head',
+                'items' => [[
+                    'href' => '/staff/programs',
+                    'label' => 'My Programs',
+                    'icon' => 'GraduationCap',
+                    'match' => 'prefix',
+                ]],
+            ];
         }
 
         return $sections;

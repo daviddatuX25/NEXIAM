@@ -416,3 +416,17 @@ Focused Compose tests passed:
 The combined three-file run timed out after 360 seconds, so there is no full focused-suite green claim.
 
 Best path: refactor now around the server solver and durable bundle save seam. Preserve the existing renderer and multipage capture/merge machinery; those are already the useful deep modules.
+
+## Founder clarification — one-page six-domain profile
+
+Decision recorded 2026-08-16 after physical-sizing research and geometry review:
+
+- Paper is **long bond only** for the default profile: 216 × 330 mm, canonical geometry 2060 × 3144 px at 242 PPI. US Legal remains an explicit alternate profile, not a scaling fallback.
+- Capacity is **one physical page containing 150 questions**: six domains × 25 questions, mapped as one domain per question column.
+- Mark profile is **40 × 40 px at 242 PPI**, which renders to approximately **4.20 mm outer diameter** when the outline is included in that envelope. This is the selected compromise between the founder's 3 mm reference and reliable clean/mobile capture.
+- MCQ option center pitch is **52 px** for the dense six-column profile; row pitch remains **80 px**. The solver must validate every column, label gutter, printable margin, and reserved band rather than assume four-column geometry.
+- The detector remains template-driven: OMRChecker resizes input to the bundle's canonical page dimensions and reads the bundle-defined rectangles/gaps. It may adapt scan coordinates to the selected template, but it cannot compensate for blur, poor fill, perspective, or marks that are too small in the source image.
+- Descriptive identity is a **printed name line rendered for human filing and review crop only**. It is never OCR input, never a binding signal, and never part of the provider identity seam. Applicant number and optional bubbled birthdate remain the only machine identity fields.
+- The 40 px profile requires fresh solver-generated PDFs, fixture images, and real-engine qualification before activation. Existing v4/v5 bundles remain immutable evidence for the prior four-column geometry.
+
+This decision supersedes the earlier four-column-only sizing recommendation for the default one-page profile; the server-owned solver remains the geometry authority and the renderer/multipage capture machinery remain unchanged at the module boundary.

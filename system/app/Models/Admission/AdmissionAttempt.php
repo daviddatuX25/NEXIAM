@@ -125,6 +125,38 @@ class AdmissionAttempt extends Model
     }
 
     /**
+     * @return HasMany<ProgramPool, $this>
+     */
+    public function programPools(): HasMany
+    {
+        return $this->hasMany(ProgramPool::class, 'admission_attempt_id');
+    }
+
+    /**
+     * @return HasMany<ProgramSelection, $this>
+     */
+    public function programSelections(): HasMany
+    {
+        return $this->hasMany(ProgramSelection::class, 'admission_attempt_id');
+    }
+
+    /**
+     * @return HasMany<ProgramFollowUp, $this>
+     */
+    public function programFollowUps(): HasMany
+    {
+        return $this->hasMany(ProgramFollowUp::class, 'admission_attempt_id');
+    }
+
+    /**
+     * @return HasMany<EnrollmentStamp, $this>
+     */
+    public function enrollmentStamps(): HasMany
+    {
+        return $this->hasMany(EnrollmentStamp::class, 'admission_attempt_id');
+    }
+
+    /**
      * Single scheduling/exam eligibility gate (GF-06).
      * Authorized demographic amendment while accepted keeps this true — no retake.
      * Reconsider → pending flips this false so new assignments cannot be created.

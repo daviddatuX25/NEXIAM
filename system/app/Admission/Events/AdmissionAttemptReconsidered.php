@@ -22,6 +22,5 @@ class AdmissionAttemptReconsidered
         public readonly string $reason,
         public readonly int $activeAssignmentCount,
         public readonly string $priorStatus,
-    ) {
-    }
+    ) {}
 }

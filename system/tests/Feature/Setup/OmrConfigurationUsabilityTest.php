@@ -92,15 +92,16 @@ test('overlays render identically through renderer and are render-only', functio
         ->and($html)->toContain('Answer only in this booklet.')
         ->and($html)->not->toContain('SYNTHETIC NEXIAM OMR ANSWER SHEET');
 
-    // Margin-safety rule: the name box renders only when the header stack
-    // leaves a clean gap above the topmost field block. A full overlay
-    // (title + header line + page label + note) fills the top -> hidden.
-    expect($html)->not->toContain('EXAMINEE (PRINT):');
+    // Margin-safety rule: a full header stack uses the safe upper-right
+    // fallback instead of suppressing the manual name field.
+    expect($html)->toContain('EXAMINEE (PRINT):')
+        ->and($html)->toContain('left:155.6mm;top:29.5mm;width:50mm;height:8mm;border:0.3mm solid #000;');
+    // The frame must clear the full header stack instead of using the raw 80px top inset.
+    expect($html)->not->toContain('left:8.4mm;top:8.4mm;width:199.2mm;height:313.2mm;border:0.7mm solid #000;')
+        ->and($html)->toMatch('/left:8\.4mm;top:2[23]\.\d+mm;width:199\.2mm;height:298\.\d+mm;border:0.7mm solid #000/');
 
-    // With only a title the box has room only when the topmost block sits
-    // low enough (identity at 260px -> 27.3mm still forces top 11.8 < 15mm
-    // after title + page label; hidden). A block at 520px -> 54.6mm leaves
-    // a 39.1-47.1mm box clear of the 49.1mm digit labels.
+    // A lower field block keeps the preferred left-band placement.
+    // The same label remains available when the top band is otherwise clear.
     $lowered = $bundle->template;
     $lowered['pages'][0]['fieldBlocks']['ApplicantNumber']['origin'] = [200, 520];
     $sparseHtml = app(BundleRenderer::class)->renderHtml($lowered, [

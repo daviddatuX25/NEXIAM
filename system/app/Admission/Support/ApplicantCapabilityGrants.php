@@ -24,6 +24,8 @@ final class ApplicantCapabilityGrants
         return [
             CapabilityCatalog::APPLICANT_EXAM_SLOTS_VIEW,
             CapabilityCatalog::APPLICANT_EXAM_SLOT_RESERVE,
+            CapabilityCatalog::APPLICANT_PROGRAM_SELECT,
+            CapabilityCatalog::RECORD_THREAD_PARTICIPATE,
             CapabilityCatalog::NOTIFY_READ_OWN,
         ];
     }

@@ -5,7 +5,6 @@ namespace App\Admission\Actions;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\User;
-use App\Notifications\NotificationDelivery;
 use App\Notifications\NotificationIntent;
 use App\Notifications\NotificationIntentDispatcher;
 use App\Notifications\NotificationRecipients;
@@ -17,8 +16,7 @@ class AcceptAdmissionAttempt
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
         private readonly NotificationIntentDispatcher $dispatcher,
-    ) {
-    }
+    ) {}
 
     public function handle(AdmissionAttempt $attempt, User $actor, int $expectedVersion): AdmissionAttempt
     {

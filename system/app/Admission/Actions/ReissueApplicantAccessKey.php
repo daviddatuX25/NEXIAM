@@ -18,8 +18,7 @@ class ReissueApplicantAccessKey
     public function __construct(
         private readonly IssueApplicantAccessChallenge $issueChallenge,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{attempt: AdmissionAttempt, access_token: string}

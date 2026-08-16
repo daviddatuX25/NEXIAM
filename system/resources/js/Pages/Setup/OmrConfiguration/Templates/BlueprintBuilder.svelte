@@ -31,7 +31,7 @@
   let blueprint = $state({
     schema: 'nexiam.omr.layout-blueprint.v1',
     paper: defaultPaper,
-    columns: 4,
+    columns: 6,
     identity: { applicant_number: true, birthdate: false, repeat_on_every_page: true },
     sections: [],
   });
@@ -39,7 +39,14 @@
   let overlay = $state({
     title: '',
     header_lines: [],
+    edq_header: false,
+    edq_header_label: '',
+    exam_information_lines: [],
+    instructions_lines: [],
+    birthdate_label: '',
+    birthdate_placeholder: 'MMDDYYYY',
     footer_lines: [],
+    show_calibration: true,
     name_box_label: '',
     per_page: [],
   });
@@ -65,7 +72,14 @@
       overlay = {
         title: ov.title ?? '',
         header_lines: Array.isArray(ov.header_lines) ? ov.header_lines : [],
+        edq_header: ov.edq_header === true,
+        edq_header_label: ov.edq_header_label ?? '',
+        exam_information_lines: Array.isArray(ov.exam_information_lines) ? ov.exam_information_lines : [],
+        instructions_lines: Array.isArray(ov.instructions_lines) ? ov.instructions_lines : [],
+        birthdate_label: ov.birthdate_label ?? '',
+        birthdate_placeholder: ov.birthdate_placeholder ?? 'MMDDYYYY',
         footer_lines: Array.isArray(ov.footer_lines) ? ov.footer_lines : [],
+        show_calibration: ov.show_calibration !== false,
         name_box_label: ov.name_box_label ?? '',
         per_page: Array.isArray(ov.per_page) ? ov.per_page : [],
       };
@@ -92,10 +106,13 @@
         return;
       }
     }
-    // Fresh template: a sensible starter blueprint (first area, 1..100).
+    // Fresh template: start with one 25-question section per available domain,
+    // up to the six columns supported by the compact one-page profile.
+    const starterSections = areas.slice(0, 6).map((area) => ({ ...emptySection(), area_code: area.code }));
     blueprint = {
       ...blueprint,
-      sections: [{ ...emptySection(), question_to: 100 }],
+      columns: 6,
+      sections: starterSections.length ? starterSections : [{ ...emptySection(), question_to: 25 }],
     };
     scheduleProjection();
   }
@@ -127,6 +144,49 @@
   function setSection(index, patch) {
     blueprint.sections = blueprint.sections.map((s, i) => (i === index ? { ...s, ...patch } : s));
     scheduleProjection();
+  }
+
+  function nonEmptyLines(lines) {
+    return (Array.isArray(lines) ? lines : []).map((line) => String(line ?? '').trim()).filter(Boolean);
+  }
+
+  function geometryUnits(mm) {
+    return (mm * 242) / 25.4;
+  }
+
+  function overlayMetrics(page, pageIndex, width) {
+    const headerLines = nonEmptyLines(overlay.header_lines);
+    const note = overlay.per_page.find((item) => Number(item?.page_no) === pageIndex + 1)?.note?.trim() ?? '';
+    const pageLabelTopMm = 9 + headerLines.length * 5;
+    const noteTopMm = pageLabelTopMm + 5;
+    const afterHeaderMm = note ? noteTopMm + 5 : noteTopMm;
+    const firstBlockTopMm = Math.min(
+      ...page.fieldBlocks.map((block) => ((Number(block.origin?.[1] ?? 99999) - (9 * 242) / 72 - 8) * 25.4) / 242),
+    );
+    const candidateMm = Number.isFinite(firstBlockTopMm)
+      ? Math.max(0, firstBlockTopMm - (8 / 242) * 25.4) - 8
+      : null;
+    const topPlacementSafe = candidateMm !== null && candidateMm >= afterHeaderMm + 1;
+    let topMm = candidateMm;
+    let leftMm = 80 / 242 * 25.4 + 2;
+    let widthMm = 80;
+
+    // Match BundleRenderer: compact identity bands and full headers use the
+    // unused upper-right area instead of hiding the manual fallback field.
+    if (!topPlacementSafe || BUBBLE <= 40) {
+      widthMm = 50;
+      leftMm = (width * 25.4) / 242 - 80 / 242 * 25.4 - widthMm - 2;
+      topMm = Math.max(afterHeaderMm + 2, candidateMm ?? 80 / 242 * 25.4 + 2);
+    }
+
+    return {
+      label: overlay.name_box_label.trim() || 'NAME (PRINT):',
+      x: geometryUnits(leftMm),
+      labelY: geometryUnits(topMm),
+      y: geometryUnits(topMm + 3.5),
+      width: geometryUnits(widthMm),
+      height: geometryUnits(8),
+    };
   }
 
   function csrfToken() {
@@ -176,7 +236,16 @@
     return {
       ...(overlay.title.trim() ? { title: overlay.title.trim() } : {}),
       header_lines: overlay.header_lines.filter((l) => l.trim()),
+      ...(overlay.edq_header ? {
+        edq_header: true,
+        ...(overlay.edq_header_label.trim() ? { edq_header_label: overlay.edq_header_label.trim() } : {}),
+        exam_information_lines: overlay.exam_information_lines.filter((l) => l.trim()),
+        instructions_lines: overlay.instructions_lines.filter((l) => l.trim()),
+        birthdate_label: overlay.birthdate_label.trim() || 'BIRTHDATE:',
+        birthdate_placeholder: overlay.birthdate_placeholder.trim() || 'MMDDYYYY',
+      } : {}),
       footer_lines: overlay.footer_lines.filter((l) => l.trim()),
+      show_calibration: overlay.show_calibration,
       ...(overlay.name_box_label.trim() ? { name_box_label: overlay.name_box_label.trim() } : {}),
       per_page: overlay.per_page.filter((p) => p && String(p.note ?? '').trim()),
     };
@@ -274,8 +343,8 @@
 
   initFromDraft();
 
-  const BUBBLE = 56;
-  const MCQ_GAP = 66;
+  let BUBBLE = $derived(blueprint.columns === 6 ? 40 : 56);
+  let MCQ_GAP = $derived(blueprint.columns === 6 ? 52 : 66);
   const IDENTITY_LABELS_GAP = 66;
   const IDENTITY_BUBBLES_GAP = 60;
   const ROW_PITCH = 80;
@@ -344,7 +413,7 @@
           <div class="space-y-2">
             <Label>Columns</Label>
             <div class="flex gap-1">
-              {#each [2, 3, 4] as count}
+              {#each [2, 3, 4, 6] as count}
                 <Button
                   variant={blueprint.columns === count ? 'default' : 'outline'}
                   size="sm"
@@ -397,8 +466,8 @@
           <Button variant="outline" size="sm" onclick={addSection} disabled={locked}>Add section</Button>
         </div>
         <p class="mb-3 text-xs text-muted-foreground">
-          Sections fill columns top-to-bottom in order; a section that reaches the bottom continues in the next
-          column, then the next page.
+          Sections fill columns top-to-bottom in order; use six 25-question sections for the one-page 150-question profile.
+          A section that reaches the bottom continues in the next column, then the next page.
         </p>
         <div class="space-y-3">
           {#each blueprint.sections as section, index (index)}
@@ -497,16 +566,42 @@
                 disabled={locked}
               ></textarea>
             </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={overlay.edq_header} onchange={(e) => (overlay.edq_header = e.currentTarget.checked)} disabled={locked} />
+              Add EDQ / header zone
+            </label>
+            {#if overlay.edq_header}
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">EDQ label</Label>
+                <Input value={overlay.edq_header_label} oninput={(e) => (overlay.edq_header_label = e.currentTarget.value)} placeholder="EDQ / HEADER ZONE" disabled={locked} />
+              </div>
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">Exam information (one per line)</Label>
+                <textarea class={numberInput} rows="2" value={overlay.exam_information_lines.join('\n')} oninput={(e) => (overlay.exam_information_lines = e.currentTarget.value.split('\n'))} disabled={locked}></textarea>
+              </div>
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">Instructions (one per line)</Label>
+                <textarea class={numberInput} rows="2" value={overlay.instructions_lines.join('\n')} oninput={(e) => (overlay.instructions_lines = e.currentTarget.value.split('\n'))} disabled={locked}></textarea>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="space-y-1">
+                  <Label class="text-xs text-muted-foreground">Birthdate label</Label>
+                  <Input value={overlay.birthdate_label} oninput={(e) => (overlay.birthdate_label = e.currentTarget.value)} placeholder="BIRTHDATE:" disabled={locked} />
+                </div>
+                <div class="space-y-1">
+                  <Label class="text-xs text-muted-foreground">Birthdate format</Label>
+                  <Input value={overlay.birthdate_placeholder} oninput={(e) => (overlay.birthdate_placeholder = e.currentTarget.value)} placeholder="MMDDYYYY" disabled={locked} />
+                </div>
+              </div>
+            {/if}
             <div class="space-y-1">
               <Label class="text-xs text-muted-foreground">Footer lines (one per line, max 3)</Label>
-              <textarea
-                class={numberInput}
-                rows="2"
-                value={overlay.footer_lines.join('\n')}
-                oninput={(e) => (overlay.footer_lines = e.currentTarget.value.split('\n'))}
-                disabled={locked}
-              ></textarea>
+              <textarea class={numberInput} rows="2" value={overlay.footer_lines.join('\n')} oninput={(e) => (overlay.footer_lines = e.currentTarget.value.split('\n'))} disabled={locked}></textarea>
             </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={overlay.show_calibration} onchange={(e) => (overlay.show_calibration = e.currentTarget.checked)} disabled={locked} />
+              Show calibration strip
+            </label>
             <div class="space-y-1">
               <Label class="text-xs text-muted-foreground">Name box label</Label>
               <Input value={overlay.name_box_label} oninput={(e) => (overlay.name_box_label = e.currentTarget.value)} disabled={locked} />
@@ -534,26 +629,48 @@
         {/if}
 
         {#if projection && !diagnostics.length}
-          {#each projection.pages as page}
+          {#each projection.layout.pages as page, pageIndex}
             {@const [w, h] = page.pageDimensions}
+            {@const chrome = overlayMetrics(page, pageIndex, w)}
             <svg viewBox={`0 0 ${w} ${h}`} class="mb-3 w-full rounded border">
               <rect x="0" y="0" width={w} height={h} fill="white" />
               <rect x="80" y="80" width={w - 160} height={h - 160} fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="24 16" />
-              <rect x="80" y="80" width={w - 160} height={h - 160} fill="none" stroke="currentColor" stroke-width="2" />
+              <text x={w / 2} y="68" font-size="30" font-weight="bold" text-anchor="middle" fill="currentColor">{overlay.title.trim() || 'NEXIAM ANSWER SHEET'}</text>
+              {#each nonEmptyLines(overlay.header_lines).slice(0, 2) as line, lineIndex}
+                <text x={w / 2} y={105 + lineIndex * 28} font-size="22" font-weight="bold" text-anchor="middle" fill="currentColor">{line}</text>
+              {/each}
+              {#if overlay.edq_header}
+                <rect x="80" y="80" width={w - 160} height="820" fill="none" stroke="currentColor" stroke-width="3" />
+                <text x="100" y="220" font-size="20" font-weight="bold" fill="currentColor">{overlay.edq_header_label.trim() || 'EDQ / HEADER ZONE'}</text>
+                {#each nonEmptyLines(overlay.exam_information_lines).slice(0, 2) as line, lineIndex}
+                  <text x="120" y={255 + lineIndex * 24} font-size="18" fill="currentColor">{line}</text>
+                {/each}
+                {#each nonEmptyLines(overlay.instructions_lines).slice(0, 2) as line, lineIndex}
+                  <text x="120" y={325 + lineIndex * 24} font-size="18" fill="currentColor">{line}</text>
+                {/each}
+                <text x={chrome.x} y={chrome.labelY + geometryUnits(15)} font-size="24" font-weight="bold" fill="currentColor">{overlay.birthdate_label.trim() || 'BIRTHDATE:'}</text>
+                <rect x={chrome.x} y={chrome.y + geometryUnits(15)} width={chrome.width} height={chrome.height} fill="none" stroke="currentColor" stroke-width="3" />
+                <text x={chrome.x + chrome.width / 2} y={chrome.y + geometryUnits(15) + chrome.height / 2 + 8} font-size="20" text-anchor="middle" fill="currentColor">{overlay.birthdate_placeholder.trim() || 'MMDDYYYY'}</text>
+              {/if}
+              <text x={chrome.x} y={chrome.labelY} font-size="24" font-weight="bold" fill="currentColor">{chrome.label}</text>
+              <rect x={chrome.x} y={chrome.y} width={chrome.width} height={chrome.height} fill="none" stroke="currentColor" stroke-width="3" />
+              <!-- One dashed printable-margin guide; the PDF uses a solid frame. -->
               {#each page.fieldBlocks as block}
                 {@const origin = block.origin}
                 {@const labels = (block.fieldLabels ?? [])[0] ?? ''}
                 {#if block.fieldType === 'QTYPE_INT'}
                   {@const isBirthdate = labels.startsWith('BIRTHDATE_')}
                   {@const count = isBirthdate ? 6 : 10}
+                  {@const labelsGap = Number(block.labelsGap ?? IDENTITY_LABELS_GAP)}
+                  {@const bubblesGap = Number(block.bubblesGap ?? IDENTITY_BUBBLES_GAP)}
                   {#each Array(count) as _, c}
-                    <text x={origin[0] + c * IDENTITY_LABELS_GAP + BUBBLE / 2} y={origin[1] - 5} font-size="34" text-anchor="middle" fill="currentColor">{c + 1}</text>
+                    <text x={origin[0] + c * labelsGap + BUBBLE / 2} y={origin[1] - 5} font-size="34" text-anchor="middle" fill="currentColor">{c + 1}</text>
                     {#each Array(10) as _, r}
-                      <circle cx={origin[0] + c * IDENTITY_LABELS_GAP + BUBBLE / 2} cy={origin[1] + r * IDENTITY_BUBBLES_GAP + BUBBLE / 2} r={BUBBLE / 2} fill="none" stroke="currentColor" stroke-width="3" />
+                      <circle cx={origin[0] + c * labelsGap + BUBBLE / 2} cy={origin[1] + r * bubblesGap + BUBBLE / 2} r={BUBBLE / 2} fill="none" stroke="currentColor" stroke-width="3" />
                     {/each}
                   {/each}
                   {#each Array(10) as _, r}
-                    <text x={origin[0] - 8} y={origin[1] + r * IDENTITY_BUBBLES_GAP + BUBBLE / 2 + 12} font-size="30" text-anchor="end" fill="currentColor">{r}</text>
+                    <text x={origin[0] - 8} y={origin[1] + r * bubblesGap + BUBBLE / 2 + 12} font-size="30" text-anchor="end" fill="currentColor">{r}</text>
                   {/each}
                 {:else}
                   {@const match = /^([A-Z0-9_]+)_Q_(\d+)\.\.(\d+)$/.exec(labels)}

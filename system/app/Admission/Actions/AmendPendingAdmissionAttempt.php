@@ -18,8 +18,7 @@ class AmendPendingAdmissionAttempt
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
         private readonly SyncAdmissionAttemptGrades $syncGrades,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $changes

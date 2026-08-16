@@ -6,12 +6,12 @@ use App\Admission\Actions\AmendPendingAdmissionAttempt;
 use App\Admission\Actions\AuthenticateApplicantWithAccessKey;
 use App\Admission\Actions\ResubmitApplicationCorrection;
 use App\Admission\Support\ApplicantScope;
+use App\Applicant\Support\ApplicantPortalProjection;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Applicant\ApplicantLoginRequest;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Foundation\IntakeGradeField;
 use App\Models\Foundation\Program;
-use App\Models\Release\ResultRelease;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,11 +26,19 @@ class ApplicantPortalController extends Controller
     {
         $demo = null;
         if (app()->environment(['local', 'testing'])) {
-            $accepted = config('seed.applicants.accepted');
+            // Temporary default (2026-08-15): prefill the richest portal demo
+            // scenario so the founder can click through most hub states without
+            // typing. PORT-DEFL = released online + consultation booked +
+            // Guidance default ✦. Other keys can be typed manually.
             $demo = [
-                'access_key' => (string) ($accepted['access_key'] ?? ''),
-                'birthdate' => (string) ($accepted['birthdate'] ?? ''),
-                'label' => 'Demo accepted applicant (synthetic seed)',
+                'access_key' => 'PORT-DEFL',
+                'birthdate' => '2003-09-25',
+                'label' => 'Portal demo (default) — released online + Guidance default ✦',
+                'portals' => [
+                    ['key' => 'PORT-ONLN', 'label' => 'Released online · consultation booked'],
+                    ['key' => 'PORT-F2F2', 'label' => 'Released f2f · claim at consultation'],
+                    ['key' => 'PORT-DEFL', 'label' => 'Guidance default ✦ · ack optional'],
+                ],
             ];
         }
 
@@ -58,7 +66,7 @@ class ApplicantPortalController extends Controller
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('applicant.schedule'));
+        return redirect()->intended(route('applicant.portal'));
     }
 
     /** @deprecated D-085 — password setup removed; keep route as alias. */
@@ -67,10 +75,70 @@ class ApplicantPortalController extends Controller
         return redirect()->route('applicant.login');
     }
 
-    public function dashboard(Request $request): RedirectResponse
+    public function dashboard(Request $request): Response
     {
-        // Status / schedule is the applicant home (richer applicant nav later).
-        return redirect()->route('applicant.schedule');
+        $projection = app(ApplicantPortalProjection::class)->for($request->user());
+
+        if ($projection === null) {
+            return Inertia::render('Applicant/Portal', [
+                'page_state' => 'empty',
+            ]);
+        }
+
+        return Inertia::render('Applicant/Portal', [
+            'page_state' => 'ready',
+            ...$projection,
+        ]);
+    }
+
+    public function applicationShow(Request $request, AdmissionAttempt $attempt): Response
+    {
+        $user = $request->user();
+
+        abort_unless(ApplicantScope::attemptBelongsToUser($attempt, $user), 403);
+
+        $identity = $attempt->identity;
+        $grades = $attempt->gradeValues()->get()->map(fn ($value): array => [
+            'label' => $value->field_label,
+            'value' => $value->value,
+        ])->values()->all();
+
+        $preferences = array_values(array_filter([
+            $attempt->program_preference_1_code,
+            $attempt->program_preference_2_code,
+            $attempt->program_preference_3_code,
+        ]));
+
+        return Inertia::render('Applicant/MyApplication', [
+            'application' => [
+                'reference_code' => $attempt->reference_code,
+                'status' => $attempt->status,
+                'submitted_at' => $attempt->created_at?->toIso8601String(),
+                'needs_correction' => $attempt->status === AdmissionAttempt::STATUS_NEEDS_CORRECTION,
+                'correction_notes' => $attempt->correction_notes,
+                'correction_href' => $attempt->status === AdmissionAttempt::STATUS_NEEDS_CORRECTION
+                    ? route('applicant.correction', ['attempt' => $attempt->id])
+                    : null,
+                'personal' => [
+                    'name' => trim((string) ($identity->first_name ?? '').' '.(string) ($identity->last_name ?? '')),
+                    'birthdate' => $identity->birthdate?->toDateString(),
+                    'contact_phone' => $attempt->contact_phone,
+                    'contact_email' => $attempt->contact_email ?: $identity->email,
+                    'address' => implode(', ', array_filter([
+                        $attempt->address_line,
+                        $attempt->city,
+                        $attempt->province,
+                        $attempt->zip_code,
+                    ])),
+                    'applicant_type' => $attempt->applicant_type,
+                    'last_school' => $attempt->last_school_enrolled,
+                    'strand' => $attempt->strand,
+                    'gwa' => $attempt->gwa,
+                ],
+                'preferences' => $preferences,
+                'grades' => $grades,
+            ],
+        ]);
     }
 
     public function correctionForm(Request $request, AdmissionAttempt $attempt): Response|RedirectResponse
@@ -86,7 +154,7 @@ class ApplicantPortalController extends Controller
 
         if ($mode === null) {
             return redirect()
-                ->route('applicant.schedule')
+                ->route('applicant.portal')
                 ->with(
                     'status',
                     $attempt->status === AdmissionAttempt::STATUS_ACCEPTED
@@ -219,7 +287,7 @@ class ApplicantPortalController extends Controller
                 $amend->handle($attempt, $user, (int) $validated['expected_version'], $validated);
 
                 return redirect()
-                    ->route('applicant.schedule')
+                    ->route('applicant.portal')
                     ->with('status', 'Details updated. Your application is still pending review.');
             }
 
@@ -227,7 +295,7 @@ class ApplicantPortalController extends Controller
                 $resubmit->handle($attempt, $user, (int) $validated['expected_version'], $validated);
 
                 return redirect()
-                    ->route('applicant.schedule')
+                    ->route('applicant.portal')
                     ->with('status', 'Correction resubmitted. Registrar will review again.');
             }
         } catch (RuntimeException $e) {
@@ -235,7 +303,7 @@ class ApplicantPortalController extends Controller
         }
 
         return redirect()
-            ->route('applicant.schedule')
+            ->route('applicant.portal')
             ->withErrors([
                 'version' => 'After acceptance, portal edits are frozen. Ask the admissions office for an authorized change.',
             ]);

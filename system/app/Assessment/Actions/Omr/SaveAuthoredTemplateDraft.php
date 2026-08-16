@@ -73,7 +73,11 @@ final class SaveAuthoredTemplateDraft
             throw new RuntimeException('The authored template needs at least one page.');
         }
 
-        $config = $this->defaultConfig();
+        $pageDimensions = array_values((array) ($pages[0]['pageDimensions'] ?? [2060, 3144]));
+        $config = $this->defaultConfig([
+            (int) ($pageDimensions[0] ?? 2060),
+            (int) ($pageDimensions[1] ?? 3144),
+        ]);
         $configHash = hash('sha256', json_encode($config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         $templateBytes = json_encode($templateJson, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         $templateHash = hash('sha256', $templateBytes);
@@ -215,14 +219,16 @@ final class SaveAuthoredTemplateDraft
     /**
      * @return array<string, mixed>
      */
-    private function defaultConfig(): array
+    private function defaultConfig(array $pageDimensions = [2060, 3144]): array
     {
+        [$width, $height] = $pageDimensions;
+
         return [
             'dimensions' => [
-                'display_width' => 2060,
-                'display_height' => 3144,
-                'processing_width' => 2060,
-                'processing_height' => 3144,
+                'display_width' => $width,
+                'display_height' => $height,
+                'processing_width' => $width,
+                'processing_height' => $height,
             ],
             'alignment_params' => [
                 'auto_align' => true,

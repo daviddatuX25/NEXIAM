@@ -208,3 +208,29 @@ test('legal paper derives its own dimensions and page capacity', function () use
     expect($result->template['pageDimensions'])->toBe([2060, 3392])
         ->and($result->pages)->toHaveCount(1); // 101 rows still fit one legal page (28 rows/column × 4)
 });
+
+
+test('six-column compact profile fits six domains of 25 questions on one long-bond page', function () use ($solver): void {
+    $sections = array_map(
+        static fn (int $domain): array => section('AREA'.str_pad((string) $domain, 2, '0', STR_PAD_LEFT), 1, 25),
+        range(1, 6),
+    );
+
+    $result = $solver->solve(blueprint(['columns' => 6], $sections));
+    $blocks = questionBlocks($result->pages[0]);
+
+    expect($result->pages)->toHaveCount(1)
+        ->and($blocks)->toHaveCount(6)
+        ->and($result->template['bubbleDimensions'])->toBe([40, 40])
+        ->and(array_map(fn (array $block): array => $block['origin'], $blocks))->toBe([
+            [120, 940], [452, 940], [784, 940], [1116, 940], [1448, 940], [1780, 940],
+        ])
+        ->and(array_map(fn (array $block): int => $block['bubblesGap'], $blocks))->toBe([52, 52, 52, 52, 52, 52]);
+
+    $identityBlocks = array_values(array_filter($result->pages[0]['fieldBlocks'], fn (array $block): bool => $block['fieldType'] === 'QTYPE_INT'));
+    expect($identityBlocks[0]['origin'])->toBe([200, 390])
+        ->and($identityBlocks[0]['bubblesGap'])->toBe(52);
+
+    $rightmostBubble = 1780 + (3 * 52) + 40;
+    expect($rightmostBubble)->toBeLessThanOrEqual(2060 - OmrTemplateLayoutSolver::MARGIN);
+});

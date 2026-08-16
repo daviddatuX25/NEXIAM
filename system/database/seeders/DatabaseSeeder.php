@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
             IntakeGradeFieldSeeder::class,
             JourneyFixtureSeeder::class,
             OmrDemoSeeder::class,
+            AdmissionSupportDemoSeeder::class,
         ]);
 
         app(RecordAuditEvent::class)->handle('foundation.seed_applied', [

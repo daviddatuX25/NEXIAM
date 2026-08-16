@@ -3,6 +3,7 @@
   import { Input } from '@/Components/ui/input';
   import { Label } from '@/Components/ui/label';
   import { router } from '@inertiajs/svelte';
+  import { blockBounds as canonicalBlockBounds, blockValues as canonicalBlockValues, bubbleCenter, DEFAULT_BUBBLE_DIMENSIONS, isVerticalBlock, labelBaseline, mmToPx, ptToPx, visualBlockBounds } from '@/lib/omrPreviewGeometry.js';
   import { error as toastError, success as toastSuccess } from '@/lib/toast.js';
 
   let {
@@ -25,6 +26,7 @@
   let serverError = $state('');
   let locked = $state(false);
   let blockSeq = $state(0);
+  let bubbleDimensions = $state([...DEFAULT_BUBBLE_DIMENSIONS]);
 
   let overlay = $state({
     title: '',
@@ -108,8 +110,10 @@
         const labels = (spec?.fieldLabels ?? [])[0] ?? '';
         const template = /^BIRTHDATE/.test(labels) ? birthdateBlock() : applicantBlock();
         template.origin = [...(spec.origin ?? template.origin)];
+        if (spec.direction) template.direction = spec.direction;
         template.bubblesGap = Number(spec.bubblesGap ?? template.bubblesGap);
         template.labelsGap = Number(spec.labelsGap ?? template.labelsGap);
+        if (Array.isArray(spec.bubbleValues) && spec.bubbleValues.length > 0) template.bubbleValues = [...spec.bubbleValues];
         blocks.push(template);
       } else {
         const m = /^([A-Z0-9]+)_Q_(\d+)\.\.(\d+)$/.exec((spec?.fieldLabels ?? [])[0] ?? '');
@@ -125,12 +129,14 @@
           area_id: area?.id ?? null,
           area_code: prefix,
           fieldType: type,
+          direction: spec.direction ?? 'horizontal',
           prefix,
           from,
           questions,
           origin: [...(spec.origin ?? [200, 1000])],
           bubblesGap: Number(spec.bubblesGap ?? 66),
           labelsGap: Number(spec.labelsGap ?? 80),
+          ...(Array.isArray(spec.bubbleValues) && spec.bubbleValues.length > 0 ? { bubbleValues: [...spec.bubbleValues] } : {}),
         });
       }
     }
@@ -141,6 +147,7 @@
     templateCode = draft.code ?? '';
     templateName = draft.name ?? '';
     const json = draft.template_json ?? {};
+    bubbleDimensions = [...(json.bubbleDimensions ?? DEFAULT_BUBBLE_DIMENSIONS)];
     const rawPages =
       Array.isArray(json.pages) && json.pages.length > 0
         ? json.pages
@@ -186,6 +193,11 @@
     pages.push(createPage(pages[0].paper));
   }
 
+  function setPaper(value) {
+    if (locked) return;
+    pages.forEach((page) => (page.paper = value));
+  }
+
   function removePage(index) {
     if (locked || pages.length <= 1) return;
     pages.splice(index, 1);
@@ -210,22 +222,16 @@
   // not overlap. New question blocks auto-place into a v4-style 4-column
   // band; if nothing fits, the add is refused with a typed reason.
 
-  const BUBBLE = 56; // canonical bubble size emitted in template.json
   const MARGIN = 80; // renderer inset (mm-equivalent geometry units)
   const COLUMN_X = [180, 620, 1060, 1500]; // v4-compatible column origins
 
   function blockBounds(block) {
-    if (block.fieldType === 'QTYPE_INT') {
-      const cols = block.birthdate ? 6 : 10;
-      return {
-        w: cols * Number(block.labelsGap) + BUBBLE,
-        h: 10 * Number(block.bubblesGap) + BUBBLE,
-      };
-    }
-    return {
-      w: 4 * Number(block.bubblesGap) + BUBBLE,
-      h: Math.max(1, Number(block.questions)) * Number(block.labelsGap) + BUBBLE,
-    };
+    return canonicalBlockBounds(block, bubbleDimensions);
+  }
+
+  function visualBounds(block) {
+    const bounds = visualBlockBounds(block, bubbleDimensions);
+    return { block, ...bounds };
   }
 
   function rectsOverlap(a, b) {
@@ -233,21 +239,16 @@
   }
 
   function bottomLimit(paper) {
-    // The renderer reserves the bottom margin strip for the calibration bar
-    // plus, when footer text is set, a footer zone above it. Blocks must end
-    // above that so nothing collides on ANY page.
+    // The canonical solver reserves 230px for footer/calibration clearance
+    // on every page, regardless of whether optional footer text is present.
     const dims = paper?.dimensions ?? [2060, 3144];
-    const footerReserve = overlay.footer_lines.filter((l) => l.trim()).length > 0 ? 150 : 0;
-    return dims[1] - MARGIN - footerReserve;
+    return dims[1] - MARGIN - 230;
   }
 
   function pageIssues(page, paper) {
     const dims = paper?.dimensions ?? [2060, 3144];
     const issues = [];
-    const boxes = page.fieldBlocks.map((b) => {
-      const { w, h } = blockBounds(b);
-      return { block: b, x: Number(b.origin[0]), y: Number(b.origin[1]), w, h };
-    });
+    const boxes = page.fieldBlocks.map((block) => visualBounds(block));
 
     for (const box of boxes) {
       const reasons = [];
@@ -267,24 +268,27 @@
   }
 
   function placeBlock(page, block) {
-    const { w, h } = blockBounds(block);
     const dims = paperOf(page).dimensions;
     const boxes = page.fieldBlocks
       .filter((b) => b !== block)
-      .map((b) => {
-        const { w: bw, h: bh } = blockBounds(b);
-        return { x: Number(b.origin[0]), y: Number(b.origin[1]), w: bw, h: bh };
-      });
+      .map((b) => visualBounds(b));
 
     const candidateY = [900];
-    for (const b of boxes) candidateY.push(Math.round(b.y + b.h + 120));
+    for (const existing of page.fieldBlocks) {
+      const bubble = blockBounds(existing);
+      candidateY.push(Math.round(Number(existing.origin[1]) + bubble.h + 120));
+    }
 
     for (const x of COLUMN_X) {
       for (const y of candidateY) {
-        const box = { x, y, w, h };
-        const outOfBounds = x < MARGIN || y < MARGIN || x + w > dims[0] - MARGIN || y + h > bottomLimit(paperOf(page));
+        const candidate = visualBounds({ ...block, origin: [x, y] });
+        const outOfBounds =
+          candidate.x < MARGIN
+          || candidate.y < MARGIN
+          || candidate.x + candidate.w > dims[0] - MARGIN
+          || candidate.y + candidate.h > bottomLimit(paperOf(page));
         if (outOfBounds) continue;
-        const collision = boxes.some((b) => rectsOverlap(box, b));
+        const collision = boxes.some((existing) => rectsOverlap(candidate, existing));
         if (!collision) return [x, y];
       }
     }
@@ -349,7 +353,7 @@
   function assembleTemplateJson() {
     const topLevelPageDimensions = paperOf(pages[0]).dimensions;
     return {
-      bubbleDimensions: [56, 56],
+      bubbleDimensions: [...bubbleDimensions],
       pageDimensions: topLevelPageDimensions,
       pages: pages.map((page, index) => {
         const fieldBlocks = {};
@@ -358,11 +362,12 @@
           const label = blockLabel(block);
           fieldBlocks[label] = {
             fieldType: block.fieldType,
-            ...(block.fieldType === 'QTYPE_INT' ? {} : { direction: 'horizontal' }),
+            direction: block.direction ?? (block.fieldType === 'QTYPE_INT' ? 'vertical' : 'horizontal'),
             fieldLabels: [isApplicant ? 'APPLICANT_NUMBER_1..10' : label],
             origin: [Number(block.origin[0]), Number(block.origin[1])],
             bubblesGap: Number(block.bubblesGap),
             labelsGap: Number(block.labelsGap),
+            ...(Array.isArray(block.bubbleValues) ? { bubbleValues: [...block.bubbleValues] } : {}),
           };
         }
         return {
@@ -377,10 +382,10 @@
 
   function assembleOverlay() {
     return {
-      title: overlay.title,
-      header_lines: overlay.header_lines,
-      footer_lines: overlay.footer_lines,
-      name_box_label: overlay.name_box_label,
+      title: overlay.title.trim(),
+      header_lines: nonEmptyLines(overlay.header_lines),
+      footer_lines: nonEmptyLines(overlay.footer_lines),
+      name_box_label: overlay.name_box_label.trim(),
       per_page: overlay.per_page.map((p) => ({ page_no: p.page_no, note: p.note })),
     };
   }
@@ -394,6 +399,12 @@
     }
     if (!templateName.trim()) {
       localError = 'Template name is required.';
+      return;
+    }
+    const layoutIssues = pages.flatMap((page, pageIndex) => pageIssues(page, paperOf(page)).map((issue) => ({ ...issue, pageIndex })));
+    if (layoutIssues.length > 0) {
+      const first = layoutIssues[0];
+      localError = `Page ${first.pageIndex + 1}: ${first.reasons[0]}. Adjust the block origin or spacing before saving.`;
       return;
     }
     saving = true;
@@ -464,6 +475,75 @@
       previewing = false;
     }
   }
+  function nonEmptyLines(lines) {
+    return lines.filter((line) => String(line ?? '').trim() !== '');
+  }
+
+  function overlayMetrics(page, pageIndex, paper) {
+    const pageHeightMm = (paper.dimensions[1] * 25.4) / 242;
+    const insetMm = (80 / 242) * 25.4;
+    const headerLines = nonEmptyLines(overlay.header_lines);
+    const note = pageNote(pageIndex).trim();
+    const pageLabelTopMm = 9 + headerLines.length * 5;
+    const noteTopMm = pageLabelTopMm + 5;
+    const afterHeaderMm = note ? noteTopMm + 5 : noteTopMm;
+    const firstBlockTopMm = page.fieldBlocks.reduce(
+      (min, block) => Math.min(min, (visualBounds(block).y * 25.4) / 242),
+      Number.POSITIVE_INFINITY,
+    );
+    const nameBoxBottomMm = Number.isFinite(firstBlockTopMm) ? Math.max(0, firstBlockTopMm - (8 / 242) * 25.4) : null;
+    const nameBoxTopCandidateMm = nameBoxBottomMm === null ? null : nameBoxBottomMm - 8;
+    const topPlacementSafe = nameBoxTopCandidateMm !== null && nameBoxTopCandidateMm >= afterHeaderMm + 1;
+    let nameBoxTopMm = nameBoxTopCandidateMm;
+    let nameBoxX = mmToPx(insetMm + 2);
+    let nameBoxWidth = mmToPx(80);
+
+    // Match BundleRenderer: compact identity bands and full headers use the
+    // unused upper-right area instead of hiding the manual fallback field.
+    if (!topPlacementSafe || bubbleDimensions[0] <= 40) {
+      nameBoxWidth = mmToPx(50);
+      nameBoxX = mmToPx((paper.dimensions[0] * 25.4) / 242 - insetMm - 50 - 2);
+      nameBoxTopMm = Math.max(afterHeaderMm + 2, nameBoxTopCandidateMm ?? insetMm + 2);
+    }
+
+    const footerAnchorMm = pageHeightMm - insetMm - 6;
+    const footerLines = nonEmptyLines(overlay.footer_lines);
+    const textY = (topMm, points) => mmToPx(topMm) + ptToPx(points) * 0.82;
+    const frameTopMm = Math.max(
+      insetMm,
+      Math.min(
+        Math.max(insetMm, afterHeaderMm - 2),
+        Number.isFinite(firstBlockTopMm) ? firstBlockTopMm - 0.5 : Number.POSITIVE_INFINITY,
+      ),
+    );
+    const frameBottomMm = pageHeightMm - insetMm;
+
+    return {
+      title: overlay.title.trim() || 'SYNTHETIC NEXIAM OMR ANSWER SHEET',
+      headerLines,
+      note,
+      pageLabelTopMm,
+      frameTopY: mmToPx(frameTopMm),
+      frameBottomY: mmToPx(frameBottomMm),
+      titleY: textY(4, 11),
+      headerY: headerLines.map((_, index) => textY(9 + index * 5, 9)),
+      pageLabelY: textY(pageLabelTopMm, 9),
+      noteY: note ? textY(noteTopMm, 9) : null,
+      nameBox: {
+        label: overlay.name_box_label.trim() || 'NAME (PRINT):',
+        x: nameBoxX,
+        labelY: textY(nameBoxTopMm, 8),
+        y: mmToPx(nameBoxTopMm + 3.5),
+        width: nameBoxWidth,
+        height: mmToPx(8),
+      },
+      footerY: footerLines.map((_, index) => textY(footerAnchorMm - (index + 1) * 5, 8)),
+      footerLines,
+      calibrationY: textY(pageHeightMm - insetMm + 1.5, 8),
+      calibrationBarY: mmToPx(pageHeightMm - insetMm + 5.2),
+      calibrationBarX: (paper.dimensions[0] - mmToPx(100)) / 2,
+    };
+  }
 
   const numberInput =
     'w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
@@ -527,7 +607,7 @@
                   <h3 class="font-semibold">Page {pageIndex + 1}</h3>
                   <div class="space-y-1">
                     <Label for="paper-{pageIndex}" class="text-xs text-muted-foreground">Paper</Label>
-                    <select id="paper-{pageIndex}" class={selectInput} bind:value={page.paper} disabled={locked}>
+                    <select id="paper-{pageIndex}" class={selectInput} value={pages[0].paper} onchange={(e) => setPaper(e.currentTarget.value)} disabled={locked}>
                       {#each paper_options as option (option.value)}
                         <option value={option.value}>{option.label}</option>
                       {/each}
@@ -766,7 +846,7 @@
           <h2 class="text-lg font-semibold">Preview</h2>
           {#each pages as page, pageIndex (pageIndex)}
             {@const paper = paperOf(page)}
-            {@const previewTitle = (overlay.title || templateName || 'Answer sheet').toUpperCase()}
+            {@const chrome = overlayMetrics(page, pageIndex, paper)}
             {@const issues = pageIssues(page, paper)}
             <div class="rounded-lg border p-3">
               <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -783,7 +863,7 @@
               </div>
               <svg
                 viewBox={`0 0 ${paper.dimensions[0]} ${paper.dimensions[1]}`}
-                class="w-full rounded border bg-white dark:bg-slate-950/60"
+                class="w-full rounded border bg-white text-slate-900 dark:bg-slate-950/60 dark:text-slate-100"
               >
                 <rect
                   x="0"
@@ -796,45 +876,60 @@
                 />
                 <rect
                   x={MARGIN}
-                  y={MARGIN}
+                  y={chrome.frameTopY}
                   width={paper.dimensions[0] - 2 * MARGIN}
-                  height={paper.dimensions[1] - 2 * MARGIN}
+                  height={chrome.frameBottomY - chrome.frameTopY}
                   fill="none"
                   stroke="currentColor"
-                  stroke-opacity="0.2"
-                  stroke-dasharray="14 10"
+                  stroke-width={mmToPx(0.7)}
+                  stroke-opacity="0.65"
                 />
-                <text
-                  x={paper.dimensions[0] / 2}
-                  y="110"
-                  font-size="54"
-                  text-anchor="middle"
-                  class="fill-muted-foreground"
-                >
-                  {previewTitle}
+                <text x={paper.dimensions[0] / 2} y={chrome.titleY} font-size={ptToPx(11)} font-weight="bold" text-anchor="middle">
+                  {chrome.title}
                 </text>
-                {#each overlay.header_lines.filter((l) => l.trim()) as line, i (i)}
-                  <text
-                    x={paper.dimensions[0] / 2}
-                    y={170 + i * 46}
-                    font-size="30"
-                    text-anchor="middle"
-                    class="fill-muted-foreground"
-                  >
+                {#each chrome.headerLines as line, i (i)}
+                  <text x={paper.dimensions[0] / 2} y={chrome.headerY[i]} font-size={ptToPx(9)} font-weight="bold" text-anchor="middle">
                     {line}
                   </text>
                 {/each}
+                <text x={paper.dimensions[0] / 2} y={chrome.pageLabelY} font-size={ptToPx(9)} font-weight="bold" text-anchor="middle">
+                  PAGE {pageIndex + 1} OF {pages.length}
+                </text>
+                {#if chrome.note}
+                  <text x={paper.dimensions[0] / 2} y={chrome.noteY} font-size={ptToPx(9)} text-anchor="middle">
+                    {chrome.note}
+                  </text>
+                {/if}
+                {#if chrome.nameBox}
+                  <text x={chrome.nameBox.x} y={chrome.nameBox.labelY} font-size={ptToPx(8)} font-weight="bold">
+                    {chrome.nameBox.label}
+                  </text>
+                  <rect
+                    x={chrome.nameBox.x}
+                    y={chrome.nameBox.y}
+                    width={chrome.nameBox.width}
+                    height={chrome.nameBox.height}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width={mmToPx(0.35)}
+                  />
+                {/if}
                 {#each page.fieldBlocks as block (block.key)}
-                  {@const ox = block.origin[0]}
-                  {@const oy = block.origin[1]}
+                  {@const ox = Number(block.origin[0])}
+                  {@const oy = Number(block.origin[1])}
                   {@const bb = blockBounds(block)}
-                  {@const issue = issues.find((i) => i.block === block)}
+                  {@const visual = visualBounds(block)}
+                  {@const values = canonicalBlockValues(block)}
+                  {@const vertical = isVerticalBlock(block)}
+                  {@const columns = vertical ? (block.fieldType === 'QTYPE_INT' ? (block.birthdate ? 6 : 10) : Math.max(1, Number(block.questions ?? 0))) : values.length}
+                  {@const rows = vertical ? values.length : Math.max(0, Number(block.questions ?? 0))}
+                  {@const issue = issues.find((item) => item.block === block)}
                   {#if issue}
                     <rect
-                      x={ox - 8}
-                      y={oy - 96}
-                      width={bb.w + 16}
-                      height={bb.h + 104}
+                      x={visual.x - 8}
+                      y={visual.y - 8}
+                      width={visual.w + 16}
+                      height={visual.h + 16}
                       fill="none"
                       stroke="red"
                       stroke-width="6"
@@ -842,51 +937,51 @@
                       rx="12"
                     />
                   {/if}
-                  {#if block.fieldType === 'QTYPE_INT'}
-                    {@const cols = block.birthdate ? 6 : 10}
-                    <text x={ox} y={oy - 84} font-size="30" class="fill-muted-foreground">{blockLabel(block)}</text>
-                    {#each Array(cols) as _, c}
-                      <text x={ox + c * block.labelsGap} y={oy - 34} font-size="30" text-anchor="middle" class="fill-muted-foreground">
-                        {c + 1}
-                      </text>
+                  {#each Array(columns) as _, c}
+                    {@const center = bubbleCenter(block, 0, c, bubbleDimensions)}
+                    <text x={center.x} y={labelBaseline(oy)} font-size={ptToPx(9)} text-anchor="middle">
+                      {vertical ? (block.fieldType === 'QTYPE_INT' ? c + 1 : Number(block.from ?? 1) + c) : values[c]}
+                    </text>
+                  {/each}
+                  {#each Array(rows) as _, r}
+                    {@const rowCenter = bubbleCenter(block, r, 0, bubbleDimensions)}
+                    <text
+                      x={ox - (vertical ? 3 : 3.5)}
+                      y={rowCenter.y + ptToPx(8) * 0.35}
+                      font-size={ptToPx(8)}
+                      text-anchor="end"
+                    >
+                      {vertical ? values[r] : Number(block.from ?? 1) + r}
+                    </text>
+                    {#each Array(columns) as _, c}
+                      {@const center = bubbleCenter(block, r, c, bubbleDimensions)}
+                      <ellipse
+                        cx={center.x}
+                        cy={center.y}
+                        rx={bubbleDimensions[0] / 2}
+                        ry={bubbleDimensions[1] / 2}
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width={mmToPx(0.35)}
+                      />
                     {/each}
-                    {#each Array(10) as _, r}
-                      <text x={ox - 26} y={oy + r * block.bubblesGap + 10} font-size="28" text-anchor="end" class="fill-muted-foreground">
-                        {r}
-                      </text>
-                      {#each Array(cols) as _, c}
-                        <circle
-                          cx={ox + c * block.labelsGap}
-                          cy={oy + r * block.bubblesGap}
-                          r="16"
-                          fill="currentColor"
-                          opacity="0.55"
-                        />
-                      {/each}
-                    {/each}
-                  {:else}
-                    <text x={ox} y={oy - 84} font-size="30" class="fill-muted-foreground">{blockLabel(block)}</text>
-                    {#each ['A', 'B', 'C', 'D'] as letter, c (letter)}
-                      <text x={ox + c * block.bubblesGap} y={oy - 34} font-size="30" text-anchor="middle" class="fill-muted-foreground">
-                        {letter}
-                      </text>
-                    {/each}
-                    {#each Array(Math.max(0, block.questions)) as _, r}
-                      <text x={ox - 26} y={oy + r * block.labelsGap + 10} font-size="28" text-anchor="end" class="fill-muted-foreground">
-                        {r + 1}
-                      </text>
-                      {#each [0, 1, 2, 3] as c}
-                        <circle
-                          cx={ox + c * block.bubblesGap}
-                          cy={oy + r * block.labelsGap}
-                          r="16"
-                          fill="currentColor"
-                          opacity="0.55"
-                        />
-                      {/each}
-                    {/each}
-                  {/if}
+                  {/each}
                 {/each}
+                {#each chrome.footerLines as line, i (i)}
+                  <text x={paper.dimensions[0] / 2} y={chrome.footerY[i]} font-size={ptToPx(8)} text-anchor="middle">
+                    {line}
+                  </text>
+                {/each}
+                <text x={paper.dimensions[0] / 2} y={chrome.calibrationY} font-size={ptToPx(8)} text-anchor="middle">
+                  Print at 100% scale · do NOT fit to page · calibration bar = 100mm
+                </text>
+                <rect
+                  x={chrome.calibrationBarX}
+                  y={chrome.calibrationBarY}
+                  width={mmToPx(100)}
+                  height={mmToPx(2.5)}
+                  fill="currentColor"
+                />
               </svg>
             </div>
           {/each}
