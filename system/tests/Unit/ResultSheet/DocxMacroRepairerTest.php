@@ -1,0 +1,51 @@
+<?php
+
+use App\ResultSheet\Support\DocxMacroRepairer;
+use App\ResultSheet\Support\DocxTextExtractor;
+
+function runXml(string ...$texts): string
+{
+    $runs = '';
+
+    foreach ($texts as $text) {
+        $runs .= '<w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">'.$text.'</w:t></w:r>';
+    }
+
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        .'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        .'<w:body><w:p>'.$runs.'</w:p></w:body></w:document>';
+}
+
+test('repair merges a macro fragmented across adjacent runs', function (): void {
+    $xml = runXml('Hello {{appli', 'cant_name}}!');
+
+    $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
+
+    expect($repaired)->not->toContain('</w:r><w:r>')
+        ->and($repaired)->toContain('{{applicant_name}}');
+});
+
+test('extractor sees a whole macro after repair', function (): void {
+    $xml = runXml('{{applicant_', 'reference}} and {{scores_', 'rows}}');
+    $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
+
+    // Round-trip through a real docx container to exercise the zip path.
+    $temp = tempnam(sys_get_temp_dir(), 'repair_').'.docx';
+    $zip = new ZipArchive;
+    $zip->open($temp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFromString('word/document.xml', $repaired);
+    $zip->close();
+
+    $placeholders = app(DocxTextExtractor::class)->placeholders($temp);
+    @unlink($temp);
+
+    expect($placeholders)->toContain('applicant_reference')
+        ->and($placeholders)->toContain('scores_rows');
+});
+
+test('repair strips xml tags still inside macros as a fallback', function (): void {
+    $xml = runXml('{{applicant', '<w:r><w:t>_name</w:t></w:r>}}');
+    $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
+
+    expect($repaired)->toContain('{{applicant_name}}');
+});

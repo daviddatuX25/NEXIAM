@@ -75,7 +75,8 @@ final class ResultSheetPlaceholderService
             }
 
             foreach (TemplateFieldAliasCatalog::domainAliases() as $alias => $areaCode) {
-                $score = $areaCode === null ? null : $scoresBySlug[$areas[$areaCode] ?? ''] ?? null;
+                $areaName = $areaCode === null ? null : ($areas[$areaCode] ?? null);
+                $score = $areaName === null ? null : ($scoresBySlug[$this->areaSlug($areaName)] ?? null);
 
                 if ($alias === 'general_ability') {
                     $replacements[$alias.$suffix] = $replacements['overall_pct'.$suffix];
@@ -86,12 +87,14 @@ final class ResultSheetPlaceholderService
                 $value = $score['converted'] ?? '';
                 $replacements[$alias.$suffix] = $value;
                 $replacements[$alias.'_rating'.$suffix] = $score['rating'] ?? $value;
+                $replacements[$alias.'_raw'.$suffix] = $score['raw'] ?? '';
+                $replacements[$alias.'_pct'.$suffix] = $score['pct'] ?? '';
             }
 
             // Course recommendation checkmarks.
             $recommendedCode = strtoupper((string) ($data['recommended_course_code'] ?? ''));
             foreach (Program::query()->where('is_active', true)->get(['code']) as $program) {
-                $checkKey = Str::slug($program->code, '_').'_check'.$suffix;
+                $checkKey = strtoupper($program->code).'_check'.$suffix;
                 $replacements[$checkKey] = $recommendedCode === strtoupper($program->code) ? '✔' : '';
             }
         }

@@ -18,12 +18,12 @@
 
 ## 3. Data provider and placeholder engine (renderer seam)
 
-- [ ] 3.1 RED: unit test — `ResultSheetDataProvider` maps a released attempt to applicant data with per-area raw + frozen `converted_score` ratings.
-- [ ] 3.2 Data provider implementation (finalized GradingSession scores → ScoreRecord; aliases resolved via catalog).
-- [ ] 3.3 RED: unit test — legacy placeholders resolve: `{{verbal_aptitude}}`, `{{scores_rows}}`, `_2` dual-slot, course checkmarks, institution/personnel.
-- [ ] 3.4 `ResultSheetPlaceholderService::buildReplacements()` + `buildDocxReplacements()` + `buildScoresRows()`.
-- [ ] 3.5 RED: unit test — fragmented DOCX macro repaired and filled.
-- [ ] 3.6 `DocxMacroRepairer` port (merge adjacent runs, strip XML from macros).
+- [x] 3.1 RED: unit test — `ResultSheetDataProvider` maps a released attempt to applicant data with per-area raw + frozen `converted_score` ratings.
+- [x] 3.2 Data provider implementation (finalized GradingSession scores → ScoreRecord; aliases resolved via catalog).
+- [x] 3.3 RED: unit test — legacy placeholders resolve: `{{verbal_aptitude}}`, `{{scores_rows}}`, `_2` dual-slot, course checkmarks, institution/personnel.
+- [x] 3.4 `ResultSheetPlaceholderService::buildReplacements()` + `buildDocxReplacements()` + `buildScoresRows()`.
+- [x] 3.5 RED: unit test — fragmented DOCX macro repaired and filled.
+- [x] 3.6 `DocxMacroRepairer` port (merge adjacent runs, strip XML from macros).
 
 ## 4. Result-sheet renderer (renderer seam)
 
