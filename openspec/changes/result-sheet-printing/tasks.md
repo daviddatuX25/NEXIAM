@@ -60,6 +60,6 @@
 
 ## 8. Seeds, HANDOFF, evidence
 
-- [ ] 8.1 `ResultSheetTemplateSeeder` — active HTML template + SecureCAT DOCX seed asset; `config/seed.php` wiring.
-- [ ] 8.2 HANDOFF.md — staff credentials, seed/reset commands, expected state, feature URLs.
-- [ ] 8.3 Full suite + OpenSpec strict validation; master checkpoint + crosswalk update in this worktree.
+- [x] 8.1 `ResultSheetTemplateSeeder` — active HTML template + SecureCAT DOCX seed asset; `config/seed.php` wiring.
+- [x] 8.2 HANDOFF.md — staff credentials, seed/reset commands, expected state, feature URLs.
+- [x] 8.3 Full suite + OpenSpec strict validation; master checkpoint + crosswalk update in this worktree.
