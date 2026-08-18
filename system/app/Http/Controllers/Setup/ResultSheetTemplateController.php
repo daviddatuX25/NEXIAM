@@ -6,14 +6,22 @@ use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Setup\Concerns\HasSetupCapabilities;
+use App\Http\Requests\ResultSheet\AnalyzeResultSheetTemplateRequest;
+use App\Http\Requests\ResultSheet\PreviewResultSheetTemplateRequest;
 use App\Http\Requests\ResultSheet\StoreResultSheetTemplateRequest;
 use App\Http\Requests\ResultSheet\UpdateResultSheetTemplateRequest;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\ResultSheet\Actions\ActivateResultSheetTemplate;
 use App\ResultSheet\Actions\DeactivateResultSheetTemplate;
 use App\ResultSheet\Actions\SaveResultSheetTemplate;
+use App\ResultSheet\Rendering\ResultSheetCssService;
+use App\ResultSheet\Support\DocxTextExtractor;
+use App\ResultSheet\Support\ResultSheetPlaceholderService;
+use App\ResultSheet\Support\ResultSheetTemplateAnalyzer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -115,5 +123,77 @@ class ResultSheetTemplateController extends Controller
         $deactivate->handle($resultTemplate, $request->user());
 
         return back()->with('status', 'Template deactivated.');
+    }
+
+    public function validateDocument(
+        AnalyzeResultSheetTemplateRequest $request,
+        CapabilityAuthorizer $authorizer,
+        ResultSheetTemplateAnalyzer $analyzer,
+    ): JsonResponse {
+        $this->requireAssessment($authorizer, $request);
+
+        $source = [];
+
+        if ($request->hasFile('document')) {
+            $path = (string) $request->file('document')->getRealPath();
+            $source['document_path'] = $path;
+        } elseif ($request->filled('content')) {
+            $source['content'] = (string) $request->string('content');
+        }
+
+        $result = $analyzer->analyze($source);
+
+        return response()->json($result);
+    }
+
+    public function preview(
+        PreviewResultSheetTemplateRequest $request,
+        CapabilityAuthorizer $authorizer,
+        ResultSheetPlaceholderService $placeholders,
+        ResultSheetCssService $css,
+        DocxTextExtractor $extractor,
+    ): JsonResponse {
+        $this->requireAssessment($authorizer, $request);
+
+        $mode = $request->string('mode')->toString();
+        $paperSize = $request->string('paper_size', 'a4')->toString();
+        $orientation = $request->string('orientation', 'portrait')->toString();
+        $replacements = $placeholders->buildReplacements([], useSampleData: true);
+
+        if ($mode === ResultSheetTemplate::MODE_DOCX && $request->hasFile('document')) {
+            $file = $request->file('document');
+            $temp = (string) $file->getRealPath();
+            $extension = strtolower((string) $file->getClientOriginalExtension());
+
+            $text = $extension === 'odt'
+                ? $this->odtPreviewText($temp)
+                : $extractor->text($temp);
+
+            $html = $placeholders->renderRaw('<pre class="docx-preview">'.e($text).'</pre>', $replacements);
+
+            return response()->json(['html' => $css->wrapForPdf($html, $paperSize, $orientation)]);
+        }
+
+        $content = (string) $request->string('content');
+        $html = $placeholders->renderRaw($content, $replacements);
+
+        return response()->json(['html' => $css->wrapForPdf($html, $paperSize, $orientation)]);
+    }
+
+    private function odtPreviewText(string $path): string
+    {
+        $zip = new \ZipArchive;
+
+        if ($zip->open($path) !== true) {
+            return '';
+        }
+
+        try {
+            $content = $zip->getFromName('content.xml') ?? '';
+        } finally {
+            $zip->close();
+        }
+
+        return html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 }

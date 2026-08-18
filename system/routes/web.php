@@ -149,6 +149,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/setup/result-templates/{resultTemplate}/deactivate', [ResultSheetTemplateController::class, 'deactivate'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
         ->name('setup.result-templates.deactivate');
+    Route::post('/setup/result-templates/validate-document', [ResultSheetTemplateController::class, 'validateDocument'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.validate-document');
+    Route::post('/setup/result-templates/preview', [ResultSheetTemplateController::class, 'preview'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.preview');
     Route::post('/setup/grades', [IntakeGradeFieldController::class, 'storeGrade'])->name('setup.grades.store');
     Route::put('/setup/grades/{field}', [IntakeGradeFieldController::class, 'updateGrade'])->name('setup.grades.update');
     Route::get('/setup/aptitude', [AptitudeAreaController::class, 'aptitude'])->name('setup.aptitude');

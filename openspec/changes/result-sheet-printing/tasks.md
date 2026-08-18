@@ -11,10 +11,10 @@
 
 ## 2. Analyzer, alias catalog, preview (HTTP seam)
 
-- [ ] 2.1 RED: feature test — validate-document returns found/missing/extra placeholder groups.
-- [ ] 2.2 `ResultSheetTemplateAnalyzer` + `TemplateFieldAliasCatalog` (legacy names → area codes) + `AnalyzeResultSheetTemplateRequest` + route.
-- [ ] 2.3 RED: feature test — preview renders sample-filled markup at configured paper width for HTML and uploaded DOCX.
-- [ ] 2.4 `ResultSheetPlaceholderService::sampleData()` + preview path (server-side render, no queue).
+- [x] 2.1 RED: feature test — validate-document returns found/missing/extra placeholder groups.
+- [x] 2.2 `ResultSheetTemplateAnalyzer` + `TemplateFieldAliasCatalog` (legacy names → area codes) + `AnalyzeResultSheetTemplateRequest` + route.
+- [x] 2.3 RED: feature test — preview renders sample-filled markup at configured paper width for HTML and uploaded DOCX.
+- [x] 2.4 `ResultSheetPlaceholderService::sampleData()` + preview path (server-side render, no queue).
 
 ## 3. Data provider and placeholder engine (renderer seam)
 
