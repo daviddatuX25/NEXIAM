@@ -29,6 +29,7 @@ FROM php:8.4-cli-bookworm
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl libpq-dev libsqlite3-dev libzip-dev procps unzip \
     && docker-php-ext-install pcntl pdo_pgsql pdo_sqlite sockets zip \
+    && apt-get install -y --no-install-recommends libreoffice-writer-nogui poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html

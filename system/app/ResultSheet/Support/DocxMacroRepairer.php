@@ -2,81 +2,119 @@
 
 namespace App\ResultSheet\Support;
 
+use DOMDocument;
+use DOMXPath;
+
 /**
  * Repairs fragmented `{{...}}` macros in DOCX XML before placeholder
- * substitution (legacy getRepairedTemplate behavior): adjacent runs sharing
- * identical formatting are merged so a macro split across runs reassembles,
- * then any leftover markup inside a macro is stripped as a fallback.
+ * substitution (legacy getRepairedTemplate behavior). Unlike a string
+ * run-merge, this splices only the <w:t> text nodes: when a macro spans
+ * several runs, the first text node receives the whole macro and the middle
+ * nodes are emptied — document structure (tables, text boxes, drawings) is
+ * never touched, so LibreOffice always loads the result.
  */
 final class DocxMacroRepairer
 {
+    private const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
     public function repairXml(string $xml): string
     {
-        $xml = $this->mergeAdjacentRuns($xml);
+        $xml = $this->mergeMacroRuns($xml);
 
         return $this->stripXmlFromMacros($xml);
     }
 
-    /**
-     * Merge consecutive <w:r> runs inside each paragraph that share the same
-     * run properties, concatenating their <w:t> contents into the first run.
-     */
-    private function mergeAdjacentRuns(string $xml): string
+    private function mergeMacroRuns(string $xml): string
     {
-        return preg_replace_callback(
-            '#<w:p(?:\s[^>]*)?>.*?</w:p>#s',
-            function (array $paragraph): string {
-                $body = $paragraph[0];
+        libxml_use_internal_errors(true);
 
-                if (! preg_match_all('#<w:r>.*?</w:r>#s', $body, $matches)) {
-                    return $body;
+        $doc = new DOMDocument;
+
+        if (! $doc->loadXML($xml)) {
+            libxml_clear_errors();
+
+            return $xml;
+        }
+
+        $xpath = new DOMXPath($doc);
+        $xpath->registerNamespace('w', self::W_NS);
+
+        $changed = false;
+
+        foreach ($xpath->query('//w:p') as $paragraph) {
+            $textNodes = [];
+            $offsets = [];
+            $combined = '';
+
+            foreach ($xpath->query('./w:r/w:t', $paragraph) as $textNode) {
+                $offsets[] = strlen($combined);
+                $textNodes[] = $textNode;
+                $combined .= $textNode->nodeValue;
+            }
+
+            if (count($textNodes) < 2) {
+                continue;
+            }
+
+            if (! preg_match_all('/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/', $combined, $matches, PREG_OFFSET_CAPTURE)) {
+                continue;
+            }
+
+            foreach ($matches[0] as [$macro, $start]) {
+                $end = $start + strlen($macro);
+                $startNode = $this->nodeIndexAt($offsets, $start);
+                $endNode = $this->nodeIndexAt($offsets, $end - 1);
+
+                if ($startNode === $endNode) {
+                    continue; // macro already intact within one run
                 }
 
-                $runs = $matches[0];
-                $out = '';
-                $cursor = 0;
-                $buffer = null; // ['rpr' => string, 'text' => string]
+                $localStart = $start - $offsets[$startNode];
+                $localEnd = $end - $offsets[$endNode];
 
-                foreach ($runs as $run) {
-                    $pos = strpos($body, $run, $cursor);
-                    $out .= substr($body, $cursor, $pos - $cursor);
-                    $cursor = $pos + strlen($run);
+                $first = $textNodes[$startNode];
+                $first->nodeValue = substr((string) $first->nodeValue, 0, $localStart).$macro;
 
-                    preg_match('#<w:rPr>.*?</w:rPr>#s', $run, $rpr);
-                    preg_match('#<w:t[^>]*>(.*?)</w:t>#s', $run, $text);
-
-                    $rprKey = $rpr[0] ?? '';
-                    $textValue = $text[1] ?? '';
-
-                    if ($buffer !== null && $buffer['rpr'] === $rprKey) {
-                        $buffer['text'] .= $textValue;
-
-                        continue;
-                    }
-
-                    if ($buffer !== null) {
-                        $out .= $this->buildRun($buffer);
-                    }
-
-                    $buffer = ['rpr' => $rprKey, 'text' => $textValue];
+                for ($k = $startNode + 1; $k < $endNode; $k++) {
+                    $textNodes[$k]->nodeValue = '';
                 }
 
-                if ($buffer !== null) {
-                    $out .= $this->buildRun($buffer);
-                }
+                $last = $textNodes[$endNode];
+                $last->nodeValue = substr((string) $last->nodeValue, $localEnd);
 
-                return $out.substr($body, $cursor);
-            },
-            $xml,
-        ) ?? $xml;
+                $changed = true;
+            }
+        }
+
+        if (! $changed) {
+            libxml_clear_errors();
+
+            return $xml;
+        }
+
+        libxml_clear_errors();
+
+        $result = $doc->saveXML();
+
+        return $result === false ? $xml : $result;
     }
 
     /**
-     * @param  array{rpr: string, text: string}  $buffer
+     * @param  list<int>  $offsets
      */
-    private function buildRun(array $buffer): string
+    private function nodeIndexAt(array $offsets, int $position): int
     {
-        return '<w:r>'.$buffer['rpr'].'<w:t xml:space="preserve">'.$buffer['text'].'</w:t></w:r>';
+        $index = 0;
+
+        foreach ($offsets as $i => $offset) {
+            if ($offset <= $position) {
+                $index = $i;
+            } else {
+                break;
+            }
+        }
+
+        return $index;
     }
 
     /**

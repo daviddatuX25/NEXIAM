@@ -21,15 +21,16 @@ test('repair merges a macro fragmented across adjacent runs', function (): void 
 
     $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
 
-    expect($repaired)->not->toContain('</w:r><w:r>')
-        ->and($repaired)->toContain('{{applicant_name}}');
+    preg_match_all('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', $repaired, $matches);
+
+    expect($matches[1] ?? [])->toContain('applicant_name')
+        ->and($repaired)->not->toContain('{{appli</w:t>');
 });
 
 test('extractor sees a whole macro after repair', function (): void {
     $xml = runXml('{{applicant_', 'reference}} and {{scores_', 'rows}}');
     $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
 
-    // Round-trip through a real docx container to exercise the zip path.
     $temp = tempnam(sys_get_temp_dir(), 'repair_').'.docx';
     $zip = new ZipArchive;
     $zip->open($temp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
@@ -48,4 +49,23 @@ test('repair strips xml tags still inside macros as a fallback', function (): vo
     $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
 
     expect($repaired)->toContain('{{applicant_name}}');
+});
+
+test('repair preserves text-box structure inside paragraphs', function (): void {
+    $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        .'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        .'<w:body><w:p><w:r><w:t xml:space="preserve">A {{ap'
+        .'plicant_name}}</w:t></w:r>'
+        .'<w:r><w:t xml:space="preserve">tail</w:t></w:r></w:p>'
+        .'<w:p><w:r><w:t xml:space="preserve">outside</w:t></w:r></w:p></w:body></w:document>';
+
+    $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
+
+    // Must remain well-formed XML with all runs intact.
+    libxml_use_internal_errors(true);
+    $ok = simplexml_load_string($repaired);
+    expect($ok)->not->toBeFalse()
+        ->and($repaired)->toContain('{{applicant_name}}')
+        ->and(substr_count($repaired, '<w:r>'))->toBe(3)
+        ->and(substr_count($repaired, '</w:r>'))->toBe(3);
 });

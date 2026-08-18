@@ -27,11 +27,11 @@
 
 ## 4. Result-sheet renderer (renderer seam)
 
-- [ ] 4.1 RED: unit test — HTML template renders non-empty PDF bytes (`%PDF`) with watermark and paper size through `PrintRenderer`.
-- [ ] 4.2 `ResultSheetRenderer` (HTML path: placeholder fill + wrap CSS + DomPDF).
-- [ ] 4.3 RED: unit test — DOCX template fills and converts through `LibreOfficeConverter` (fake-backed in unit tests; real binary guarded by `isAvailable()`).
-- [ ] 4.4 `LibreOfficeConverter` port (chunked headless convert + pdfunite/FPDI merge) + `config/result-sheet.php` + `phpoffice/phpword` + `setasign/fpdi` deps + LibreOffice in Docker images.
-- [ ] 4.5 RED: unit test — dual-slot (crosswise) render pairs two applicants on one sheet.
+- [x] 4.1 RED: unit test — HTML template renders non-empty PDF bytes (`%PDF`) with watermark and paper size through `PrintRenderer`.
+- [x] 4.2 `ResultSheetRenderer` (HTML path: placeholder fill + wrap CSS + DomPDF).
+- [x] 4.3 RED: unit test — DOCX template fills and converts through `LibreOfficeConverter` (fake-backed in unit tests; real binary guarded by `isAvailable()`).
+- [x] 4.4 `LibreOfficeConverter` port (chunked headless convert + pdfunite/FPDI merge) + `config/result-sheet.php` + `phpoffice/phpword` + `setasign/fpdi` deps + LibreOffice in Docker images.
+- [x] 4.5 RED: unit test — dual-slot (crosswise) render pairs two applicants on one sheet.
 
 ## 5. Queued print jobs — single + bulk (action/HTTP seam)
 
