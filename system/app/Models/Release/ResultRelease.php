@@ -31,6 +31,7 @@ class ResultRelease extends Model
             'is_current' => 'boolean',
             'released_at' => 'datetime',
             'unreleased_at' => 'datetime',
+            'result_printed_at' => 'datetime',
         ];
     }
 

@@ -35,14 +35,14 @@
 
 ## 5. Queued print jobs — single + bulk (action/HTTP seam)
 
-- [ ] 5.1 RED: feature test — `RequestResultSheetPrint` for one released applicant creates a `queued` `result_sheet` job with pinned inputs, dedupes duplicates, and returns the job id.
-- [ ] 5.2 Action + `RequestResultSheetPrintRequest` + `POST /release/print` route + audit.
-- [ ] 5.3 RED: feature test — `RenderPrintJob` renders the `result_sheet` artifact to sensitive disk, marks `ready`, sets `result_printed_at` idempotently, audits ready/failed.
-- [ ] 5.4 `ResultSheetArtifactRenderer` registry branch in `renderPayload`.
-- [ ] 5.5 RED: feature test — bulk (≤200, copies) job: progress counters, per-item manifest, ready-with-partial, merged PDF.
-- [ ] 5.6 Bulk manifest + merged-PDF support in the renderer/job.
-- [ ] 5.7 RED: feature test — retry refuses stale pinned inputs; download re-authorizes, verifies checksum, and is audited.
-- [ ] 5.8 Retry guard + `PrintingController::download` audit + `result-sheet:prune` retention command (scheduled).
+- [x] 5.1 RED: feature test — `RequestResultSheetPrint` for one released applicant creates a `queued` `result_sheet` job with pinned inputs, dedupes duplicates, and returns the job id.
+- [x] 5.2 Action + `RequestResultSheetPrintRequest` + `POST /release/print` route + audit.
+- [x] 5.3 RED: feature test — `RenderPrintJob` renders the `result_sheet` artifact to sensitive disk, marks `ready`, sets `result_printed_at` idempotently, audits ready/failed.
+- [x] 5.4 `ResultSheetArtifactRenderer` registry branch in `renderPayload`.
+- [x] 5.5 RED: feature test — bulk (≤200, copies) job: progress counters, per-item manifest, ready-with-partial, merged PDF.
+- [x] 5.6 Bulk manifest + merged-PDF support in the renderer/job.
+- [x] 5.7 RED: feature test — retry refuses stale pinned inputs; download re-authorizes, verifies checksum, and is audited.
+- [x] 5.8 Retry guard + `PrintingController::download` audit + `result-sheet:prune` retention command (scheduled).
 
 ## 6. Printed tracking and release seam (action seam)
 

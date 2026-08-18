@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
+use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Printing\PrintJob;
 use App\Support\SensitiveAssetStore;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class PrintingController extends Controller
         PrintJob $printJob,
         CapabilityAuthorizer $authorizer,
         SensitiveAssetStore $assetStore,
+        RecordAuditEvent $recordAuditEvent,
     ): Response|\Illuminate\Http\JsonResponse {
         $capability = match ($printJob->artifact_type) {
             PrintJob::ARTIFACT_RESULT_SHEET => CapabilityCatalog::GUIDANCE_RESULTS_RELEASE,
@@ -42,6 +44,12 @@ class PrintingController extends Controller
         };
 
         if (! $authorizer->decide($request->user(), $capability, [])->allowed) {
+            $recordAuditEvent->handle('printing.job_download_denied', [
+                'print_job_id' => $printJob->id,
+                'artifact_type' => $printJob->artifact_type,
+                'scope' => $printJob->scope_type.':'.$printJob->scope_id,
+            ], (string) $request->user()->id);
+
             abort(403);
         }
 
@@ -60,6 +68,13 @@ class PrintingController extends Controller
         if (hash('sha256', $bytes) !== $printJob->file_checksum) {
             abort(500);
         }
+
+        $recordAuditEvent->handle('printing.job_downloaded', [
+            'print_job_id' => $printJob->id,
+            'artifact_type' => $printJob->artifact_type,
+            'scope' => $printJob->scope_type.':'.$printJob->scope_id,
+            'checksum' => $printJob->file_checksum,
+        ], (string) $request->user()->id);
 
         return response($bytes, 200, [
             'Content-Type' => 'application/pdf',

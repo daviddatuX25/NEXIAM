@@ -11,6 +11,7 @@
     "require": {
         "php": "^8.4",
         "barryvdh/laravel-dompdf": "^3.1",
+        "fpdf/fpdf": "^1.90",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/ai": "^0.10.3",
         "laravel/framework": "^13.23",

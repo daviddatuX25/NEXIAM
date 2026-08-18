@@ -31,6 +31,7 @@ use App\Http\Controllers\ProgramHead\ProgramHeadController;
 use App\Http\Controllers\Registrar\EnrollmentEligibilityController;
 use App\Http\Controllers\Registrar\EnrollmentStampController;
 use App\Http\Controllers\Release\ReleaseController;
+use App\Http\Controllers\Release\ReleasePrintController;
 use App\Http\Controllers\Setup\AcademicCycleController;
 use App\Http\Controllers\Setup\ApplicationWindowController;
 use App\Http\Controllers\Setup\AptitudeAreaController;
@@ -430,6 +431,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/release/records/{release}/unrelease', [ReleaseController::class, 'unrelease'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.unrelease');
+    Route::post('/release/print', [ReleasePrintController::class, 'request'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.print.request');
 
     Route::get('/printing/jobs/{printJob}', [PrintingController::class, 'show'])
         ->middleware('auth')

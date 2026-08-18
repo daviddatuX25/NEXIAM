@@ -65,8 +65,7 @@ final class RenderPrintJob implements ShouldQueue
         $job->update(['status' => PrintJob::STATUS_RENDERING]);
 
         try {
-            $payload = $this->renderPayload($job);
-            $bytes = $renderer->render($payload['html'], $payload['options']);
+            [$bytes, $manifest] = $this->renderArtifact($job, $renderer);
             $checksum = hash('sha256', $bytes);
 
             $path = 'print-jobs/'.$job->id.'/'.$checksum.'.pdf';
@@ -78,14 +77,24 @@ final class RenderPrintJob implements ShouldQueue
                 Storage::disk('local')->put($path, $bytes);
             }
 
-            $job->update([
+            $updates = [
                 'status' => PrintJob::STATUS_READY,
                 'file_path' => $path,
                 'file_checksum' => $checksum,
                 'safe_error' => null,
                 'progress_done' => $job->progress_total,
                 'completed_at' => now(),
-            ]);
+            ];
+
+            if ($manifest !== null) {
+                $updates['per_item_manifest'] = $manifest;
+            }
+
+            $job->update($updates);
+
+            if ($job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET) {
+                $this->markPrinted($job);
+            }
 
             $recordAuditEvent->handle('printing.job_ready', [
                 'print_job_id' => $job->id,
@@ -95,11 +104,19 @@ final class RenderPrintJob implements ShouldQueue
             ], (string) ($job->requested_by_user_id ?? 'system'));
         } catch (Throwable $exception) {
             $safeError = $this->safeError($exception);
-            $job->update([
+            $updates = [
                 'status' => PrintJob::STATUS_FAILED,
                 'safe_error' => $safeError,
                 'completed_at' => now(),
-            ]);
+            ];
+
+            if ($job->per_item_manifest !== null) {
+                $updates['per_item_manifest'] = $job->per_item_manifest;
+            } elseif ($exception instanceof \App\ResultSheet\Rendering\AllItemsFailedException) {
+                $updates['per_item_manifest'] = $exception->manifest;
+            }
+
+            $job->update($updates);
 
             $recordAuditEvent->handle('printing.job_failed', [
                 'print_job_id' => $job->id,
@@ -110,6 +127,46 @@ final class RenderPrintJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    /**
+     * Dispatch to the artifact renderer for this job type. Blank sheets use
+     * the prepared-HTML path through the PrintRenderer interface; result
+     * sheets produce PDF bytes directly through ResultSheetArtifactRenderer
+     * (with a per-item manifest). Returns bytes + optional manifest.
+     *
+     * @return array{0: string, 1: array<int, array<string, mixed>>|null}
+     */
+    private function renderArtifact(PrintJob $job, PrintRenderer $renderer): array
+    {
+        if ($job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET) {
+            $result = app(\App\ResultSheet\Rendering\ResultSheetArtifactRenderer::class)->render($job);
+
+            return [$result['bytes'], $result['manifest']];
+        }
+
+        $payload = $this->renderPayload($job);
+
+        return [$renderer->render($payload['html'], $payload['options']), null];
+    }
+
+    /**
+     * Set result_printed_at idempotently (only where still null) on the pinned
+     * release records once a result-sheet artifact is ready.
+     */
+    private function markPrinted(PrintJob $job): void
+    {
+        $pinned = is_array($job->pinned_input_json) ? $job->pinned_input_json : [];
+        $releaseIds = array_map('intval', $pinned['release_ids'] ?? []);
+
+        if ($releaseIds === []) {
+            return;
+        }
+
+        \App\Models\Release\ResultRelease::query()
+            ->whereIn('id', $releaseIds)
+            ->whereNull('result_printed_at')
+            ->update(['result_printed_at' => now()]);
     }
 
     /**
@@ -175,6 +232,12 @@ final class RenderPrintJob implements ShouldQueue
         }
         if (str_contains($message, 'OMR native bundle')) {
             return 'bundle_invalid';
+        }
+        if (str_contains($message, 'all_items_failed') || str_contains($message, 'release_stale')) {
+            return 'all_items_failed';
+        }
+        if (str_contains($message, 'template_missing') || str_contains($message, 'libreoffice_unavailable')) {
+            return 'libreoffice_unavailable';
         }
 
         return 'render_failed';
