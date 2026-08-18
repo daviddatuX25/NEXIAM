@@ -428,12 +428,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/release', [ReleaseController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.index');
-    Route::post('/release/{attempt}', [ReleaseController::class, 'release'])
-        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
-        ->name('release.store');
-    Route::post('/release/records/{release}/unrelease', [ReleaseController::class, 'unrelease'])
-        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
-        ->name('release.unrelease');
+    // Print routes MUST precede /release/{attempt} so `print` never binds as an attempt.
     Route::get('/release/print/batches/{gradingSession}', [ReleasePrintController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.print.batches.index');
@@ -446,6 +441,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/release/print/mark-printed', [ReleasePrintController::class, 'markPrinted'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.print.mark-printed');
+    Route::post('/release/{attempt}', [ReleaseController::class, 'release'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.store');
+    Route::post('/release/records/{release}/unrelease', [ReleaseController::class, 'unrelease'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.unrelease');
 
     Route::get('/printing/jobs/{printJob}', [PrintingController::class, 'show'])
         ->middleware('auth')

@@ -285,7 +285,7 @@ class ResultSheetTemplateController extends Controller
     {
         $groups = [];
 
-        foreach (\App\Models\Foundation\AptitudeArea::query()->where('is_active', true)->orderBy('display_order')->orderBy('id')->get(['name']) as $area) {
+        foreach (\App\Models\Foundation\AptitudeArea::query()->where('is_active', true)->orderBy('id')->get(['name']) as $area) {
             $slug = str_replace('-', '_', \Illuminate\Support\Str::slug($area->name, '_'));
             $groups[] = ['slug' => $slug, 'example' => '{{'.$slug.'}}'];
         }

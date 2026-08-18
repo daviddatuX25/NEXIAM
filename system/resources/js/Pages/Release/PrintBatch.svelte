@@ -52,7 +52,7 @@
           'Content-Type': 'application/json',
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': $page.props.csrf_token,
+          'X-CSRF-TOKEN': page.props.csrf_token,
         },
         body: JSON.stringify({ release_ids: releaseIds, copies }),
       });
@@ -99,7 +99,7 @@
         'Content-Type': 'application/json',
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': $page.props.csrf_token,
+        'X-CSRF-TOKEN': page.props.csrf_token,
       },
       body: JSON.stringify({ release_ids: releaseIds, printed }),
     });

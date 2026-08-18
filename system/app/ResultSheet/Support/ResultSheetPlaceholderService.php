@@ -239,7 +239,7 @@ final class ResultSheetPlaceholderService
     {
         return AptitudeArea::query()
             ->where('is_active', true)
-            ->orderBy('display_order')
+            
             ->orderBy('id')
             ->pluck('name', 'code')
             ->all();

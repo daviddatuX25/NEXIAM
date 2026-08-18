@@ -16,7 +16,7 @@
   } = $props();
 
   const page = usePage();
-  const csrfToken = $derived($page.props.csrf_token ?? '');
+  const csrfToken = $derived(page.props.csrf_token ?? '');
 
   const form = useForm({
     name: '',
@@ -109,15 +109,14 @@
   }
 
   let previewTimer;
-  $effect(() => {
-    if (form.mode === 'html') {
-      clearTimeout(previewTimer);
-      previewTimer = setTimeout(() => {
-        if (form.content) runPreview();
-        else previewHtml = '';
-      }, 400);
-    }
-  });
+  function schedulePreview() {
+    if (form.mode !== 'html') return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      if (form.content?.trim()) runPreview();
+      else previewHtml = '';
+    }, 400);
+  }
 
   function submit() {
     if (form.mode === 'docx' && validationResult && !validationResult.valid && validationResult.missing?.length > 0) {
@@ -270,7 +269,7 @@
           {:else}
             <div class="space-y-1.5">
               <Label for="content">HTML content</Label>
-              <Textarea id="content" bind:value={form.content} class="min-h-72 font-mono text-xs" placeholder={'<div class="print-template">\n  <p>{{applicant_name}} ({{applicant_reference}})</p>\n  <table><tbody class="scores-rows-placeholder"></tbody></table>\n</div>'} />
+              <Textarea id="content" bind:value={form.content} class="min-h-72 font-mono text-xs" oninput={schedulePreview} placeholder={'<div class="print-template">\n  <p>{{applicant_name}} ({{applicant_reference}})</p>\n  <table><tbody class="scores-rows-placeholder"></tbody></table>\n</div>'} />
             </div>
           {/if}
 
