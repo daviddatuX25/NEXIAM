@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             StaffIdentitySeeder::class,
             PrivacyPolicySeeder::class,
             IntakeGradeFieldSeeder::class,
+            ResultSheetTemplateSeeder::class,
         ];
     }
 
@@ -49,6 +50,7 @@ class DatabaseSeeder extends Seeder
             StaffIdentitySeeder::class,
             PrivacyPolicySeeder::class,
             IntakeGradeFieldSeeder::class,
+            ResultSheetTemplateSeeder::class,
             JourneyFixtureSeeder::class,
             OmrDemoSeeder::class,
             AdmissionSupportDemoSeeder::class,

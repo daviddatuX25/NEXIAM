@@ -46,10 +46,10 @@
 
 ## 6. Printed tracking and release seam (action seam)
 
-- [ ] 6.1 RED: feature test — `MarkResultSheetsPrinted` toggles `result_printed_at` on release records, capability-gated and audited.
-- [ ] 6.2 Action + request + route + Release batch page props (printed state per release).
-- [ ] 6.3 RED: feature test — `PrepareResultDocument` produces a template-backed ready artifact with checksum; failure never fake-ready.
-- [ ] 6.4 Rewrite `PrepareResultDocument` (template-backed, private storage, checksum, typed failure); `ReleaseResult` unchanged.
+- [x] 6.1 RED: feature test — `MarkResultSheetsPrinted` toggles `result_printed_at` on release records, capability-gated and audited.
+- [x] 6.2 Action + request + route + Release batch page props (printed state per release).
+- [x] 6.3 RED: feature test — `PrepareResultDocument` produces a template-backed ready artifact with checksum; failure never fake-ready.
+- [x] 6.4 Rewrite `PrepareResultDocument` (template-backed, private storage, checksum, typed failure); `ReleaseResult` unchanged.
 
 ## 7. UI (browser seam)
 

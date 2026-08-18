@@ -434,6 +434,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/release/print', [ReleasePrintController::class, 'request'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.print.request');
+    Route::post('/release/print/mark-printed', [ReleasePrintController::class, 'markPrinted'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.print.mark-printed');
 
     Route::get('/printing/jobs/{printJob}', [PrintingController::class, 'show'])
         ->middleware('auth')
