@@ -14,6 +14,7 @@ use App\Models\ResultSheet\ResultSheetTemplate;
 use App\ResultSheet\Actions\ActivateResultSheetTemplate;
 use App\ResultSheet\Actions\DeactivateResultSheetTemplate;
 use App\ResultSheet\Actions\SaveResultSheetTemplate;
+use App\ResultSheet\Data\TemplateFieldAliasCatalog;
 use App\ResultSheet\Rendering\ResultSheetCssService;
 use App\ResultSheet\Support\DocxTextExtractor;
 use App\ResultSheet\Support\ResultSheetPlaceholderService;
@@ -54,7 +55,8 @@ class ResultSheetTemplateController extends Controller
 
         return Inertia::render('Setup/ResultSheetTemplates/Create', [
             'page_state' => 'ready',
-            'placeholderGroups' => [],
+            'placeholderGroups' => $this->placeholderGroups(),
+            'domainPlaceholders' => $this->domainPlaceholders(),
             'capabilities' => $this->capabilities($authorizer, $request),
         ]);
     }
@@ -81,7 +83,8 @@ class ResultSheetTemplateController extends Controller
         return Inertia::render('Setup/ResultSheetTemplates/Edit', [
             'page_state' => 'ready',
             'template' => $resultTemplate,
-            'placeholderGroups' => [],
+            'placeholderGroups' => $this->placeholderGroups(),
+            'domainPlaceholders' => $this->domainPlaceholders(),
             'capabilities' => $this->capabilities($authorizer, $request),
         ]);
     }
@@ -97,6 +100,26 @@ class ResultSheetTemplateController extends Controller
         $save->update($resultTemplate, $request->validated(), $request->user());
 
         return redirect()->route('setup.result-templates.index')->with('status', 'Result sheet template updated.');
+    }
+
+    public function destroy(
+        Request $request,
+        CapabilityAuthorizer $authorizer,
+        ResultSheetTemplate $resultTemplate,
+    ): RedirectResponse {
+        $this->requireAssessment($authorizer, $request);
+
+        if ($resultTemplate->is_active) {
+            $resultTemplate->update(['is_active' => false]);
+        }
+
+        if ($resultTemplate->document_path !== null) {
+            Storage::disk('local')->delete($resultTemplate->document_path);
+        }
+
+        $resultTemplate->delete();
+
+        return back()->with('status', 'Template deleted.');
     }
 
     public function activate(
@@ -195,5 +218,78 @@ class ResultSheetTemplateController extends Controller
         }
 
         return html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function placeholderGroups(): array
+    {
+        $descriptions = TemplateFieldAliasCatalog::descriptions();
+        $static = TemplateFieldAliasCatalog::staticKeys();
+        $aliases = array_keys(TemplateFieldAliasCatalog::domainAliases());
+
+        return [
+            'applicant' => array_values(array_map(
+                fn (string $key): array => ['placeholder' => $key, 'description' => $descriptions[$key] ?? ''],
+                array_intersect($static, [
+                    'applicant_name', 'applicant_reference', 'family_name', 'first_name',
+                    'middle_name', 'suffix', 'sex', 'gwa', 'course_applied',
+                    'course_applied_code', 'strand', 'strand_or_prev_course', 'applicant_type',
+                ]),
+            )),
+            'exam' => array_values(array_map(
+                fn (string $key): array => ['placeholder' => $key, 'description' => $descriptions[$key] ?? ''],
+                array_intersect($static, [
+                    'exam_date', 'exam_time', 'exam_date_start', 'exam_date_end',
+                    'exam_time_start', 'exam_time_end', 'room_name',
+                ]),
+            )),
+            'scores' => array_values(array_map(
+                fn (string $key): array => ['placeholder' => $key, 'description' => $descriptions[$key] ?? ''],
+                array_intersect($static, ['scores_rows', 'overall_pct']),
+            )),
+            'recommendation' => array_values(array_map(
+                fn (string $key): array => ['placeholder' => $key, 'description' => $descriptions[$key] ?? ''],
+                array_intersect($static, [
+                    'recommended_course', 'recommended_course_code',
+                    'counselor_comments', 'counselor_name',
+                ]),
+            )),
+            'institution' => array_values(array_map(
+                fn (string $key): array => ['placeholder' => $key, 'description' => $descriptions[$key] ?? ''],
+                array_intersect($static, [
+                    'institution_name', 'institution_campus', 'institution_address',
+                    'institution_contact_number', 'institution_email', 'institution_website',
+                    'institution_exam_name', 'institution_exam_acronym',
+                    'examination_name', 'examination_acronym',
+                ]),
+            )),
+            'personnel' => array_values(array_map(
+                fn (string $key): array => ['placeholder' => $key, 'description' => $descriptions[$key] ?? ''],
+                array_filter($static, fn (string $key): bool => str_contains($key, '_name') || str_contains($key, '_title') || str_contains($key, '_credentials')),
+            )),
+            'aliases' => array_values(array_map(
+                fn (string $alias): array => ['placeholder' => $alias, 'description' => 'Legacy ICAT alias (resolved to the matching aptitude area)'],
+                $aliases,
+            )),
+            'course_checks' => ['placeholder' => '{PROGRAM_CODE}_check', 'description' => 'Checkmark for the recommended program'],
+            'dual' => ['placeholder' => '*_2', 'description' => 'Second applicant slot for crosswise templates'],
+        ];
+    }
+
+    /**
+     * @return list<array{slug: string, example: string}>
+     */
+    private function domainPlaceholders(): array
+    {
+        $groups = [];
+
+        foreach (\App\Models\Foundation\AptitudeArea::query()->where('is_active', true)->orderBy('display_order')->orderBy('id')->get(['name']) as $area) {
+            $slug = str_replace('-', '_', \Illuminate\Support\Str::slug($area->name, '_'));
+            $groups[] = ['slug' => $slug, 'example' => '{{'.$slug.'}}'];
+        }
+
+        return $groups;
     }
 }

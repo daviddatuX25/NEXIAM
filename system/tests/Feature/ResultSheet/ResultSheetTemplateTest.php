@@ -61,6 +61,7 @@ test('activating a template deactivates the previous active one atomically', fun
 test('deactivating the active template leaves no active template', function (): void {
     seedE2Foundation();
     $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+    ResultSheetTemplate::query()->update(['is_active' => false]);
     $a = ResultSheetTemplate::query()->create(resultTemplatePayload(['is_active' => true]));
 
     $this->actingAs($guidance)

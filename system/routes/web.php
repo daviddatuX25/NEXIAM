@@ -144,6 +144,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/setup/result-templates/{resultTemplate}', [ResultSheetTemplateController::class, 'update'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
         ->name('setup.result-templates.update');
+    Route::delete('/setup/result-templates/{resultTemplate}', [ResultSheetTemplateController::class, 'destroy'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.destroy');
     Route::post('/setup/result-templates/{resultTemplate}/activate', [ResultSheetTemplateController::class, 'activate'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
         ->name('setup.result-templates.activate');
@@ -431,6 +434,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/release/records/{release}/unrelease', [ReleaseController::class, 'unrelease'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.unrelease');
+    Route::get('/release/print/batches/{gradingSession}', [ReleasePrintController::class, 'index'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.print.batches.index');
+    Route::get('/release/print/batches/{gradingSession}/preview', [ReleasePrintController::class, 'bulkPreview'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.print.batches.preview');
     Route::post('/release/print', [ReleasePrintController::class, 'request'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.print.request');

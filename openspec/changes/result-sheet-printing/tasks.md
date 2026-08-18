@@ -53,10 +53,10 @@
 
 ## 7. UI (browser seam)
 
-- [ ] 7.1 Setup › Result Sheet Templates Index/Create/Edit (UI kit, placeholder guide, analyzer panel, live preview, activate/deactivate, delete confirm).
-- [ ] 7.2 Release › Print Batch page (selection, copies, PDF/DOCX/ZIP, mark-printed, job status strip polling, `release_mode` gate).
-- [ ] 7.3 Release › ResultSheetBulk preview (paper width, scale control) + single ResultSheet page.
-- [ ] 7.4 Playwright smoke: template create → validate → preview; print batch → job ready → download; online mode disables printing.
+- [x] 7.1 Setup › Result Sheet Templates Index/Create/Edit (UI kit, placeholder guide, analyzer panel, live preview, activate/deactivate, delete confirm).
+- [x] 7.2 Release › Print Batch page (selection, copies, PDF/DOCX/ZIP, mark-printed, job status strip polling, `release_mode` gate).
+- [x] 7.3 Release › ResultSheetBulk preview (paper width, scale control) + single ResultSheet page.
+- [x] 7.4 Playwright smoke: template create → validate → preview; print batch → job ready → download; online mode disables printing.
 
 ## 8. Seeds, HANDOFF, evidence
 
