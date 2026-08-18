@@ -39,6 +39,7 @@ use App\Http\Controllers\Setup\OmrConfigurationController;
 use App\Http\Controllers\Setup\PrivacyPolicyController;
 use App\Http\Controllers\Setup\ProgramController;
 use App\Http\Controllers\Setup\ProgramQuotaController;
+use App\Http\Controllers\Setup\ResultSheetTemplateController;
 use App\Http\Controllers\Setup\RoomController;
 use App\Http\Controllers\Setup\SetupDashboardController;
 use App\Http\Controllers\Staff\ApplicantQrController as StaffQrController;
@@ -133,6 +134,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/setup/privacy', [PrivacyPolicyController::class, 'storePrivacy'])->name('setup.privacy.store');
     Route::post('/setup/privacy/{policy}/activate', [PrivacyPolicyController::class, 'activatePrivacy'])->name('setup.privacy.activate');
     Route::get('/setup/grades', [IntakeGradeFieldController::class, 'grades'])->name('setup.grades');
+    Route::get('/setup/result-templates', [ResultSheetTemplateController::class, 'index'])->name('setup.result-templates.index');
+    Route::get('/setup/result-templates/create', [ResultSheetTemplateController::class, 'create'])->name('setup.result-templates.create');
+    Route::post('/setup/result-templates', [ResultSheetTemplateController::class, 'store'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.store');
+    Route::get('/setup/result-templates/{resultTemplate}/edit', [ResultSheetTemplateController::class, 'edit'])->name('setup.result-templates.edit');
+    Route::put('/setup/result-templates/{resultTemplate}', [ResultSheetTemplateController::class, 'update'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.update');
+    Route::post('/setup/result-templates/{resultTemplate}/activate', [ResultSheetTemplateController::class, 'activate'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.activate');
+    Route::post('/setup/result-templates/{resultTemplate}/deactivate', [ResultSheetTemplateController::class, 'deactivate'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG)
+        ->name('setup.result-templates.deactivate');
     Route::post('/setup/grades', [IntakeGradeFieldController::class, 'storeGrade'])->name('setup.grades.store');
     Route::put('/setup/grades/{field}', [IntakeGradeFieldController::class, 'updateGrade'])->name('setup.grades.update');
     Route::get('/setup/aptitude', [AptitudeAreaController::class, 'aptitude'])->name('setup.aptitude');
