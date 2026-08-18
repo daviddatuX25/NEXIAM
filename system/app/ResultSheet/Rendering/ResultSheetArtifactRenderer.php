@@ -26,8 +26,7 @@ final class ResultSheetArtifactRenderer
         private readonly ResultSheetDataProvider $dataProvider,
         private readonly PdfMerger $merger,
         private readonly SensitiveAssetStore $assetStore,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{bytes: string, manifest: array<int, array<string, mixed>>}

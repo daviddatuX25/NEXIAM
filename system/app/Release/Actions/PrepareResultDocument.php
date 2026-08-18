@@ -30,8 +30,7 @@ class PrepareResultDocument
         private readonly ResultSheetPlaceholderService $placeholders,
         private readonly ResultSheetCssService $css,
         private readonly DocxTextExtractor $extractor,
-    ) {
-    }
+    ) {}
 
     public function handle(AdmissionAttempt $attempt, User $actor, string $templateVersion = 'e2-v1'): ResultDocument
     {

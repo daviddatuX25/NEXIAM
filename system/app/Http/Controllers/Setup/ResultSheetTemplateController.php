@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Setup;
 
 use App\Authorization\CapabilityAuthorizer;
-use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Setup\Concerns\HasSetupCapabilities;
 use App\Http\Requests\ResultSheet\AnalyzeResultSheetTemplateRequest;
 use App\Http\Requests\ResultSheet\PreviewResultSheetTemplateRequest;
 use App\Http\Requests\ResultSheet\StoreResultSheetTemplateRequest;
 use App\Http\Requests\ResultSheet\UpdateResultSheetTemplateRequest;
+use App\Models\Foundation\AptitudeArea;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\ResultSheet\Actions\ActivateResultSheetTemplate;
 use App\ResultSheet\Actions\DeactivateResultSheetTemplate;
@@ -23,6 +23,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -285,8 +286,8 @@ class ResultSheetTemplateController extends Controller
     {
         $groups = [];
 
-        foreach (\App\Models\Foundation\AptitudeArea::query()->where('is_active', true)->orderBy('id')->get(['name']) as $area) {
-            $slug = str_replace('-', '_', \Illuminate\Support\Str::slug($area->name, '_'));
+        foreach (AptitudeArea::query()->where('is_active', true)->orderBy('id')->get(['name']) as $area) {
+            $slug = str_replace('-', '_', Str::slug($area->name, '_'));
             $groups[] = ['slug' => $slug, 'example' => '{{'.$slug.'}}'];
         }
 

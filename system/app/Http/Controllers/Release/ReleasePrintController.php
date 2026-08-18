@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ResultSheet\MarkResultSheetsPrintedRequest;
 use App\Http\Requests\ResultSheet\RequestResultSheetPrintRequest;
 use App\Models\Assessment\GradingSession;
-use App\Models\Printing\PrintJob;
 use App\Models\Release\ResultRelease;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\ResultSheet\Actions\MarkResultSheetsPrinted;

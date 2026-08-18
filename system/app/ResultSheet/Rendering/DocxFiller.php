@@ -21,8 +21,7 @@ final class DocxFiller
     public function __construct(
         private readonly DocxMacroRepairer $repairer,
         private readonly ResultSheetPlaceholderService $placeholders,
-    ) {
-    }
+    ) {}
 
     public function fill(string $sourcePath, array $replacements): string
     {

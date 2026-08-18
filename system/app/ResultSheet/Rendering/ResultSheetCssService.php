@@ -2,8 +2,6 @@
 
 namespace App\ResultSheet\Rendering;
 
-use App\Models\ResultSheet\ResultSheetTemplate;
-
 /**
  * Print CSS wrapper for result sheets (legacy PrintTemplateCssService shape).
  * Paper size maps to fixed mm dimensions; the sheet prints 1:1 — the renderer

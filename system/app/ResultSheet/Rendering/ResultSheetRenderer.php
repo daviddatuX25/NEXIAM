@@ -20,8 +20,7 @@ final class ResultSheetRenderer
         private readonly PrintRenderer $pdfRenderer,
         private readonly DocxFiller $filler,
         private readonly DocxToPdfConverter $converter,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $applicants

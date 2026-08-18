@@ -4,22 +4,24 @@ namespace App\Jobs\Printing;
 
 use App\Assessment\Omr\NativeBundle;
 use App\Foundation\Actions\RecordAuditEvent;
+use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Printing\PrintJob;
+use App\Models\Release\ResultRelease;
+use App\Printing\BundleRenderer;
 use App\Printing\PrintRenderer;
+use App\ResultSheet\Rendering\AllItemsFailedException;
+use App\ResultSheet\Rendering\ResultSheetArtifactRenderer;
 use App\Support\SensitiveAssetStore;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
 use function hash;
-use function strlen;
 
 /**
  * Renders one print job through the PrintRenderer interface, stores the
@@ -112,7 +114,7 @@ final class RenderPrintJob implements ShouldQueue
 
             if ($job->per_item_manifest !== null) {
                 $updates['per_item_manifest'] = $job->per_item_manifest;
-            } elseif ($exception instanceof \App\ResultSheet\Rendering\AllItemsFailedException) {
+            } elseif ($exception instanceof AllItemsFailedException) {
                 $updates['per_item_manifest'] = $exception->manifest;
             }
 
@@ -140,7 +142,7 @@ final class RenderPrintJob implements ShouldQueue
     private function renderArtifact(PrintJob $job, PrintRenderer $renderer): array
     {
         if ($job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET) {
-            $result = app(\App\ResultSheet\Rendering\ResultSheetArtifactRenderer::class)->render($job);
+            $result = app(ResultSheetArtifactRenderer::class)->render($job);
 
             return [$result['bytes'], $result['manifest']];
         }
@@ -163,7 +165,7 @@ final class RenderPrintJob implements ShouldQueue
             return;
         }
 
-        \App\Models\Release\ResultRelease::query()
+        ResultRelease::query()
             ->whereIn('id', $releaseIds)
             ->whereNull('result_printed_at')
             ->update(['result_printed_at' => now()]);
@@ -179,7 +181,7 @@ final class RenderPrintJob implements ShouldQueue
         if ($job->artifact_type === PrintJob::ARTIFACT_BLANK_SHEET) {
             $versionId = (int) ($pinned['template_version_id'] ?? 0);
             $templateVersion = $versionId > 0
-                ? \App\Models\Assessment\OmrAnswerSheetTemplateVersion::find($versionId)
+                ? OmrAnswerSheetTemplateVersion::find($versionId)
                 : null;
 
             $templateJson = is_array($templateVersion?->native_bundle_json) && isset($templateVersion->native_bundle_json['template'])
@@ -194,7 +196,7 @@ final class RenderPrintJob implements ShouldQueue
                 $templateJson = $bundle->template;
             }
 
-            $renderer = app(\App\Printing\BundleRenderer::class);
+            $renderer = app(BundleRenderer::class);
             $paper = $renderer->paper();
 
             return [
@@ -217,7 +219,7 @@ final class RenderPrintJob implements ShouldQueue
             return null;
         }
 
-        $overlay = \App\Models\Assessment\OmrAnswerSheetTemplateVersion::query()
+        $overlay = OmrAnswerSheetTemplateVersion::query()
             ->whereKey($versionId)
             ->value('print_overlay_json');
 

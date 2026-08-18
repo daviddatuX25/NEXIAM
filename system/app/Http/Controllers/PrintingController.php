@@ -7,6 +7,7 @@ use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Printing\PrintJob;
 use App\Support\SensitiveAssetStore;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,7 @@ use RuntimeException;
  */
 class PrintingController extends Controller
 {
-    public function show(Request $request, PrintJob $printJob): \Illuminate\Http\JsonResponse
+    public function show(Request $request, PrintJob $printJob): JsonResponse
     {
         return response()->json([
             'id' => $printJob->id,
@@ -37,7 +38,7 @@ class PrintingController extends Controller
         CapabilityAuthorizer $authorizer,
         SensitiveAssetStore $assetStore,
         RecordAuditEvent $recordAuditEvent,
-    ): Response|\Illuminate\Http\JsonResponse {
+    ): Response|JsonResponse {
         $capability = match ($printJob->artifact_type) {
             PrintJob::ARTIFACT_RESULT_SHEET => CapabilityCatalog::GUIDANCE_RESULTS_RELEASE,
             default => CapabilityCatalog::GUIDANCE_SCORING_OMR,

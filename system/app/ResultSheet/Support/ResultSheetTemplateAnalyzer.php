@@ -18,9 +18,7 @@ use Illuminate\Support\Str;
  */
 final class ResultSheetTemplateAnalyzer
 {
-    public function __construct(private readonly DocxTextExtractor $extractor)
-    {
-    }
+    public function __construct(private readonly DocxTextExtractor $extractor) {}
 
     /**
      * @return AnalysisResult

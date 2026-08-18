@@ -25,8 +25,7 @@ final class RequestResultSheetPrint
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  list<int>  $releaseIds

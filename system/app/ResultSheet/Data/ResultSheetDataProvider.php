@@ -10,8 +10,6 @@ use App\Models\Examination\ExamAssignment;
 use App\Models\Foundation\AptitudeArea;
 use App\Models\Foundation\Program;
 use App\Models\Release\ConsultationDecision;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * Builds the applicant data array consumed by the placeholder engine for one

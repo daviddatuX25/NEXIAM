@@ -81,6 +81,7 @@ final class ResultSheetPlaceholderService
                 if ($alias === 'general_ability') {
                     $replacements[$alias.$suffix] = $replacements['overall_pct'.$suffix];
                     $replacements[$alias.'_rating'.$suffix] = '';
+
                     continue;
                 }
 
@@ -239,7 +240,7 @@ final class ResultSheetPlaceholderService
     {
         return AptitudeArea::query()
             ->where('is_active', true)
-            
+
             ->orderBy('id')
             ->pluck('name', 'code')
             ->all();

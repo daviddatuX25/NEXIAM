@@ -8,9 +8,7 @@ use App\Models\User;
 
 final class DeactivateResultSheetTemplate
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(ResultSheetTemplate $template, User $actor): ResultSheetTemplate
     {

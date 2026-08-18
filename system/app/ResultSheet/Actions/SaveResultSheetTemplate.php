@@ -17,9 +17,7 @@ use RuntimeException;
  */
 final class SaveResultSheetTemplate
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     /**
      * @param  array<string, mixed>  $data
