@@ -14,6 +14,12 @@
     FileText,
     Layers,
     ShieldCheck,
+    Code,
+    Upload,
+    Sparkles,
+    RefreshCw,
+    Play,
+    Sliders,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -31,15 +37,85 @@
   // 5-Stage Stepper Navigation
   let currentStage = $state(1);
   const stageTitles = [
-    'Stage 1: Base Template & Paper Format',
+    'Stage 1: Base Template & Ingestion',
     'Stage 2: Configure Layout, Markers & Overlays',
     'Stage 3: Optical Registration Alignment',
     'Stage 4: Multi-Section Bubble Coordinates & Pitch',
     'Stage 5: Dual-Input Verification & Production Export',
   ];
 
-  // Stage 1: Base Substrate
+  // Stage 1: Base Mode ('blank' | 'html' | 'upload')
+  let stage1Mode = $state(draft.source_kind === 'html' ? 'html' : (draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'blank');
   let baseType = $state(draft.source_kind ?? 'blank');
+
+  // HTML Code Editor State
+  let htmlCode = $state(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+    .header h1 { font-size: 18px; margin: 0 0 2px 0; text-transform: uppercase; }
+    .header p { font-size: 10px; color: #475569; margin: 0; font-family: monospace; }
+    .info { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; background: #f8fafc; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .part { font-size: 8.5px; font-weight: bold; background: #0f172a; color: #fff; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; text-align: center; text-transform: uppercase; }
+    .row { display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; font-family: monospace; margin-bottom: 3.5px; }
+    .num { font-weight: bold; width: 18px; color: #334155; }
+    .bubs { display: flex; gap: 3.5px; }
+    .bub { width: 12px; height: 12px; border: 1.2px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>University General Aptitude Test</h1>
+    <p>Standard 150-Item Answer Sheet &bull; ISO A4</p>
+  </div>
+  <div class="info">
+    <div><strong>Name:</strong> ____________________________</div>
+    <div><strong>Examinee No:</strong> __________</div>
+    <div><strong>Date:</strong> _______</div>
+  </div>
+  <div class="grid">
+    <div>
+      <div class="part">Part 1: Verbal Ability</div>
+      <div class="row"><span class="num">01</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">02</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">03</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">04</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">05</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+    </div>
+    <div>
+      <div class="part">Part 2: Quantitative</div>
+      <div class="row"><span class="num">26</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">27</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">28</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">29</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">30</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+    </div>
+    <div>
+      <div class="part">Part 3: Logical Reasoning</div>
+      <div class="row"><span class="num">51</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">52</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">53</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">54</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">55</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+    </div>
+  </div>
+</body>
+</html>`);
+
+  // Direct Upload & Ingest State
+  let uploadFileInput = $state(null);
+  let uploadRunning = $state(false);
+  let uploadProgress = $state(0);
+  let conversionStatusText = $state('');
+  let conversionError = $state('');
+
+  // Stage 3 Composition Loading
+  let isComposing = $state(false);
+  let composeStatusText = $state('');
 
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
@@ -210,6 +286,7 @@
       if (studio.metadataContent) metadataContent = studio.metadataContent;
 
       if (Array.isArray(studio.customTextItems)) customTextItems = studio.customTextItems;
+      if (studio.htmlCode) htmlCode = studio.htmlCode;
     }
 
     if (draft.lock_version !== undefined) {
@@ -223,6 +300,9 @@
 
   function goToStage(step) {
     currentStage = step;
+    if (step === 3 && !draft.raster_url && !isComposing) {
+      composeCanonicalPage();
+    }
     triggerAutosave();
   }
 
@@ -383,6 +463,7 @@
         showRollOverlay,
         rollDigits,
         customTextItems,
+        htmlCode,
       };
 
       const res = await fetch(saveUrl, {
@@ -416,6 +497,174 @@
     } catch (err) {
       saveStatus = 'error';
       errorMessage = err?.message || 'Network error while saving studio state.';
+    }
+  }
+
+  // HTML Ingest & Compilation Action
+  async function compileHtmlSource() {
+    if (!urls.source_ingest || !htmlCode) return;
+    uploadRunning = true;
+    conversionStatusText = 'Uploading HTML template…';
+    conversionError = '';
+
+    const htmlBlob = new Blob([htmlCode], { type: 'text/html' });
+    const file = new File([htmlBlob], 'answersheet-template.html', { type: 'text/html' });
+
+    const form = new FormData();
+    form.append('source_kind', 'html');
+    form.append('source', file);
+    form.append('width_mm', '210');
+    form.append('height_mm', '297');
+    form.append('idempotency_key', newIdempotencyKey());
+
+    try {
+      const res = await fetch(urls.source_ingest, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        body: form,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'HTML source upload rejected.');
+      }
+
+      conversionStatusText = 'Converting HTML into 300-PPI print raster…';
+      await pollConversionRun();
+    } catch (err) {
+      uploadRunning = false;
+      conversionError = err.message || 'HTML conversion failed.';
+    }
+  }
+
+  async function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !urls.source_ingest) return;
+
+    uploadRunning = true;
+    conversionStatusText = `Uploading ${file.name}…`;
+    conversionError = '';
+
+    let detectedKind = 'image';
+    if (file.name.endsWith('.pdf')) detectedKind = 'pdf';
+    else if (file.name.endsWith('.docx')) detectedKind = 'docx';
+    else if (file.name.endsWith('.html') || file.name.endsWith('.htm')) detectedKind = 'html';
+
+    const form = new FormData();
+    form.append('source_kind', detectedKind);
+    form.append('source', file);
+    form.append('width_mm', '210');
+    form.append('height_mm', '297');
+    form.append('idempotency_key', newIdempotencyKey());
+
+    try {
+      const res = await fetch(urls.source_ingest, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        body: form,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'File upload rejected.');
+      }
+
+      conversionStatusText = `Converting ${file.name}…`;
+      await pollConversionRun();
+    } catch (err) {
+      uploadRunning = false;
+      conversionError = err.message || 'File conversion failed.';
+    }
+  }
+
+  async function pollConversionRun() {
+    if (!urls.source_run) {
+      uploadRunning = false;
+      return;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(urls.source_run, { headers: { 'Accept': 'application/json' } });
+        if (res.ok) {
+          const body = await res.json();
+          const run = body.run;
+          if (run?.status === 'completed') {
+            clearInterval(pollInterval);
+            conversionStatusText = 'Conversion completed. Confirming pages…';
+            await autoConfirmPages();
+          } else if (run?.status === 'failed') {
+            clearInterval(pollInterval);
+            uploadRunning = false;
+            conversionError = run?.error || 'Document conversion failed.';
+          } else if (run?.status === 'processing') {
+            conversionStatusText = 'Rasterizing pages at 300 PPI…';
+          }
+        }
+      } catch {
+        clearInterval(pollInterval);
+        uploadRunning = false;
+      }
+    }, 1500);
+  }
+
+  async function autoConfirmPages() {
+    if (!urls.confirm_pages) {
+      uploadRunning = false;
+      goToStage(2);
+      return;
+    }
+
+    try {
+      const res = await fetch(urls.confirm_pages, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        body: JSON.stringify({
+          pages: [{ page_no: 1, decision: 'confirmed' }],
+        }),
+      });
+
+      uploadRunning = false;
+      goToStage(2);
+    } catch {
+      uploadRunning = false;
+      goToStage(2);
+    }
+  }
+
+  // Stage 3 Composition
+  async function composeCanonicalPage() {
+    if (!urls.compose) return;
+    isComposing = true;
+    composeStatusText = 'Composing 300-PPI print raster & marker quad…';
+
+    try {
+      const res = await fetch(urls.compose, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        body: JSON.stringify({
+          paper_width_mm: 210,
+          paper_height_mm: 297,
+          parametric: stage1Mode === 'blank' || baseType === 'blank' || baseType === 'preset',
+          content_margin_mm: { top: marginMm, right: marginMm, bottom: marginMm, left: marginMm },
+          marker_inset_mm: { top: 12, right: 12, bottom: 14, left: 12 },
+          alignment: 'center',
+          source_dpi: 300,
+          idempotency_key: newIdempotencyKey(),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        draft.stage = data.stage ?? 'page_prepared';
+        if (data.draft_id) {
+          draft.raster_url = `/setup/omr/templates/canonical/drafts/${draft.id}/assets/${data.composition?.raster_assets?.[0]?.asset_id || 1}`;
+        }
+      }
+    } catch {
+      // Advisory
+    } finally {
+      isComposing = false;
     }
   }
 
@@ -454,7 +703,7 @@
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          {step === 1 ? '1. Base' : step === 2 ? '2. Overlays' : step === 3 ? '3. Alignment' : step === 4 ? '4. Bubbles' : '5. Verify'}
+          {step === 1 ? '1. Base' : step === 2 ? '2. Overlays' : step === 3 ? '3. Compose' : step === 4 ? '4. Bubbles' : '5. Verify'}
         </button>
       {/each}
     </div>
@@ -514,59 +763,202 @@
       {#if currentStage === 1}
         <div class="p-6 space-y-6">
           <div>
-            <h2 class="text-base font-bold text-slate-900">Choose Template Base</h2>
-            <p class="text-xs text-slate-500 mt-1">Select the starting substrate for your evaluation answer sheet.</p>
+            <h2 class="text-base font-bold text-slate-900">Template Base & Ingestion</h2>
+            <p class="text-xs text-slate-500 mt-1">Start from clean HTML, upload an existing document, or use a blank canvas.</p>
           </div>
 
-          <div class="space-y-3">
-            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Base Format</span>
-            <div class="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onclick={() => { baseType = 'blank'; triggerAutosave(); }}
-                class={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
-                  baseType === 'blank' || baseType === 'preset'
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-slate-50/50'
-                }`}
-              >
-                <FileText class="size-5 mb-2" />
-                <div>
-                  <div class="font-bold text-xs">Blank Canvas</div>
-                  <div class="text-[10px] opacity-80 mt-0.5">Vector 300 PPI A4</div>
-                </div>
-              </button>
-              <button
-                type="button"
-                onclick={() => { baseType = 'image'; triggerAutosave(); }}
-                class={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
-                  baseType === 'image' || baseType === 'photo' || baseType === 'pdf'
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-slate-50/50'
-                }`}
-              >
-                <Layers class="size-5 mb-2" />
-                <div>
-                  <div class="font-bold text-xs">Source Document</div>
-                  <div class="text-[10px] opacity-80 mt-0.5">Ingested scan / PDF</div>
-                </div>
-              </button>
-            </div>
+          <!-- 3 Mode Switcher Tabs -->
+          <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'blank'; baseType = 'blank'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'blank'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Blank Canvas
+            </button>
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'html'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Paste HTML
+            </button>
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'upload'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Upload File
+            </button>
           </div>
 
-          <div class="space-y-3 border-t border-slate-100 pt-4">
-            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Paper Standard</span>
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1 text-xs">
-              <div class="flex justify-between text-slate-700">
-                <span class="font-medium">Standard Paper</span>
-                <span class="font-semibold">ISO A4 (210 &times; 297 mm)</span>
+          <!-- Option 1: Blank Parametric Canvas -->
+          {#if stage1Mode === 'blank'}
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+              <div class="flex items-center gap-2">
+                <Sliders class="size-4 text-slate-700" />
+                <span class="text-xs font-bold text-slate-900">Parametric Vector Layout</span>
               </div>
-              <div class="flex justify-between text-slate-500 text-[11px]">
-                <span>Render Resolution</span>
-                <span class="font-mono">2480 &times; 3508 px @ 300 PPI</span>
-              </div>
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                Generates a clean ISO A4 vector sheet (210 &times; 297 mm) with physical fiducials and customizable printable overlays.
+              </p>
+              <button
+                type="button"
+                onclick={() => goToStage(2)}
+                class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+              >
+                <span>Continue to Overlays & Margins</span>
+                <ChevronRight class="size-3.5" />
+              </button>
             </div>
-          </div>
+
+          <!-- Option 2: Paste / Edit HTML Code -->
+          {:else if stage1Mode === 'html'}
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">HTML Code Editor</span>
+                <button
+                  type="button"
+                  onclick={() => {
+                    htmlCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+    .header h1 { font-size: 18px; margin: 0 0 2px 0; text-transform: uppercase; }
+    .header p { font-size: 10px; color: #475569; margin: 0; font-family: monospace; }
+    .info { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; background: #f8fafc; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .part { font-size: 8.5px; font-weight: bold; background: #0f172a; color: #fff; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; text-align: center; text-transform: uppercase; }
+    .row { display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; font-family: monospace; margin-bottom: 3.5px; }
+    .num { font-weight: bold; width: 18px; color: #334155; }
+    .bubs { display: flex; gap: 3.5px; }
+    .bub { width: 12px; height: 12px; border: 1.2px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>University General Aptitude Test</h1>
+    <p>Standard 150-Item Answer Sheet &bull; ISO A4</p>
+  </div>
+  <div class="info">
+    <div><strong>Name:</strong> ____________________________</div>
+    <div><strong>Examinee No:</strong> __________</div>
+    <div><strong>Date:</strong> _______</div>
+  </div>
+  <div class="grid">
+    <div>
+      <div class="part">Part 1: Verbal Ability</div>
+      <div class="row"><span class="num">01</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">02</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">03</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">04</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">05</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+    </div>
+    <div>
+      <div class="part">Part 2: Quantitative</div>
+      <div class="row"><span class="num">26</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">27</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">28</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">29</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">30</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+    </div>
+    <div>
+      <div class="part">Part 3: Logical Reasoning</div>
+      <div class="row"><span class="num">51</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">52</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">53</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">54</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      <div class="row"><span class="num">55</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+    </div>
+  </div>
+</body>
+</html>`;
+                    triggerAutosave();
+                  }}
+                  class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <Sparkles class="size-3" />
+                  <span>Insert 150-Q Template</span>
+                </button>
+              </div>
+
+              <textarea
+                bind:value={htmlCode}
+                oninput={triggerAutosave}
+                rows="10"
+                class="w-full font-mono text-[10px] p-2.5 bg-slate-900 text-emerald-400 rounded-xl border border-slate-800 leading-relaxed resize-y focus:outline-hidden"
+                placeholder="Paste HTML markup here…"
+              ></textarea>
+
+              <button
+                type="button"
+                onclick={compileHtmlSource}
+                disabled={uploadRunning || !htmlCode}
+                class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+              >
+                {#if uploadRunning}
+                  <Loader2 class="size-3.5 animate-spin" />
+                  <span>{conversionStatusText}</span>
+                {:else}
+                  <Play class="size-3.5 text-emerald-400" />
+                  <span>Compile HTML into 300-PPI Sheet</span>
+                {/if}
+              </button>
+            </div>
+
+          <!-- Option 3: Direct File Upload Dropzone (PDF / DOCX / Image) -->
+          {:else if stage1Mode === 'upload'}
+            <div class="space-y-3">
+              <input
+                bind:this={uploadFileInput}
+                type="file"
+                accept=".pdf,.docx,.doc,image/jpeg,image/png,image/webp,text/html"
+                onchange={handleFileUpload}
+                class="hidden"
+              />
+              <button
+                type="button"
+                onclick={() => uploadFileInput?.click()}
+                disabled={uploadRunning}
+                class="w-full p-6 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl flex flex-col items-center justify-center text-center transition bg-slate-50/50 hover:bg-slate-50"
+              >
+                <Upload class="size-8 text-slate-400 mb-2" />
+                <span class="text-xs font-bold text-slate-800">
+                  Choose Document or Drag & Drop
+                </span>
+                <span class="text-[10px] text-slate-500 mt-1">Accepts PDF, Word (DOCX), Scanned JPG/PNG (Up to 25 MB)</span>
+              </button>
+
+              {#if uploadRunning}
+                <div class="p-3 bg-slate-100 rounded-xl text-xs flex items-center gap-2 text-slate-700 font-medium">
+                  <Loader2 class="size-4 animate-spin text-slate-900" />
+                  <span>{conversionStatusText}</span>
+                </div>
+              {/if}
+
+              {#if conversionError}
+                <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-center gap-2 font-medium">
+                  <XCircle class="size-4 text-red-600 shrink-0" />
+                  <span>{conversionError}</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
 
       {:else if currentStage === 2}
@@ -588,8 +980,8 @@
       {:else if currentStage === 3}
         <div class="p-6 space-y-6">
           <div>
-            <h2 class="text-base font-bold text-slate-900">Registration Alignment</h2>
-            <p class="text-xs text-slate-500 mt-1">OMRChecker Quad Authority perspective alignment.</p>
+            <h2 class="text-base font-bold text-slate-900">300-PPI Registration & Quad</h2>
+            <p class="text-xs text-slate-500 mt-1">Composites fiducial markers and freezes the 300-PPI print authority.</p>
           </div>
 
           <div class="p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 text-xs text-emerald-900 space-y-2">
@@ -598,18 +990,29 @@
               <span>Normalization-First Quad Authority</span>
             </div>
             <p class="text-[11px] leading-relaxed text-emerald-800">
-              The 4 corner fiducial centers define identically the <code class="font-mono bg-emerald-100 px-1 rounded">(0,0)</code> Top-Left through Bottom-Right coordinate quad. All bubble grids in Stage 4 are mapped directly onto this normalized quad.
+              The 4 corner fiducials define identically the <code class="font-mono bg-emerald-100 px-1 rounded">(0,0)</code> quad. In Stage 4, your question bubbles will map directly onto this calibrated quad with zero coordinate drift.
             </p>
           </div>
 
-          <div class="space-y-3">
-            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Marker Quad Coordinates</span>
-            <div class="space-y-1 text-xs font-mono bg-slate-900 text-emerald-400 p-3 rounded-xl">
-              <div>TL: [{marginMm}, {marginMm}] mm</div>
-              <div>TR: [{210 - marginMm}, {marginMm}] mm</div>
-              <div>BL: [{marginMm}, {297 - marginMm}] mm</div>
-              <div>BR: [{210 - marginMm}, {297 - marginMm}] mm</div>
-            </div>
+          <!-- 300-PPI Compose Trigger -->
+          <div class="space-y-2">
+            <button
+              type="button"
+              onclick={composeCanonicalPage}
+              disabled={isComposing}
+              class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+            >
+              {#if isComposing}
+                <Loader2 class="size-3.5 animate-spin" />
+                <span>{composeStatusText}</span>
+              {:else}
+                <RefreshCw class="size-3.5 text-emerald-400" />
+                <span>Build 300-PPI Canonical Print Raster</span>
+              {/if}
+            </button>
+            <p class="text-[10px] text-slate-500 text-center">
+              Re-renders print authority with physical markers and custom overlays.
+            </p>
           </div>
         </div>
 
@@ -639,6 +1042,8 @@
       bind:markerPattern
       bind:canvasDragLocked
       rasterUrl={draft.raster_url}
+      htmlContent={stage1Mode === 'html' ? htmlCode : null}
+      {isComposing}
       {showHeaderOverlay}
       {headerTitle}
       {headerSubtitle}

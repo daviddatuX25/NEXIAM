@@ -41,6 +41,8 @@
     sigW = 60,
     sigH = 28,
     customTextItems = [],
+    htmlContent = null,
+    isComposing = false,
     sections = $bindable([]),
     activeSectionIndex = $bindable(0),
     currentStage = 1,
@@ -220,142 +222,167 @@
       class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
     >
-      <!-- Composed / Ingested Raster Background -->
-      {#if rasterUrl}
+      <!-- STAGE 1: HTML Source Iframe Preview (if HTML mode) -->
+      {#if currentStage === 1 && htmlContent}
+        <iframe
+          srcdoc={htmlContent}
+          title="HTML Source Preview"
+          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs"
+          sandbox=""
+        ></iframe>
+      {:else if rasterUrl}
+        <!-- Composed / Ingested Raster Background -->
         <img
           src={rasterUrl}
           alt="Composed Canonical Page"
           class="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-80"
         />
       {/if}
-
-      <!-- 4 Corner Registration Fiducial Markers -->
-      <div
-        class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-        style={`top: ${marginMm * 2.47}px; left: ${marginMm * 2.47}px;`}
-      ></div>
-      <div
-        class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-        style={`top: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
-      ></div>
-      <div
-        class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-        style={`bottom: ${marginMm * 2.47}px; left: ${marginMm * 2.47}px;`}
-      ></div>
-      <div
-        class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-        style={`bottom: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
-      ></div>
-
-      <!-- Document Header Overlay -->
-      {#if showHeaderOverlay}
+      <!-- STAGE 2+: 4 Corner Registration Fiducial Markers -->
+      {#if currentStage >= 2}
         <div
-          class="absolute flex justify-between items-center pb-2 border-b-2 border-slate-900"
-          style={`top: ${headerY * 2.47}px; left: ${headerX * 2.47}px; width: ${headerW * 2.47}px;`}
-        >
-          <div>
-            <h3 class="font-bold tracking-tight text-slate-900" style={`font-size: ${headerFontSize * 0.9}px;`}>
-              {headerTitle}
-            </h3>
-            <p class="text-[9px] text-slate-500 font-mono">{headerSubtitle}</p>
-          </div>
-          {#if showQrOverlay}
-            <div
-              class="border border-slate-300 rounded flex flex-col items-center justify-center bg-slate-50 p-1 shrink-0"
-              style={`width: ${qrW * 1.5}px; height: ${qrH * 1.5}px;`}
-            >
-              <QrCode class="size-6 text-slate-800" />
-              <span class="text-[7px] font-mono text-slate-500 mt-0.5">INSTANCE QR</span>
+          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          style={`top: ${marginMm * 2.47}px; left: ${marginMm * 2.47}px;`}
+        ></div>
+        <div
+          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          style={`top: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
+        ></div>
+        <div
+          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          style={`bottom: ${marginMm * 2.47}px; left: ${marginMm * 2.47}px;`}
+        ></div>
+        <div
+          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          style={`bottom: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
+        ></div>
+      {/if}
+      <!-- STAGE 2+: Overlays (Header, Signature, Instructions, Custom text) -->
+      {#if currentStage >= 2}
+        <!-- Document Header Overlay -->
+        {#if showHeaderOverlay}
+          <div
+            class="absolute flex justify-between items-center pb-2 border-b-2 border-slate-900"
+            style={`top: ${headerY * 2.47}px; left: ${headerX * 2.47}px; width: ${headerW * 2.47}px;`}
+          >
+            <div>
+              <h3 class="font-bold tracking-tight text-slate-900" style={`font-size: ${headerFontSize * 0.9}px;`}>
+                {headerTitle}
+              </h3>
+              <p class="text-[9px] text-slate-500 font-mono">{headerSubtitle}</p>
             </div>
-          {/if}
-        </div>
-      {/if}
-
-      <!-- Instructions Box Overlay -->
-      {#if showInstructionsOverlay}
-        <div
-          class="absolute border border-slate-300 p-2 rounded bg-slate-50/80 text-[8px] leading-tight text-slate-700"
-          style={`top: ${instY * 2.47}px; left: ${instX * 2.47}px; width: ${instW * 2.47}px;`}
-        >
-          <span class="font-bold text-slate-900 uppercase block mb-0.5">Instructions:</span>
-          {instructionsContent}
-        </div>
-      {/if}
-
-      <!-- Signature Box Overlay -->
-      {#if showSignatureOverlay}
-        <div
-          class="absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between"
-          style={`top: ${sigY * 2.47}px; left: ${sigX * 2.47}px; width: ${sigW * 2.47}px; height: ${sigH * 2.47}px;`}
-        >
-          <span class="text-[7px] font-bold uppercase tracking-wider text-slate-500">{signatureContent}</span>
-          <div class="border-b border-dashed border-slate-400 w-full mb-1"></div>
-        </div>
-      {/if}
-
-      <!-- Custom Text Items Overlay -->
-      {#each customTextItems as t}
-        <div
-          class="absolute text-slate-800 font-medium leading-tight"
-          style={`top: ${t.posY * 2.47}px; left: ${t.posX * 2.47}px; width: ${t.w_mm * 2.47}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
-        >
-          {t.content}
-        </div>
-      {/each}
-
-      <!-- Multi-Section Question Bubble Grids -->
-      {#each sections as sec, i}
-        {@const isSelected = activeSectionIndex === i}
-        {@const labels = getOptionLabels(sec)}
-        <div
-          class={`absolute rounded border transition-all ${
-            isSelected
-              ? 'border-blue-500 bg-blue-500/5 ring-2 ring-blue-400/50 z-20'
-              : 'border-slate-300 bg-white/70 hover:border-slate-400 z-10'
-          }`}
-          style={`top: ${sec.posY * 2.47}px; left: ${sec.posX * 2.47}px; width: ${sec.w_mm * 2.47}px; height: ${sec.h_mm * 2.47}px;`}
-          onmousedown={(e) => handleBlockMouseDown(e, i)}
-          role="button"
-          tabindex="0"
-        >
-          <!-- Section Header Chip -->
-          <div class="px-1.5 py-0.5 bg-slate-900 text-white rounded-t-xs text-[8px] font-bold font-mono flex justify-between items-center">
-            <span>{sec.id} (Q{sec.startQ}&ndash;{sec.startQ + sec.questionsCount - 1})</span>
-            <span class="opacity-70">{sec.bubblePitchMm}mm / {sec.rowPitchMm}mm</span>
-          </div>
-
-          <!-- Bubble Rows Preview -->
-          <div class="p-1.5 space-y-1 overflow-hidden h-[calc(100%-18px)]">
-            {#each Array.from({ length: Math.min(sec.questionsCount, 12) }) as _, r}
-              <div class="flex items-center justify-between text-[8px] font-mono text-slate-700">
-                <span class="w-4 font-bold">{(sec.startQ || 1) + r}</span>
-                <div class="flex items-center space-x-1.5">
-                  {#each labels as opt}
-                    <div class="w-3.5 h-3.5 rounded-full border border-slate-700 flex items-center justify-center text-[7px] font-bold text-slate-800 bg-white">
-                      {opt}
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/each}
-            {#if sec.questionsCount > 12}
-              <div class="text-[7px] font-mono text-slate-400 text-center italic mt-0.5">
-                + {sec.questionsCount - 12} more rows
+            {#if showQrOverlay}
+              <div
+                class="border border-slate-300 rounded flex flex-col items-center justify-center bg-slate-50 p-1 shrink-0"
+                style={`width: ${qrW * 1.5}px; height: ${qrH * 1.5}px;`}
+              >
+                <QrCode class="size-6 text-slate-800" />
+                <span class="text-[7px] font-mono text-slate-500 mt-0.5">INSTANCE QR</span>
               </div>
             {/if}
           </div>
+        {/if}
 
-          <!-- Resize Handle -->
-          {#if isSelected && !canvasDragLocked}
-            <div
-              class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
-              onmousedown={(e) => handleResizeMouseDown(e, i)}
-              role="button"
-              tabindex="0"
-            ></div>
-          {/if}
+        <!-- Instructions Box Overlay -->
+        {#if showInstructionsOverlay}
+          <div
+            class="absolute border border-slate-300 p-2 rounded bg-slate-50/80 text-[8px] leading-tight text-slate-700"
+            style={`top: ${instY * 2.47}px; left: ${instX * 2.47}px; width: ${instW * 2.47}px;`}
+          >
+            <span class="font-bold text-slate-900 uppercase block mb-0.5">Instructions:</span>
+            {instructionsContent}
+          </div>
+        {/if}
+
+        <!-- Signature Box Overlay -->
+        {#if showSignatureOverlay}
+          <div
+            class="absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between"
+            style={`top: ${sigY * 2.47}px; left: ${sigX * 2.47}px; width: ${sigW * 2.47}px; height: ${sigH * 2.47}px;`}
+          >
+            <span class="text-[7px] font-bold uppercase tracking-wider text-slate-500">{signatureContent}</span>
+            <div class="border-b border-dashed border-slate-400 w-full mb-1"></div>
+          </div>
+        {/if}
+
+        <!-- Custom Text Items Overlay -->
+        {#each customTextItems as t}
+          <div
+            class="absolute text-slate-800 font-medium leading-tight"
+            style={`top: ${t.posY * 2.47}px; left: ${t.posX * 2.47}px; width: ${t.w_mm * 2.47}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
+          >
+            {t.content}
+          </div>
+        {/each}
+      {/if}
+      <!-- STAGE 4+: Multi-Section Question Bubble Grids (ONLY rendered in Stage 4 & 5) -->
+      {#if currentStage >= 4}
+        {#each sections as sec, i}
+          {@const isSelected = activeSectionIndex === i}
+          {@const labels = getOptionLabels(sec)}
+          <div
+            class={`absolute rounded border transition-all ${
+              isSelected
+                ? 'border-blue-500 bg-blue-500/5 ring-2 ring-blue-400/50 z-20'
+                : 'border-slate-300 bg-white/70 hover:border-slate-400 z-10'
+            }`}
+            style={`top: ${sec.posY * 2.47}px; left: ${sec.posX * 2.47}px; width: ${sec.w_mm * 2.47}px; height: ${sec.h_mm * 2.47}px;`}
+            onmousedown={(e) => handleBlockMouseDown(e, i)}
+            role="button"
+            tabindex="0"
+          >
+            <!-- Section Header Chip -->
+            <div class="px-1.5 py-0.5 bg-slate-900 text-white rounded-t-xs text-[8px] font-bold font-mono flex justify-between items-center">
+              <span>{sec.id} (Q{sec.startQ}&ndash;{sec.startQ + sec.questionsCount - 1})</span>
+              <span class="opacity-70">{sec.bubblePitchMm}mm / {sec.rowPitchMm}mm</span>
+            </div>
+
+            <!-- Bubble Rows Preview -->
+            <div class="p-1.5 space-y-1 overflow-hidden h-[calc(100%-18px)]">
+              {#each Array.from({ length: Math.min(sec.questionsCount, 12) }) as _, r}
+                <div class="flex items-center justify-between text-[8px] font-mono text-slate-700">
+                  <span class="w-4 font-bold">{(sec.startQ || 1) + r}</span>
+                  <div class="flex items-center space-x-1.5">
+                    {#each labels as opt}
+                      <div class="w-3.5 h-3.5 rounded-full border border-slate-700 flex items-center justify-center text-[7px] font-bold text-slate-800 bg-white">
+                        {opt}
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+              {#if sec.questionsCount > 12}
+                <div class="text-[7px] font-mono text-slate-400 text-center italic mt-0.5">
+                  + {sec.questionsCount - 12} more rows
+                </div>
+              {/if}
+            </div>
+
+            <!-- Resize Handle -->
+            {#if isSelected && !canvasDragLocked}
+              <div
+                class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                onmousedown={(e) => handleResizeMouseDown(e, i)}
+                role="button"
+                tabindex="0"
+              ></div>
+            {/if}
+          </div>
+        {/each}
+      {/if}
+
+      <!-- Stage 3 / Compose Building Loading Overlay -->
+      {#if isComposing}
+        <div class="absolute inset-0 bg-white/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center z-40 rounded-xs">
+          <div class="size-10 rounded-xl bg-slate-900 flex items-center justify-center text-white mb-3 shadow-md animate-pulse">
+            <Loader2 class="size-5 animate-spin" />
+          </div>
+          <h4 class="text-xs font-bold text-slate-900">Composing 300-PPI Print Raster</h4>
+          <p class="text-[10px] text-slate-500 mt-1 max-w-[240px]">
+            Generating vector fiducial markers and normalizing print canvas quad at 300 PPI…
+          </p>
         </div>
-      {/each}
+      {/if}
     </div>
   </div>
 </div>
