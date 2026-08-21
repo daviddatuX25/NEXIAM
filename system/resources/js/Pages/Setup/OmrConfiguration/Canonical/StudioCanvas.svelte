@@ -224,9 +224,9 @@
 </script>
 
 <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100 select-none">
-  <!-- Canvas Viewport with No Scrollbars on Sheet -->
+  <!-- Canvas Viewport with Absolute Centering (ZERO scrollHeight inflation) -->
   <div
-    class="w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing canvas-grid flex items-center justify-center"
+    class="w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing canvas-grid"
     onwheel={handleWheel}
     onmousedown={handleCanvasMouseDown}
     onmousemove={handleCanvasMouseMove}
@@ -235,11 +235,13 @@
     role="region"
     aria-label="OMR sheet design viewport"
   >
-    <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm, ZERO SCROLLBARS) -->
-    <div
-      class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 overflow-hidden"
-      style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
-    >
+    <!-- Centering Absolute Wrapper: Zero layout height inflation -->
+    <div class="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+      <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm) -->
+      <div
+        class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative pointer-events-auto shrink-0 overflow-hidden"
+        style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
+      >
       <!-- Continuous Background Layer (HTML source preview strictly contained without iframe scrollbars) -->
       {#if safeHtmlContent}
         <iframe
@@ -537,6 +539,7 @@
           </p>
         </div>
       {/if}
+      </div>
     </div>
   </div>
 </div>

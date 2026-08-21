@@ -228,8 +228,8 @@
   let activeSectionIndex = $state(0);
   let bubbleRadiusMm = $state(4.5);
 
-  // Canvas Pan & Zoom (Optimized Default Scale = 0.88)
-  let scale = $state(0.88);
+  // Canvas Pan & Zoom (Optimized Scale = 0.78 fits 100% of A4 sheet inside standard viewport without overflow)
+  let scale = $state(0.78);
   let panX = $state(0);
   let panY = $state(0);
 
@@ -650,17 +650,17 @@
   }
 
   function resetZoom() {
-    scale = 0.88;
+    scale = 0.78;
     panX = 0;
     panY = 0;
   }
 </script>
 
-<!-- FULL-BLEED WORKSPACE CONTAINER: Completely fills parent workspace, ZERO outer scrollbars -->
-<div class="w-full h-full relative overflow-hidden bg-slate-100 flex select-none">
-  <!-- FULL-BLEED CANVAS WORKBENCH (Column 2 base layer) -->
+<!-- FULL-BLEED WORKSPACE CONTAINER: Dynamically fills remaining height (h-full flex-1), ZERO outer scrollbars -->
+<div class="w-full h-full flex-1 relative overflow-hidden bg-slate-100 flex select-none">
+  <!-- FULL-BLEED CANVAS BASE (Column 2) -->
   <main class="w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
-    <!-- Scalable Canvas Viewport -->
+    <!-- Scalable Canvas Viewport (Zero Scrollbars) -->
     <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
       <StudioCanvas
         bind:scale
@@ -710,73 +710,76 @@
       />
     </div>
 
-    <!-- FLOATING TOP STEPPER BAR (Centered over canvas with glass styling) -->
-    <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1">
-      {#each stageTitles as title, idx}
-        {@const stageNum = idx + 1}
-        {@const isActive = currentStage === stageNum}
-        {@const isPast = currentStage > stageNum}
-        <button
-          type="button"
-          onclick={() => requestGoToStage(stageNum)}
-          class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
-            isActive
-              ? 'bg-slate-900 text-white shadow-xs'
-              : isPast
-                ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
-            isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
-          }`}>
-            {stageNum}
-          </span>
-          <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
-        </button>
-      {/each}
-    </div>
-
-    <!-- FLOATING TOP-RIGHT ACTIONS: Re-edit Design Button (Step 3) + Save Action -->
-    <div class="absolute top-4 right-4 z-30 pointer-events-auto flex items-center space-x-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-md">
-      {#if currentStage === 3 && draft.raster_url}
-        <button
-          type="button"
-          onclick={() => requestGoToStage(2)}
-          class="px-2.5 h-7 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition"
-          title="Return to Step 2 to edit overlays or re-render page raster"
-        >
-          <RotateCcw class="size-3 text-emerald-600" />
-          <span>Re-edit Design</span>
-        </button>
-      {/if}
-
-      <div class="flex items-center space-x-1.5 text-xs px-2">
-        {#if saveStatus === 'saving'}
-          <Loader2 class="size-3.5 text-amber-500 animate-spin" />
-          <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
-        {:else if saveStatus === 'saved'}
-          <CheckCircle2 class="size-3.5 text-emerald-600" />
-          <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
-        {:else if saveStatus === 'error'}
-          <XCircle class="size-3.5 text-rose-600" />
-          <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
-            {errorMessage || 'Error'}
-          </span>
-        {/if}
+    <!-- FLOATING TOP STEPPER BAR (Positioned in the open canvas space to the right of Column 1, NEVER overlaps Column 1) -->
+    <div class="absolute top-4 left-[380px] right-4 flex items-center justify-between z-30 pointer-events-none gap-4">
+      <!-- 4-Step Stepper Navigation -->
+      <div class="pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1 shrink-0">
+        {#each stageTitles as title, idx}
+          {@const stageNum = idx + 1}
+          {@const isActive = currentStage === stageNum}
+          {@const isPast = currentStage > stageNum}
+          <button
+            type="button"
+            onclick={() => requestGoToStage(stageNum)}
+            class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
+              isActive
+                ? 'bg-slate-900 text-white shadow-xs'
+                : isPast
+                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                  : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
+              isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
+            }`}>
+              {stageNum}
+            </span>
+            <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
+          </button>
+        {/each}
       </div>
 
-      <button
-        type="button"
-        onclick={performSave}
-        class="px-3.5 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-xs"
-      >
-        Save
-      </button>
+      <!-- Right Actions: Re-edit Design Button (Step 3) + Save Action -->
+      <div class="pointer-events-auto flex items-center space-x-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-md shrink-0">
+        {#if currentStage === 3 && draft.raster_url}
+          <button
+            type="button"
+            onclick={() => requestGoToStage(2)}
+            class="px-2.5 h-7 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition"
+            title="Return to Step 2 to edit overlays or re-render page raster"
+          >
+            <RotateCcw class="size-3 text-emerald-600" />
+            <span>Re-edit Design</span>
+          </button>
+        {/if}
+
+        <div class="flex items-center space-x-1.5 text-xs px-2">
+          {#if saveStatus === 'saving'}
+            <Loader2 class="size-3.5 text-amber-500 animate-spin" />
+            <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
+          {:else if saveStatus === 'saved'}
+            <CheckCircle2 class="size-3.5 text-emerald-600" />
+            <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
+          {:else if saveStatus === 'error'}
+            <XCircle class="size-3.5 text-rose-600" />
+            <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
+              {errorMessage || 'Error'}
+            </span>
+          {/if}
+        </div>
+
+        <button
+          type="button"
+          onclick={performSave}
+          class="px-3.5 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-xs"
+        >
+          Save
+        </button>
+      </div>
     </div>
 
-    <!-- FLOATING CANVAS CONTROLS (Positioned at Bottom-Right over Canvas for immediate visibility) -->
-    <div class="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
+    <!-- FLOATING CANVAS CONTROLS (Positioned at Bottom-Left beside Column 1 for easy reach) -->
+    <div class="absolute bottom-4 left-[376px] bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
       <!-- Canvas Lock / Active Toggle -->
       <button
         type="button"
@@ -826,24 +829,24 @@
       <button
         type="button"
         onclick={resetZoom}
-        title="Reset Zoom to Fit A4 Sheet (88%)"
+        title="Reset Zoom to Fit A4 Sheet (78%)"
         class="px-2.5 h-8 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1 border border-slate-200"
       >
         <Maximize2 class="size-3" />
-        <span>Fit (88%)</span>
+        <span>Fit (78%)</span>
       </button>
     </div>
   </main>
 
-  <!-- COLUMN 1: FLOATING LEFT TOOL CARD (Absolute drawer on left, cannot stretch page height) -->
-  <aside class="absolute top-4 left-4 bottom-4 w-[360px] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden z-20">
+  <!-- COLUMN 1: FLOATING LEFT TOOL CARD (Positioned strictly inside top-4 to bottom-4) -->
+  <aside class="absolute top-4 left-4 bottom-4 w-[350px] max-h-[calc(100%-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden z-20">
     <!-- Card Header -->
     <div class="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white/80">
       <div class="flex items-center space-x-2">
         <div class="size-5 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-[10px]">
           N
         </div>
-        <span class="text-xs font-bold text-slate-900 truncate max-w-[170px]">{draft.name || 'Template Studio'}</span>
+        <span class="text-xs font-bold text-slate-900 truncate max-w-[160px]">{draft.name || 'Template Studio'}</span>
         <span class="px-1.5 py-0.5 bg-slate-100 text-[9.5px] font-mono text-slate-600 rounded border border-slate-200">
           {draft.code || 'OMR-DRAFT'}
         </span>
@@ -998,7 +1001,7 @@
       {/if}
     </div>
 
-    <!-- Pinned Bottom Navigation Footer in Floating Card (Step 1 only; Steps 2-4 have their own footers) -->
+    <!-- Pinned Bottom Navigation Footer in Floating Card -->
     {#if currentStage === 1}
       <div class="shrink-0 p-3 border-t border-slate-200/80 bg-white/90">
         <button
