@@ -63,6 +63,14 @@
   let dragStartY = 0;
   let blockStartGeometry = { x: 0, y: 0, w: 0, h: 0 };
 
+  // Sanitize HTML preview content by stripping scripts and executable handlers
+  let safeHtmlContent = $derived.by(() => {
+    if (!htmlContent) return null;
+    return htmlContent
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '');
+  });
+
   function handleWheel(e) {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
@@ -292,13 +300,13 @@
       class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
     >
-      <!-- Continuous Background Layer (HTML live iframe prioritized in HTML mode) -->
-      {#if isHtmlMode && htmlContent}
+      <!-- Continuous Background Layer (HTML live iframe sanitized without script errors) -->
+      {#if isHtmlMode && safeHtmlContent}
         <iframe
-          srcdoc={htmlContent}
+          srcdoc={safeHtmlContent}
           title="HTML Source Preview"
           class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white"
-          sandbox=""
+          sandbox="allow-same-origin"
         ></iframe>
       {:else if rasterUrl}
         <img
@@ -306,12 +314,12 @@
           alt="Composed Page"
           class="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-85"
         />
-      {:else if htmlContent}
+      {:else if safeHtmlContent}
         <iframe
-          srcdoc={htmlContent}
+          srcdoc={safeHtmlContent}
           title="HTML Source Preview"
           class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white"
-          sandbox=""
+          sandbox="allow-same-origin"
         ></iframe>
       {/if}
 
@@ -498,36 +506,38 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Rendered in Step 3 & 4) -->
+      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Translucent Optical Sensor Mask) -->
       {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}
           <div
-            class={`absolute rounded border transition-all ${
+            class={`absolute rounded-lg border-2 transition-all backdrop-blur-[0.5px] ${
               isSelected
-                ? 'border-blue-500 bg-blue-500/5 ring-2 ring-blue-400/50 z-20'
-                : 'border-slate-300 bg-white/70 hover:border-slate-400 z-10'
+                ? 'border-blue-600 border-dashed bg-blue-500/15 ring-2 ring-blue-400/60 z-20 shadow-sm'
+                : 'border-blue-400/80 border-dashed bg-blue-500/5 hover:border-blue-500 z-10'
             }`}
             style={`top: ${(Number(sec.posY) || 72) * 2.47}px; left: ${(Number(sec.posX) || 25) * 2.47}px; width: ${(Number(sec.w_mm) || 75) * 2.47}px; height: ${(Number(sec.h_mm) || 165) * 2.47}px;`}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
             role="button"
             tabindex="0"
           >
-            <!-- Section Header Chip -->
-            <div class="px-1.5 py-0.5 bg-slate-900 text-white rounded-t-xs text-[8px] font-bold font-mono flex justify-between items-center">
-              <span>{sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
-              <span class="opacity-70">{sec.bubblePitchMm}mm / {sec.rowPitchMm}mm</span>
+            <!-- Section Header Chip: Clarifies this is an OMR recognition sensor mask -->
+            <div class="px-1.5 py-0.5 bg-blue-600/90 text-white rounded-t text-[7.5px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
+              <span class="truncate">[OPTICAL GRID] {sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
+              <span class="opacity-80 text-[7px] font-normal shrink-0">{sec.bubblePitchMm}mm</span>
             </div>
 
-            <!-- Bubble Rows Preview -->
+            <!-- Translucent Optical Target Rings (Shows bubble alignment over document without covering text) -->
             <div class="p-1.5 space-y-1 overflow-hidden h-[calc(100%-18px)]">
               {#each Array.from({ length: Math.max(1, Math.min(Number(sec?.questionsCount) || 1, 12)) }) as _, r}
-                <div class="flex items-center justify-between text-[8px] font-mono text-slate-700">
-                  <span class="w-4 font-bold">{(Number(sec?.startQ) || 1) + r}</span>
+                <div class="flex items-center justify-between text-[8px] font-mono text-blue-900">
+                  <span class="w-4 text-[7px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200/80 rounded px-0.5 text-center">
+                    {(Number(sec?.startQ) || 1) + r}
+                  </span>
                   <div class="flex items-center space-x-1.5">
                     {#each labels as opt}
-                      <div class="w-3.5 h-3.5 rounded-full border border-slate-700 flex items-center justify-center text-[7px] font-bold text-slate-800 bg-white">
+                      <div class="w-4 h-4 rounded-full border-2 border-blue-600/90 bg-blue-500/25 text-blue-950 flex items-center justify-center text-[7.5px] font-bold shadow-xs">
                         {opt}
                       </div>
                     {/each}
@@ -535,8 +545,8 @@
                 </div>
               {/each}
               {#if (Number(sec?.questionsCount) || 0) > 12}
-                <div class="text-[7px] font-mono text-slate-400 text-center italic mt-0.5">
-                  + {(Number(sec?.questionsCount) || 0) - 12} more rows
+                <div class="text-[7px] font-mono text-blue-600 text-center italic mt-0.5 font-medium">
+                  + {(Number(sec?.questionsCount) || 0) - 12} more optical bubble rows
                 </div>
               {/if}
             </div>

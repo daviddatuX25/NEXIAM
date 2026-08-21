@@ -4,6 +4,8 @@
     Trash2,
     ChevronLeft,
     ChevronRight,
+    Scan,
+    Info,
   } from 'lucide-svelte';
 
   let {
@@ -19,7 +21,7 @@
   function addSection() {
     const nextNum = sections.length + 1;
     const lastSec = sections[sections.length - 1];
-    const nextStartQ = lastSec ? (lastSec.startQ + lastSec.questionsCount) : 1;
+    const nextStartQ = lastSec ? (Number(lastSec.startQ) + Number(lastSec.questionsCount)) : 1;
 
     const newSec = {
       id: `Section_${String.fromCharCode(64 + nextNum)}`,
@@ -46,7 +48,7 @@
   function addSingleQuestionBlock() {
     const nextNum = sections.length + 1;
     const lastSec = sections[sections.length - 1];
-    const nextStartQ = lastSec ? (lastSec.startQ + lastSec.questionsCount) : 1;
+    const nextStartQ = lastSec ? (Number(lastSec.startQ) + Number(lastSec.questionsCount)) : 1;
 
     const newSec = {
       id: `Question_${nextStartQ}`,
@@ -82,11 +84,11 @@
   }
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-5">
   <div class="flex items-center justify-between">
     <div>
       <h2 class="text-base font-bold text-slate-900">Question Sections</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Flexible & non-uniform section grids.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Define optical recognition grid zones.</p>
     </div>
     <div class="flex items-center space-x-1.5">
       <button
@@ -108,6 +110,17 @@
     </div>
   </div>
 
+  <!-- OMR Optical Grid Notice -->
+  <div class="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-blue-950 space-y-1 text-xs">
+    <div class="flex items-center gap-1.5 font-bold text-blue-900">
+      <Scan class="size-3.5 text-blue-600 shrink-0" />
+      <span>OMR Optical Recognition Grid</span>
+    </div>
+    <p class="text-[11px] text-blue-700 leading-relaxed">
+      These translucent blue halos define the optical sensor coordinates for OMR recognition. They align over your document's printed bubbles and do not add duplicate print text.
+    </p>
+  </div>
+
   <!-- Section Select Tabs -->
   <div class="flex flex-wrap gap-1.5">
     {#each sections as sec, i}
@@ -120,7 +133,7 @@
             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`}
       >
-        {sec.id} (Q{sec.startQ}&ndash;{sec.startQ + sec.questionsCount - 1})
+        {sec.id} (Q{sec.startQ}&ndash;{Number(sec.startQ) + Number(sec.questionsCount) - 1})
       </button>
     {/each}
   </div>
@@ -170,7 +183,7 @@
 
       <!-- Option Type -->
       <div class="space-y-1">
-        <label class="font-semibold text-slate-700 block">Option Type</label>
+        <label class="font-semibold text-slate-700 block">Option Format</label>
         <select
           bind:value={activeSection.type}
           onchange={handleInput}
@@ -184,13 +197,14 @@
         </select>
       </div>
 
-      <!-- Option Pitch & Row Pitch Continuous Sliders -->
+      <!-- Pitch Spacing Sliders with clear explanations -->
       <div class="space-y-3 border-t border-slate-200/80 pt-3">
         <div class="space-y-1.5">
           <div class="flex justify-between font-semibold text-slate-700">
-            <span>Option Pitch (bubblesGap)</span>
+            <span>Bubble Spacing (Horizontal)</span>
             <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{activeSection.bubblePitchMm} mm</span>
           </div>
+          <p class="text-[10px] text-slate-500">Horizontal center-to-center distance between option bubbles (A ↔ B ↔ C ↔ D).</p>
           <input
             type="range"
             min="6.0"
@@ -204,9 +218,10 @@
 
         <div class="space-y-1.5">
           <div class="flex justify-between font-semibold text-slate-700">
-            <span>Row Pitch (labelsGap)</span>
+            <span>Row Spacing (Vertical)</span>
             <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{activeSection.rowPitchMm} mm</span>
           </div>
+          <p class="text-[10px] text-slate-500">Vertical center-to-center distance between question rows (Q1 ↕ Q2).</p>
           <input
             type="range"
             min="5.0"
