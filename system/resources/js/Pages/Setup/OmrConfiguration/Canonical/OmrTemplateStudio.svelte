@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { newIdempotencyKey } from '@/lib/utils';
+  import { newIdempotencyKey, csrfToken } from '@/lib/utils';
   import {
     emitNativeMapping,
     emitOverlayBoxes,
@@ -402,6 +402,36 @@
 
   // HTML Code Editor State
   let htmlCode = $state(DEFAULT_150Q_HTML);
+  // Mode Switch Confirmation Modal State
+  let showModeSwitchModal = $state(false);
+  let pendingTargetMode = $state(null);
+
+  function requestSwitchMode(targetMode) {
+    if (targetMode === stage1Mode) return;
+    const hasModified = draft.raster_url || (stage1Mode === 'html' && components.length > 0 && draft.lock_version > 0);
+    if (hasModified) {
+      pendingTargetMode = targetMode;
+      showModeSwitchModal = true;
+      return;
+    }
+    stage1Mode = targetMode;
+    baseType = targetMode === 'html' ? 'html' : 'image';
+    triggerAutosave();
+  }
+
+  function confirmSwitchMode() {
+    if (!pendingTargetMode) return;
+    stage1Mode = pendingTargetMode;
+    baseType = pendingTargetMode === 'html' ? 'html' : 'image';
+    draft.raster_url = null;
+    showModeSwitchModal = false;
+    pendingTargetMode = null;
+    if (stage1Mode === 'html') {
+      applyPreset('150q');
+    }
+    triggerAutosave();
+  }
+
   // Direct Upload & Ingest State
   let uploadFileInput = $state(null);
   let uploadRunning = $state(false);
@@ -410,11 +440,8 @@
 
   // Stage 3 Composition Loading
   let isComposing = $state(false);
-
-  // Reset Confirmation Modal State
   let showResetConfirmModal = $state(false);
   let pendingTargetStage = $state(null);
-
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
   let markerPattern = $state('square');
@@ -760,13 +787,11 @@
       form.append('width_mm', '210');
       form.append('height_mm', '297');
       form.append('idempotency_key', newIdempotencyKey());
-
       const uploadRes = await fetch(urls.source_ingest, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
         body: form,
       });
-
       if (!uploadRes.ok) {
         const data = await uploadRes.json().catch(() => ({}));
         throw new Error(data.message || 'File upload rejected.');
@@ -972,7 +997,7 @@
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-CSRF-TOKEN': getCsrfToken(),
+          'X-CSRF-TOKEN': csrfToken(),
           'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify({
@@ -983,7 +1008,6 @@
           idempotency_key: newIdempotencyKey(),
         }),
       });
-
       if (res.ok) {
         const data = await res.json();
         currentLockVersion = data.lock_version ?? currentLockVersion;
@@ -1025,7 +1049,7 @@
     try {
       const res = await fetch(urls.source_ingest, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
         body: form,
       });
 
@@ -1078,7 +1102,7 @@
       try {
         await fetch(urls.confirm_pages, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
           body: JSON.stringify({
             pages: [{ page_no: 1, decision: 'confirmed' }],
           }),
@@ -1098,9 +1122,7 @@
     });
   }
 
-  function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-  }
+
 
   function zoomStep(delta) {
     scale = Math.min(Math.max(0.35, scale + delta), 2.5);
@@ -1207,10 +1229,11 @@
   <div class="absolute top-4 left-[376px] right-4 flex items-center justify-between z-30 pointer-events-none gap-4">
       <!-- 4-Step Stepper Navigation -->
       <div class="pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1 shrink-0">
-        {#each stageTitles as title, idx}
-          {@const stageNum = idx + 1}
-          {@const isActive = currentStage === stageNum}
-          {@const isPast = currentStage > stageNum}
+        {#each (stage1Mode === 'html' ? ['1. Sheet Designer', '2. Question Bubbles', '3. Verify & Export'] : stageTitles) as title, idx}
+          {@const stageNum = stage1Mode === 'html' ? (idx === 0 ? 1 : idx + 2) : idx + 1}
+          {@const displayStep = idx + 1}
+          {@const isActive = (stage1Mode === 'html' && ((idx === 0 && currentStage <= 2) || (idx === 1 && currentStage === 3) || (idx === 2 && currentStage === 4))) || (stage1Mode !== 'html' && currentStage === stageNum)}
+          {@const isPast = stage1Mode === 'html' ? (idx === 0 && currentStage >= 3) || (idx === 1 && currentStage === 4) : currentStage > stageNum}
           <button
             type="button"
             onclick={() => requestGoToStage(stageNum)}
@@ -1225,7 +1248,7 @@
             <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
               isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
             }`}>
-              {stageNum}
+              {displayStep}
             </span>
             <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
           </button>
@@ -1356,7 +1379,7 @@
           <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
             <button
               type="button"
-              onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
+              onclick={() => requestSwitchMode('html')}
               class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
                 stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -1365,7 +1388,7 @@
             </button>
             <button
               type="button"
-              onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
+              onclick={() => requestSwitchMode('upload')}
               class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
                 stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -1755,7 +1778,6 @@
         <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
           Step 3 relies on a settled, composed print raster for optical bubble calibration. Going back to modify HTML source or overlays will invalidate the current raster image so you can re-render a fresh document.
         </p>
-
         <div class="flex items-center justify-end space-x-2 pt-2">
           <button
             type="button"
@@ -1770,6 +1792,46 @@
             class="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition"
           >
             Yes, Reset Raster & Re-edit
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Mode Switch Confirmation Modal -->
+  {#if showModeSwitchModal}
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div class="flex items-center space-x-3">
+          <div class="size-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+            <AlertTriangle class="size-5" />
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Switch Creation Mode?</h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Switching to {pendingTargetMode === 'html' ? 'Native Builder' : 'File Upload'} will reset the current draft layout.
+            </p>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+          Native Builder creates the document from scratch with editable OMR components, while File Upload ingests an existing PDF or image.
+        </p>
+
+        <div class="flex items-center justify-end space-x-2 pt-2">
+          <button
+            type="button"
+            onclick={() => { showModeSwitchModal = false; pendingTargetMode = null; }}
+            class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onclick={confirmSwitchMode}
+            class="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition"
+          >
+            Yes, Switch Mode
           </button>
         </div>
       </div>

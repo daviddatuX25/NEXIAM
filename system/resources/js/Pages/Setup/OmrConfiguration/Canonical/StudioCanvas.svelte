@@ -248,7 +248,7 @@
           srcdoc={safeHtmlContent}
           title="HTML Source Preview"
           class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white overflow-hidden"
-          sandbox="allow-same-origin"
+          sandbox="allow-same-origin allow-scripts"
           scrolling="no"
         ></iframe>
       {:else if rasterUrl}
