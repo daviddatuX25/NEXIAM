@@ -14,6 +14,8 @@
     Play,
     ChevronRight,
     Upload,
+    RotateCcw,
+    Layers,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -253,6 +255,11 @@
   onMount(() => {
     const studio = draft.authoring?.studio;
     if (studio) {
+      if (typeof studio.current_stage === 'number') currentStage = studio.current_stage;
+      if (studio.raster_url && !draft.raster_url) draft.raster_url = studio.raster_url;
+      if (studio.stage1Mode) stage1Mode = studio.stage1Mode;
+      if (studio.baseType) baseType = studio.baseType;
+
       if (Array.isArray(studio.sections) && studio.sections.length > 0) sections = studio.sections;
       if (typeof studio.marginMm === 'number') marginMm = studio.marginMm;
       if (studio.markerPattern) markerPattern = studio.markerPattern;
@@ -261,16 +268,33 @@
       if (typeof studio.showHeaderOverlay === 'boolean') showHeaderOverlay = studio.showHeaderOverlay;
       if (studio.headerTitle) headerTitle = studio.headerTitle;
       if (studio.headerSubtitle) headerSubtitle = studio.headerSubtitle;
-      if (studio.headerFontSize) headerFontSize = studio.headerFontSize;
+      if (typeof studio.headerFontSize === 'number') headerFontSize = studio.headerFontSize;
+      if (typeof studio.headerX === 'number') headerX = studio.headerX;
+      if (typeof studio.headerY === 'number') headerY = studio.headerY;
+      if (typeof studio.headerW === 'number') headerW = studio.headerW;
+      if (typeof studio.headerH === 'number') headerH = studio.headerH;
 
       if (typeof studio.showQrOverlay === 'boolean') showQrOverlay = studio.showQrOverlay;
+      if (typeof studio.qrX === 'number') qrX = studio.qrX;
+      if (typeof studio.qrY === 'number') qrY = studio.qrY;
+      if (typeof studio.qrW === 'number') qrW = studio.qrW;
+      if (typeof studio.qrH === 'number') qrH = studio.qrH;
+
       if (typeof studio.showInstructionsOverlay === 'boolean') showInstructionsOverlay = studio.showInstructionsOverlay;
       if (studio.instructionsContent) instructionsContent = studio.instructionsContent;
-      if (studio.instructionsFontSize) instructionsFontSize = studio.instructionsFontSize;
+      if (typeof studio.instructionsFontSize === 'number') instructionsFontSize = studio.instructionsFontSize;
+      if (typeof studio.instX === 'number') instX = studio.instX;
+      if (typeof studio.instY === 'number') instY = studio.instY;
+      if (typeof studio.instW === 'number') instW = studio.instW;
+      if (typeof studio.instH === 'number') instH = studio.instH;
 
       if (typeof studio.showSignatureOverlay === 'boolean') showSignatureOverlay = studio.showSignatureOverlay;
       if (studio.signatureContent) signatureContent = studio.signatureContent;
-      if (studio.signatureFontSize) signatureFontSize = studio.signatureFontSize;
+      if (typeof studio.signatureFontSize === 'number') signatureFontSize = studio.signatureFontSize;
+      if (typeof studio.sigX === 'number') sigX = studio.sigX;
+      if (typeof studio.sigY === 'number') sigY = studio.sigY;
+      if (typeof studio.sigW === 'number') sigW = studio.sigW;
+      if (typeof studio.sigH === 'number') sigH = studio.sigH;
 
       if (typeof studio.showMetadataOverlay === 'boolean') showMetadataOverlay = studio.showMetadataOverlay;
       if (studio.metadataContent) metadataContent = studio.metadataContent;
@@ -288,10 +312,10 @@
     if (autosaveTimer) clearTimeout(autosaveTimer);
   });
 
-  function goToStage(step) {
+  async function goToStage(step) {
     currentStage = step;
     if (step === 3 && !draft.raster_url && !isComposing) {
-      composeCanonicalPage();
+      await composeCanonicalPage();
     }
     triggerAutosave();
   }
@@ -303,7 +327,7 @@
     if (autosaveTimer) clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(async () => {
       await performSave();
-    }, 800);
+    }, 600);
   }
 
   function buildBlockList() {
@@ -383,7 +407,7 @@
     if (showMetadataOverlay) {
       overlayBlocks.push({
         id: 'Metadata_Box',
-        type: 'metadata_box',
+        type: 'metadata',
         tag: 'metadata_box',
         scope: 'template',
         x_mm: metaX,
@@ -394,22 +418,6 @@
         content: metadataContent,
       });
     }
-
-    customTextItems.forEach((t) => {
-      overlayBlocks.push({
-        id: t.id,
-        type: 'custom_text',
-        tag: 'custom_text',
-        scope: 'template',
-        x_mm: t.posX,
-        y_mm: t.posY,
-        w_mm: t.w_mm,
-        h_mm: t.h_mm,
-        font_size: t.fontSize ?? 10.0,
-        content: t.content,
-        name: t.name,
-      });
-    });
 
     return { blocks, overlayBlocks };
   }
@@ -423,6 +431,7 @@
       const overlayBoxes = emitOverlayBoxes(overlayBlocks, 210, 297);
 
       const studioPayload = {
+        current_stage: currentStage,
         sections,
         marginMm,
         markerPattern,
@@ -431,14 +440,17 @@
         headerTitle,
         headerSubtitle,
         headerFontSize,
+        headerX, headerY, headerW, headerH,
         showQrOverlay,
         qrX, qrY, qrW, qrH,
         showInstructionsOverlay,
         instructionsContent,
         instructionsFontSize,
+        instX, instY, instW, instH,
         showSignatureOverlay,
         signatureContent,
         signatureFontSize,
+        sigX, sigY, sigW, sigH,
         showMetadataOverlay,
         metadataContent,
         metadataFontSize,
@@ -446,6 +458,9 @@
         rollDigits,
         customTextItems,
         htmlCode,
+        stage1Mode,
+        baseType,
+        raster_url: draft.raster_url,
       };
 
       const res = await fetch(saveUrl, {
@@ -641,6 +656,7 @@
         draft.stage = data.stage ?? 'page_prepared';
         if (data.draft_id) {
           draft.raster_url = `/setup/omr/templates/canonical/drafts/${draft.id}/assets/${data.composition?.raster_assets?.[0]?.asset_id || 1}`;
+          triggerAutosave();
         }
       }
     } catch {
@@ -651,96 +667,110 @@
   }
 
   function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  }
+
+  function triggerAutosaveDebounced() {
+    triggerAutosave();
   }
 </script>
 
-<!-- Root Studio Container (Full-Bleed Single Workbench) -->
-<div class="flex flex-col h-full bg-slate-50 border-t border-slate-200 overflow-hidden select-none">
-  <!-- Workbench Header Bar -->
-  <header class="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between z-20 shrink-0 shadow-xs">
-    <div class="flex items-center space-x-3">
-      <div class="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-        {currentStage}
-      </div>
-      <div>
-        <h1 class="text-xs font-bold text-slate-900 leading-tight">
-          {stageTitles[currentStage - 1]}
-        </h1>
-        <p class="text-[10px] text-slate-500 font-mono">
-          {draft.code || 'OMR-STUDIO'} &bull; {totalQuestionsCount} Questions Total
-        </p>
+<div class="h-screen w-screen flex flex-col bg-slate-900 text-slate-100 overflow-hidden font-sans select-none">
+  <!-- TOP STUDIO HEADER & 4-STEP BREADCRUMB -->
+  <header class="h-14 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 z-30">
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-2.5">
+        <div class="size-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm font-black text-sm">
+          N
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-white tracking-wide uppercase">{draft.name || 'Template Studio'}</span>
+            <span class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 rounded">
+              {draft.code || 'OMR-DRAFT'}
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400 font-mono mt-0.5">
+            {stageTitles[currentStage - 1]} &bull; {totalQuestionsCount} Questions Total
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- 4-Step Stepper Navigation Buttons -->
-    <div class="hidden md:flex items-center space-x-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
-      {#each [1, 2, 3, 4] as step}
+    <!-- 4-Stage Modern Stepper Navigation -->
+    <div class="hidden md:flex items-center space-x-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+      {#each stageTitles as title, idx}
+        {@const stageNum = idx + 1}
+        {@const isActive = currentStage === stageNum}
+        {@const isPast = currentStage > stageNum}
         <button
           type="button"
-          onclick={() => goToStage(step)}
-          class={`px-3 py-1 text-xs font-semibold rounded-lg transition ${
-            currentStage === step
-              ? 'bg-white text-slate-900 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
+          onclick={() => goToStage(stageNum)}
+          class={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-2 ${
+            isActive
+              ? 'bg-blue-600 text-white shadow-xs'
+              : isPast
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                : 'text-slate-500 hover:text-slate-400'
           }`}
         >
-          {step === 1 ? '1. Source' : step === 2 ? '2. Layout & Overlays' : step === 3 ? '3. Question Bubbles' : '4. Verify & Export'}
+          <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+            isActive ? 'bg-white text-blue-600' : isPast ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400'
+          }`}>
+            {stageNum}
+          </span>
+          <span>{title.split(':')[1]?.split('&')[0]?.trim() || title}</span>
         </button>
       {/each}
     </div>
 
-    <!-- Save Status & Action -->
-    <div class="flex items-center space-x-2">
-      {#if saveStatus === 'saving'}
-        <span class="text-[11px] text-slate-500 flex items-center gap-1">
-          <Loader2 class="size-3 animate-spin text-slate-400" />
-          <span>Saving…</span>
-        </span>
-      {:else if saveStatus === 'saved'}
-        <span class="text-[11px] text-emerald-600 flex items-center gap-1 font-medium">
-          <CheckCircle2 class="size-3" />
-          <span>Saved</span>
-        </span>
-      {:else if saveStatus === 'error'}
-        <span class="text-[11px] text-red-600 flex items-center gap-1 font-medium" title={errorMessage}>
-          <XCircle class="size-3" />
-          <span>Save Error</span>
-        </span>
-      {/if}
+    <!-- Right Controls: Save Status & Actions -->
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-1.5 text-xs">
+        {#if saveStatus === 'saving'}
+          <Loader2 class="size-3.5 text-amber-400 animate-spin" />
+          <span class="text-amber-400 font-mono text-[11px]">Saving…</span>
+        {:else if saveStatus === 'saved'}
+          <CheckCircle2 class="size-3.5 text-emerald-400" />
+          <span class="text-emerald-400 font-mono text-[11px]">Saved</span>
+        {:else if saveStatus === 'error'}
+          <XCircle class="size-3.5 text-rose-400" />
+          <span class="text-rose-400 font-mono text-[11px] max-w-[140px] truncate" title={errorMessage}>
+            {errorMessage || 'Save error'}
+          </span>
+        {/if}
+      </div>
 
       <button
         type="button"
         onclick={performSave}
-        class="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
+        class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg border border-slate-700 transition"
       >
         Save
       </button>
     </div>
   </header>
 
-  <!-- Main Split Workbench -->
-  <div class="flex flex-1 overflow-hidden relative">
-    <!-- LEFT CONFIGURATION SIDEBAR (Scrollable with Sticky Footer) -->
-    <aside class="w-[390px] border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 overflow-y-auto z-10">
-      <!-- STEP 1: Source Substrate & Ingestion -->
+  <!-- MAIN STUDIO WORKBENCH SPLIT -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- LEFT WORKBENCH SIDEBAR (Tool Controls for Current Step) -->
+    <aside class="w-[390px] bg-white text-slate-900 border-r border-slate-200 flex flex-col justify-between shrink-0 overflow-y-auto">
       {#if currentStage === 1}
+        <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
         <div class="p-6 space-y-6 flex-1 flex flex-col justify-between">
-          <div class="space-y-6">
+          <div class="space-y-5">
             <div>
               <h2 class="text-base font-bold text-slate-900">Source Substrate</h2>
-              <p class="text-xs text-slate-500 mt-1">Select starting mode: Blank vector sheet, Paste HTML, or Upload file.</p>
+              <p class="text-xs text-slate-500 mt-0.5">Choose how to generate or ingest your exam answer sheet.</p>
             </div>
 
-            <!-- 2 Mode Switcher Tabs -->
+            <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
             <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
               <button
                 type="button"
                 onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
                 class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                  stage1Mode === 'html'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                  stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Paste / Edit HTML
@@ -749,79 +779,22 @@
                 type="button"
                 onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
                 class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                  stage1Mode === 'upload'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                  stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Upload File
               </button>
             </div>
 
-            <!-- Option 1: Paste / Edit HTML Code -->
             {#if stage1Mode === 'html'}
+              <!-- Option 1: Paste / Edit HTML Code -->
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">HTML Code Editor</span>
+                  <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
                   <button
                     type="button"
                     onclick={() => {
-                      htmlCode = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; }
-    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
-    .header h1 { font-size: 18px; margin: 0 0 2px 0; text-transform: uppercase; }
-    .header p { font-size: 10px; color: #475569; margin: 0; font-family: monospace; }
-    .info { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; background: #f8fafc; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .part { font-size: 8.5px; font-weight: bold; background: #0f172a; color: #fff; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; text-align: center; text-transform: uppercase; }
-    .row { display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; font-family: monospace; margin-bottom: 3.5px; }
-    .num { font-weight: bold; width: 18px; color: #334155; }
-    .bubs { display: flex; gap: 3.5px; }
-    .bub { width: 12px; height: 12px; border: 1.2px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>University General Aptitude Test</h1>
-    <p>Standard 150-Item Answer Sheet &bull; ISO A4</p>
-  </div>
-  <div class="info">
-    <div><strong>Name:</strong> ____________________________</div>
-    <div><strong>Examinee No:</strong> __________</div>
-    <div><strong>Date:</strong> _______</div>
-  </div>
-  <div class="grid">
-    <div>
-      <div class="part">Part 1: Verbal Ability</div>
-      <div class="row"><span class="num">01</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">02</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">03</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">04</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">05</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-    </div>
-    <div>
-      <div class="part">Part 2: Quantitative</div>
-      <div class="row"><span class="num">26</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">27</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">28</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">29</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">30</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-    </div>
-    <div>
-      <div class="part">Part 3: Logical Reasoning</div>
-      <div class="row"><span class="num">51</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">52</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">53</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">54</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">55</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-    </div>
-  </div>
-</body>
-</html>`;
+                      htmlCode = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:20px;color:#0f172a;}.header{text-align:center;border-bottom:2px solid #0f172a;margin-bottom:12px;}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}.row{display:flex;justify-content:space-between;margin-bottom:4px;font-size:9px;}.bub{width:12px;height:12px;border:1px solid #334155;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:7px;}</style></head><body><div class="header"><h2>University General Aptitude Test</h2><p>Standard 150-Q Template</p></div><div class="grid">${Array.from({length:3}).map((_,c)=>`<div><h4 style="font-size:10px;margin-bottom:4px;">Part ${c+1}</h4>${Array.from({length:50}).map((_,r)=>`<div class="row"><span>${c*50+r+1}</span><div><span class="bub">A</span> <span class="bub">B</span> <span class="bub">C</span> <span class="bub">D</span></div></div>`).join('')}</div>`).join('')}</div></body></html>`;
                       triggerAutosave();
                     }}
                     class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
@@ -830,117 +803,122 @@
                     <span>Insert 150-Q Template</span>
                   </button>
                 </div>
-
                 <textarea
                   bind:value={htmlCode}
                   oninput={triggerAutosave}
                   rows="10"
-                  class="w-full font-mono text-[10px] p-2.5 bg-slate-900 text-emerald-400 rounded-xl border border-slate-800 leading-relaxed resize-y focus:outline-hidden"
+                  class="w-full font-mono text-[11px] leading-relaxed p-2.5 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   placeholder="Paste HTML markup here…"
                 ></textarea>
               </div>
-
-            <!-- Option 3: Direct File Upload Dropzone (PDF / DOCX / Image) -->
-            {:else if stage1Mode === 'upload'}
-              <div class="space-y-3">
-                <input
-                  bind:this={uploadFileInput}
-                  type="file"
-                  accept=".pdf,.docx,.doc,image/jpeg,image/png,image/webp,text/html"
-                  onchange={handleFileUpload}
-                  class="hidden"
-                />
-                <button
-                  type="button"
-                  onclick={() => uploadFileInput?.click()}
-                  disabled={uploadRunning}
-                  class="w-full p-6 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl flex flex-col items-center justify-center text-center transition bg-slate-50/50 hover:bg-slate-50"
-                >
-                  <Upload class="size-8 text-slate-400 mb-2" />
-                  <span class="text-xs font-bold text-slate-800">
-                    Choose Document or Drag & Drop
-                  </span>
-                  <span class="text-[10px] text-slate-500 mt-1">Accepts PDF, Word (DOCX), Scanned JPG/PNG (Up to 25 MB)</span>
-                </button>
+            {:else}
+              <!-- Option 2: Upload Document File -->
+              <div class="space-y-4">
+                <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-slate-400 bg-slate-50 transition">
+                  <Upload class="size-8 text-slate-400 mx-auto mb-2" />
+                  <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image file</p>
+                  <p class="text-[11px] text-slate-400 mt-1">Automatic rasterization at 300 PPI print resolution</p>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
+                    bind:this={uploadFileInput}
+                    onchange={handleFileUpload}
+                    class="hidden"
+                  />
+                  <button
+                    type="button"
+                    onclick={() => uploadFileInput?.click()}
+                    class="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
+                  >
+                    Select File
+                  </button>
+                </div>
 
                 {#if uploadRunning}
-                  <div class="p-3 bg-slate-100 rounded-xl text-xs flex items-center gap-2 text-slate-700 font-medium">
-                    <Loader2 class="size-4 animate-spin text-slate-900" />
-                    <span>{conversionStatusText}</span>
+                  <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
+                    <Loader2 class="size-4 animate-spin text-blue-600 shrink-0" />
+                    <span>{conversionStatusText || 'Converting file…'}</span>
                   </div>
                 {/if}
 
                 {#if conversionError}
-                  <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-center gap-2 font-medium">
-                    <XCircle class="size-4 text-red-600 shrink-0" />
-                    <span>{conversionError}</span>
+                  <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+                    {conversionError}
                   </div>
                 {/if}
               </div>
             {/if}
           </div>
 
-          <!-- Sticky Sidebar Footer: Continue to Step 2 -->
-          <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 mt-6">
+          <!-- Continue to Step 2 Button -->
+          <div class="pt-4 border-t border-slate-200">
             <button
               type="button"
-              onclick={() => {
-                if (stage1Mode === 'html' && !draft.raster_url) {
-                  compileHtmlSource();
-                } else {
-                  goToStage(2);
-                }
-              }}
-              disabled={uploadRunning}
+              onclick={() => goToStage(2)}
               class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
             >
-              {#if uploadRunning}
-                <Loader2 class="size-3.5 animate-spin" />
-                <span>{conversionStatusText || 'Converting…'}</span>
-              {:else}
-                <span>Continue to Layout & Markers</span>
-                <ChevronRight class="size-3.5" />
-              {/if}
+              <span>Continue to Layout & Markers</span>
+              <ChevronRight class="size-4" />
             </button>
           </div>
         </div>
-
-      <!-- STEP 2: Layout & Overlays -->
       {:else if currentStage === 2}
+        <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
         <StudioOverlayPanel
           bind:marginMm
           bind:markerPattern
           bind:showHeaderOverlay
           bind:headerTitle
+          bind:headerSubtitle
           bind:headerFontSize
-          bind:showSignatureOverlay
-          bind:signatureContent
+          bind:showQrOverlay
           bind:showInstructionsOverlay
           bind:instructionsContent
-          bind:showQrOverlay
+          bind:instructionsFontSize
+          bind:showSignatureOverlay
+          bind:signatureContent
+          bind:signatureFontSize
           bind:customTextItems
           onChanged={triggerAutosave}
           onBack={() => goToStage(1)}
           onNext={() => goToStage(3)}
         />
-
-      <!-- STEP 3: Question Bubbles & Pitch Geometry -->
       {:else if currentStage === 3}
-        <StudioBubblePanel
-          bind:sections
-          bind:activeSectionIndex
-          onChanged={triggerAutosave}
-          onBack={() => goToStage(2)}
-          onNext={() => goToStage(4)}
-        />
+        <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
+        <div class="flex-1 flex flex-col justify-between">
+          <!-- Step 3 Raster Settlement Status Banner -->
+          {#if draft.raster_url}
+            <div class="mx-6 mt-4 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs flex items-center justify-between text-emerald-900">
+              <div class="flex items-center gap-2">
+                <Layers class="size-4 text-emerald-600 shrink-0" />
+                <span class="font-medium">300-PPI Page Raster Composed & Persisted</span>
+              </div>
+              <button
+                type="button"
+                onclick={composeCanonicalPage}
+                class="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1"
+                title="Recompose print raster from current design"
+              >
+                <RotateCcw class="size-3" />
+                <span>Recompose</span>
+              </button>
+            </div>
+          {/if}
 
-      <!-- STEP 4: Verification & Production Deliverables -->
+          <StudioBubblePanel
+            bind:sections
+            bind:activeSectionIndex
+            onChanged={triggerAutosave}
+            onBack={() => goToStage(2)}
+            onNext={() => goToStage(4)}
+          />
+        </div>
       {:else if currentStage === 4}
+        <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
         <StudioExportVerifyPanel
           {draft}
-          {urls}
           {jsonSchema}
-          {getCsrfToken}
+          {urls}
           onBack={() => goToStage(3)}
         />
       {/if}
@@ -954,36 +932,36 @@
       bind:marginMm
       bind:markerPattern
       bind:canvasDragLocked
-      rasterUrl={stage1Mode === 'html' ? null : draft.raster_url}
-      htmlContent={htmlCode}
-      isHtmlMode={stage1Mode === 'html'}
+      rasterUrl={draft.raster_url}
+      htmlContent={stage1Mode === 'html' ? htmlCode : null}
+      isHtmlMode={stage1Mode === 'html' && !draft.raster_url}
       {isComposing}
       {showHeaderOverlay}
       {headerTitle}
       {headerSubtitle}
       {headerFontSize}
-      {headerX}
-      {headerY}
-      {headerW}
-      {headerH}
+      bind:headerX
+      bind:headerY
+      bind:headerW
+      bind:headerH
       {showQrOverlay}
-      {qrX}
-      {qrY}
-      {qrW}
-      {qrH}
+      bind:qrX
+      bind:qrY
+      bind:qrW
+      bind:qrH
       {showInstructionsOverlay}
       {instructionsContent}
-      {instX}
-      {instY}
-      {instW}
-      {instH}
+      bind:instX
+      bind:instY
+      bind:instW
+      bind:instH
       {showSignatureOverlay}
       {signatureContent}
-      {sigX}
-      {sigY}
-      {sigW}
-      {sigH}
-      {customTextItems}
+      bind:sigX
+      bind:sigY
+      bind:sigW
+      bind:sigH
+      bind:customTextItems
       bind:sections
       bind:activeSectionIndex
       {currentStage}

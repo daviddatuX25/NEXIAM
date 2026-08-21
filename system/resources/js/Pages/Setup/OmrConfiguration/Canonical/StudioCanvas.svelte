@@ -94,8 +94,8 @@
 
     if (canvasDragLocked) return;
 
-    const dXmm = (e.clientX - dragStartX) / (2.47 * scale);
-    const dYmm = (e.clientY - dragStartY) / (2.47 * scale);
+    const dXmm = (e.clientX - dragStartX) / (2.476 * scale);
+    const dYmm = (e.clientY - dragStartY) / (2.476 * scale);
 
     // STAGE 2: Overlay Elements Dragging & Resizing
     if (currentStage === 2) {
@@ -144,8 +144,8 @@
       if (isBlockDragging) {
         let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
         let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
-        sec.posX = Math.max(marginMm, Math.min(210 - marginMm - sec.w_mm, nx));
-        sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - sec.h_mm, ny));
+        sec.posX = Math.max(marginMm, Math.min(210 - marginMm - (Number(sec.w_mm) || 75), nx));
+        sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - (Number(sec.h_mm) || 140), ny));
       } else if (isHandleDragging) {
         let nw = Math.round((blockStartGeometry.w + dXmm) / 2) * 2;
         let nh = Math.round((blockStartGeometry.h + dYmm) / 2) * 2;
@@ -196,7 +196,7 @@
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     const sec = sections[index];
-    blockStartGeometry = { x: sec.posX, y: sec.posY, w: sec.w_mm, h: sec.h_mm };
+    blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
   }
 
   function handleResizeMouseDown(e, index) {
@@ -208,7 +208,7 @@
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     const sec = sections[index];
-    blockStartGeometry = { x: sec.posX, y: sec.posY, w: sec.w_mm, h: sec.h_mm };
+    blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
   }
 
   function zoomStep(delta) {
@@ -295,7 +295,7 @@
     role="region"
     aria-label="OMR sheet design viewport"
   >
-    <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px) -->
+    <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm) -->
     <div
       class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
@@ -323,28 +323,28 @@
         ></iframe>
       {/if}
 
-      <!-- STAGE 2+: 4 Corner Registration Fiducial Markers -->
-      {#if currentStage >= 2}
+      <!-- STAGE 2+: 4 Corner Registration Fiducial Markers (Rendered when live vector overlays are active) -->
+      {#if currentStage >= 2 && !rasterUrl}
         <div
           class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-          style={`top: ${marginMm * 2.47}px; left: ${marginMm * 2.47}px;`}
+          style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
         ></div>
         <div
           class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-          style={`top: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
+          style={`top: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
         <div
           class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-          style={`bottom: ${marginMm * 2.47}px; left: ${marginMm * 2.47}px;`}
+          style={`bottom: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
         ></div>
         <div
           class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
-          style={`bottom: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
+          style={`bottom: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
       {/if}
 
-      <!-- STAGE 2+: Overlays (Header, Signature, Instructions, Custom text, Simulated QR) -->
-      {#if currentStage >= 2}
+      <!-- STAGE 2: Overlays (Header, Signature, Instructions, Custom text, Simulated QR) -->
+      {#if currentStage === 2}
         <!-- Document Header Overlay -->
         {#if showHeaderOverlay}
           <div
@@ -353,7 +353,7 @@
                 ? 'ring-2 ring-blue-500 bg-blue-500/5 rounded p-1 z-30'
                 : 'z-10'
             }`}
-            style={`top: ${headerY * 2.47}px; left: ${headerX * 2.47}px; width: ${headerW * 2.47}px;`}
+            style={`top: ${headerY * 2.476}px; left: ${headerX * 2.476}px; width: ${headerW * 2.476}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH })}
             role="button"
             tabindex="0"
@@ -384,7 +384,7 @@
                 ? 'border-blue-500 ring-2 ring-blue-400/60 z-30 shadow-md'
                 : 'border-slate-300 shadow-xs z-10'
             }`}
-            style={`top: ${qrY * 2.47}px; left: ${qrX * 2.47}px; width: ${qrW * 2.47}px; height: ${qrH * 2.47}px;`}
+            style={`top: ${qrY * 2.476}px; left: ${qrX * 2.476}px; width: ${qrW * 2.476}px; height: ${qrH * 2.476}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH })}
             role="button"
             tabindex="0"
@@ -442,7 +442,7 @@
                 ? 'border-blue-500 ring-2 ring-blue-400/60 bg-white z-30 shadow-md'
                 : 'border-slate-300 bg-slate-50/90 text-slate-700 z-10'
             }`}
-            style={`top: ${instY * 2.47}px; left: ${instX * 2.47}px; width: ${instW * 2.47}px;`}
+            style={`top: ${instY * 2.476}px; left: ${instX * 2.476}px; width: ${instW * 2.476}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH })}
             role="button"
             tabindex="0"
@@ -469,7 +469,7 @@
                 ? 'ring-2 ring-blue-500 border-blue-500 z-30 shadow-md'
                 : 'z-10'
             }`}
-            style={`top: ${sigY * 2.47}px; left: ${sigX * 2.47}px; width: ${sigW * 2.47}px; height: ${sigH * 2.47}px;`}
+            style={`top: ${sigY * 2.476}px; left: ${sigX * 2.476}px; width: ${sigW * 2.476}px; height: ${sigH * 2.476}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH })}
             role="button"
             tabindex="0"
@@ -496,7 +496,7 @@
                 ? 'ring-2 ring-blue-500 bg-blue-50/50 z-30'
                 : 'z-10'
             }`}
-            style={`top: ${t.posY * 2.47}px; left: ${t.posX * 2.47}px; width: ${t.w_mm * 2.47}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
+            style={`top: ${t.posY * 2.476}px; left: ${t.posX * 2.476}px; width: ${t.w_mm * 2.476}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, idx, { x: t.posX, y: t.posY, w: t.w_mm, h: t.h_mm })}
             role="button"
             tabindex="0"
@@ -506,18 +506,26 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Translucent Optical Sensor Mask) -->
+      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Translucent Optical Sensor Mask with Real-Time Dynamic Pitch) -->
       {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}
+          {@const bPitchMm = Number(sec.bubblePitchMm) || 12.0}
+          {@const rPitchMm = Number(sec.rowPitchMm) || 6.5}
+          {@const bubbleGapPx = Math.max(2, (bPitchMm * 2.476) - 14)}
+          {@const rowGapPx = Math.max(1, (rPitchMm * 2.476) - 16)}
+          {@const minW_mm = Math.round(16 + (labels.length - 1) * bPitchMm + 8)}
+          {@const minH_mm = Math.round(14 + (Math.min(Number(sec.questionsCount) || 1, 25) - 1) * rPitchMm + 10)}
+          {@const blockWidthMm = Math.max(Number(sec.w_mm) || 75, minW_mm)}
+          {@const blockHeightMm = Math.max(Number(sec.h_mm) || 140, minH_mm)}
           <div
             class={`absolute rounded-lg border-2 transition-all backdrop-blur-[0.5px] ${
               isSelected
                 ? 'border-blue-600 border-dashed bg-blue-500/15 ring-2 ring-blue-400/60 z-20 shadow-sm'
                 : 'border-blue-400/80 border-dashed bg-blue-500/5 hover:border-blue-500 z-10'
             }`}
-            style={`top: ${(Number(sec.posY) || 72) * 2.47}px; left: ${(Number(sec.posX) || 25) * 2.47}px; width: ${(Number(sec.w_mm) || 75) * 2.47}px; height: ${(Number(sec.h_mm) || 165) * 2.47}px;`}
+            style={`top: ${(Number(sec.posY) || 72) * 2.476}px; left: ${(Number(sec.posX) || 25) * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
             role="button"
             tabindex="0"
@@ -525,28 +533,34 @@
             <!-- Section Header Chip: Clarifies this is an OMR recognition sensor mask -->
             <div class="px-1.5 py-0.5 bg-blue-600/90 text-white rounded-t text-[7.5px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
               <span class="truncate">[OPTICAL GRID] {sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
-              <span class="opacity-80 text-[7px] font-normal shrink-0">{sec.bubblePitchMm}mm</span>
+              <span class="opacity-80 text-[7px] font-normal shrink-0">{bPitchMm}mm ↔ {rPitchMm}mm</span>
             </div>
 
-            <!-- Translucent Optical Target Rings (Shows bubble alignment over document without covering text) -->
-            <div class="p-1.5 space-y-1 overflow-hidden h-[calc(100%-18px)]">
-              {#each Array.from({ length: Math.max(1, Math.min(Number(sec?.questionsCount) || 1, 12)) }) as _, r}
-                <div class="flex items-center justify-between text-[8px] font-mono text-blue-900">
-                  <span class="w-4 text-[7px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200/80 rounded px-0.5 text-center">
+            <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing -->
+            <div
+              class="p-1.5 overflow-hidden h-[calc(100%-18px)] flex flex-col"
+              style={`gap: ${rowGapPx}px;`}
+            >
+              {#each Array.from({ length: Math.max(1, Math.min(Number(sec?.questionsCount) || 1, 20)) }) as _, r}
+                <div class="flex items-center text-[8px] font-mono text-blue-900 shrink-0">
+                  <span class="w-4 text-[7px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200/80 rounded px-0.5 text-center mr-1.5 shrink-0">
                     {(Number(sec?.startQ) || 1) + r}
                   </span>
-                  <div class="flex items-center space-x-1.5">
+                  <div
+                    class="flex items-center"
+                    style={`gap: ${bubbleGapPx}px;`}
+                  >
                     {#each labels as opt}
-                      <div class="w-4 h-4 rounded-full border-2 border-blue-600/90 bg-blue-500/25 text-blue-950 flex items-center justify-center text-[7.5px] font-bold shadow-xs">
+                      <div class="w-3.5 h-3.5 rounded-full border-2 border-blue-600/90 bg-blue-500/25 text-blue-950 flex items-center justify-center text-[7px] font-bold shadow-xs shrink-0">
                         {opt}
                       </div>
                     {/each}
                   </div>
                 </div>
               {/each}
-              {#if (Number(sec?.questionsCount) || 0) > 12}
+              {#if (Number(sec?.questionsCount) || 0) > 20}
                 <div class="text-[7px] font-mono text-blue-600 text-center italic mt-0.5 font-medium">
-                  + {(Number(sec?.questionsCount) || 0) - 12} more optical bubble rows
+                  + {(Number(sec?.questionsCount) || 0) - 20} more optical rows
                 </div>
               {/if}
             </div>
