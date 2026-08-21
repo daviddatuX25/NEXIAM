@@ -7,6 +7,12 @@
     contentBlockSizeMm,
   } from '@/lib/omrStudioGeometry';
   import {
+    renderFullSheetHtml,
+    PRESET_150Q_COMPONENTS,
+    DEFAULT_A4_SETTINGS,
+    componentToSectionData,
+  } from '@/lib/omrComponents';
+  import {
     CheckCircle2,
     XCircle,
     Loader2,
@@ -21,6 +27,12 @@
     Check,
     AlertTriangle,
     RotateCcw,
+    FileText,
+    Sliders,
+    Type,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -351,10 +363,45 @@
 </body>
 </html>`;
 
+  // Stage 1: Component-Driven Native Designer State
+  let designerSubTab = $state('designer'); // 'designer' | 'raw_html'
+  let components = $state(JSON.parse(JSON.stringify(PRESET_150Q_COMPONENTS)));
+
+  let headerComp = $derived(components.find((c) => c.type === 'header'));
+  let candidateInfoComp = $derived(components.find((c) => c.type === 'candidate_info'));
+  let instructionsComp = $derived(components.find((c) => c.type === 'instructions'));
+  let rollIdComp = $derived(components.find((c) => c.type === 'roll'));
+  let questionGridComps = $derived(components.filter((c) => c.type === 'mcq' || c.type === 'tf' || c.type === 'likert' || c.type === 'custom'));
+
+  function syncComponentsToSections() {
+    htmlCode = renderFullSheetHtml(components);
+    sections = components
+      .map((c) => componentToSectionData(c))
+      .filter((s) => s !== null);
+    triggerAutosave();
+  }
+
+  function applyPreset(presetName) {
+    if (presetName === '150q') {
+      components = JSON.parse(JSON.stringify(PRESET_150Q_COMPONENTS));
+    } else if (presetName === '100q') {
+      const copy = JSON.parse(JSON.stringify(PRESET_150Q_COMPONENTS));
+      copy[0].title = 'University Standard Aptitude Exam';
+      copy[0].subtitle = '100-Item Examination Answer Sheet • ISO A4';
+      copy[0].formCode = 'FORM 100-B';
+      components = copy.filter((c) => !['Part_5', 'Part_6'].includes(c.id));
+    } else if (presetName === '50q') {
+      const copy = JSON.parse(JSON.stringify(PRESET_150Q_COMPONENTS));
+      copy[0].title = 'Short Evaluation Assessment';
+      copy[0].subtitle = '50-Item Examination Answer Sheet • ISO A4';
+      copy[0].formCode = 'FORM 50-C';
+      components = copy.filter((c) => !['Part_3', 'Part_4', 'Part_5', 'Part_6'].includes(c.id));
+    }
+    syncComponentsToSections();
+  }
 
   // HTML Code Editor State
   let htmlCode = $state(DEFAULT_150Q_HTML);
-
   // Direct Upload & Ingest State
   let uploadFileInput = $state(null);
   let uploadRunning = $state(false);
@@ -1305,34 +1352,6 @@
       {#if currentStage === 1}
         <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
         <div class="space-y-4">
-          <div>
-            <h2 class="text-sm font-bold text-slate-900">Source Substrate</h2>
-            <p class="text-[11px] text-slate-500 mt-0.5">Design or upload the base answer sheet layout.</p>
-          </div>
-
-          <!-- Quick Start 1-Click Sample Preset -->
-          <div class="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                <Sparkles class="size-3.5 text-emerald-600" />
-                <span>Quick Start Template</span>
-              </span>
-              <span class="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-100 text-emerald-800 rounded font-semibold">150 Qs</span>
-            </div>
-            <p class="text-[10.5px] text-emerald-800 leading-relaxed">
-              Standard 6-subject aptitude answer sheet (25 Qs each) ready for live camera capture and OMR recognition.
-            </p>
-            <button
-              type="button"
-              onclick={loadSampleLayout}
-              class="w-full py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs"
-            >
-              <Sparkles class="size-3" />
-              <span>Load 150-Q Exam Substrate</span>
-            </button>
-          </div>
-
-
           <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
           <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
             <button
@@ -1342,7 +1361,7 @@
                 stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Paste / Edit HTML
+              Native Builder
             </button>
             <button
               type="button"
@@ -1356,34 +1375,223 @@
           </div>
 
           {#if stage1Mode === 'html'}
-            <!-- Option 1: Paste / Edit HTML Code -->
-            <div class="space-y-2.5">
+            <!-- Sub-Mode: Visual Component Designer vs Raw HTML Code -->
+            <div class="space-y-3">
               <div class="flex items-center justify-between">
-                <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
-                <button
-                  type="button"
-                  onclick={() => {
-                    htmlCode = DEFAULT_150Q_HTML;
-                    triggerAutosave();
-                  }}
-                  class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                >
-                  <Sparkles class="size-3" />
-                  <span>Reset 150-Q</span>
-                </button>
+                <span class="text-xs font-bold text-slate-900">Answer Sheet Components</span>
+                <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onclick={() => { designerSubTab = 'designer'; }}
+                    class={`px-2 py-0.5 rounded-md text-[10.5px] font-semibold transition ${
+                      designerSubTab === 'designer' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Visual Builder
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => { designerSubTab = 'raw_html'; }}
+                    class={`px-2 py-0.5 rounded-md text-[10.5px] font-semibold transition ${
+                      designerSubTab === 'raw_html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    HTML Code
+                  </button>
+                </div>
               </div>
-              <textarea
-                bind:value={htmlCode}
-                oninput={triggerAutosave}
-                rows="11"
-                class="w-full font-mono text-[10px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
-                placeholder="Paste HTML markup here…"
-              ></textarea>
 
-              <div class="p-2 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-center gap-1.5 text-[10.5px] text-emerald-800">
-                <Check class="size-3.5 text-emerald-600 shrink-0" />
-                <span>Single-Page A4: 100% within bounds</span>
-              </div>
+              {#if designerSubTab === 'designer'}
+                <!-- 1. Presets Selector -->
+                <div class="p-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl space-y-1.5">
+                  <div class="flex items-center justify-between text-xs font-bold text-emerald-950">
+                    <span class="flex items-center gap-1">
+                      <Sparkles class="size-3 text-emerald-600" />
+                      <span>Exam Presets</span>
+                    </span>
+                    <span class="text-[9.5px] font-mono text-emerald-700">{totalQuestionsCount} Items</span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-1 pt-0.5">
+                    <button
+                      type="button"
+                      onclick={() => applyPreset('150q')}
+                      class="py-1 px-1.5 bg-white hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[10px] font-bold text-emerald-900 transition text-center shadow-2xs"
+                    >
+                      150-Q (6 Subj)
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => applyPreset('100q')}
+                      class="py-1 px-1.5 bg-white hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[10px] font-bold text-emerald-900 transition text-center shadow-2xs"
+                    >
+                      100-Q (4 Subj)
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => applyPreset('50q')}
+                      class="py-1 px-1.5 bg-white hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[10px] font-bold text-emerald-900 transition text-center shadow-2xs"
+                    >
+                      50-Q (2 Subj)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. Universal Components Accordion / Section Controls -->
+                <div class="space-y-3">
+                  <!-- A. Document Header Section -->
+                  {#if headerComp}
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
+                      <div class="flex items-center justify-between font-bold text-slate-800">
+                        <span class="flex items-center gap-1.5">
+                          <Type class="size-3.5 text-blue-600" />
+                          <span>Document Header</span>
+                        </span>
+                      </div>
+                      <div class="space-y-1.5">
+                        <input
+                          type="text"
+                          bind:value={headerComp.title}
+                          oninput={syncComponentsToSections}
+                          placeholder="Institution / Exam Title"
+                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                        />
+                        <div class="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            bind:value={headerComp.subtitle}
+                            oninput={syncComponentsToSections}
+                            placeholder="Subtitle"
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                          />
+                          <input
+                            type="text"
+                            bind:value={headerComp.formCode}
+                            oninput={syncComponentsToSections}
+                            placeholder="Form Code"
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- B. Examinee ID Matrix (0–9 Digits) -->
+                  {#if rollIdComp}
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
+                      <div class="flex items-center justify-between font-bold text-slate-800">
+                        <span class="flex items-center gap-1.5">
+                          <Sliders class="size-3.5 text-emerald-600" />
+                          <span>Examinee ID Matrix</span>
+                        </span>
+                        <span class="text-[9.5px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded">0–9 Digits</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div>
+                          <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Digit Columns</label>
+                          <input
+                            type="number"
+                            min="2"
+                            max="10"
+                            bind:value={rollIdComp.digitsCount}
+                            oninput={syncComponentsToSections}
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Matrix Title</label>
+                          <input
+                            type="text"
+                            bind:value={rollIdComp.title}
+                            oninput={syncComponentsToSections}
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- C. Candidate Details Strip -->
+                  {#if candidateInfoComp}
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                      <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                        <FileText class="size-3.5 text-slate-600" />
+                        <span>Candidate Info Fields</span>
+                      </div>
+                      <div class="space-y-1.5">
+                        <input
+                          type="text"
+                          bind:value={candidateInfoComp.candidateNameLabel}
+                          oninput={syncComponentsToSections}
+                          placeholder="Candidate Name Label"
+                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                        />
+                        <div class="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            bind:value={candidateInfoComp.birthdateLabel}
+                            oninput={syncComponentsToSections}
+                            placeholder="Birthdate Label"
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                          />
+                          <input
+                            type="text"
+                            bind:value={candidateInfoComp.roomSeatLabel}
+                            oninput={syncComponentsToSections}
+                            placeholder="Room / Seat Label"
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- D. Subject Question Columns Overview -->
+                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                    <div class="flex items-center justify-between font-bold text-slate-800">
+                      <span>Subject Sections ({questionGridComps.length} Columns)</span>
+                      <span class="text-[9.5px] font-mono text-slate-500">{totalQuestionsCount} Qs Total</span>
+                    </div>
+                    <div class="space-y-1">
+                      {#each questionGridComps as g, idx}
+                        <div class="p-1.5 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-[11px]">
+                          <input
+                            type="text"
+                            bind:value={g.subjectName}
+                            oninput={syncComponentsToSections}
+                            class="font-semibold text-slate-800 bg-transparent border-none p-0 focus:ring-0 text-[11px] w-28"
+                          />
+                          <div class="flex items-center gap-1.5">
+                            <span class="font-mono text-[10px] text-slate-500">Q{g.startQ}–{g.startQ + g.questionsCount - 1}</span>
+                            <span class="px-1 py-0.5 text-[9px] bg-slate-100 rounded text-slate-700 font-bold">4 Opt</span>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                </div>
+              {:else}
+                <!-- Raw HTML Code Editor -->
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-700">Compiled HTML Markup</label>
+                    <button
+                      type="button"
+                      onclick={() => applyPreset('150q')}
+                      class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                    >
+                      <Sparkles class="size-3" />
+                      <span>Reset to 150-Q</span>
+                    </button>
+                  </div>
+                  <textarea
+                    bind:value={htmlCode}
+                    oninput={triggerAutosave}
+                    rows="12"
+                    class="w-full font-mono text-[10px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
+                    placeholder="Paste HTML markup here…"
+                  ></textarea>
+                </div>
+              {/if}
             </div>
           {:else}
             <!-- Option 2: Upload Document File -->
