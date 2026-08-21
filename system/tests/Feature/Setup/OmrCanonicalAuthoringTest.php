@@ -162,3 +162,33 @@ test('atomic studio endpoint saves mapping, overlays, and studio state without c
     );
     $staleRes->assertStatus(500);
 });
+
+test('source ingestion endpoint accepts image and html documents with audit and operations', function (): void {
+    \Illuminate\Support\Facades\Storage::fake('local');
+    \Illuminate\Support\Facades\Queue::fake();
+
+    $actor = User::factory()->create();
+    \Spatie\Permission\Models\Permission::findOrCreate(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR, 'web');
+    $actor->givePermissionTo(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR);
+
+    $draft = app(OmrAuthoringDraftService::class)->create($actor, 'INGEST-TEST', 'Ingest Test', 'image');
+
+    $pngBytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+    $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('sheet.png', (string) $pngBytes);
+
+    $response = $this->actingAs($actor)->post(
+        route('setup.omr.templates.canonical.drafts.source.ingest', $draft),
+        [
+            'source_kind' => 'image',
+            'source' => $file,
+            'idempotency_key' => 'ingest-key-1',
+        ]
+    );
+
+    $response->assertStatus(202)
+        ->assertJson([
+            'draft_id' => $draft->id,
+        ]);
+
+    expect($draft->fresh()->authoring_json['source_run']['status'])->toBe('queued');
+});

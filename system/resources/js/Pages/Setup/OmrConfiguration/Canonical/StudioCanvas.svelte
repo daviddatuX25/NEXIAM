@@ -42,6 +42,7 @@
     sigH = 28,
     customTextItems = [],
     htmlContent = null,
+    isHtmlMode = false,
     isComposing = false,
     sections = $bindable([]),
     activeSectionIndex = $bindable(0),
@@ -224,8 +225,15 @@
       class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
     >
-      <!-- Continuous Background Layer (HTML preview OR raster image OR clean paper) -->
-      {#if rasterUrl}
+      <!-- Continuous Background Layer (HTML live iframe prioritized in HTML mode) -->
+      {#if isHtmlMode && htmlContent}
+        <iframe
+          srcdoc={htmlContent}
+          title="HTML Source Preview"
+          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white"
+          sandbox=""
+        ></iframe>
+      {:else if rasterUrl}
         <img
           src={rasterUrl}
           alt="Composed Page"
@@ -235,7 +243,7 @@
         <iframe
           srcdoc={htmlContent}
           title="HTML Source Preview"
-          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs"
+          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white"
           sandbox=""
         ></iframe>
       {/if}

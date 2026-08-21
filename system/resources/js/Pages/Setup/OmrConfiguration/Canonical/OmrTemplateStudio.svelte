@@ -37,10 +37,9 @@
     'Step 4: Verification & Production Deliverables',
   ];
 
-  // Stage 1: Base Mode ('blank' | 'html' | 'upload')
-  let stage1Mode = $state(draft.source_kind === 'html' ? 'html' : (draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'blank');
-  let baseType = $state(draft.source_kind ?? 'blank');
-
+  // Stage 1: Base Mode ('html' | 'upload')
+  let stage1Mode = $state((draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'html');
+  let baseType = $state(draft.source_kind ?? 'html');
   // HTML Code Editor State
   let htmlCode = $state(`<!DOCTYPE html>
 <html>
@@ -733,19 +732,8 @@
               <p class="text-xs text-slate-500 mt-1">Select starting mode: Blank vector sheet, Paste HTML, or Upload file.</p>
             </div>
 
-            <!-- 3 Mode Switcher Tabs -->
-            <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
-              <button
-                type="button"
-                onclick={() => { stage1Mode = 'blank'; baseType = 'blank'; triggerAutosave(); }}
-                class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                  stage1Mode === 'blank'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Blank Canvas
-              </button>
+            <!-- 2 Mode Switcher Tabs -->
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
               <button
                 type="button"
                 onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
@@ -755,7 +743,7 @@
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Paste HTML
+                Paste / Edit HTML
               </button>
               <button
                 type="button"
@@ -770,20 +758,8 @@
               </button>
             </div>
 
-            <!-- Option 1: Blank Parametric Canvas -->
-            {#if stage1Mode === 'blank'}
-              <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
-                <div class="flex items-center gap-2">
-                  <Sliders class="size-4 text-slate-700" />
-                  <span class="text-xs font-bold text-slate-900">Standard ISO A4 Layout</span>
-                </div>
-                <p class="text-[11px] text-slate-500 leading-relaxed">
-                  Creates a clean vector sheet (210 &times; 297 mm) with physical corner registration fiducials.
-                </p>
-              </div>
-
-            <!-- Option 2: Paste / Edit HTML Code -->
-            {:else if stage1Mode === 'html'}
+            <!-- Option 1: Paste / Edit HTML Code -->
+            {#if stage1Mode === 'html'}
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">HTML Code Editor</span>
