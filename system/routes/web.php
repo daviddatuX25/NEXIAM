@@ -11,6 +11,7 @@ use App\Http\Controllers\Applicant\ApplicantProgramChoiceController;
 use App\Http\Controllers\Applicant\ApplicantQrController;
 use App\Http\Controllers\Applicant\ApplicantScheduleController;
 use App\Http\Controllers\Assessment\GradingController;
+use App\Http\Controllers\Assessment\OmrBlankInstanceController;
 use App\Http\Controllers\Assessment\GradingScoreController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Consultation\ConsultationSessionController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\Setup\AcademicCycleController;
 use App\Http\Controllers\Setup\ApplicationWindowController;
 use App\Http\Controllers\Setup\AptitudeAreaController;
 use App\Http\Controllers\Setup\IntakeGradeFieldController;
+use App\Http\Controllers\Setup\OmrCanonicalTemplateController;
 use App\Http\Controllers\Setup\OmrConfigurationController;
 use App\Http\Controllers\Setup\PrivacyPolicyController;
 use App\Http\Controllers\Setup\ProgramController;
@@ -45,6 +47,7 @@ use App\Http\Controllers\Setup\RoomController;
 use App\Http\Controllers\Setup\SetupDashboardController;
 use App\Http\Controllers\Staff\ApplicantQrController as StaffQrController;
 use App\Http\Controllers\Staff\HomeController;
+use App\PublicSite\Queries\PublicHomeProjection;
 use App\Http\Controllers\Staff\PersonnelController;
 use App\Http\Controllers\Staff\ProfileController;
 use App\Http\Controllers\Staff\TestAdministratorController;
@@ -52,16 +55,8 @@ use App\Http\Middleware\EnsurePersonnelAccess;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    $cycle = \App\Models\Foundation\AcademicCycle::active();
-
-    return Inertia::render('Home', [
-        'institutionName' => 'ISPSC Tagudin',
-        'activeSeason' => $cycle === null ? null : [
-            'name' => $cycle->staffLabel(),
-            'window' => $cycle->applicationWindowLabel(),
-        ],
-    ]);
+Route::get('/', function (PublicHomeProjection $projection) {
+    return Inertia::render('Home', $projection->toArray());
 })->name('home');
 
 Route::get('/health', HealthController::class)->name('health');
@@ -378,6 +373,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/grading/sessions/{gradingSession}/omr/batches', [GradingController::class, 'storeOmrBatch'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('grading.sessions.omr.batches.store');
+    Route::post('/grading/sessions/{gradingSession}/omr/batches/{batch}/preflight', [GradingController::class, 'preflightCapture'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.sessions.omr.batches.preflight');
     Route::post('/grading/sessions/{gradingSession}/omr/sheets', [GradingController::class, 'storeOmrSheet'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('grading.sessions.omr.sheets.store');
@@ -396,6 +394,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/grading/sessions/{gradingSession}/omr/sheets/{sheet}/retry', [GradingController::class, 'retryOmrSheet'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('grading.sessions.omr.sheets.retry');
+    Route::post('/grading/omr/blank-instance/register', [OmrBlankInstanceController::class, 'register'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.omr.blank_instance.register');
+    Route::post('/grading/omr/blank-instance/manual-resolve', [OmrBlankInstanceController::class, 'manualResolve'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('grading.omr.blank_instance.manual_resolve');
     Route::get('/grading/sessions/{gradingSession}/attempts/{attempt}', [GradingScoreController::class, 'show'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_MANUAL)
         ->name('grading.sessions.attempts.scores');
@@ -435,6 +439,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/release/print/batches/{gradingSession}/preview', [ReleasePrintController::class, 'bulkPreview'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.print.batches.preview');
+    Route::get('/release/print/batches/{gradingSession}/applicants/{attempt}', [ReleasePrintController::class, 'showApplicant'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
+        ->name('release.print.batches.applicant');
     Route::post('/release/print', [ReleasePrintController::class, 'request'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)
         ->name('release.print.request');
@@ -458,6 +465,89 @@ Route::middleware('auth')->group(function () {
     Route::get('/setup/omr', [OmrConfigurationController::class, 'index'])->name('setup.omr.index');
     Route::get('/setup/omr/intake', [OmrConfigurationController::class, 'intake'])->name('setup.omr.intake');
     Route::post('/setup/omr/bundles', [OmrConfigurationController::class, 'storeBundle'])->name('setup.omr.bundles.store');
+
+    Route::get('/setup/omr/templates/canonical', [OmrCanonicalTemplateController::class, 'index'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.index');
+    Route::get('/setup/omr/templates/canonical/diagnostics', [OmrCanonicalTemplateController::class, 'diagnostics'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.diagnostics');
+    Route::post('/setup/omr/templates/canonical/drafts', [OmrCanonicalTemplateController::class, 'create'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.create');
+    Route::get('/setup/omr/templates/canonical/drafts/{draft}', [OmrCanonicalTemplateController::class, 'show'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.show');
+    Route::get('/setup/omr/templates/canonical/drafts/{draft}/assets/{asset}', [OmrCanonicalTemplateController::class, 'asset'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.assets.show');
+    Route::get('/setup/omr/templates/canonical/drafts/{draft}/booklet-options', [OmrCanonicalTemplateController::class, 'bookletOptions'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.booklet_options');
+    Route::delete('/setup/omr/templates/canonical/drafts/{draft}', [OmrCanonicalTemplateController::class, 'destroy'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.destroy');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/source/ingest', [OmrCanonicalTemplateController::class, 'ingest'])
+        ->middleware(['capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR, 'throttle:10,1'])
+        ->name('setup.omr.templates.canonical.drafts.source.ingest');
+    Route::get('/setup/omr/templates/canonical/drafts/{draft}/source/ingest/run', [OmrCanonicalTemplateController::class, 'sourceRun'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.source.run');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/source/ingest/cancel', [OmrCanonicalTemplateController::class, 'cancelSourceRun'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.source.cancel');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/source/rectify', [OmrCanonicalTemplateController::class, 'rectify'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.source.rectify');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/compose', [OmrCanonicalTemplateController::class, 'compose'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.compose');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/source/pages/confirm', [OmrCanonicalTemplateController::class, 'confirmPages'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.source.pages.confirm');
+    Route::put('/setup/omr/templates/canonical/drafts/{draft}/overlay', [OmrCanonicalTemplateController::class, 'overlay'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.overlay');
+    Route::put('/setup/omr/templates/canonical/drafts/{draft}/mapping', [OmrCanonicalTemplateController::class, 'mapping'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.mapping');
+    Route::put('/setup/omr/templates/canonical/drafts/{draft}/studio', [OmrCanonicalTemplateController::class, 'studio'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.studio');
+    Route::put('/setup/omr/templates/canonical/drafts/{draft}/marker-profile/{profile}', [OmrCanonicalTemplateController::class, 'selectMarkerProfile'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.marker_profile');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/compile', [OmrCanonicalTemplateController::class, 'compile'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.compile');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/verify/digital', [OmrCanonicalTemplateController::class, 'digitalVerification'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.verify.digital');
+    Route::post('/setup/omr/templates/{templateVersion}/verify/physical', [OmrCanonicalTemplateController::class, 'physicalQualification'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.verify.physical');
+    Route::post('/setup/omr/templates/{templateVersion}/activate', [OmrCanonicalTemplateController::class, 'activate'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.activate');
+    Route::post('/setup/omr/templates/{templateVersion}/blank/print', [OmrCanonicalTemplateController::class, 'printBlankInstances'])
+        ->middleware(['capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR, 'throttle:5,1'])
+        ->name('setup.omr.templates.canonical.blank.print');
+    Route::get('/setup/omr/templates/{templateVersion}/blank/instances', [OmrCanonicalTemplateController::class, 'blankInstances'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.blank.instances');
+    Route::post('/setup/omr/templates/{templateVersion}/blank/instances/{instance}/supersede', [OmrCanonicalTemplateController::class, 'supersedeBlankInstance'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.blank.instances.supersede');
+    Route::post('/setup/omr/templates/{templateVersion}/blank/instances/{instance}/void', [OmrCanonicalTemplateController::class, 'voidBlankInstance'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.blank.instances.void');
+
+    Route::post('/setup/omr/templates/canonical/marker-profiles/{profile}/calibration-artifact', [OmrCanonicalTemplateController::class, 'calibrationArtifact'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.marker_profiles.calibration_artifact');
+    Route::post('/setup/omr/templates/canonical/marker-profiles/{profile}/qualify', [OmrCanonicalTemplateController::class, 'qualifyMarkerProfile'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.marker_profiles.qualify');
     Route::get('/setup/omr/templates', [OmrConfigurationController::class, 'templatesIndex'])->name('setup.omr.templates.index');
     Route::get('/setup/omr/templates/builder', [OmrConfigurationController::class, 'builder'])->name('setup.omr.templates.builder');
     Route::post('/setup/omr/templates', [OmrConfigurationController::class, 'storeAuthoredTemplate'])
@@ -468,6 +558,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/setup/omr/templates/preview-draft', [OmrConfigurationController::class, 'previewDraft'])->name('setup.omr.templates.preview_draft');
     Route::post('/setup/omr/layout/preview', [OmrConfigurationController::class, 'layoutPreview'])->name('setup.omr.layout.preview');
     Route::post('/setup/omr/templates/{version}/overlay', [OmrConfigurationController::class, 'storeOverlay'])->name('setup.omr.templates.overlay');
+    Route::post('/setup/omr/templates/{version}/test-capture', [OmrConfigurationController::class, 'testCapture'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.test_capture');
+    Route::get('/setup/omr/templates/test-capture/{token}/{file}', [OmrConfigurationController::class, 'testCaptureAsset'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.test_capture_asset');
     Route::get('/setup/omr/booklets', [OmrConfigurationController::class, 'booklets'])->name('setup.omr.booklets');
     Route::get('/setup/omr/booklets/create', [OmrConfigurationController::class, 'bookletCreate'])->name('setup.omr.booklets.create');
     Route::get('/setup/omr/booklets/{booklet}', [OmrConfigurationController::class, 'bookletShow'])->name('setup.omr.booklets.show');

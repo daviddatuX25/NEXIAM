@@ -45,6 +45,7 @@ services:
         ports:
             - '18000:8000'
         volumes:
+            - .:/var/www/html
             - app_storage:/var/www/html/storage
         healthcheck:
             test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:8000/up']
@@ -65,8 +66,9 @@ services:
                 'queue:work',
                 '--sleep=1',
                 '--tries=1',
-                '--timeout=90',
+                '--timeout=80',
             ]
+        restart: unless-stopped
         env_file:
             - .env
         environment:
@@ -94,6 +96,7 @@ services:
             app:
                 condition: service_healthy
         volumes:
+            - .:/var/www/html
             - app_storage:/var/www/html/storage
         healthcheck:
             test: ['CMD-SHELL', "pgrep -f 'queue:work' >/dev/null"]
@@ -127,6 +130,7 @@ services:
             app:
                 condition: service_healthy
         volumes:
+            - .:/var/www/html
             - app_storage:/var/www/html/storage
         healthcheck:
             test: ['CMD-SHELL', "pgrep -f 'schedule:work' >/dev/null"]
