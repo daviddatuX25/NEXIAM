@@ -18,7 +18,7 @@ class OmrCanonicalDemoSeeder extends Seeder
         $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         app(OmrMarkerProfileService::class)->seedCandidates($actor);
         $definitions = [
-            ['code' => 'CANONICAL-PRESET', 'name' => 'Standard 150-Item Preset (6 Subjects x 25 Qs)', 'kind' => OmrTemplateAuthoringDraft::SOURCE_PRESET, 'stage' => OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED],
+            ['code' => 'CANONICAL-PRESET', 'name' => 'Standard 150-Item Preset (6 Subjects x 25 Qs)', 'kind' => OmrTemplateAuthoringDraft::SOURCE_PRESET, 'stage' => OmrTemplateAuthoringDraft::STAGE_DRAFT],
             ['code' => 'CANONICAL-HTML', 'name' => 'Canonical HTML Exam Template', 'kind' => OmrTemplateAuthoringDraft::SOURCE_HTML, 'stage' => OmrTemplateAuthoringDraft::STAGE_DRAFT],
         ];
         foreach ($definitions as $definition) {
@@ -61,7 +61,7 @@ class OmrCanonicalDemoSeeder extends Seeder
         ];
 
         $studioPayload = [
-            'current_stage' => 3,
+            'current_stage' => 1,
             'marginMm' => 15,
             'markerPattern' => 'square',
             'bubbleRadiusMm' => 4.5,

@@ -426,6 +426,20 @@
     }
     executeGoToStage(step);
   }
+  function loadSampleLayout() {
+    htmlCode = DEFAULT_150Q_HTML;
+    stage1Mode = 'html';
+    baseType = 'html';
+    sections = [
+      { id: 'Part_1', name: 'Part 1: English (Q1–25)', type: 'mcq', posX: 14, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 1, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+      { id: 'Part_2', name: 'Part 2: Math (Q26–50)', type: 'mcq', posX: 44, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 26, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+      { id: 'Part_3', name: 'Part 3: Science (Q51–75)', type: 'mcq', posX: 74, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 51, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+      { id: 'Part_4', name: 'Part 4: Abstract (Q76–100)', type: 'mcq', posX: 104, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 76, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+      { id: 'Part_5', name: 'Part 5: Gen Info (Q101–125)', type: 'mcq', posX: 134, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 101, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+      { id: 'Part_6', name: 'Part 6: Logic (Q126–150)', type: 'mcq', posX: 164, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 126, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+    ];
+    triggerAutosave();
+  }
 
   function confirmResetAndNavigate() {
     draft.raster_url = null;
@@ -986,6 +1000,29 @@
             <h2 class="text-sm font-bold text-slate-900">Source Substrate</h2>
             <p class="text-[11px] text-slate-500 mt-0.5">Design or upload the base answer sheet layout.</p>
           </div>
+
+          <!-- Quick Start 1-Click Sample Preset -->
+          <div class="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                <Sparkles class="size-3.5 text-emerald-600" />
+                <span>Quick Start Template</span>
+              </span>
+              <span class="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-100 text-emerald-800 rounded font-semibold">150 Qs</span>
+            </div>
+            <p class="text-[10.5px] text-emerald-800 leading-relaxed">
+              Standard 6-subject aptitude answer sheet (25 Qs each) ready for live camera capture and OMR recognition.
+            </p>
+            <button
+              type="button"
+              onclick={loadSampleLayout}
+              class="w-full py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <Sparkles class="size-3" />
+              <span>Load 150-Q Exam Substrate</span>
+            </button>
+          </div>
+
 
           <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
           <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
