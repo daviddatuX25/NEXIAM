@@ -656,9 +656,10 @@
   }
 </script>
 
-<div class="h-screen w-screen flex bg-slate-100 text-slate-900 overflow-hidden font-sans select-none">
-  <!-- LEFT WORKBENCH SIDEBAR (Strictly contained, fixed width, independent scroll) -->
-  <aside class="w-[380px] h-screen bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden shadow-xs z-20">
+<!-- TEMPLATE STUDIO WORKBENCH: Contained height (calc(100vh - 3.5rem)) filling remaining vertical space with NO outer scroll -->
+<div class="h-[calc(100vh-3.5rem)] w-full flex bg-slate-100 text-slate-900 overflow-hidden font-sans select-none border-t border-slate-200">
+  <!-- COLUMN 1: LEFT WORKBENCH SIDEBAR (Strictly contained, fixed width, independent scroll) -->
+  <aside class="w-[380px] h-full bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden shadow-xs z-20">
     <!-- Sidebar Header (Template Name & Code) -->
     <div class="h-12 border-b border-slate-200 px-5 flex items-center justify-between shrink-0 bg-white">
       <div class="flex items-center space-x-2">
@@ -675,7 +676,7 @@
       </div>
     </div>
 
-    <!-- Scrollable Sidebar Tool Content Area -->
+    <!-- Scrollable Sidebar Tool Content Area (Independent Internal Scroll) -->
     <div class="flex-1 overflow-y-auto min-h-0">
       {#if currentStage === 1}
         <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
@@ -835,8 +836,8 @@
     {/if}
   </aside>
 
-  <!-- RIGHT CANVAS WORKBENCH COLUMN (Stationary Top Stepper & Controls Bar + Canvas Area) -->
-  <main class="flex-1 h-screen flex flex-col min-w-0 bg-slate-100 overflow-hidden relative">
+  <!-- COLUMN 2: RIGHT CANVAS WORKBENCH (Stationary Top Stepper & Controls Bar + Centered Canvas Area) -->
+  <main class="flex-1 h-full flex flex-col min-w-0 bg-slate-100 overflow-hidden relative">
     <!-- Stationary Top Bar (Above Canvas: 4-Step Stepper + Canvas Viewport Controls + Save) -->
     <div class="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-2xs z-20">
       <!-- 4-Step Stepper Navigation (Vertically centered with clean typography) -->
