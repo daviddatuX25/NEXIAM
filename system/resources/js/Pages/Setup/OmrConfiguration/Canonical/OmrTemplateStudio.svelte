@@ -656,258 +656,127 @@
   }
 </script>
 
-<!-- FULL-SCREEN WORKBENCH: Direct attachment to app sidebar, zero outer borders, h-screen overflow-hidden -->
-<div class="h-screen w-full flex bg-slate-100 text-slate-900 overflow-hidden font-sans select-none">
-  <!-- COLUMN 1: LEFT TOOL SIDEBAR (Directly attached to app sidebar, independent scroll) -->
-  <aside class="w-[380px] h-full bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden shadow-xs z-20">
-    <!-- Sidebar Header (Template Name & Code) -->
-    <div class="h-12 border-b border-slate-200 px-5 flex items-center justify-between shrink-0 bg-white">
-      <div class="flex items-center space-x-2">
-        <div class="size-6 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">
-          N
-        </div>
-        <span class="text-xs font-bold text-slate-900 truncate max-w-[170px]">{draft.name || 'Template Studio'}</span>
-        <span class="px-1.5 py-0.5 bg-slate-100 text-[10px] font-mono text-slate-600 rounded border border-slate-200">
-          {draft.code || 'OMR-DRAFT'}
-        </span>
-      </div>
-      <div class="text-[11px] font-mono text-slate-500">
-        {totalQuestionsCount} Qs
-      </div>
+<!-- FULL-BLEED WORKSPACE CONTAINER: Completely fills parent workspace, ZERO outer scrollbars -->
+<div class="w-full h-full relative overflow-hidden bg-slate-100 flex select-none">
+  <!-- FULL-BLEED CANVAS WORKBENCH (Column 2 base layer) -->
+  <main class="w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
+    <!-- Scalable Canvas Viewport -->
+    <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
+      <StudioCanvas
+        bind:scale
+        bind:panX
+        bind:panY
+        bind:marginMm
+        bind:markerPattern
+        bind:canvasLocked
+        rasterUrl={draft.raster_url}
+        htmlContent={htmlCode}
+        isHtmlMode={stage1Mode === 'html'}
+        {isComposing}
+        {showHeaderOverlay}
+        {headerTitle}
+        {headerSubtitle}
+        {headerFontSize}
+        bind:headerX
+        bind:headerY
+        bind:headerW
+        bind:headerH
+        bind:headerLocked
+        {showQrOverlay}
+        bind:qrX
+        bind:qrY
+        bind:qrW
+        bind:qrH
+        bind:qrLocked
+        {showInstructionsOverlay}
+        {instructionsContent}
+        bind:instX
+        bind:instY
+        bind:instW
+        bind:instH
+        bind:instLocked
+        {showSignatureOverlay}
+        {signatureContent}
+        bind:sigX
+        bind:sigY
+        bind:sigW
+        bind:sigH
+        bind:sigLocked
+        bind:customTextItems
+        bind:sections
+        bind:activeSectionIndex
+        {currentStage}
+        onGeometryChanged={triggerAutosave}
+      />
     </div>
 
-    <!-- Scrollable Sidebar Tool Content Area -->
-    <div class="flex-1 overflow-y-auto min-h-0">
-      {#if currentStage === 1}
-        <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
-        <div class="p-5 space-y-5">
-          <div>
-            <h2 class="text-sm font-bold text-slate-900">Source Substrate</h2>
-            <p class="text-[11px] text-slate-500 mt-0.5">Design or upload the base answer sheet layout.</p>
-          </div>
-
-          <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
-          <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Paste / Edit HTML
-            </button>
-            <button
-              type="button"
-              onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Upload File
-            </button>
-          </div>
-
-          {#if stage1Mode === 'html'}
-            <!-- Option 1: Paste / Edit HTML Code -->
-            <div class="space-y-2.5">
-              <div class="flex items-center justify-between">
-                <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
-                <button
-                  type="button"
-                  onclick={() => {
-                    htmlCode = DEFAULT_150Q_HTML;
-                    triggerAutosave();
-                  }}
-                  class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                >
-                  <Sparkles class="size-3" />
-                  <span>Reset 150-Q Template</span>
-                </button>
-              </div>
-              <textarea
-                bind:value={htmlCode}
-                oninput={triggerAutosave}
-                rows="11"
-                class="w-full font-mono text-[10.5px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
-                placeholder="Paste HTML markup here…"
-              ></textarea>
-
-              <div class="p-2.5 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-center gap-2 text-[11px] text-emerald-800">
-                <Check class="size-3.5 text-emerald-600 shrink-0" />
-                <span>Single-Page A4 Proportion: 100% within paper bounds</span>
-              </div>
-            </div>
-          {:else}
-            <!-- Option 2: Upload Document File -->
-            <div class="space-y-3">
-              <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-slate-400 bg-slate-50 transition">
-                <Upload class="size-7 text-slate-400 mx-auto mb-2" />
-                <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image</p>
-                <p class="text-[10px] text-slate-400 mt-0.5">Automatic 300 PPI print rasterization</p>
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
-                  bind:this={uploadFileInput}
-                  onchange={handleFileUpload}
-                  class="hidden"
-                />
-                <button
-                  type="button"
-                  onclick={() => uploadFileInput?.click()}
-                  class="mt-3 px-3.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
-                >
-                  Select File
-                </button>
-              </div>
-
-              {#if uploadRunning}
-                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
-                  <Loader2 class="size-4 animate-spin text-blue-600 shrink-0" />
-                  <span>{conversionStatusText || 'Converting file…'}</span>
-                </div>
-              {/if}
-
-              {#if conversionError}
-                <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
-                  {conversionError}
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      {:else if currentStage === 2}
-        <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
-        <StudioOverlayPanel
-          bind:marginMm
-          bind:markerPattern
-          bind:showHeaderOverlay
-          bind:headerTitle
-          bind:headerSubtitle
-          bind:headerFontSize
-          bind:headerLocked
-          bind:showQrOverlay
-          bind:qrLocked
-          bind:showInstructionsOverlay
-          bind:instructionsContent
-          bind:instructionsFontSize
-          bind:instLocked
-          bind:showSignatureOverlay
-          bind:signatureContent
-          bind:signatureFontSize
-          bind:sigLocked
-          bind:customTextItems
-          onChanged={triggerAutosave}
-          onBack={() => requestGoToStage(1)}
-          onNext={() => requestGoToStage(3)}
-        />
-      {:else if currentStage === 3}
-        <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
-        <StudioBubblePanel
-          bind:sections
-          bind:activeSectionIndex
-          onChanged={triggerAutosave}
-          onBack={() => requestGoToStage(2)}
-          onNext={() => requestGoToStage(4)}
-        />
-      {:else if currentStage === 4}
-        <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
-        <StudioExportVerifyPanel
-          {draft}
-          {jsonSchema}
-          {urls}
-          onBack={() => requestGoToStage(3)}
-        />
-      {/if}
+    <!-- FLOATING TOP STEPPER BAR (Centered over canvas with glass styling) -->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1">
+      {#each stageTitles as title, idx}
+        {@const stageNum = idx + 1}
+        {@const isActive = currentStage === stageNum}
+        {@const isPast = currentStage > stageNum}
+        <button
+          type="button"
+          onclick={() => requestGoToStage(stageNum)}
+          class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
+            isActive
+              ? 'bg-slate-900 text-white shadow-xs'
+              : isPast
+                ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
+            isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
+          }`}>
+            {stageNum}
+          </span>
+          <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
+        </button>
+      {/each}
     </div>
 
-    <!-- Pinned Bottom Navigation Footer in Sidebar -->
-    {#if currentStage === 1}
-      <div class="shrink-0 p-4 border-t border-slate-200 bg-white">
+    <!-- FLOATING TOP-RIGHT ACTIONS: Re-edit Design Button (Step 3) + Save Action -->
+    <div class="absolute top-4 right-4 z-30 pointer-events-auto flex items-center space-x-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-md">
+      {#if currentStage === 3 && draft.raster_url}
         <button
           type="button"
           onclick={() => requestGoToStage(2)}
-          class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+          class="px-2.5 h-7 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition"
+          title="Return to Step 2 to edit overlays or re-render page raster"
         >
-          <span>Continue to Layout & Markers</span>
-          <ChevronRight class="size-4" />
+          <RotateCcw class="size-3 text-emerald-600" />
+          <span>Re-edit Design</span>
         </button>
-      </div>
-    {/if}
-  </aside>
+      {/if}
 
-  <!-- COLUMN 2: FULL-BLEED CANVAS WORKBENCH (Floating Stepper & Dedicated Bottom-Left Controls) -->
-  <main class="flex-1 h-full flex flex-col min-w-0 bg-slate-100 overflow-hidden relative">
-    <!-- FLOATING TOP NAVBAR (Glass Pill Bar with Stepper on Left/Center and Actions on Right) -->
-    <div class="absolute top-4 left-6 right-6 flex items-center justify-between z-30 pointer-events-none gap-4">
-      <!-- 4-Step Stepper Navigation -->
-      <div class="pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1 shrink-0">
-        {#each stageTitles as title, idx}
-          {@const stageNum = idx + 1}
-          {@const isActive = currentStage === stageNum}
-          {@const isPast = currentStage > stageNum}
-          <button
-            type="button"
-            onclick={() => requestGoToStage(stageNum)}
-            class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
-              isActive
-                ? 'bg-slate-900 text-white shadow-xs'
-                : isPast
-                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                  : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
-              isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
-            }`}>
-              {stageNum}
-            </span>
-            <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
-          </button>
-        {/each}
-      </div>
-
-      <!-- Right Actions: Re-edit Design Button (Step 3) + Save Action -->
-      <div class="pointer-events-auto flex items-center space-x-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-md shrink-0">
-        {#if currentStage === 3 && draft.raster_url}
-          <button
-            type="button"
-            onclick={() => requestGoToStage(2)}
-            class="px-2.5 h-7 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition"
-            title="Return to Step 2 to edit overlays or re-render page raster"
-          >
-            <RotateCcw class="size-3 text-emerald-600" />
-            <span>Re-edit Design</span>
-          </button>
+      <div class="flex items-center space-x-1.5 text-xs px-2">
+        {#if saveStatus === 'saving'}
+          <Loader2 class="size-3.5 text-amber-500 animate-spin" />
+          <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
+        {:else if saveStatus === 'saved'}
+          <CheckCircle2 class="size-3.5 text-emerald-600" />
+          <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
+        {:else if saveStatus === 'error'}
+          <XCircle class="size-3.5 text-rose-600" />
+          <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
+            {errorMessage || 'Error'}
+          </span>
         {/if}
-
-        <div class="flex items-center space-x-1.5 text-xs px-2">
-          {#if saveStatus === 'saving'}
-            <Loader2 class="size-3.5 text-amber-500 animate-spin" />
-            <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
-          {:else if saveStatus === 'saved'}
-            <CheckCircle2 class="size-3.5 text-emerald-600" />
-            <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
-          {:else if saveStatus === 'error'}
-            <XCircle class="size-3.5 text-rose-600" />
-            <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
-              {errorMessage || 'Error'}
-            </span>
-          {/if}
-        </div>
-
-        <button
-          type="button"
-          onclick={performSave}
-          class="px-3.5 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-xs"
-        >
-          Save
-        </button>
       </div>
+
+      <button
+        type="button"
+        onclick={performSave}
+        class="px-3.5 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-xs"
+      >
+        Save
+      </button>
     </div>
 
-    <!-- FLOATING CANVAS CONTROLS (Positioned at Bottom-Left near Column 1 with generous spacing) -->
-    <div class="absolute bottom-5 left-6 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
+    <!-- FLOATING CANVAS CONTROLS (Positioned at Bottom-Right over Canvas for immediate visibility) -->
+    <div class="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
       <!-- Canvas Lock / Active Toggle -->
       <button
         type="button"
@@ -964,57 +833,185 @@
         <span>Fit (88%)</span>
       </button>
     </div>
-
-    <!-- Scalable Canvas Viewport -->
-    <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
-      <StudioCanvas
-        bind:scale
-        bind:panX
-        bind:panY
-        bind:marginMm
-        bind:markerPattern
-        bind:canvasLocked
-        rasterUrl={draft.raster_url}
-        htmlContent={htmlCode}
-        isHtmlMode={stage1Mode === 'html'}
-        {isComposing}
-        {showHeaderOverlay}
-        {headerTitle}
-        {headerSubtitle}
-        {headerFontSize}
-        bind:headerX
-        bind:headerY
-        bind:headerW
-        bind:headerH
-        bind:headerLocked
-        {showQrOverlay}
-        bind:qrX
-        bind:qrY
-        bind:qrW
-        bind:qrH
-        bind:qrLocked
-        {showInstructionsOverlay}
-        {instructionsContent}
-        bind:instX
-        bind:instY
-        bind:instW
-        bind:instH
-        bind:instLocked
-        {showSignatureOverlay}
-        {signatureContent}
-        bind:sigX
-        bind:sigY
-        bind:sigW
-        bind:sigH
-        bind:sigLocked
-        bind:customTextItems
-        bind:sections
-        bind:activeSectionIndex
-        {currentStage}
-        onGeometryChanged={triggerAutosave}
-      />
-    </div>
   </main>
+
+  <!-- COLUMN 1: FLOATING LEFT TOOL CARD (Absolute drawer on left, cannot stretch page height) -->
+  <aside class="absolute top-4 left-4 bottom-4 w-[360px] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden z-20">
+    <!-- Card Header -->
+    <div class="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white/80">
+      <div class="flex items-center space-x-2">
+        <div class="size-5 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-[10px]">
+          N
+        </div>
+        <span class="text-xs font-bold text-slate-900 truncate max-w-[170px]">{draft.name || 'Template Studio'}</span>
+        <span class="px-1.5 py-0.5 bg-slate-100 text-[9.5px] font-mono text-slate-600 rounded border border-slate-200">
+          {draft.code || 'OMR-DRAFT'}
+        </span>
+      </div>
+      <div class="text-[10.5px] font-mono text-slate-500">
+        {totalQuestionsCount} Qs
+      </div>
+    </div>
+
+    <!-- Scrollable Tool Content Body (Dedicated internal scroll) -->
+    <div class="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
+      {#if currentStage === 1}
+        <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Source Substrate</h2>
+            <p class="text-[11px] text-slate-500 mt-0.5">Design or upload the base answer sheet layout.</p>
+          </div>
+
+          <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
+          <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Paste / Edit HTML
+            </button>
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Upload File
+            </button>
+          </div>
+
+          {#if stage1Mode === 'html'}
+            <!-- Option 1: Paste / Edit HTML Code -->
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
+                <button
+                  type="button"
+                  onclick={() => {
+                    htmlCode = DEFAULT_150Q_HTML;
+                    triggerAutosave();
+                  }}
+                  class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                >
+                  <Sparkles class="size-3" />
+                  <span>Reset 150-Q</span>
+                </button>
+              </div>
+              <textarea
+                bind:value={htmlCode}
+                oninput={triggerAutosave}
+                rows="11"
+                class="w-full font-mono text-[10px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
+                placeholder="Paste HTML markup here…"
+              ></textarea>
+
+              <div class="p-2 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-center gap-1.5 text-[10.5px] text-emerald-800">
+                <Check class="size-3.5 text-emerald-600 shrink-0" />
+                <span>Single-Page A4: 100% within bounds</span>
+              </div>
+            </div>
+          {:else}
+            <!-- Option 2: Upload Document File -->
+            <div class="space-y-3">
+              <div class="border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center hover:border-slate-400 bg-slate-50 transition">
+                <Upload class="size-6 text-slate-400 mx-auto mb-1.5" />
+                <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Automatic 300 PPI print rasterization</p>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
+                  bind:this={uploadFileInput}
+                  onchange={handleFileUpload}
+                  class="hidden"
+                />
+                <button
+                  type="button"
+                  onclick={() => uploadFileInput?.click()}
+                  class="mt-2.5 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
+                >
+                  Select File
+                </button>
+              </div>
+
+              {#if uploadRunning}
+                <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
+                  <Loader2 class="size-3.5 animate-spin text-blue-600 shrink-0" />
+                  <span>{conversionStatusText || 'Converting file…'}</span>
+                </div>
+              {/if}
+
+              {#if conversionError}
+                <div class="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+                  {conversionError}
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {:else if currentStage === 2}
+        <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
+        <StudioOverlayPanel
+          bind:marginMm
+          bind:markerPattern
+          bind:showHeaderOverlay
+          bind:headerTitle
+          bind:headerSubtitle
+          bind:headerFontSize
+          bind:headerLocked
+          bind:showQrOverlay
+          bind:qrLocked
+          bind:showInstructionsOverlay
+          bind:instructionsContent
+          bind:instructionsFontSize
+          bind:instLocked
+          bind:showSignatureOverlay
+          bind:signatureContent
+          bind:signatureFontSize
+          bind:sigLocked
+          bind:customTextItems
+          onChanged={triggerAutosave}
+          onBack={() => requestGoToStage(1)}
+          onNext={() => requestGoToStage(3)}
+        />
+      {:else if currentStage === 3}
+        <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
+        <StudioBubblePanel
+          bind:sections
+          bind:activeSectionIndex
+          onChanged={triggerAutosave}
+          onBack={() => requestGoToStage(2)}
+          onNext={() => requestGoToStage(4)}
+        />
+      {:else if currentStage === 4}
+        <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
+        <StudioExportVerifyPanel
+          {draft}
+          {jsonSchema}
+          {urls}
+          onBack={() => requestGoToStage(3)}
+        />
+      {/if}
+    </div>
+
+    <!-- Pinned Bottom Navigation Footer in Floating Card (Step 1 only; Steps 2-4 have their own footers) -->
+    {#if currentStage === 1}
+      <div class="shrink-0 p-3 border-t border-slate-200/80 bg-white/90">
+        <button
+          type="button"
+          onclick={() => requestGoToStage(2)}
+          class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+        >
+          <span>Continue to Layout & Markers</span>
+          <ChevronRight class="size-3.5" />
+        </button>
+      </div>
+    {/if}
+  </aside>
 
   <!-- Re-edit & Raster Reset Confirmation Modal -->
   {#if showResetConfirmModal}
