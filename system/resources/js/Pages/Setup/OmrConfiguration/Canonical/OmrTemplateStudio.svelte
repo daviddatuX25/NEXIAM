@@ -49,67 +49,139 @@
   let baseType = $state(draft.source_kind ?? 'html');
 
   // Compact, Single-Page A4-Fitted 150-Q HTML Template
-  // Compact, Single-Page A4-Fitted 150-Q HTML Template (6 Subjects x 25 Items)
+  // Compact, Single-Page A4-Fitted 150-Q HTML Template (3-Column EDQ Header + 6 Subjects x 25 Qs)
   const DEFAULT_150Q_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      margin: 0; padding: 10px;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      color: #0f172a;
-      overflow: hidden;
       width: 100%; height: 100%;
+      padding: 10px 12px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      overflow: hidden;
     }
-    .header { text-align: center; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 4px; }
-    .header h1 { font-size: 11px; margin: 0 0 1px 0; text-transform: uppercase; font-weight: 800; }
-    .header p { font-size: 7px; color: #475569; margin: 0; font-family: monospace; }
-    .info { display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 4px; border: 1px solid #cbd5e1; padding: 2px 5px; border-radius: 4px; background: #f8fafc; }
-    .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3.5px; }
-    .col { background: #fff; }
-    .part { font-size: 6px; font-weight: bold; background: #0f172a; color: #fff; padding: 1.5px 2px; border-radius: 2px; margin-bottom: 2px; text-align: center; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .row { display: flex; align-items: center; justify-content: space-between; font-size: 6px; font-family: monospace; margin-bottom: 1px; }
-    .num { font-weight: bold; width: 10px; color: #334155; }
-    .bubs { display: flex; gap: 1px; }
-    .bub { width: 8px; height: 8px; border: 1px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 5px; font-weight: bold; }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
+    .header h1 { font-size: 13px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; color: #0f172a; }
+    .header p { font-size: 7.5px; color: #475569; font-family: monospace; font-weight: 500; margin-top: 1px; }
+    
+    /* 3-Column Header Zone: Name, Birthdate, Examinee No */
+    .edq-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 7px;
+    }
+    .edq-box {
+      border: 1.5px solid #0f172a;
+      border-radius: 3px;
+      padding: 3px 5px;
+      background: #fafafa;
+    }
+    .edq-label { font-size: 6.5px; font-weight: 800; text-transform: uppercase; color: #334155; margin-bottom: 2px; }
+    .edq-line { border-bottom: 1px dashed #64748b; height: 10px; margin-top: 2px; }
+    .digit-boxes { display: flex; gap: 2px; margin-top: 2px; }
+    .digit-box { width: 9px; height: 11px; border: 1px solid #334155; border-radius: 1.5px; background: #fff; }
+    
+    /* 6-Column Answer Grid */
+    .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .col { background: #ffffff; }
+    .subject-header {
+      font-size: 6px; font-weight: 800;
+      background: #0f172a; color: #ffffff;
+      padding: 2px; border-radius: 2px;
+      text-align: center; text-transform: uppercase;
+      margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .option-header {
+      display: flex;
+      justify-content: flex-end;
+      padding-right: 1px;
+      gap: 4px;
+      font-size: 5.5px;
+      font-weight: 800;
+      color: #334155;
+      margin-bottom: 2px;
+    }
+    .option-col-label { width: 8.5px; text-align: center; }
+    
+    /* Question Rows with Tight Bubble Spacing */
+    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2px; }
+    .num { font-size: 6px; font-weight: 700; font-family: monospace; color: #334155; width: 10px; text-align: left; }
+    .bubs { display: flex; gap: 4px; }
+    .bub {
+      width: 8.5px; height: 8.5px;
+      border: 1.2px solid #1e293b;
+      border-radius: 50%;
+      background: #ffffff;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>University General Aptitude Test</h1>
-    <p>Standard 150-Item Answer Sheet &bull; 6 Subjects &times; 25 Items &bull; ISO A4 (210 &times; 297 mm)</p>
+    <p>Standard 150-Item Examination Answer Sheet &bull; 6 Subjects &times; 25 Items &bull; ISO A4</p>
   </div>
-  <div class="info">
-    <div><strong>Name:</strong> ________________________</div>
-    <div><strong>Examinee No:</strong> __________</div>
-    <div><strong>Date:</strong> _______</div>
+
+  <!-- 3-Column Header Info Strip (Name, Birthdate, Examinee No) -->
+  <div class="edq-grid">
+    <div class="edq-box">
+      <div class="edq-label">Candidate Name (Print)</div>
+      <div class="edq-line"></div>
+    </div>
+    <div class="edq-box">
+      <div class="edq-label">Birthdate (MMDDYYYY)</div>
+      <div class="digit-boxes">
+        <div class="digit-box"></div><div class="digit-box"></div>
+        <span style="font-size:7px;line-height:11px;">/</span>
+        <div class="digit-box"></div><div class="digit-box"></div>
+        <span style="font-size:7px;line-height:11px;">/</span>
+        <div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div>
+      </div>
+    </div>
+    <div class="edq-box">
+      <div class="edq-label">Seat / Room No.</div>
+      <div class="digit-boxes">
+        <div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div>
+      </div>
+    </div>
   </div>
+
+  <!-- 6-Subject Question Grid with A-B-C-D Column Headers -->
   <div class="grid">
     <div class="col">
-      <div class="part">1. English</div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${String(i + 1).padStart(2, '0')}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="subject-header">1. English</div>
+      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${String(i + 1).padStart(2, '0')}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">2. Math</div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 26}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="subject-header">2. Math</div>
+      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 26}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">3. Science</div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 51}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="subject-header">3. Science</div>
+      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 51}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">4. Abstract</div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 76}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="subject-header">4. Abstract</div>
+      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 76}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">5. Gen Info</div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 101}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="subject-header">5. Gen Info</div>
+      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 101}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">6. Logic</div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 126}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="subject-header">6. Logic</div>
+      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 126}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
     </div>
   </div>
 </body>
@@ -755,27 +827,28 @@
   }
 
   async function autoConfirmPages() {
-    if (!urls.confirm_pages) {
-      uploadRunning = false;
-      executeGoToStage(2);
-      return;
+    if (urls.confirm_pages) {
+      try {
+        await fetch(urls.confirm_pages, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+          body: JSON.stringify({
+            pages: [{ page_no: 1, decision: 'confirmed' }],
+          }),
+        });
+      } catch {}
     }
 
-    try {
-      await fetch(urls.confirm_pages, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
-        body: JSON.stringify({
-          pages: [{ page_no: 1, decision: 'confirmed' }],
-        }),
-      });
-
-      uploadRunning = false;
-      executeGoToStage(2);
-    } catch {
-      uploadRunning = false;
-      executeGoToStage(2);
-    }
+    uploadRunning = false;
+    router.reload({
+      only: ['draft'],
+      onSuccess: () => {
+        executeGoToStage(2);
+      },
+      onError: () => {
+        executeGoToStage(2);
+      },
+    });
   }
 
   function getCsrfToken() {
@@ -791,7 +864,6 @@
     panX = 0;
     panY = 0;
   }
-
 
   /** Svelte action: strips padding and overflow from the page-layout <main> and its slot wrapper
       so this component fills the remaining viewport edge-to-edge with zero scroll. */
