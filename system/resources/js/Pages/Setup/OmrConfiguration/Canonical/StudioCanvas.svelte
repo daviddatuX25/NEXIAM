@@ -4,7 +4,7 @@
     Minus,
     Lock,
     Unlock,
-    QrCode,
+    Loader2,
   } from 'lucide-svelte';
 
   let {
@@ -19,28 +19,28 @@
     headerTitle = 'EXAMINATION ANSWER SHEET',
     headerSubtitle = 'AUTOMATED OMR EVALUATION FORM',
     headerFontSize = 14.0,
-    headerX = 25,
-    headerY = 20,
-    headerW = 160,
-    headerH = 15,
+    headerX = $bindable(25),
+    headerY = $bindable(20),
+    headerW = $bindable(160),
+    headerH = $bindable(15),
     showQrOverlay = true,
-    qrX = 150,
-    qrY = 32,
-    qrW = 32,
-    qrH = 32,
+    qrX = $bindable(150),
+    qrY = $bindable(32),
+    qrW = $bindable(32),
+    qrH = $bindable(32),
     showInstructionsOverlay = true,
     instructionsContent = 'Use 2B pencil only.',
-    instX = 25,
-    instY = 250,
-    instW = 90,
-    instH = 28,
+    instX = $bindable(25),
+    instY = $bindable(250),
+    instW = $bindable(90),
+    instH = $bindable(28),
     showSignatureOverlay = true,
     signatureContent = 'EXAMINEE SIGNATURE',
-    sigX = 125,
-    sigY = 250,
-    sigW = 60,
-    sigH = 28,
-    customTextItems = [],
+    sigX = $bindable(125),
+    sigY = $bindable(250),
+    sigW = $bindable(60),
+    sigH = $bindable(28),
+    customTextItems = $bindable([]),
     htmlContent = null,
     isHtmlMode = false,
     isComposing = false,
@@ -54,9 +54,11 @@
   let panStartX = 0;
   let panStartY = 0;
 
+  // Dragging State
   let isBlockDragging = $state(false);
   let isHandleDragging = $state(false);
   let dragBlockIndex = $state(null);
+  let selectedOverlay = $state('header'); // 'header' | 'qr' | 'signature' | 'instructions' | string
   let dragStartX = 0;
   let dragStartY = 0;
   let blockStartGeometry = { x: 0, y: 0, w: 0, h: 0 };
@@ -82,21 +84,61 @@
       return;
     }
 
-    if (currentStage === 4 && !canvasDragLocked && isBlockDragging && dragBlockIndex !== null) {
-      const dXmm = (e.clientX - dragStartX) / (2.2 * scale);
-      const dYmm = (e.clientY - dragStartY) / (2.2 * scale);
+    if (canvasDragLocked) return;
+
+    const dXmm = (e.clientX - dragStartX) / (2.47 * scale);
+    const dYmm = (e.clientY - dragStartY) / (2.47 * scale);
+
+    // STAGE 2: Overlay Elements Dragging & Resizing
+    if (currentStage === 2) {
+      if (isBlockDragging) {
+        if (selectedOverlay === 'header') {
+          headerX = Math.max(marginMm, Math.min(210 - marginMm - headerW, Math.round(blockStartGeometry.x + dXmm)));
+          headerY = Math.max(marginMm, Math.min(297 - marginMm - headerH, Math.round(blockStartGeometry.y + dYmm)));
+        } else if (selectedOverlay === 'qr') {
+          qrX = Math.max(marginMm, Math.min(210 - marginMm - qrW, Math.round(blockStartGeometry.x + dXmm)));
+          qrY = Math.max(marginMm, Math.min(297 - marginMm - qrH, Math.round(blockStartGeometry.y + dYmm)));
+        } else if (selectedOverlay === 'signature') {
+          sigX = Math.max(marginMm, Math.min(210 - marginMm - sigW, Math.round(blockStartGeometry.x + dXmm)));
+          sigY = Math.max(marginMm, Math.min(297 - marginMm - sigH, Math.round(blockStartGeometry.y + dYmm)));
+        } else if (selectedOverlay === 'instructions') {
+          instX = Math.max(marginMm, Math.min(210 - marginMm - instW, Math.round(blockStartGeometry.x + dXmm)));
+          instY = Math.max(marginMm, Math.min(297 - marginMm - instH, Math.round(blockStartGeometry.y + dYmm)));
+        } else if (typeof selectedOverlay === 'number' && customTextItems[selectedOverlay]) {
+          const item = customTextItems[selectedOverlay];
+          item.posX = Math.max(marginMm, Math.min(210 - marginMm - item.w_mm, Math.round(blockStartGeometry.x + dXmm)));
+          item.posY = Math.max(marginMm, Math.min(297 - marginMm - item.h_mm, Math.round(blockStartGeometry.y + dYmm)));
+        }
+      } else if (isHandleDragging) {
+        if (selectedOverlay === 'header') {
+          headerW = Math.max(40, Math.min(210 - headerX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
+          headerH = Math.max(12, Math.min(297 - headerY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
+        } else if (selectedOverlay === 'qr') {
+          const newSize = Math.max(20, Math.min(50, Math.round(blockStartGeometry.w + dXmm)));
+          qrW = newSize;
+          qrH = newSize;
+        } else if (selectedOverlay === 'signature') {
+          sigW = Math.max(30, Math.min(210 - sigX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
+          sigH = Math.max(15, Math.min(297 - sigY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
+        } else if (selectedOverlay === 'instructions') {
+          instW = Math.max(40, Math.min(210 - instX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
+          instH = Math.max(15, Math.min(297 - instY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
+        }
+      }
+      return;
+    }
+
+    // STAGE 3: Question Bubble Sections Dragging & Resizing
+    if (currentStage === 3 && dragBlockIndex !== null) {
       const sec = sections[dragBlockIndex];
-      if (sec) {
+      if (!sec) return;
+
+      if (isBlockDragging) {
         let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
         let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
         sec.posX = Math.max(marginMm, Math.min(210 - marginMm - sec.w_mm, nx));
-        sec.posY = Math.max(marginMm + 20, Math.min(297 - marginMm - sec.h_mm, ny));
-      }
-    } else if (currentStage === 4 && !canvasDragLocked && isHandleDragging && dragBlockIndex !== null) {
-      const dXmm = (e.clientX - dragStartX) / (2.2 * scale);
-      const dYmm = (e.clientY - dragStartY) / (2.2 * scale);
-      const sec = sections[dragBlockIndex];
-      if (sec) {
+        sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - sec.h_mm, ny));
+      } else if (isHandleDragging) {
         let nw = Math.round((blockStartGeometry.w + dXmm) / 2) * 2;
         let nh = Math.round((blockStartGeometry.h + dYmm) / 2) * 2;
         sec.w_mm = Math.max(35, Math.min(210 - sec.posX - marginMm, nw));
@@ -115,8 +157,30 @@
     }
   }
 
+  // Overlay Drag & Resize Triggers (Stage 2)
+  function handleOverlayMouseDown(e, target, geometry) {
+    if (currentStage !== 2 || canvasDragLocked) return;
+    e.stopPropagation();
+    selectedOverlay = target;
+    isBlockDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    blockStartGeometry = { ...geometry };
+  }
+
+  function handleOverlayResizeMouseDown(e, target, geometry) {
+    if (currentStage !== 2 || canvasDragLocked) return;
+    e.stopPropagation();
+    selectedOverlay = target;
+    isHandleDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    blockStartGeometry = { ...geometry };
+  }
+
+  // Section Bubble Drag & Resize Triggers (Stage 3)
   function handleBlockMouseDown(e, index) {
-    if (currentStage !== 4 || canvasDragLocked) return;
+    if (currentStage !== 3 || canvasDragLocked) return;
     e.stopPropagation();
     activeSectionIndex = index;
     isBlockDragging = true;
@@ -128,7 +192,7 @@
   }
 
   function handleResizeMouseDown(e, index) {
-    if (currentStage !== 4 || canvasDragLocked) return;
+    if (currentStage !== 3 || canvasDragLocked) return;
     e.stopPropagation();
     activeSectionIndex = index;
     isHandleDragging = true;
@@ -162,20 +226,23 @@
 <div class="flex-1 bg-slate-100 flex flex-col relative overflow-hidden">
   <!-- Floating Canvas Controls -->
   <div class="absolute top-4 right-4 bg-white border border-slate-200/80 rounded-xl shadow-md p-1.5 flex items-center space-x-1.5 z-30">
-    {#if currentStage === 4}
+    {#if currentStage === 2 || currentStage === 3}
       <button
         type="button"
         onclick={() => { canvasDragLocked = !canvasDragLocked; }}
-        class={`px-2 h-7 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
-          canvasDragLocked ? 'bg-slate-100 text-slate-700' : 'bg-amber-100 text-amber-900 border border-amber-300'
+        class={`px-2.5 h-7 rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow-xs ${
+          canvasDragLocked
+            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            : 'bg-blue-600 hover:bg-blue-700 text-white'
         }`}
+        title={canvasDragLocked ? 'Unlock canvas dragging and resizing' : 'Lock canvas positions'}
       >
         {#if canvasDragLocked}
-          <Lock class="size-3" />
+          <Lock class="size-3 text-slate-500" />
           <span>Locked</span>
         {:else}
-          <Unlock class="size-3 text-amber-600" />
-          <span>Unlocked</span>
+          <Unlock class="size-3 text-white" />
+          <span>Drag Active</span>
         {/if}
       </button>
     {/if}
@@ -247,6 +314,7 @@
           sandbox=""
         ></iframe>
       {/if}
+
       <!-- STAGE 2+: 4 Corner Registration Fiducial Markers -->
       {#if currentStage >= 2}
         <div
@@ -266,28 +334,94 @@
           style={`bottom: ${marginMm * 2.47}px; right: ${marginMm * 2.47}px;`}
         ></div>
       {/if}
-      <!-- STAGE 2+: Overlays (Header, Signature, Instructions, Custom text) -->
+
+      <!-- STAGE 2+: Overlays (Header, Signature, Instructions, Custom text, Simulated QR) -->
       {#if currentStage >= 2}
         <!-- Document Header Overlay -->
         {#if showHeaderOverlay}
           <div
-            class="absolute flex justify-between items-center pb-2 border-b-2 border-slate-900"
+            class={`absolute flex justify-between items-center pb-2 border-b-2 border-slate-900 transition-all ${
+              selectedOverlay === 'header' && !canvasDragLocked && currentStage === 2
+                ? 'ring-2 ring-blue-500 bg-blue-500/5 rounded p-1 z-30'
+                : 'z-10'
+            }`}
             style={`top: ${headerY * 2.47}px; left: ${headerX * 2.47}px; width: ${headerW * 2.47}px;`}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH })}
+            role="button"
+            tabindex="0"
           >
             <div>
-              <h3 class="font-bold tracking-tight text-slate-900" style={`font-size: ${headerFontSize * 0.9}px;`}>
+              <h3 class="font-bold tracking-tight text-slate-900 leading-tight" style={`font-size: ${headerFontSize * 0.9}px;`}>
                 {headerTitle}
               </h3>
               <p class="text-[9px] text-slate-500 font-mono">{headerSubtitle}</p>
             </div>
-            {#if showQrOverlay}
+
+            {#if selectedOverlay === 'header' && !canvasDragLocked && currentStage === 2}
               <div
-                class="border border-slate-300 rounded flex flex-col items-center justify-center bg-slate-50 p-1 shrink-0"
-                style={`width: ${qrW * 1.5}px; height: ${qrH * 1.5}px;`}
-              >
-                <QrCode class="size-6 text-slate-800" />
-                <span class="text-[7px] font-mono text-slate-500 mt-0.5">INSTANCE QR</span>
-              </div>
+                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH })}
+                role="button"
+                tabindex="0"
+              ></div>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- Simulated Cryptographic QR Overlay (High-Contrast SVG Data Matrix) -->
+        {#if showQrOverlay}
+          <div
+            class={`absolute border rounded bg-white p-1 flex flex-col items-center justify-between transition-all ${
+              selectedOverlay === 'qr' && !canvasDragLocked && currentStage === 2
+                ? 'border-blue-500 ring-2 ring-blue-400/60 z-30 shadow-md'
+                : 'border-slate-300 shadow-xs z-10'
+            }`}
+            style={`top: ${qrY * 2.47}px; left: ${qrX * 2.47}px; width: ${qrW * 2.47}px; height: ${qrH * 2.47}px;`}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH })}
+            role="button"
+            tabindex="0"
+          >
+            <!-- Simulated QR Matrix -->
+            <svg viewBox="0 0 100 100" class="w-full h-[calc(100%-10px)] text-slate-900" xmlns="http://www.w3.org/2000/svg">
+              <rect x="5" y="5" width="28" height="28" fill="currentColor" rx="2" />
+              <rect x="11" y="11" width="16" height="16" fill="white" rx="1" />
+              <rect x="15" y="15" width="8" height="8" fill="currentColor" rx="1" />
+              <rect x="67" y="5" width="28" height="28" fill="currentColor" rx="2" />
+              <rect x="73" y="11" width="16" height="16" fill="white" rx="1" />
+              <rect x="77" y="15" width="8" height="8" fill="currentColor" rx="1" />
+              <rect x="5" y="67" width="28" height="28" fill="currentColor" rx="2" />
+              <rect x="11" y="73" width="16" height="16" fill="white" rx="1" />
+              <rect x="15" y="77" width="8" height="8" fill="currentColor" rx="1" />
+              <rect x="38" y="8" width="6" height="6" fill="currentColor" />
+              <rect x="48" y="14" width="6" height="6" fill="currentColor" />
+              <rect x="56" y="8" width="6" height="6" fill="currentColor" />
+              <rect x="38" y="24" width="6" height="6" fill="currentColor" />
+              <rect x="48" y="24" width="6" height="6" fill="currentColor" />
+              <rect x="8" y="38" width="6" height="6" fill="currentColor" />
+              <rect x="20" y="46" width="6" height="6" fill="currentColor" />
+              <rect x="38" y="38" width="6" height="6" fill="currentColor" />
+              <rect x="48" y="46" width="6" height="6" fill="currentColor" />
+              <rect x="56" y="38" width="6" height="6" fill="currentColor" />
+              <rect x="68" y="46" width="6" height="6" fill="currentColor" />
+              <rect x="78" y="38" width="6" height="6" fill="currentColor" />
+              <rect x="88" y="46" width="6" height="6" fill="currentColor" />
+              <rect x="38" y="58" width="6" height="6" fill="currentColor" />
+              <rect x="56" y="68" width="6" height="6" fill="currentColor" />
+              <rect x="78" y="68" width="6" height="6" fill="currentColor" />
+              <rect x="88" y="78" width="6" height="6" fill="currentColor" />
+              <rect x="38" y="78" width="6" height="6" fill="currentColor" />
+              <rect x="48" y="88" width="6" height="6" fill="currentColor" />
+              <rect x="68" y="88" width="6" height="6" fill="currentColor" />
+            </svg>
+            <span class="text-[6.5px] font-mono font-bold text-slate-600 uppercase tracking-tighter text-center leading-none">INSTANCE QR</span>
+
+            {#if selectedOverlay === 'qr' && !canvasDragLocked && currentStage === 2}
+              <div
+                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH })}
+                role="button"
+                tabindex="0"
+              ></div>
             {/if}
           </div>
         {/if}
@@ -295,30 +429,69 @@
         <!-- Instructions Box Overlay -->
         {#if showInstructionsOverlay}
           <div
-            class="absolute border border-slate-300 p-2 rounded bg-slate-50/80 text-[8px] leading-tight text-slate-700"
+            class={`absolute border p-2 rounded text-[8px] leading-tight transition-all ${
+              selectedOverlay === 'instructions' && !canvasDragLocked && currentStage === 2
+                ? 'border-blue-500 ring-2 ring-blue-400/60 bg-white z-30 shadow-md'
+                : 'border-slate-300 bg-slate-50/90 text-slate-700 z-10'
+            }`}
             style={`top: ${instY * 2.47}px; left: ${instX * 2.47}px; width: ${instW * 2.47}px;`}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH })}
+            role="button"
+            tabindex="0"
           >
             <span class="font-bold text-slate-900 uppercase block mb-0.5">Instructions:</span>
             {instructionsContent}
+
+            {#if selectedOverlay === 'instructions' && !canvasDragLocked && currentStage === 2}
+              <div
+                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH })}
+                role="button"
+                tabindex="0"
+              ></div>
+            {/if}
           </div>
         {/if}
 
         <!-- Signature Box Overlay -->
         {#if showSignatureOverlay}
           <div
-            class="absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between"
+            class={`absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between transition-all ${
+              selectedOverlay === 'signature' && !canvasDragLocked && currentStage === 2
+                ? 'ring-2 ring-blue-500 border-blue-500 z-30 shadow-md'
+                : 'z-10'
+            }`}
             style={`top: ${sigY * 2.47}px; left: ${sigX * 2.47}px; width: ${sigW * 2.47}px; height: ${sigH * 2.47}px;`}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH })}
+            role="button"
+            tabindex="0"
           >
             <span class="text-[7px] font-bold uppercase tracking-wider text-slate-500">{signatureContent}</span>
             <div class="border-b border-dashed border-slate-400 w-full mb-1"></div>
+
+            {#if selectedOverlay === 'signature' && !canvasDragLocked && currentStage === 2}
+              <div
+                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH })}
+                role="button"
+                tabindex="0"
+              ></div>
+            {/if}
           </div>
         {/if}
 
         <!-- Custom Text Items Overlay -->
-        {#each customTextItems as t}
+        {#each customTextItems as t, idx}
           <div
-            class="absolute text-slate-800 font-medium leading-tight"
+            class={`absolute text-slate-800 font-medium leading-tight p-0.5 rounded cursor-move transition-all ${
+              selectedOverlay === idx && !canvasDragLocked && currentStage === 2
+                ? 'ring-2 ring-blue-500 bg-blue-50/50 z-30'
+                : 'z-10'
+            }`}
             style={`top: ${t.posY * 2.47}px; left: ${t.posX * 2.47}px; width: ${t.w_mm * 2.47}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
+            onmousedown={(e) => handleOverlayMouseDown(e, idx, { x: t.posX, y: t.posY, w: t.w_mm, h: t.h_mm })}
+            role="button"
+            tabindex="0"
           >
             {t.content}
           </div>
@@ -336,14 +509,14 @@
                 ? 'border-blue-500 bg-blue-500/5 ring-2 ring-blue-400/50 z-20'
                 : 'border-slate-300 bg-white/70 hover:border-slate-400 z-10'
             }`}
-            style={`top: ${sec.posY * 2.47}px; left: ${sec.posX * 2.47}px; width: ${sec.w_mm * 2.47}px; height: ${sec.h_mm * 2.47}px;`}
+            style={`top: ${(Number(sec.posY) || 72) * 2.47}px; left: ${(Number(sec.posX) || 25) * 2.47}px; width: ${(Number(sec.w_mm) || 75) * 2.47}px; height: ${(Number(sec.h_mm) || 165) * 2.47}px;`}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
             role="button"
             tabindex="0"
           >
             <!-- Section Header Chip -->
             <div class="px-1.5 py-0.5 bg-slate-900 text-white rounded-t-xs text-[8px] font-bold font-mono flex justify-between items-center">
-              <span>{sec.id} (Q{sec.startQ}&ndash;{sec.startQ + sec.questionsCount - 1})</span>
+              <span>{sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
               <span class="opacity-70">{sec.bubblePitchMm}mm / {sec.rowPitchMm}mm</span>
             </div>
 
@@ -369,7 +542,7 @@
             </div>
 
             <!-- Resize Handle -->
-            {#if isSelected && !canvasDragLocked}
+            {#if isSelected && !canvasDragLocked && currentStage === 3}
               <div
                 class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
                 onmousedown={(e) => handleResizeMouseDown(e, i)}
