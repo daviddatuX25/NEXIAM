@@ -9,13 +9,12 @@
     CheckCircle2,
     XCircle,
     Loader2,
-    Sliders,
     Sparkles,
-    Play,
     ChevronRight,
     Upload,
     RotateCcw,
     Layers,
+    FileText,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -33,17 +32,18 @@
   // 4-Step Streamlined Navigation
   let currentStage = $state(1);
   const stageTitles = [
-    'Step 1: Source Substrate & Ingestion',
-    'Step 2: Layout, Margins & Overlays',
-    'Step 3: Question Bubbles & Pitch Geometry',
-    'Step 4: Verification & Production Deliverables',
+    'Step 1: Source Substrate',
+    'Step 2: Layout & Overlays',
+    'Step 3: Question Bubbles',
+    'Step 4: Verify & Export',
   ];
 
   // Stage 1: Base Mode ('html' | 'upload')
   let stage1Mode = $state((draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'html');
   let baseType = $state(draft.source_kind ?? 'html');
-  // HTML Code Editor State
-  let htmlCode = $state(`<!DOCTYPE html>
+
+  // Default Standard 150-Q Template HTML
+  const DEFAULT_150Q_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -98,7 +98,10 @@
     </div>
   </div>
 </body>
-</html>`);
+</html>`;
+
+  // HTML Code Editor State (Always initialized with valid HTML)
+  let htmlCode = $state(DEFAULT_150Q_HTML);
 
   // Direct Upload & Ingest State
   let uploadFileInput = $state(null);
@@ -158,8 +161,8 @@
 
   let customTextItems = $state([]);
 
-  // Stage 3: Multi-Section Geometry & Canvas State
-  let canvasDragLocked = $state(true);
+  // Stage 3: Multi-Section Geometry & Canvas State (Drag ACTIVE by default)
+  let canvasDragLocked = $state(false);
   let sections = $state([
     {
       id: 'Section_A',
@@ -256,7 +259,6 @@
     const studio = draft.authoring?.studio;
     if (studio) {
       if (typeof studio.current_stage === 'number') currentStage = studio.current_stage;
-      if (studio.raster_url && !draft.raster_url) draft.raster_url = studio.raster_url;
       if (studio.stage1Mode) stage1Mode = studio.stage1Mode;
       if (studio.baseType) baseType = studio.baseType;
 
@@ -312,11 +314,8 @@
     if (autosaveTimer) clearTimeout(autosaveTimer);
   });
 
-  async function goToStage(step) {
+  function goToStage(step) {
     currentStage = step;
-    if (step === 3 && !draft.raster_url && !isComposing) {
-      await composeCanonicalPage();
-    }
     triggerAutosave();
   }
 
@@ -460,7 +459,6 @@
         htmlCode,
         stage1Mode,
         baseType,
-        raster_url: draft.raster_url,
       };
 
       const res = await fetch(saveUrl, {
@@ -497,43 +495,7 @@
     }
   }
 
-  // HTML Ingest & Compilation Action
-  async function compileHtmlSource() {
-    if (!urls.source_ingest || !htmlCode) return;
-    uploadRunning = true;
-    conversionStatusText = 'Uploading HTML template…';
-    conversionError = '';
-
-    const htmlBlob = new Blob([htmlCode], { type: 'text/html' });
-    const file = new File([htmlBlob], 'answersheet-template.html', { type: 'text/html' });
-
-    const form = new FormData();
-    form.append('source_kind', 'html');
-    form.append('source', file);
-    form.append('width_mm', '210');
-    form.append('height_mm', '297');
-    form.append('idempotency_key', newIdempotencyKey());
-
-    try {
-      const res = await fetch(urls.source_ingest, {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
-        body: form,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'HTML source upload rejected.');
-      }
-
-      conversionStatusText = 'Converting HTML into 300-PPI print raster…';
-      await pollConversionRun();
-    } catch (err) {
-      uploadRunning = false;
-      conversionError = err.message || 'HTML conversion failed.';
-    }
-  }
-
+  // File Ingestion Handler
   async function handleFileUpload(e) {
     const file = e.target.files?.[0];
     if (!file || !urls.source_ingest) return;
@@ -613,7 +575,7 @@
     }
 
     try {
-      const res = await fetch(urls.confirm_pages, {
+      await fetch(urls.confirm_pages, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
         body: JSON.stringify({
@@ -629,68 +591,27 @@
     }
   }
 
-  // Stage 2/3 Composition
-  async function composeCanonicalPage() {
-    if (!urls.compose) return;
-    isComposing = true;
-
-    try {
-      const res = await fetch(urls.compose, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
-        body: JSON.stringify({
-          paper_width_mm: 210,
-          paper_height_mm: 297,
-          parametric: stage1Mode === 'blank' || baseType === 'blank' || baseType === 'preset',
-          content_margin_mm: { top: Number(marginMm) || 15, right: Number(marginMm) || 15, bottom: Number(marginMm) || 15, left: Number(marginMm) || 15 },
-          printer_safe_margin_mm: { top: 5, right: 5, bottom: 5, left: 5 },
-          marker_inset_mm: { top: 12, right: 12, bottom: 14, left: 12 },
-          alignment: 'center',
-          source_dpi: 300,
-          idempotency_key: newIdempotencyKey(),
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        draft.stage = data.stage ?? 'page_prepared';
-        if (data.draft_id) {
-          draft.raster_url = `/setup/omr/templates/canonical/drafts/${draft.id}/assets/${data.composition?.raster_assets?.[0]?.asset_id || 1}`;
-          triggerAutosave();
-        }
-      }
-    } catch {
-      // Advisory
-    } finally {
-      isComposing = false;
-    }
-  }
-
   function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   }
-
-  function triggerAutosaveDebounced() {
-    triggerAutosave();
-  }
 </script>
 
-<div class="h-screen w-screen flex flex-col bg-slate-900 text-slate-100 overflow-hidden font-sans select-none">
-  <!-- TOP STUDIO HEADER & 4-STEP BREADCRUMB -->
-  <header class="h-14 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 z-30">
+<div class="h-screen w-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden font-sans select-none">
+  <!-- TOP STUDIO HEADER (Clean, Professional NEXIAM Light Theme) -->
+  <header class="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-30 shadow-xs">
     <div class="flex items-center space-x-4">
       <div class="flex items-center space-x-2.5">
-        <div class="size-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm font-black text-sm">
+        <div class="size-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs font-black text-sm">
           N
         </div>
         <div>
           <div class="flex items-center space-x-2">
-            <span class="text-xs font-bold text-white tracking-wide uppercase">{draft.name || 'Template Studio'}</span>
-            <span class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 rounded">
+            <span class="text-xs font-bold text-slate-900 tracking-wide uppercase">{draft.name || 'Template Studio'}</span>
+            <span class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-[10px] font-mono text-slate-600 rounded">
               {draft.code || 'OMR-DRAFT'}
             </span>
           </div>
-          <p class="text-[10px] text-slate-400 font-mono mt-0.5">
+          <p class="text-[10px] text-slate-500 font-mono mt-0.5">
             {stageTitles[currentStage - 1]} &bull; {totalQuestionsCount} Questions Total
           </p>
         </div>
@@ -698,7 +619,7 @@
     </div>
 
     <!-- 4-Stage Modern Stepper Navigation -->
-    <div class="hidden md:flex items-center space-x-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+    <div class="hidden md:flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
       {#each stageTitles as title, idx}
         {@const stageNum = idx + 1}
         {@const isActive = currentStage === stageNum}
@@ -708,18 +629,18 @@
           onclick={() => goToStage(stageNum)}
           class={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-2 ${
             isActive
-              ? 'bg-blue-600 text-white shadow-xs'
+              ? 'bg-slate-900 text-white shadow-xs'
               : isPast
-                ? 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-500 hover:text-slate-400'
+                ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/70'
+                : 'text-slate-400 hover:text-slate-600'
           }`}
         >
           <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-            isActive ? 'bg-white text-blue-600' : isPast ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400'
+            isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-300 text-slate-800' : 'bg-slate-200 text-slate-400'
           }`}>
             {stageNum}
           </span>
-          <span>{title.split(':')[1]?.split('&')[0]?.trim() || title}</span>
+          <span>{title.split(':')[1]?.trim() || title}</span>
         </button>
       {/each}
     </div>
@@ -728,14 +649,14 @@
     <div class="flex items-center space-x-3">
       <div class="flex items-center space-x-1.5 text-xs">
         {#if saveStatus === 'saving'}
-          <Loader2 class="size-3.5 text-amber-400 animate-spin" />
-          <span class="text-amber-400 font-mono text-[11px]">Saving…</span>
+          <Loader2 class="size-3.5 text-amber-500 animate-spin" />
+          <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
         {:else if saveStatus === 'saved'}
-          <CheckCircle2 class="size-3.5 text-emerald-400" />
-          <span class="text-emerald-400 font-mono text-[11px]">Saved</span>
+          <CheckCircle2 class="size-3.5 text-emerald-600" />
+          <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
         {:else if saveStatus === 'error'}
-          <XCircle class="size-3.5 text-rose-400" />
-          <span class="text-rose-400 font-mono text-[11px] max-w-[140px] truncate" title={errorMessage}>
+          <XCircle class="size-3.5 text-rose-600" />
+          <span class="text-rose-600 font-mono text-[11px] max-w-[140px] truncate" title={errorMessage}>
             {errorMessage || 'Save error'}
           </span>
         {/if}
@@ -744,7 +665,7 @@
       <button
         type="button"
         onclick={performSave}
-        class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg border border-slate-700 transition"
+        class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition shadow-xs"
       >
         Save
       </button>
@@ -754,14 +675,14 @@
   <!-- MAIN STUDIO WORKBENCH SPLIT -->
   <div class="flex-1 flex overflow-hidden">
     <!-- LEFT WORKBENCH SIDEBAR (Tool Controls for Current Step) -->
-    <aside class="w-[390px] bg-white text-slate-900 border-r border-slate-200 flex flex-col justify-between shrink-0 overflow-y-auto">
+    <aside class="w-[390px] bg-white text-slate-900 border-r border-slate-200 flex flex-col justify-between shrink-0 overflow-y-auto shadow-xs">
       {#if currentStage === 1}
         <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
         <div class="p-6 space-y-6 flex-1 flex flex-col justify-between">
           <div class="space-y-5">
             <div>
               <h2 class="text-base font-bold text-slate-900">Source Substrate</h2>
-              <p class="text-xs text-slate-500 mt-0.5">Choose how to generate or ingest your exam answer sheet.</p>
+              <p class="text-xs text-slate-500 mt-0.5">Choose how to design or upload your exam answer sheet.</p>
             </div>
 
             <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
@@ -794,20 +715,20 @@
                   <button
                     type="button"
                     onclick={() => {
-                      htmlCode = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:20px;color:#0f172a;}.header{text-align:center;border-bottom:2px solid #0f172a;margin-bottom:12px;}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}.row{display:flex;justify-content:space-between;margin-bottom:4px;font-size:9px;}.bub{width:12px;height:12px;border:1px solid #334155;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:7px;}</style></head><body><div class="header"><h2>University General Aptitude Test</h2><p>Standard 150-Q Template</p></div><div class="grid">${Array.from({length:3}).map((_,c)=>`<div><h4 style="font-size:10px;margin-bottom:4px;">Part ${c+1}</h4>${Array.from({length:50}).map((_,r)=>`<div class="row"><span>${c*50+r+1}</span><div><span class="bub">A</span> <span class="bub">B</span> <span class="bub">C</span> <span class="bub">D</span></div></div>`).join('')}</div>`).join('')}</div></body></html>`;
+                      htmlCode = DEFAULT_150Q_HTML;
                       triggerAutosave();
                     }}
-                    class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
                   >
                     <Sparkles class="size-3" />
-                    <span>Insert 150-Q Template</span>
+                    <span>Reset 150-Q Template</span>
                   </button>
                 </div>
                 <textarea
                   bind:value={htmlCode}
                   oninput={triggerAutosave}
-                  rows="10"
-                  class="w-full font-mono text-[11px] leading-relaxed p-2.5 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  rows="12"
+                  class="w-full font-mono text-[11px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
                   placeholder="Paste HTML markup here…"
                 ></textarea>
               </div>
@@ -885,34 +806,13 @@
         />
       {:else if currentStage === 3}
         <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
-        <div class="flex-1 flex flex-col justify-between">
-          <!-- Step 3 Raster Settlement Status Banner -->
-          {#if draft.raster_url}
-            <div class="mx-6 mt-4 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs flex items-center justify-between text-emerald-900">
-              <div class="flex items-center gap-2">
-                <Layers class="size-4 text-emerald-600 shrink-0" />
-                <span class="font-medium">300-PPI Page Raster Composed & Persisted</span>
-              </div>
-              <button
-                type="button"
-                onclick={composeCanonicalPage}
-                class="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1"
-                title="Recompose print raster from current design"
-              >
-                <RotateCcw class="size-3" />
-                <span>Recompose</span>
-              </button>
-            </div>
-          {/if}
-
-          <StudioBubblePanel
-            bind:sections
-            bind:activeSectionIndex
-            onChanged={triggerAutosave}
-            onBack={() => goToStage(2)}
-            onNext={() => goToStage(4)}
-          />
-        </div>
+        <StudioBubblePanel
+          bind:sections
+          bind:activeSectionIndex
+          onChanged={triggerAutosave}
+          onBack={() => goToStage(2)}
+          onNext={() => goToStage(4)}
+        />
       {:else if currentStage === 4}
         <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
         <StudioExportVerifyPanel
@@ -933,8 +833,8 @@
       bind:markerPattern
       bind:canvasDragLocked
       rasterUrl={draft.raster_url}
-      htmlContent={stage1Mode === 'html' ? htmlCode : null}
-      isHtmlMode={stage1Mode === 'html' && !draft.raster_url}
+      htmlContent={htmlCode}
+      isHtmlMode={stage1Mode === 'html'}
       {isComposing}
       {showHeaderOverlay}
       {headerTitle}

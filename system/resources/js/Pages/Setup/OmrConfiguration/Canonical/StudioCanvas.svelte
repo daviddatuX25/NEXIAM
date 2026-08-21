@@ -5,6 +5,7 @@
     Lock,
     Unlock,
     Loader2,
+    Maximize2,
   } from 'lucide-svelte';
 
   let {
@@ -13,7 +14,7 @@
     panY = $bindable(0),
     marginMm = 15,
     markerPattern = 'square',
-    canvasDragLocked = $bindable(true),
+    canvasDragLocked = $bindable(false),
     rasterUrl = null,
     showHeaderOverlay = true,
     headerTitle = 'EXAMINATION ANSWER SHEET',
@@ -42,7 +43,7 @@
     sigH = $bindable(28),
     customTextItems = $bindable([]),
     htmlContent = null,
-    isHtmlMode = false,
+    isHtmlMode = true,
     isComposing = false,
     sections = $bindable([]),
     activeSectionIndex = $bindable(0),
@@ -74,7 +75,7 @@
   function handleWheel(e) {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    scale = Math.min(Math.max(0.4, scale * zoomFactor), 2.5);
+    scale = Math.min(Math.max(0.35, scale * zoomFactor), 2.5);
   }
 
   function handleCanvasMouseDown(e) {
@@ -212,7 +213,7 @@
   }
 
   function zoomStep(delta) {
-    scale = Math.min(Math.max(0.4, scale + delta), 2.5);
+    scale = Math.min(Math.max(0.35, scale + delta), 2.5);
   }
 
   function resetZoom() {
@@ -232,55 +233,58 @@
 </script>
 
 <div class="flex-1 bg-slate-100 flex flex-col relative overflow-hidden">
-  <!-- Floating Canvas Controls -->
-  <div class="absolute top-4 right-4 bg-white border border-slate-200/80 rounded-xl shadow-md p-1.5 flex items-center space-x-1.5 z-30">
+  <!-- Pinned Floating Canvas Controls (ALWAYS VISIBLE, Never lost on zoom or pan) -->
+  <div class="fixed top-18 right-6 bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl rounded-2xl p-1.5 flex items-center space-x-1.5 z-50">
     {#if currentStage === 2 || currentStage === 3}
       <button
         type="button"
         onclick={() => { canvasDragLocked = !canvasDragLocked; }}
-        class={`px-2.5 h-7 rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow-xs ${
+        class={`px-3 h-8 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
           canvasDragLocked
-            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'
+            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
         }`}
         title={canvasDragLocked ? 'Unlock canvas dragging and resizing' : 'Lock canvas positions'}
       >
         {#if canvasDragLocked}
-          <Lock class="size-3 text-slate-500" />
+          <Lock class="size-3.5 text-slate-500" />
           <span>Locked</span>
         {:else}
-          <Unlock class="size-3 text-white" />
+          <Unlock class="size-3.5 text-white" />
           <span>Drag Active</span>
         {/if}
       </button>
     {/if}
 
+    <div class="h-4 w-px bg-slate-200 mx-1"></div>
+
     <button
       type="button"
       onclick={() => zoomStep(-0.15)}
       title="Zoom Out"
-      class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+      class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
     >
-      <Minus class="size-3" />
+      <Minus class="size-3.5" />
     </button>
-    <span class="text-xs font-mono font-semibold px-1.5 text-slate-700 min-w-[45px] text-center">
+    <span class="text-xs font-mono font-bold px-1.5 text-slate-800 min-w-[45px] text-center">
       {Math.round(scale * 100)}%
     </span>
     <button
       type="button"
       onclick={() => zoomStep(0.15)}
       title="Zoom In"
-      class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+      class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
     >
-      <Plus class="size-3" />
+      <Plus class="size-3.5" />
     </button>
     <button
       type="button"
       onclick={resetZoom}
       title="Reset Zoom Fit"
-      class="px-2 h-7 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+      class="px-2.5 h-8 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1 border border-slate-200/60"
     >
-      Fit
+      <Maximize2 class="size-3" />
+      <span>Fit</span>
     </button>
   </div>
 
@@ -300,8 +304,8 @@
       class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
     >
-      <!-- Continuous Background Layer (HTML live iframe sanitized without script errors) -->
-      {#if isHtmlMode && safeHtmlContent}
+      <!-- Continuous Background Layer (HTML source preview ALWAYS rendered when present) -->
+      {#if safeHtmlContent}
         <iframe
           srcdoc={safeHtmlContent}
           title="HTML Source Preview"
@@ -312,19 +316,12 @@
         <img
           src={rasterUrl}
           alt="Composed Page"
-          class="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-85"
+          class="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-90"
         />
-      {:else if safeHtmlContent}
-        <iframe
-          srcdoc={safeHtmlContent}
-          title="HTML Source Preview"
-          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white"
-          sandbox="allow-same-origin"
-        ></iframe>
       {/if}
 
-      <!-- STAGE 2+: 4 Corner Registration Fiducial Markers (Rendered when live vector overlays are active) -->
-      {#if currentStage >= 2 && !rasterUrl}
+      <!-- STAGE 2+: 4 Corner Registration Fiducial Markers (ALWAYS VISIBLE in Stage 2, 3, 4) -->
+      {#if currentStage >= 2}
         <div
           class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
           style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
@@ -349,8 +346,8 @@
         {#if showHeaderOverlay}
           <div
             class={`absolute flex justify-between items-center pb-2 border-b-2 border-slate-900 transition-all ${
-              selectedOverlay === 'header' && !canvasDragLocked && currentStage === 2
-                ? 'ring-2 ring-blue-500 bg-blue-500/5 rounded p-1 z-30'
+              selectedOverlay === 'header' && !canvasDragLocked
+                ? 'ring-2 ring-emerald-500 bg-emerald-500/10 rounded p-1 z-30'
                 : 'z-10'
             }`}
             style={`top: ${headerY * 2.476}px; left: ${headerX * 2.476}px; width: ${headerW * 2.476}px;`}
@@ -365,9 +362,9 @@
               <p class="text-[9px] text-slate-500 font-mono">{headerSubtitle}</p>
             </div>
 
-            {#if selectedOverlay === 'header' && !canvasDragLocked && currentStage === 2}
+            {#if selectedOverlay === 'header' && !canvasDragLocked}
               <div
-                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleOverlayResizeMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH })}
                 role="button"
                 tabindex="0"
@@ -380,8 +377,8 @@
         {#if showQrOverlay}
           <div
             class={`absolute border rounded bg-white p-1 flex flex-col items-center justify-between transition-all ${
-              selectedOverlay === 'qr' && !canvasDragLocked && currentStage === 2
-                ? 'border-blue-500 ring-2 ring-blue-400/60 z-30 shadow-md'
+              selectedOverlay === 'qr' && !canvasDragLocked
+                ? 'border-emerald-500 ring-2 ring-emerald-400/80 z-30 shadow-md'
                 : 'border-slate-300 shadow-xs z-10'
             }`}
             style={`top: ${qrY * 2.476}px; left: ${qrX * 2.476}px; width: ${qrW * 2.476}px; height: ${qrH * 2.476}px;`}
@@ -423,9 +420,9 @@
             </svg>
             <span class="text-[6.5px] font-mono font-bold text-slate-600 uppercase tracking-tighter text-center leading-none">INSTANCE QR</span>
 
-            {#if selectedOverlay === 'qr' && !canvasDragLocked && currentStage === 2}
+            {#if selectedOverlay === 'qr' && !canvasDragLocked}
               <div
-                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleOverlayResizeMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH })}
                 role="button"
                 tabindex="0"
@@ -438,8 +435,8 @@
         {#if showInstructionsOverlay}
           <div
             class={`absolute border p-2 rounded text-[8px] leading-tight transition-all ${
-              selectedOverlay === 'instructions' && !canvasDragLocked && currentStage === 2
-                ? 'border-blue-500 ring-2 ring-blue-400/60 bg-white z-30 shadow-md'
+              selectedOverlay === 'instructions' && !canvasDragLocked
+                ? 'border-emerald-500 ring-2 ring-emerald-400/80 bg-white z-30 shadow-md'
                 : 'border-slate-300 bg-slate-50/90 text-slate-700 z-10'
             }`}
             style={`top: ${instY * 2.476}px; left: ${instX * 2.476}px; width: ${instW * 2.476}px;`}
@@ -450,9 +447,9 @@
             <span class="font-bold text-slate-900 uppercase block mb-0.5">Instructions:</span>
             {instructionsContent}
 
-            {#if selectedOverlay === 'instructions' && !canvasDragLocked && currentStage === 2}
+            {#if selectedOverlay === 'instructions' && !canvasDragLocked}
               <div
-                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleOverlayResizeMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH })}
                 role="button"
                 tabindex="0"
@@ -465,8 +462,8 @@
         {#if showSignatureOverlay}
           <div
             class={`absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between transition-all ${
-              selectedOverlay === 'signature' && !canvasDragLocked && currentStage === 2
-                ? 'ring-2 ring-blue-500 border-blue-500 z-30 shadow-md'
+              selectedOverlay === 'signature' && !canvasDragLocked
+                ? 'ring-2 ring-emerald-500 border-emerald-500 z-30 shadow-md'
                 : 'z-10'
             }`}
             style={`top: ${sigY * 2.476}px; left: ${sigX * 2.476}px; width: ${sigW * 2.476}px; height: ${sigH * 2.476}px;`}
@@ -477,9 +474,9 @@
             <span class="text-[7px] font-bold uppercase tracking-wider text-slate-500">{signatureContent}</span>
             <div class="border-b border-dashed border-slate-400 w-full mb-1"></div>
 
-            {#if selectedOverlay === 'signature' && !canvasDragLocked && currentStage === 2}
+            {#if selectedOverlay === 'signature' && !canvasDragLocked}
               <div
-                class="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleOverlayResizeMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH })}
                 role="button"
                 tabindex="0"
@@ -492,8 +489,8 @@
         {#each customTextItems as t, idx}
           <div
             class={`absolute text-slate-800 font-medium leading-tight p-0.5 rounded cursor-move transition-all ${
-              selectedOverlay === idx && !canvasDragLocked && currentStage === 2
-                ? 'ring-2 ring-blue-500 bg-blue-50/50 z-30'
+              selectedOverlay === idx && !canvasDragLocked
+                ? 'ring-2 ring-emerald-500 bg-emerald-50/50 z-30'
                 : 'z-10'
             }`}
             style={`top: ${t.posY * 2.476}px; left: ${t.posX * 2.476}px; width: ${t.w_mm * 2.476}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
@@ -522,8 +519,8 @@
           <div
             class={`absolute rounded-lg border-2 transition-all backdrop-blur-[0.5px] ${
               isSelected
-                ? 'border-blue-600 border-dashed bg-blue-500/15 ring-2 ring-blue-400/60 z-20 shadow-sm'
-                : 'border-blue-400/80 border-dashed bg-blue-500/5 hover:border-blue-500 z-10'
+                ? 'border-emerald-600 border-dashed bg-emerald-500/15 ring-2 ring-emerald-400/60 z-20 shadow-sm'
+                : 'border-emerald-500/80 border-dashed bg-emerald-500/5 hover:border-emerald-600 z-10'
             }`}
             style={`top: ${(Number(sec.posY) || 72) * 2.476}px; left: ${(Number(sec.posX) || 25) * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
@@ -531,9 +528,9 @@
             tabindex="0"
           >
             <!-- Section Header Chip: Clarifies this is an OMR recognition sensor mask -->
-            <div class="px-1.5 py-0.5 bg-blue-600/90 text-white rounded-t text-[7.5px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
+            <div class="px-1.5 py-0.5 bg-emerald-600/95 text-white rounded-t text-[7.5px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
               <span class="truncate">[OPTICAL GRID] {sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
-              <span class="opacity-80 text-[7px] font-normal shrink-0">{bPitchMm}mm ↔ {rPitchMm}mm</span>
+              <span class="opacity-85 text-[7px] font-normal shrink-0">{bPitchMm}mm ↔ {rPitchMm}mm</span>
             </div>
 
             <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing -->
@@ -542,8 +539,8 @@
               style={`gap: ${rowGapPx}px;`}
             >
               {#each Array.from({ length: Math.max(1, Math.min(Number(sec?.questionsCount) || 1, 20)) }) as _, r}
-                <div class="flex items-center text-[8px] font-mono text-blue-900 shrink-0">
-                  <span class="w-4 text-[7px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200/80 rounded px-0.5 text-center mr-1.5 shrink-0">
+                <div class="flex items-center text-[8px] font-mono text-emerald-950 shrink-0">
+                  <span class="w-4 text-[7px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1.5 shrink-0">
                     {(Number(sec?.startQ) || 1) + r}
                   </span>
                   <div
@@ -551,7 +548,7 @@
                     style={`gap: ${bubbleGapPx}px;`}
                   >
                     {#each labels as opt}
-                      <div class="w-3.5 h-3.5 rounded-full border-2 border-blue-600/90 bg-blue-500/25 text-blue-950 flex items-center justify-center text-[7px] font-bold shadow-xs shrink-0">
+                      <div class="w-3.5 h-3.5 rounded-full border-2 border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[7px] font-bold shadow-xs shrink-0">
                         {opt}
                       </div>
                     {/each}
@@ -559,16 +556,16 @@
                 </div>
               {/each}
               {#if (Number(sec?.questionsCount) || 0) > 20}
-                <div class="text-[7px] font-mono text-blue-600 text-center italic mt-0.5 font-medium">
+                <div class="text-[7px] font-mono text-emerald-700 text-center italic mt-0.5 font-medium">
                   + {(Number(sec?.questionsCount) || 0) - 20} more optical rows
                 </div>
               {/if}
             </div>
 
             <!-- Resize Handle -->
-            {#if isSelected && !canvasDragLocked && currentStage === 3}
+            {#if isSelected && !canvasDragLocked}
               <div
-                class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-600 border border-white rounded-full cursor-se-resize shadow-xs"
+                class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleResizeMouseDown(e, i)}
                 role="button"
                 tabindex="0"
@@ -578,7 +575,7 @@
         {/each}
       {/if}
 
-      <!-- Stage 3 / Compose Building Loading Overlay -->
+      <!-- Loading Overlay -->
       {#if isComposing}
         <div class="absolute inset-0 bg-white/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center z-40 rounded-xs">
           <div class="size-10 rounded-xl bg-slate-900 flex items-center justify-center text-white mb-3 shadow-md animate-pulse">
