@@ -236,13 +236,13 @@ export function emitNativeMapping(
         }
       }
     } else if (block.type === 'roll') {
-      const digits = Math.max(2, Math.min(10, block.digits ?? 6));
+      const digits = Math.max(2, Math.min(10, block.digits ?? 7));
       const labels = Array.from({ length: digits }, (_, i) => `${block.id.toLowerCase()}_${i + 1}`);
-      const blockW = mmToPx(block.w_mm);
-      const blockH = mmToPx(block.h_mm);
       const minPitch = bubbleSizePx + Math.round(MIN_OPTION_GAP_MM * PX_PER_MM);
-      const colPitch = Math.max(minPitch, Math.round(blockW / digits));
-      const rowPitch = Math.max(minPitch, Math.round(blockH / 10));
+      const colPitch = block.bubble_pitch_mm ? Math.max(minPitch, mmToPx(block.bubble_pitch_mm)) : Math.max(minPitch, Math.round(mmToPx(block.w_mm) / digits));
+      const rowPitch = block.row_pitch_mm ? Math.max(minPitch, mmToPx(block.row_pitch_mm)) : Math.max(minPitch, Math.round(mmToPx(block.h_mm) / 10));
+      const blockW = Math.max(mmToPx(block.w_mm), bubbleSizePx + (digits - 1) * colPitch + 15);
+      const blockH = Math.max(mmToPx(block.h_mm), bubbleSizePx + (10 - 1) * rowPitch + 15);
 
       nativeBlocks.push({
         name: block.id,

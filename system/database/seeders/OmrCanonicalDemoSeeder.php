@@ -22,7 +22,7 @@ class OmrCanonicalDemoSeeder extends Seeder
             ['code' => 'CANONICAL-HTML', 'name' => 'Canonical HTML Exam Template', 'kind' => OmrTemplateAuthoringDraft::SOURCE_HTML, 'stage' => OmrTemplateAuthoringDraft::STAGE_DRAFT],
         ];
         foreach ($definitions as $definition) {
-            $draft = OmrTemplateAuthoringDraft::query()->firstOrCreate(
+            $draft = OmrTemplateAuthoringDraft::query()->updateOrCreate(
                 ['code' => $definition['code'], 'owner_user_id' => $actor->id],
                 [
                     'name' => $definition['name'],
@@ -96,12 +96,13 @@ class OmrCanonicalDemoSeeder extends Seeder
             'stage1Mode' => 'html',
             'baseType' => 'html',
             'sections' => [
-                ['id' => 'Part_1', 'name' => 'Part 1: English (Q1–25)', 'type' => 'mcq', 'posX' => 14, 'posY' => 56, 'w_mm' => 27, 'h_mm' => 115, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 1, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 6.0, 'rowPitchMm' => 3.8, 'isLocked' => false],
-                ['id' => 'Part_2', 'name' => 'Part 2: Math (Q26–50)', 'type' => 'mcq', 'posX' => 44, 'posY' => 56, 'w_mm' => 27, 'h_mm' => 115, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 26, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 6.0, 'rowPitchMm' => 3.8, 'isLocked' => false],
-                ['id' => 'Part_3', 'name' => 'Part 3: Science (Q51–75)', 'type' => 'mcq', 'posX' => 74, 'posY' => 56, 'w_mm' => 27, 'h_mm' => 115, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 51, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 6.0, 'rowPitchMm' => 3.8, 'isLocked' => false],
-                ['id' => 'Part_4', 'name' => 'Part 4: Abstract (Q76–100)', 'type' => 'mcq', 'posX' => 104, 'posY' => 56, 'w_mm' => 27, 'h_mm' => 115, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 76, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 6.0, 'rowPitchMm' => 3.8, 'isLocked' => false],
-                ['id' => 'Part_5', 'name' => 'Part 5: Gen Info (Q101–125)', 'type' => 'mcq', 'posX' => 134, 'posY' => 56, 'w_mm' => 27, 'h_mm' => 115, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 101, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 6.0, 'rowPitchMm' => 3.8, 'isLocked' => false],
-                ['id' => 'Part_6', 'name' => 'Part 6: Logic (Q126–150)', 'type' => 'mcq', 'posX' => 164, 'posY' => 56, 'w_mm' => 27, 'h_mm' => 115, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 126, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 6.0, 'rowPitchMm' => 3.8, 'isLocked' => false],
+                ['id' => 'Examinee_ID', 'name' => 'Examinee Number (7 Digits)', 'type' => 'roll', 'posX' => 125, 'posY' => 22, 'w_mm' => 58, 'h_mm' => 54, 'questionsCount' => 7, 'cols' => 7, 'optionsCount' => 10, 'startQ' => 1, 'customValuesStr' => '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'bubblePitchMm' => 5.5, 'rowPitchMm' => 4.8, 'isLocked' => false],
+                ['id' => 'Part_1', 'name' => 'Part 1: English (Q1–25)', 'type' => 'mcq', 'posX' => 10, 'posY' => 88, 'w_mm' => 28, 'h_mm' => 175, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 1, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 5.2, 'rowPitchMm' => 6.8, 'isLocked' => false],
+                ['id' => 'Part_2', 'name' => 'Part 2: Math (Q26–50)', 'type' => 'mcq', 'posX' => 42, 'posY' => 88, 'w_mm' => 28, 'h_mm' => 175, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 26, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 5.2, 'rowPitchMm' => 6.8, 'isLocked' => false],
+                ['id' => 'Part_3', 'name' => 'Part 3: Science (Q51–75)', 'type' => 'mcq', 'posX' => 74, 'posY' => 88, 'w_mm' => 28, 'h_mm' => 175, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 51, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 5.2, 'rowPitchMm' => 6.8, 'isLocked' => false],
+                ['id' => 'Part_4', 'name' => 'Part 4: Abstract (Q76–100)', 'type' => 'mcq', 'posX' => 106, 'posY' => 88, 'w_mm' => 28, 'h_mm' => 175, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 76, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 5.2, 'rowPitchMm' => 6.8, 'isLocked' => false],
+                ['id' => 'Part_5', 'name' => 'Part 5: Gen Info (Q101–125)', 'type' => 'mcq', 'posX' => 138, 'posY' => 88, 'w_mm' => 28, 'h_mm' => 175, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 101, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 5.2, 'rowPitchMm' => 6.8, 'isLocked' => false],
+                ['id' => 'Part_6', 'name' => 'Part 6: Logic (Q126–150)', 'type' => 'mcq', 'posX' => 170, 'posY' => 88, 'w_mm' => 28, 'h_mm' => 175, 'questionsCount' => 25, 'cols' => 1, 'optionsCount' => 4, 'startQ' => 126, 'customValuesStr' => 'A, B, C, D', 'bubblePitchMm' => 5.2, 'rowPitchMm' => 6.8, 'isLocked' => false],
             ],
         ];
         $authoring['studio'] = $studioPayload;

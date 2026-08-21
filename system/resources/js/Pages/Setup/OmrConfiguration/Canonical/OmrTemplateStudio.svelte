@@ -49,7 +49,7 @@
   let baseType = $state(draft.source_kind ?? 'html');
 
   // Compact, Single-Page A4-Fitted 150-Q HTML Template
-  // Compact, Single-Page A4-Fitted 150-Q HTML Template (3-Column EDQ Header + 6 Subjects x 25 Qs)
+  // Componentized Single-Page A4-Fitted 150-Q HTML Template (Examinee ID Matrix + 6 Subjects x 25 Qs)
   const DEFAULT_150Q_HTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -58,134 +58,299 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; height: 100%;
-      padding: 10px 12px;
+      padding: 8mm 10mm;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       color: #0f172a;
       background: #ffffff;
       overflow: hidden;
     }
-    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
-    .header h1 { font-size: 13px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; color: #0f172a; }
-    .header p { font-size: 7.5px; color: #475569; font-family: monospace; font-weight: 500; margin-top: 1px; }
-    
-    /* 3-Column Header Zone: Name, Birthdate, Examinee No */
-    .edq-grid {
-      display: grid;
-      grid-template-columns: 2fr 1.2fr 1fr;
-      gap: 6px;
-      margin-bottom: 8px;
-      font-size: 7px;
+
+    /* Document Header */
+    .omr-header {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 3px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
     }
-    .edq-box {
+    .omr-title h1 { font-size: 13px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.1; color: #0f172a; }
+    .omr-title p { font-size: 7px; color: #475569; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; }
+    .omr-sheet-code { font-family: monospace; font-size: 8px; font-weight: 800; color: #0f172a; border: 1px solid #0f172a; padding: 2px 5px; border-radius: 2px; }
+
+    /* Top Metadata & ID Section */
+    .omr-top-section {
+      display: grid;
+      grid-template-columns: 1fr 150px;
+      gap: 10px;
+      margin-bottom: 8px;
+      align-items: start;
+    }
+
+    /* Left Meta Block: Name, Details, Instructions */
+    .omr-meta-block {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .omr-field-box {
+      border: 1.2px solid #334155;
+      border-radius: 3px;
+      padding: 3px 6px;
+      background: #f8fafc;
+    }
+    .omr-field-label {
+      font-size: 6px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 1px;
+    }
+    .omr-field-line {
+      border-bottom: 1px dashed #94a3b8;
+      height: 11px;
+    }
+    .omr-meta-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .omr-instructions {
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      padding: 3px 6px;
+      background: #ffffff;
+      font-size: 6px;
+      color: #334155;
+      line-height: 1.3;
+    }
+    .omr-instructions strong { color: #0f172a; }
+
+    /* Right ID Matrix: Digit Boxes + 0-9 Shading Grid */
+    .omr-id-container {
       border: 1.5px solid #0f172a;
       border-radius: 3px;
-      padding: 3px 5px;
+      padding: 4px 5px;
       background: #fafafa;
     }
-    .edq-label { font-size: 6.5px; font-weight: 800; text-transform: uppercase; color: #334155; margin-bottom: 2px; }
-    .edq-line { border-bottom: 1px dashed #64748b; height: 10px; margin-top: 2px; }
-    .digit-boxes { display: flex; gap: 2px; margin-top: 2px; }
-    .digit-box { width: 9px; height: 11px; border: 1px solid #334155; border-radius: 1.5px; background: #fff; }
-    
-    /* 6-Column Answer Grid */
-    .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-    .col { background: #ffffff; }
-    .subject-header {
-      font-size: 6px; font-weight: 800;
-      background: #0f172a; color: #ffffff;
-      padding: 2px; border-radius: 2px;
-      text-align: center; text-transform: uppercase;
-      margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .omr-id-title {
+      font-size: 6.5px;
+      font-weight: 900;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #0f172a;
+      margin-bottom: 3px;
     }
-    .option-header {
+    .omr-id-boxes {
       display: flex;
       justify-content: flex-end;
-      padding-right: 1px;
-      gap: 4px;
-      font-size: 5.5px;
+      gap: 3px;
+      margin-bottom: 3px;
+    }
+    .omr-id-box {
+      width: 11px;
+      height: 13px;
+      border: 1.2px solid #0f172a;
+      border-radius: 2px;
+      background: #ffffff;
+    }
+    .omr-id-matrix {
+      display: flex;
+      flex-direction: column;
+      gap: 1.8px;
+    }
+    .omr-id-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .omr-id-num {
+      font-size: 6px;
       font-weight: 800;
+      font-family: monospace;
       color: #334155;
+      width: 8px;
+      text-align: center;
+    }
+    .omr-id-bubs {
+      display: flex;
+      gap: 3px;
+    }
+    .omr-id-bub {
+      width: 11px;
+      height: 8.5px;
+      border: 1.1px solid #1e293b;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    /* 6-Column Answer Sheet Grid */
+    .omr-exam-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      border-top: 1.5px solid #0f172a;
+      padding-top: 5px;
+    }
+    .omr-col {
+      background: #ffffff;
+    }
+    .omr-subject-header {
+      font-size: 6px;
+      font-weight: 900;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 2px 3px;
+      border-radius: 2px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
       margin-bottom: 2px;
     }
-    .option-col-label { width: 8.5px; text-align: center; }
-    
-    /* Question Rows with Tight Bubble Spacing */
-    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2px; }
-    .num { font-size: 6px; font-weight: 700; font-family: monospace; color: #334155; width: 10px; text-align: left; }
-    .bubs { display: flex; gap: 4px; }
-    .bub {
-      width: 8.5px; height: 8.5px;
-      border: 1.2px solid #1e293b;
+    .omr-option-header {
+      display: flex;
+      justify-content: flex-end;
+      gap: 3.5px;
+      font-size: 5.5px;
+      font-weight: 900;
+      color: #0f172a;
+      margin-bottom: 2px;
+      padding-right: 1px;
+    }
+    .omr-opt-label {
+      width: 9px;
+      text-align: center;
+    }
+
+    /* Question Rows */
+    .omr-q-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.2px;
+    }
+    .omr-q-num {
+      font-size: 6px;
+      font-weight: 700;
+      font-family: monospace;
+      color: #334155;
+      width: 11px;
+      text-align: right;
+      padding-right: 2px;
+    }
+    .omr-bubs {
+      display: flex;
+      gap: 3.5px;
+    }
+    .omr-bub {
+      width: 9px;
+      height: 8.5px;
+      border: 1.1px solid #1e293b;
       border-radius: 50%;
       background: #ffffff;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>University General Aptitude Test</h1>
-    <p>Standard 150-Item Examination Answer Sheet &bull; 6 Subjects &times; 25 Items &bull; ISO A4</p>
+  <!-- Document Header -->
+  <div class="omr-header">
+    <div class="omr-title">
+      <h1>University General Aptitude Test</h1>
+      <p>Standard 150-Item Examination Answer Sheet &bull; ISO A4</p>
+    </div>
+    <div class="omr-sheet-code">FORM 150-A</div>
   </div>
 
-  <!-- 3-Column Header Info Strip (Name, Birthdate, Examinee No) -->
-  <div class="edq-grid">
-    <div class="edq-box">
-      <div class="edq-label">Candidate Name (Print)</div>
-      <div class="edq-line"></div>
-    </div>
-    <div class="edq-box">
-      <div class="edq-label">Birthdate (MMDDYYYY)</div>
-      <div class="digit-boxes">
-        <div class="digit-box"></div><div class="digit-box"></div>
-        <span style="font-size:7px;line-height:11px;">/</span>
-        <div class="digit-box"></div><div class="digit-box"></div>
-        <span style="font-size:7px;line-height:11px;">/</span>
-        <div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div>
+  <!-- Top Section: Metadata & Examinee ID Matrix -->
+  <div class="omr-top-section">
+    <div class="omr-meta-block">
+      <div class="omr-field-box">
+        <div class="omr-field-label">Candidate Name (Print: Surname, First Name, Middle Initial)</div>
+        <div class="omr-field-line"></div>
+      </div>
+      <div class="omr-meta-row">
+        <div class="omr-field-box">
+          <div class="omr-field-label">Birthdate (MM / DD / YYYY)</div>
+          <div class="omr-field-line"></div>
+        </div>
+        <div class="omr-field-box">
+          <div class="omr-field-label">Room / Seat / Group No.</div>
+          <div class="omr-field-line"></div>
+        </div>
+      </div>
+      <div class="omr-instructions">
+        <strong>INSTRUCTIONS:</strong> Use Black Pencil/Pen (#2 or HB). Shade circle completely. Erase cleanly if changing answers. Make no stray marks on this sheet.
       </div>
     </div>
-    <div class="edq-box">
-      <div class="edq-label">Seat / Room No.</div>
-      <div class="digit-boxes">
-        <div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div><div class="digit-box"></div>
+
+    <!-- Examinee ID Bubble Matrix (7 Columns x 10 Rows [0-9]) -->
+    <div class="omr-id-container">
+      <div class="omr-id-title">Examinee Number</div>
+      <div class="omr-id-boxes">
+        <div class="omr-id-box"></div>
+        <div class="omr-id-box"></div>
+        <div class="omr-id-box"></div>
+        <div class="omr-id-box"></div>
+        <div class="omr-id-box"></div>
+        <div class="omr-id-box"></div>
+        <div class="omr-id-box"></div>
+      </div>
+      <div class="omr-id-matrix">
+        ${Array.from({ length: 10 }).map((_, digit) => `
+          <div class="omr-id-row">
+            <span class="omr-id-num">${digit}</span>
+            <div class="omr-id-bubs">
+              <div class="omr-id-bub"></div>
+              <div class="omr-id-bub"></div>
+              <div class="omr-id-bub"></div>
+              <div class="omr-id-bub"></div>
+              <div class="omr-id-bub"></div>
+              <div class="omr-id-bub"></div>
+              <div class="omr-id-bub"></div>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   </div>
 
-  <!-- 6-Subject Question Grid with A-B-C-D Column Headers -->
-  <div class="grid">
-    <div class="col">
-      <div class="subject-header">1. English</div>
-      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${String(i + 1).padStart(2, '0')}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
+  <!-- 6-Subject Question Grid with A-B-C-D Column Option Headers -->
+  <div class="omr-exam-grid">
+    <div class="omr-col">
+      <div class="omr-subject-header">1. English</div>
+      <div class="omr-option-header"><span class="omr-opt-label">A</span><span class="omr-opt-label">B</span><span class="omr-opt-label">C</span><span class="omr-opt-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="omr-q-row"><span class="omr-q-num">${i + 1}</span><div class="omr-bubs"><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div></div></div>`).join('')}
     </div>
-    <div class="col">
-      <div class="subject-header">2. Math</div>
-      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 26}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
+    <div class="omr-col">
+      <div class="omr-subject-header">2. Math</div>
+      <div class="omr-option-header"><span class="omr-opt-label">A</span><span class="omr-opt-label">B</span><span class="omr-opt-label">C</span><span class="omr-opt-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="omr-q-row"><span class="omr-q-num">${i + 26}</span><div class="omr-bubs"><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div></div></div>`).join('')}
     </div>
-    <div class="col">
-      <div class="subject-header">3. Science</div>
-      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 51}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
+    <div class="omr-col">
+      <div class="omr-subject-header">3. Science</div>
+      <div class="omr-option-header"><span class="omr-opt-label">A</span><span class="omr-opt-label">B</span><span class="omr-opt-label">C</span><span class="omr-opt-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="omr-q-row"><span class="omr-q-num">${i + 51}</span><div class="omr-bubs"><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div></div></div>`).join('')}
     </div>
-    <div class="col">
-      <div class="subject-header">4. Abstract</div>
-      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 76}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
+    <div class="omr-col">
+      <div class="omr-subject-header">4. Abstract</div>
+      <div class="omr-option-header"><span class="omr-opt-label">A</span><span class="omr-opt-label">B</span><span class="omr-opt-label">C</span><span class="omr-opt-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="omr-q-row"><span class="omr-q-num">${i + 76}</span><div class="omr-bubs"><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div></div></div>`).join('')}
     </div>
-    <div class="col">
-      <div class="subject-header">5. Gen Info</div>
-      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 101}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
+    <div class="omr-col">
+      <div class="omr-subject-header">5. Gen Info</div>
+      <div class="omr-option-header"><span class="omr-opt-label">A</span><span class="omr-opt-label">B</span><span class="omr-opt-label">C</span><span class="omr-opt-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="omr-q-row"><span class="omr-q-num">${i + 101}</span><div class="omr-bubs"><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div></div></div>`).join('')}
     </div>
-    <div class="col">
-      <div class="subject-header">6. Logic</div>
-      <div class="option-header"><span class="option-col-label">A</span><span class="option-col-label">B</span><span class="option-col-label">C</span><span class="option-col-label">D</span></div>
-      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 126}</span><div class="bubs"><div class="bub"></div><div class="bub"></div><div class="bub"></div><div class="bub"></div></div></div>`).join('')}
+    <div class="omr-col">
+      <div class="omr-subject-header">6. Logic</div>
+      <div class="omr-option-header"><span class="omr-opt-label">A</span><span class="omr-opt-label">B</span><span class="omr-opt-label">C</span><span class="omr-opt-label">D</span></div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="omr-q-row"><span class="omr-q-num">${i + 126}</span><div class="omr-bubs"><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div><div class="omr-bub"></div></div></div>`).join('')}
     </div>
   </div>
 </body>
 </html>`;
+
 
   // HTML Code Editor State
   let htmlCode = $state(DEFAULT_150Q_HTML);
@@ -266,37 +431,54 @@
   let canvasLocked = $state(false);
   let sections = $state([
     {
+      id: 'Examinee_ID',
+      name: 'Examinee Number (7 Digits)',
+      type: 'roll',
+      posX: 125,
+      posY: 22,
+      w_mm: 58,
+      h_mm: 54,
+      questionsCount: 7,
+      cols: 7,
+      optionsCount: 10,
+      startQ: 1,
+      customValuesStr: '0, 1, 2, 3, 4, 5, 6, 7, 8, 9',
+      bubblePitchMm: 5.5,
+      rowPitchMm: 4.8,
+      isLocked: false,
+    },
+    {
       id: 'Part_1',
       name: 'Part 1: English (Q1–25)',
       type: 'mcq',
-      posX: 14,
-      posY: 56,
-      w_mm: 27,
-      h_mm: 115,
+      posX: 10,
+      posY: 88,
+      w_mm: 28,
+      h_mm: 175,
       questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 1,
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 6.0,
-      rowPitchMm: 3.8,
+      rowPitchMm: 6.8,
       isLocked: false,
     },
     {
       id: 'Part_2',
       name: 'Part 2: Math (Q26–50)',
       type: 'mcq',
-      posX: 44,
-      posY: 56,
-      w_mm: 27,
-      h_mm: 115,
+      posX: 42,
+      posY: 88,
+      w_mm: 28,
+      h_mm: 175,
       questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 26,
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 6.0,
-      rowPitchMm: 3.8,
+      rowPitchMm: 6.8,
       isLocked: false,
     },
     {
@@ -304,67 +486,67 @@
       name: 'Part 3: Science (Q51–75)',
       type: 'mcq',
       posX: 74,
-      posY: 56,
-      w_mm: 27,
-      h_mm: 115,
+      posY: 88,
+      w_mm: 28,
+      h_mm: 175,
       questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 51,
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 6.0,
-      rowPitchMm: 3.8,
+      rowPitchMm: 6.8,
       isLocked: false,
     },
     {
       id: 'Part_4',
       name: 'Part 4: Abstract (Q76–100)',
       type: 'mcq',
-      posX: 104,
-      posY: 56,
-      w_mm: 27,
-      h_mm: 115,
+      posX: 106,
+      posY: 88,
+      w_mm: 28,
+      h_mm: 175,
       questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 76,
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 6.0,
-      rowPitchMm: 3.8,
+      rowPitchMm: 6.8,
       isLocked: false,
     },
     {
       id: 'Part_5',
       name: 'Part 5: Gen Info (Q101–125)',
       type: 'mcq',
-      posX: 134,
-      posY: 56,
-      w_mm: 27,
-      h_mm: 115,
+      posX: 138,
+      posY: 88,
+      w_mm: 28,
+      h_mm: 175,
       questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 101,
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 6.0,
-      rowPitchMm: 3.8,
+      rowPitchMm: 6.8,
       isLocked: false,
     },
     {
       id: 'Part_6',
       name: 'Part 6: Logic (Q126–150)',
       type: 'mcq',
-      posX: 164,
-      posY: 56,
-      w_mm: 27,
-      h_mm: 115,
+      posX: 170,
+      posY: 88,
+      w_mm: 28,
+      h_mm: 175,
       questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 126,
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 6.0,
-      rowPitchMm: 3.8,
+      rowPitchMm: 6.8,
       isLocked: false,
     },
   ]);
@@ -503,12 +685,13 @@
     stage1Mode = 'html';
     baseType = 'html';
     sections = [
-      { id: 'Part_1', name: 'Part 1: English (Q1–25)', type: 'mcq', posX: 14, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 1, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
-      { id: 'Part_2', name: 'Part 2: Math (Q26–50)', type: 'mcq', posX: 44, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 26, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
-      { id: 'Part_3', name: 'Part 3: Science (Q51–75)', type: 'mcq', posX: 74, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 51, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
-      { id: 'Part_4', name: 'Part 4: Abstract (Q76–100)', type: 'mcq', posX: 104, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 76, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
-      { id: 'Part_5', name: 'Part 5: Gen Info (Q101–125)', type: 'mcq', posX: 134, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 101, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
-      { id: 'Part_6', name: 'Part 6: Logic (Q126–150)', type: 'mcq', posX: 164, posY: 56, w_mm: 27, h_mm: 115, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 126, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 3.8, isLocked: false },
+      { id: 'Examinee_ID', name: 'Examinee Number (7 Digits)', type: 'roll', posX: 125, posY: 22, w_mm: 58, h_mm: 54, questionsCount: 7, cols: 7, optionsCount: 10, startQ: 1, customValuesStr: '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', bubblePitchMm: 5.5, rowPitchMm: 4.8, isLocked: false },
+      { id: 'Part_1', name: 'Part 1: English (Q1–25)', type: 'mcq', posX: 10, posY: 88, w_mm: 28, h_mm: 175, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 1, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 6.8, isLocked: false },
+      { id: 'Part_2', name: 'Part 2: Math (Q26–50)', type: 'mcq', posX: 42, posY: 88, w_mm: 28, h_mm: 175, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 26, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 6.8, isLocked: false },
+      { id: 'Part_3', name: 'Part 3: Science (Q51–75)', type: 'mcq', posX: 74, posY: 88, w_mm: 28, h_mm: 175, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 51, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 6.8, isLocked: false },
+      { id: 'Part_4', name: 'Part 4: Abstract (Q76–100)', type: 'mcq', posX: 106, posY: 88, w_mm: 28, h_mm: 175, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 76, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 6.8, isLocked: false },
+      { id: 'Part_5', name: 'Part 5: Gen Info (Q101–125)', type: 'mcq', posX: 138, posY: 88, w_mm: 28, h_mm: 175, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 101, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 6.8, isLocked: false },
+      { id: 'Part_6', name: 'Part 6: Logic (Q126–150)', type: 'mcq', posX: 170, posY: 88, w_mm: 28, h_mm: 175, questionsCount: 25, cols: 1, optionsCount: 4, startQ: 126, customValuesStr: 'A, B, C, D', bubblePitchMm: 6.0, rowPitchMm: 6.8, isLocked: false },
     ];
     triggerAutosave();
   }
@@ -575,6 +758,23 @@
 
   function buildBlockList() {
     const blocks = sections.map((s) => {
+      if (s.type === 'roll') {
+        const digits = Number(s.questionsCount) || 7;
+        const bPitch = Number(s.bubblePitchMm) || 5.5;
+        const rPitch = Number(s.rowPitchMm) || 4.8;
+        return {
+          id: s.id,
+          type: 'roll',
+          x_mm: Number(s.posX) || 125,
+          y_mm: Number(s.posY) || 22,
+          w_mm: Number((4.5 + (digits - 1) * bPitch + 1.5).toFixed(1)),
+          h_mm: Number((4.5 + (10 - 1) * rPitch + 1.5).toFixed(1)),
+          digits,
+          bubble_pitch_mm: bPitch,
+          row_pitch_mm: rPitch,
+        };
+      }
+
       let opts = Number(s.optionsCount) || 4;
       if (s.type === 'tf') opts = 2;
       if (s.type === 'likert') opts = 5;

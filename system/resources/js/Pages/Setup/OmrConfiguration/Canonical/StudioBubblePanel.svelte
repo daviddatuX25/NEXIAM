@@ -136,7 +136,11 @@
             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`}
       >
-        <span>{sec.id} (Q{sec.startQ}&ndash;{Number(sec.startQ) + Number(sec.questionsCount) - 1})</span>
+        {#if sec.type === 'roll'}
+          <span>{sec.id} ({Number(sec.questionsCount) || 7} Digits)</span>
+        {:else}
+          <span>{sec.id} (Q{sec.startQ}&ndash;{Number(sec.startQ) + Number(sec.questionsCount) - 1})</span>
+        {/if}
         {#if sec.isLocked}
           <Lock class="size-2.5 text-amber-400" />
         {/if}
@@ -183,10 +187,12 @@
         </div>
       </div>
 
-      <!-- Question Count & Start Number -->
+      <!-- Question Count / Digits Count & Start Number -->
       <div class="grid grid-cols-2 gap-3">
         <div class="space-y-1">
-          <label class="font-semibold text-slate-700 block">Question Count</label>
+          <label class="font-semibold text-slate-700 block">
+            {activeSection.type === 'roll' ? 'Digits Count' : 'Question Count'}
+          </label>
           <input
             type="number"
             min="1"
@@ -197,15 +203,26 @@
           />
         </div>
         <div class="space-y-1">
-          <label class="font-semibold text-slate-700 block">Start Question #</label>
-          <input
-            type="number"
-            min="1"
-            max="500"
-            bind:value={activeSection.startQ}
-            oninput={handleInput}
-            class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
-          />
+          <label class="font-semibold text-slate-700 block">
+            {activeSection.type === 'roll' ? 'Column Prefix' : 'Start Question #'}
+          </label>
+          {#if activeSection.type === 'roll'}
+            <input
+              type="text"
+              bind:value={activeSection.id}
+              oninput={handleInput}
+              class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+            />
+          {:else}
+            <input
+              type="number"
+              min="1"
+              max="500"
+              bind:value={activeSection.startQ}
+              oninput={handleInput}
+              class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+            />
+          {/if}
         </div>
       </div>
 
@@ -221,6 +238,7 @@
           <option value="mcq" selected={activeSection.optionsCount === 5}>Multiple Choice (5 Options: A, B, C, D, E)</option>
           <option value="tf">True / False (2 Options: T, F)</option>
           <option value="likert">Likert Scale (5 Options: 1, 2, 3, 4, 5)</option>
+          <option value="roll">Examinee / Student ID Matrix (0–9 Digits)</option>
           <option value="custom">Custom Values</option>
         </select>
       </div>
@@ -237,9 +255,9 @@
           </div>
           <input
             type="range"
-            min="6.0"
+            min="4.5"
             max="25.0"
-            step="0.5"
+            step="0.1"
             bind:value={activeSection.bubblePitchMm}
             oninput={handleInput}
             class="w-full accent-slate-900"
