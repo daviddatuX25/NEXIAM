@@ -18,6 +18,8 @@
     Minus,
     Plus,
     Check,
+    AlertTriangle,
+    RotateCcw,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -110,6 +112,10 @@
 
   // Stage 3 Composition Loading
   let isComposing = $state(false);
+
+  // Reset Confirmation Modal State
+  let showResetConfirmModal = $state(false);
+  let pendingTargetStage = $state(null);
 
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
@@ -222,8 +228,8 @@
   let activeSectionIndex = $state(0);
   let bubbleRadiusMm = $state(4.5);
 
-  // Canvas Pan & Zoom
-  let scale = $state(1.0);
+  // Canvas Pan & Zoom (Optimized Default Scale = 0.88 so entire A4 sheet is 100% visible & centered)
+  let scale = $state(0.88);
   let panX = $state(0);
   let panY = $state(0);
 
@@ -340,11 +346,25 @@
     if (autosaveTimer) clearTimeout(autosaveTimer);
   });
 
-  function goToStage(step) {
-    // Navigating back to Step 1 or 2 resets any composed raster
-    if ((step === 1 || step === 2) && draft.raster_url) {
-      draft.raster_url = null;
+  function requestGoToStage(step) {
+    if ((step === 1 || step === 2) && currentStage >= 3 && draft.raster_url) {
+      pendingTargetStage = step;
+      showResetConfirmModal = true;
+      return;
     }
+    executeGoToStage(step);
+  }
+
+  function confirmResetAndNavigate() {
+    draft.raster_url = null;
+    showResetConfirmModal = false;
+    if (pendingTargetStage) {
+      executeGoToStage(pendingTargetStage);
+      pendingTargetStage = null;
+    }
+  }
+
+  function executeGoToStage(step) {
     currentStage = step;
     triggerAutosave();
   }
@@ -600,7 +620,7 @@
   async function autoConfirmPages() {
     if (!urls.confirm_pages) {
       uploadRunning = false;
-      goToStage(2);
+      executeGoToStage(2);
       return;
     }
 
@@ -614,10 +634,10 @@
       });
 
       uploadRunning = false;
-      goToStage(2);
+      executeGoToStage(2);
     } catch {
       uploadRunning = false;
-      goToStage(2);
+      executeGoToStage(2);
     }
   }
 
@@ -630,7 +650,7 @@
   }
 
   function resetZoom() {
-    scale = 1.0;
+    scale = 0.88; // Default optimal scale fitting 100% of A4 sheet vertically & horizontally
     panX = 0;
     panY = 0;
   }
@@ -777,8 +797,8 @@
           bind:sigLocked
           bind:customTextItems
           onChanged={triggerAutosave}
-          onBack={() => goToStage(1)}
-          onNext={() => goToStage(3)}
+          onBack={() => requestGoToStage(1)}
+          onNext={() => requestGoToStage(3)}
         />
       {:else if currentStage === 3}
         <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
@@ -786,8 +806,8 @@
           bind:sections
           bind:activeSectionIndex
           onChanged={triggerAutosave}
-          onBack={() => goToStage(2)}
-          onNext={() => goToStage(4)}
+          onBack={() => requestGoToStage(2)}
+          onNext={() => requestGoToStage(4)}
         />
       {:else if currentStage === 4}
         <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
@@ -795,7 +815,7 @@
           {draft}
           {jsonSchema}
           {urls}
-          onBack={() => goToStage(3)}
+          onBack={() => requestGoToStage(3)}
         />
       {/if}
     </div>
@@ -805,7 +825,7 @@
       <div class="shrink-0 p-4 border-t border-slate-200 bg-white">
         <button
           type="button"
-          onclick={() => goToStage(2)}
+          onclick={() => requestGoToStage(2)}
           class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
         >
           <span>Continue to Layout & Markers</span>
@@ -819,16 +839,16 @@
   <main class="flex-1 h-screen flex flex-col min-w-0 bg-slate-100 overflow-hidden relative">
     <!-- Stationary Top Bar (Above Canvas: 4-Step Stepper + Canvas Viewport Controls + Save) -->
     <div class="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-2xs z-20">
-      <!-- 4-Step Stepper Navigation -->
-      <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+      <!-- 4-Step Stepper Navigation (Vertically centered with clean typography) -->
+      <div class="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
         {#each stageTitles as title, idx}
           {@const stageNum = idx + 1}
           {@const isActive = currentStage === stageNum}
           {@const isPast = currentStage > stageNum}
           <button
             type="button"
-            onclick={() => goToStage(stageNum)}
-            class={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 ${
+            onclick={() => requestGoToStage(stageNum)}
+            class={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 leading-none ${
               isActive
                 ? 'bg-slate-900 text-white shadow-xs'
                 : isPast
@@ -836,18 +856,31 @@
                   : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <span class={`size-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+            <span class={`size-3.5 rounded-full flex items-center justify-center text-[9px] font-extrabold leading-none shrink-0 ${
               isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-300 text-slate-800' : 'bg-slate-200 text-slate-400'
             }`}>
               {stageNum}
             </span>
-            <span>{title.split('.')[1]?.trim() || title}</span>
+            <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
           </button>
         {/each}
       </div>
 
-      <!-- Right Actions: Canvas Viewport Controls + Save Status -->
+      <!-- Right Actions: Recompose Action (Step 3) + Canvas Viewport Controls + Save -->
       <div class="flex items-center space-x-2">
+        {#if currentStage === 3 && draft.raster_url}
+          <button
+            type="button"
+            onclick={() => requestGoToStage(2)}
+            class="px-2.5 h-7 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition shadow-xs"
+            title="Return to Step 2 to edit overlays or re-render page raster"
+          >
+            <RotateCcw class="size-3 text-emerald-600" />
+            <span>Re-edit Design</span>
+          </button>
+          <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
+        {/if}
+
         <!-- Canvas Lock Toggle Button -->
         <button
           type="button"
@@ -894,7 +927,7 @@
           <button
             type="button"
             onclick={resetZoom}
-            title="Reset Zoom Fit"
+            title="Reset Zoom to Fit A4 Sheet (88%)"
             class="px-1.5 h-6 rounded text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-white transition flex items-center gap-0.5"
           >
             <Maximize2 class="size-2.5" />
@@ -980,4 +1013,42 @@
       />
     </div>
   </main>
+
+  <!-- Re-edit & Raster Reset Confirmation Modal -->
+  {#if showResetConfirmModal}
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div class="flex items-center space-x-3">
+          <div class="size-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+            <AlertTriangle class="size-5" />
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Re-edit Design & Reset Raster?</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Returning to Step {pendingTargetStage} resets the 300-PPI print raster.</p>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+          Step 3 relies on a settled, composed print raster for optical bubble calibration. Going back to modify HTML source or overlays will invalidate the current raster image so you can re-render a fresh document.
+        </p>
+
+        <div class="flex items-center justify-end space-x-2 pt-2">
+          <button
+            type="button"
+            onclick={() => { showResetConfirmModal = false; pendingTargetStage = null; }}
+            class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+          >
+            Cancel & Stay on Step {currentStage}
+          </button>
+          <button
+            type="button"
+            onclick={confirmResetAndNavigate}
+            class="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition"
+          >
+            Yes, Reset Raster & Re-edit
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>

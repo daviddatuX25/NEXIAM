@@ -7,7 +7,6 @@
     ChevronLeft,
     ChevronRight,
     Scan,
-    Info,
   } from 'lucide-svelte';
 
   let {
@@ -88,11 +87,11 @@
   }
 </script>
 
-<div class="p-6 space-y-5">
+<div class="p-5 space-y-5">
   <div class="flex items-center justify-between">
     <div>
-      <h2 class="text-base font-bold text-slate-900">Question Sections</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Define optical recognition grid zones.</p>
+      <h2 class="text-sm font-bold text-slate-900">Question Sections</h2>
+      <p class="text-[11px] text-slate-500 mt-0.5">Define optical recognition grid zones.</p>
     </div>
     <div class="flex items-center space-x-1.5">
       <button
@@ -245,22 +244,25 @@
           />
         </div>
 
-        <div class="space-y-1.5">
-          <div class="flex justify-between font-semibold text-slate-700">
-            <span>Row Spacing (Vertical)</span>
-            <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{activeSection.rowPitchMm} mm</span>
+        <!-- Row Spacing Slider (Only shown if questionsCount > 1; single question blocks have no row pitch) -->
+        {#if (Number(activeSection.questionsCount) || 1) > 1}
+          <div class="space-y-1.5">
+            <div class="flex justify-between font-semibold text-slate-700">
+              <span>Row Spacing (Vertical)</span>
+              <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{activeSection.rowPitchMm} mm</span>
+            </div>
+            <p class="text-[10px] text-slate-500">Vertical center-to-center distance between question rows (Q1 ↕ Q2).</p>
+            <input
+              type="range"
+              min="3.0"
+              max="20.0"
+              step="0.2"
+              bind:value={activeSection.rowPitchMm}
+              oninput={handleInput}
+              class="w-full accent-slate-900"
+            />
           </div>
-          <p class="text-[10px] text-slate-500">Vertical center-to-center distance between question rows (Q1 ↕ Q2).</p>
-          <input
-            type="range"
-            min="5.0"
-            max="20.0"
-            step="0.5"
-            bind:value={activeSection.rowPitchMm}
-            oninput={handleInput}
-            class="w-full accent-slate-900"
-          />
-        </div>
+        {/if}
       </div>
 
       <!-- Position (X, Y) Coordinates -->
