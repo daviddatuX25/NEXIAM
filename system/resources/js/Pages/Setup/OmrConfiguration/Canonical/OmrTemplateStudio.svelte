@@ -12,6 +12,12 @@
     Sparkles,
     ChevronRight,
     Upload,
+    Maximize2,
+    Lock,
+    Unlock,
+    Minus,
+    Plus,
+    Check,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -29,39 +35,47 @@
   // 4-Step Streamlined Navigation
   let currentStage = $state(1);
   const stageTitles = [
-    'Step 1: Source Substrate',
-    'Step 2: Layout & Overlays',
-    'Step 3: Question Bubbles',
-    'Step 4: Verify & Export',
+    '1. Source Substrate',
+    '2. Layout & Overlays',
+    '3. Question Bubbles',
+    '4. Verify & Export',
   ];
 
   // Stage 1: Base Mode ('html' | 'upload')
   let stage1Mode = $state((draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'html');
   let baseType = $state(draft.source_kind ?? 'html');
 
-  // Default Standard 150-Q Template HTML
+  // Compact, Single-Page A4-Fitted 150-Q HTML Template (Fits 100% within A4 sheet bounds)
   const DEFAULT_150Q_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; }
-    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
-    .header h1 { font-size: 18px; margin: 0 0 2px 0; text-transform: uppercase; }
-    .header p { font-size: 10px; color: #475569; margin: 0; font-family: monospace; }
-    .info { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 14px; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; background: #f8fafc; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .part { font-size: 8.5px; font-weight: bold; background: #0f172a; color: #fff; padding: 3px 6px; border-radius: 4px; margin-bottom: 6px; text-align: center; text-transform: uppercase; }
-    .row { display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; font-family: monospace; margin-bottom: 3.5px; }
-    .num { font-weight: bold; width: 18px; color: #334155; }
-    .bubs { display: flex; gap: 3.5px; }
-    .bub { width: 12px; height: 12px; border: 1.2px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: bold; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 12px;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #0f172a;
+      overflow: hidden;
+      width: 100%; height: 100%;
+    }
+    .header { text-align: center; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
+    .header h1 { font-size: 13px; margin: 0 0 1px 0; text-transform: uppercase; font-weight: 800; }
+    .header p { font-size: 8px; color: #475569; margin: 0; font-family: monospace; }
+    .info { display: flex; justify-content: space-between; font-size: 8px; margin-bottom: 6px; border: 1px solid #cbd5e1; padding: 3px 6px; border-radius: 4px; background: #f8fafc; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .col { background: #fff; }
+    .part { font-size: 7.5px; font-weight: bold; background: #0f172a; color: #fff; padding: 2px 4px; border-radius: 3px; margin-bottom: 3px; text-align: center; text-transform: uppercase; }
+    .row { display: flex; align-items: center; justify-content: space-between; font-size: 7px; font-family: monospace; margin-bottom: 1.8px; }
+    .num { font-weight: bold; width: 14px; color: #334155; }
+    .bubs { display: flex; gap: 2px; }
+    .bub { width: 9.5px; height: 9.5px; border: 1px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>University General Aptitude Test</h1>
-    <p>Standard 150-Item Answer Sheet &bull; ISO A4</p>
+    <p>Standard 150-Item Answer Sheet &bull; ISO A4 (210 &times; 297 mm)</p>
   </div>
   <div class="info">
     <div><strong>Name:</strong> ____________________________</div>
@@ -69,35 +83,23 @@
     <div><strong>Date:</strong> _______</div>
   </div>
   <div class="grid">
-    <div>
+    <div class="col">
       <div class="part">Part 1: Verbal Ability</div>
-      <div class="row"><span class="num">01</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">02</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">03</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">04</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">05</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      ${Array.from({ length: 50 }).map((_, i) => `<div class="row"><span class="num">${String(i + 1).padStart(2, '0')}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
     </div>
-    <div>
+    <div class="col">
       <div class="part">Part 2: Quantitative</div>
-      <div class="row"><span class="num">26</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">27</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">28</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">29</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">30</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      ${Array.from({ length: 50 }).map((_, i) => `<div class="row"><span class="num">${i + 51}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
     </div>
-    <div>
+    <div class="col">
       <div class="part">Part 3: Logical Reasoning</div>
-      <div class="row"><span class="num">51</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">52</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">53</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">54</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
-      <div class="row"><span class="num">55</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>
+      ${Array.from({ length: 50 }).map((_, i) => `<div class="row"><span class="num">${i + 101}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
     </div>
   </div>
 </body>
 </html>`;
 
-  // HTML Code Editor State (Always initialized with valid HTML)
+  // HTML Code Editor State
   let htmlCode = $state(DEFAULT_150Q_HTML);
 
   // Direct Upload & Ingest State
@@ -112,7 +114,7 @@
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
   let markerPattern = $state('square');
-  let showHeaderOverlay = $state(true);
+  let showHeaderOverlay = $state(false); // In HTML mode, header is already inside HTML template
   let headerTitle = $state(draft.name || 'EXAMINATION ANSWER SHEET');
   let headerSubtitle = $state(draft.code || 'AUTOMATED OMR EVALUATION FORM');
   let headerFontSize = $state(14.0);
@@ -123,13 +125,13 @@
   let headerLocked = $state(false);
 
   let showQrOverlay = $state(true);
-  let qrX = $state(150);
-  let qrY = $state(32);
-  let qrW = $state(32);
-  let qrH = $state(32);
+  let qrX = $state(162);
+  let qrY = $state(18);
+  let qrW = $state(26);
+  let qrH = $state(26);
   let qrLocked = $state(false);
 
-  let showInstructionsOverlay = $state(true);
+  let showInstructionsOverlay = $state(false);
   let instructionsContent = $state('Use 2B pencil only. Shade bubbles completely. Erase cleanly to change.');
   let instructionsFontSize = $state(9.0);
   let instX = $state(25);
@@ -138,7 +140,7 @@
   let instH = $state(28);
   let instLocked = $state(false);
 
-  let showSignatureOverlay = $state(true);
+  let showSignatureOverlay = $state(false);
   let signatureContent = $state('EXAMINEE SIGNATURE');
   let signatureFontSize = $state(8.5);
   let sigX = $state(125);
@@ -162,41 +164,58 @@
 
   let customTextItems = $state([]);
 
-  // Stage 3: Multi-Section Geometry & Canvas State (Per-Element Lock)
-  let canvasLocked = $state(false); // Controls canvas zoom/pan wheel lock
+  // Stage 3: Multi-Section Geometry & Canvas State (3 Columns corresponding to 150 items)
+  let canvasLocked = $state(false);
   let sections = $state([
     {
-      id: 'Section_A',
-      name: 'Section A (General Ability)',
+      id: 'Part_1',
+      name: 'Part 1 (Q1–50)',
       type: 'mcq',
-      posX: 25,
-      posY: 72,
-      w_mm: 75,
-      h_mm: 165,
-      questionsCount: 25,
+      posX: 16,
+      posY: 56,
+      w_mm: 56,
+      h_mm: 220,
+      questionsCount: 50,
       cols: 1,
       optionsCount: 4,
       startQ: 1,
       customValuesStr: 'A, B, C, D',
-      bubblePitchMm: 12.0,
-      rowPitchMm: 6.5,
+      bubblePitchMm: 9.5,
+      rowPitchMm: 4.2,
       isLocked: false,
     },
     {
-      id: 'Section_B',
-      name: 'Section B (Mathematics)',
+      id: 'Part_2',
+      name: 'Part 2 (Q51–100)',
       type: 'mcq',
-      posX: 110,
-      posY: 72,
-      w_mm: 75,
-      h_mm: 165,
-      questionsCount: 25,
+      posX: 77,
+      posY: 56,
+      w_mm: 56,
+      h_mm: 220,
+      questionsCount: 50,
       cols: 1,
       optionsCount: 4,
-      startQ: 26,
+      startQ: 51,
       customValuesStr: 'A, B, C, D',
-      bubblePitchMm: 12.0,
-      rowPitchMm: 6.5,
+      bubblePitchMm: 9.5,
+      rowPitchMm: 4.2,
+      isLocked: false,
+    },
+    {
+      id: 'Part_3',
+      name: 'Part 3 (Q101–150)',
+      type: 'mcq',
+      posX: 138,
+      posY: 56,
+      w_mm: 56,
+      h_mm: 220,
+      questionsCount: 50,
+      cols: 1,
+      optionsCount: 4,
+      startQ: 101,
+      customValuesStr: 'A, B, C, D',
+      bubblePitchMm: 9.5,
+      rowPitchMm: 4.2,
       isLocked: false,
     },
   ]);
@@ -322,7 +341,7 @@
   });
 
   function goToStage(step) {
-    // Navigating back to Step 1 (Source) or Step 2 (Layout & Overlays) resets the composed raster
+    // Navigating back to Step 1 or 2 resets any composed raster
     if ((step === 1 || step === 2) && draft.raster_url) {
       draft.raster_url = null;
     }
@@ -605,245 +624,314 @@
   function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   }
+
+  function zoomStep(delta) {
+    scale = Math.min(Math.max(0.35, scale + delta), 2.5);
+  }
+
+  function resetZoom() {
+    scale = 1.0;
+    panX = 0;
+    panY = 0;
+  }
 </script>
 
-<div class="h-screen w-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden font-sans select-none">
-  <!-- TOP STUDIO HEADER (Clean, Professional NEXIAM Light Theme) -->
-  <header class="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-30 shadow-xs">
-    <div class="flex items-center space-x-4">
-      <div class="flex items-center space-x-2.5">
-        <div class="size-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs font-black text-sm">
+<div class="h-screen w-screen flex bg-slate-100 text-slate-900 overflow-hidden font-sans select-none">
+  <!-- LEFT WORKBENCH SIDEBAR (Strictly contained, fixed width, independent scroll) -->
+  <aside class="w-[380px] h-screen bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden shadow-xs z-20">
+    <!-- Sidebar Header (Template Name & Code) -->
+    <div class="h-12 border-b border-slate-200 px-5 flex items-center justify-between shrink-0 bg-white">
+      <div class="flex items-center space-x-2">
+        <div class="size-6 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">
           N
         </div>
-        <div>
-          <div class="flex items-center space-x-2">
-            <span class="text-xs font-bold text-slate-900 tracking-wide uppercase">{draft.name || 'Template Studio'}</span>
-            <span class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-[10px] font-mono text-slate-600 rounded">
-              {draft.code || 'OMR-DRAFT'}
-            </span>
+        <span class="text-xs font-bold text-slate-900 truncate max-w-[170px]">{draft.name || 'Template Studio'}</span>
+        <span class="px-1.5 py-0.5 bg-slate-100 text-[10px] font-mono text-slate-600 rounded border border-slate-200">
+          {draft.code || 'OMR-DRAFT'}
+        </span>
+      </div>
+      <div class="text-[11px] font-mono text-slate-500">
+        {totalQuestionsCount} Qs
+      </div>
+    </div>
+
+    <!-- Scrollable Sidebar Tool Content Area -->
+    <div class="flex-1 overflow-y-auto min-h-0">
+      {#if currentStage === 1}
+        <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
+        <div class="p-5 space-y-5">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Source Substrate</h2>
+            <p class="text-[11px] text-slate-500 mt-0.5">Design or upload the base answer sheet layout.</p>
           </div>
-          <p class="text-[10px] text-slate-500 font-mono mt-0.5">
-            {stageTitles[currentStage - 1]} &bull; {totalQuestionsCount} Questions Total
-          </p>
-        </div>
-      </div>
-    </div>
 
-    <!-- 4-Stage Modern Stepper Navigation -->
-    <div class="hidden md:flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-      {#each stageTitles as title, idx}
-        {@const stageNum = idx + 1}
-        {@const isActive = currentStage === stageNum}
-        {@const isPast = currentStage > stageNum}
-        <button
-          type="button"
-          onclick={() => goToStage(stageNum)}
-          class={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-2 ${
-            isActive
-              ? 'bg-slate-900 text-white shadow-xs'
-              : isPast
-                ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/70'
-                : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-            isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-300 text-slate-800' : 'bg-slate-200 text-slate-400'
-          }`}>
-            {stageNum}
-          </span>
-          <span>{title.split(':')[1]?.trim() || title}</span>
-        </button>
-      {/each}
-    </div>
+          <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
+          <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Paste / Edit HTML
+            </button>
+            <button
+              type="button"
+              onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
+              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Upload File
+            </button>
+          </div>
 
-    <!-- Right Controls: Save Status & Actions -->
-    <div class="flex items-center space-x-3">
-      <div class="flex items-center space-x-1.5 text-xs">
-        {#if saveStatus === 'saving'}
-          <Loader2 class="size-3.5 text-amber-500 animate-spin" />
-          <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
-        {:else if saveStatus === 'saved'}
-          <CheckCircle2 class="size-3.5 text-emerald-600" />
-          <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
-        {:else if saveStatus === 'error'}
-          <XCircle class="size-3.5 text-rose-600" />
-          <span class="text-rose-600 font-mono text-[11px] max-w-[140px] truncate" title={errorMessage}>
-            {errorMessage || 'Save error'}
-          </span>
-        {/if}
-      </div>
-
-      <button
-        type="button"
-        onclick={performSave}
-        class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition shadow-xs"
-      >
-        Save
-      </button>
-    </div>
-  </header>
-
-  <!-- MAIN STUDIO WORKBENCH SPLIT (Contained height with independent sidebar & canvas scrolling) -->
-  <div class="flex-1 flex overflow-hidden">
-    <!-- LEFT WORKBENCH SIDEBAR (Strictly contained with its own internal scroll) -->
-    <aside class="w-[390px] h-full flex flex-col bg-white border-r border-slate-200 shrink-0 overflow-hidden shadow-xs">
-      <!-- Scrollable Panel Body -->
-      <div class="flex-1 overflow-y-auto min-h-0">
-        {#if currentStage === 1}
-          <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
-          <div class="p-6 space-y-6 flex flex-col justify-between min-h-full">
-            <div class="space-y-5">
-              <div>
-                <h2 class="text-base font-bold text-slate-900">Source Substrate</h2>
-                <p class="text-xs text-slate-500 mt-0.5">Choose how to design or upload your exam answer sheet.</p>
-              </div>
-
-              <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
-              <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+          {#if stage1Mode === 'html'}
+            <!-- Option 1: Paste / Edit HTML Code -->
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
                 <button
                   type="button"
-                  onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
-                  class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                    stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  onclick={() => {
+                    htmlCode = DEFAULT_150Q_HTML;
+                    triggerAutosave();
+                  }}
+                  class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
                 >
-                  Paste / Edit HTML
+                  <Sparkles class="size-3" />
+                  <span>Reset 150-Q Template</span>
                 </button>
+              </div>
+              <textarea
+                bind:value={htmlCode}
+                oninput={triggerAutosave}
+                rows="11"
+                class="w-full font-mono text-[10.5px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
+                placeholder="Paste HTML markup here…"
+              ></textarea>
+
+              <div class="p-2.5 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-center gap-2 text-[11px] text-emerald-800">
+                <Check class="size-3.5 text-emerald-600 shrink-0" />
+                <span>Single-Page A4 Proportion: 100% within paper bounds</span>
+              </div>
+            </div>
+          {:else}
+            <!-- Option 2: Upload Document File -->
+            <div class="space-y-3">
+              <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-slate-400 bg-slate-50 transition">
+                <Upload class="size-7 text-slate-400 mx-auto mb-2" />
+                <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Automatic 300 PPI print rasterization</p>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
+                  bind:this={uploadFileInput}
+                  onchange={handleFileUpload}
+                  class="hidden"
+                />
                 <button
                   type="button"
-                  onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
-                  class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                    stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  onclick={() => uploadFileInput?.click()}
+                  class="mt-3 px-3.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
                 >
-                  Upload File
+                  Select File
                 </button>
               </div>
 
-              {#if stage1Mode === 'html'}
-                <!-- Option 1: Paste / Edit HTML Code -->
-                <div class="space-y-3">
-                  <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
-                    <button
-                      type="button"
-                      onclick={() => {
-                        htmlCode = DEFAULT_150Q_HTML;
-                        triggerAutosave();
-                      }}
-                      class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                    >
-                      <Sparkles class="size-3" />
-                      <span>Reset 150-Q Template</span>
-                    </button>
-                  </div>
-                  <textarea
-                    bind:value={htmlCode}
-                    oninput={triggerAutosave}
-                    rows="12"
-                    class="w-full font-mono text-[11px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
-                    placeholder="Paste HTML markup here…"
-                  ></textarea>
+              {#if uploadRunning}
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
+                  <Loader2 class="size-4 animate-spin text-blue-600 shrink-0" />
+                  <span>{conversionStatusText || 'Converting file…'}</span>
                 </div>
-              {:else}
-                <!-- Option 2: Upload Document File -->
-                <div class="space-y-4">
-                  <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-slate-400 bg-slate-50 transition">
-                    <Upload class="size-8 text-slate-400 mx-auto mb-2" />
-                    <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image file</p>
-                    <p class="text-[11px] text-slate-400 mt-1">Automatic rasterization at 300 PPI print resolution</p>
-                    <input
-                      type="file"
-                      accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
-                      bind:this={uploadFileInput}
-                      onchange={handleFileUpload}
-                      class="hidden"
-                    />
-                    <button
-                      type="button"
-                      onclick={() => uploadFileInput?.click()}
-                      class="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
-                    >
-                      Select File
-                    </button>
-                  </div>
+              {/if}
 
-                  {#if uploadRunning}
-                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
-                      <Loader2 class="size-4 animate-spin text-blue-600 shrink-0" />
-                      <span>{conversionStatusText || 'Converting file…'}</span>
-                    </div>
-                  {/if}
-
-                  {#if conversionError}
-                    <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
-                      {conversionError}
-                    </div>
-                  {/if}
+              {#if conversionError}
+                <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+                  {conversionError}
                 </div>
               {/if}
             </div>
+          {/if}
+        </div>
+      {:else if currentStage === 2}
+        <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
+        <StudioOverlayPanel
+          bind:marginMm
+          bind:markerPattern
+          bind:showHeaderOverlay
+          bind:headerTitle
+          bind:headerSubtitle
+          bind:headerFontSize
+          bind:headerLocked
+          bind:showQrOverlay
+          bind:qrLocked
+          bind:showInstructionsOverlay
+          bind:instructionsContent
+          bind:instructionsFontSize
+          bind:instLocked
+          bind:showSignatureOverlay
+          bind:signatureContent
+          bind:signatureFontSize
+          bind:sigLocked
+          bind:customTextItems
+          onChanged={triggerAutosave}
+          onBack={() => goToStage(1)}
+          onNext={() => goToStage(3)}
+        />
+      {:else if currentStage === 3}
+        <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
+        <StudioBubblePanel
+          bind:sections
+          bind:activeSectionIndex
+          onChanged={triggerAutosave}
+          onBack={() => goToStage(2)}
+          onNext={() => goToStage(4)}
+        />
+      {:else if currentStage === 4}
+        <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
+        <StudioExportVerifyPanel
+          {draft}
+          {jsonSchema}
+          {urls}
+          onBack={() => goToStage(3)}
+        />
+      {/if}
+    </div>
 
-            <!-- Continue to Step 2 Button -->
-            <div class="pt-4 border-t border-slate-200 mt-auto">
-              <button
-                type="button"
-                onclick={() => goToStage(2)}
-                class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
-              >
-                <span>Continue to Layout & Markers</span>
-                <ChevronRight class="size-4" />
-              </button>
-            </div>
-          </div>
-        {:else if currentStage === 2}
-          <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
-          <StudioOverlayPanel
-            bind:marginMm
-            bind:markerPattern
-            bind:showHeaderOverlay
-            bind:headerTitle
-            bind:headerSubtitle
-            bind:headerFontSize
-            bind:headerLocked
-            bind:showQrOverlay
-            bind:qrLocked
-            bind:showInstructionsOverlay
-            bind:instructionsContent
-            bind:instructionsFontSize
-            bind:instLocked
-            bind:showSignatureOverlay
-            bind:signatureContent
-            bind:signatureFontSize
-            bind:sigLocked
-            bind:customTextItems
-            onChanged={triggerAutosave}
-            onBack={() => goToStage(1)}
-            onNext={() => goToStage(3)}
-          />
-        {:else if currentStage === 3}
-          <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
-          <StudioBubblePanel
-            bind:sections
-            bind:activeSectionIndex
-            onChanged={triggerAutosave}
-            onBack={() => goToStage(2)}
-            onNext={() => goToStage(4)}
-          />
-        {:else if currentStage === 4}
-          <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
-          <StudioExportVerifyPanel
-            {draft}
-            {jsonSchema}
-            {urls}
-            onBack={() => goToStage(3)}
-          />
-        {/if}
+    <!-- Pinned Bottom Navigation Footer in Sidebar (Step 1 only; Steps 2-4 have their own footers) -->
+    {#if currentStage === 1}
+      <div class="shrink-0 p-4 border-t border-slate-200 bg-white">
+        <button
+          type="button"
+          onclick={() => goToStage(2)}
+          class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+        >
+          <span>Continue to Layout & Markers</span>
+          <ChevronRight class="size-4" />
+        </button>
       </div>
-    </aside>
+    {/if}
+  </aside>
 
-    <!-- RIGHT CANVAS WORKBENCH -->
-    <div class="flex-1 min-w-0 h-full relative overflow-hidden flex flex-col bg-slate-100">
+  <!-- RIGHT CANVAS WORKBENCH COLUMN (Stationary Top Stepper & Controls Bar + Canvas Area) -->
+  <main class="flex-1 h-screen flex flex-col min-w-0 bg-slate-100 overflow-hidden relative">
+    <!-- Stationary Top Bar (Above Canvas: 4-Step Stepper + Canvas Viewport Controls + Save) -->
+    <div class="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-2xs z-20">
+      <!-- 4-Step Stepper Navigation -->
+      <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+        {#each stageTitles as title, idx}
+          {@const stageNum = idx + 1}
+          {@const isActive = currentStage === stageNum}
+          {@const isPast = currentStage > stageNum}
+          <button
+            type="button"
+            onclick={() => goToStage(stageNum)}
+            class={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 ${
+              isActive
+                ? 'bg-slate-900 text-white shadow-xs'
+                : isPast
+                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/70'
+                  : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <span class={`size-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+              isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-300 text-slate-800' : 'bg-slate-200 text-slate-400'
+            }`}>
+              {stageNum}
+            </span>
+            <span>{title.split('.')[1]?.trim() || title}</span>
+          </button>
+        {/each}
+      </div>
+
+      <!-- Right Actions: Canvas Viewport Controls + Save Status -->
+      <div class="flex items-center space-x-2">
+        <!-- Canvas Lock Toggle Button -->
+        <button
+          type="button"
+          onclick={() => { canvasLocked = !canvasLocked; }}
+          class={`px-2.5 h-7 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
+            canvasLocked
+              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
+          title={canvasLocked ? 'Canvas viewport is locked (Scroll wheel & panning disabled)' : 'Canvas is interactive (Scroll wheel zooms, drag background to pan)'}
+        >
+          {#if canvasLocked}
+            <Lock class="size-3 text-amber-700" />
+            <span>Canvas Locked</span>
+          {:else}
+            <Unlock class="size-3 text-slate-600" />
+            <span>Canvas Active</span>
+          {/if}
+        </button>
+
+        <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
+
+        <!-- Zoom Controls -->
+        <div class="flex items-center space-x-1 bg-slate-100 border border-slate-200 rounded-lg p-0.5">
+          <button
+            type="button"
+            onclick={() => zoomStep(-0.15)}
+            title="Zoom Out"
+            class="w-6 h-6 rounded flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
+          >
+            <Minus class="size-3" />
+          </button>
+          <span class="text-xs font-mono font-bold px-1 text-slate-800 min-w-[38px] text-center">
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            type="button"
+            onclick={() => zoomStep(0.15)}
+            title="Zoom In"
+            class="w-6 h-6 rounded flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
+          >
+            <Plus class="size-3" />
+          </button>
+          <button
+            type="button"
+            onclick={resetZoom}
+            title="Reset Zoom Fit"
+            class="px-1.5 h-6 rounded text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-white transition flex items-center gap-0.5"
+          >
+            <Maximize2 class="size-2.5" />
+            <span>Fit</span>
+          </button>
+        </div>
+
+        <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
+
+        <!-- Save Indicator & Save Button -->
+        <div class="flex items-center space-x-1.5 text-xs">
+          {#if saveStatus === 'saving'}
+            <Loader2 class="size-3 text-amber-500 animate-spin" />
+            <span class="text-amber-600 font-mono text-[10px]">Saving…</span>
+          {:else if saveStatus === 'saved'}
+            <CheckCircle2 class="size-3 text-emerald-600" />
+            <span class="text-emerald-600 font-mono text-[10px]">Saved</span>
+          {:else if saveStatus === 'error'}
+            <XCircle class="size-3 text-rose-600" />
+            <span class="text-rose-600 font-mono text-[10px] max-w-[100px] truncate" title={errorMessage}>
+              {errorMessage || 'Error'}
+            </span>
+          {/if}
+        </div>
+
+        <button
+          type="button"
+          onclick={performSave}
+          class="px-3 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition shadow-xs"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+
+    <!-- Scalable Canvas Area -->
+    <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
       <StudioCanvas
         bind:scale
         bind:panX
@@ -891,5 +979,5 @@
         onGeometryChanged={triggerAutosave}
       />
     </div>
-  </div>
+  </main>
 </div>

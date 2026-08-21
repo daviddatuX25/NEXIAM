@@ -1,11 +1,8 @@
 <script>
   import {
-    Plus,
-    Minus,
     Lock,
     Unlock,
     Loader2,
-    Maximize2,
   } from 'lucide-svelte';
 
   let {
@@ -14,7 +11,7 @@
     panY = $bindable(0),
     marginMm = 15,
     markerPattern = 'square',
-    canvasLocked = $bindable(false),
+    canvasLocked = false,
     rasterUrl = null,
     showHeaderOverlay = true,
     headerTitle = 'EXAMINATION ANSWER SHEET',
@@ -216,16 +213,6 @@
     blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
   }
 
-  function zoomStep(delta) {
-    scale = Math.min(Math.max(0.35, scale + delta), 2.5);
-  }
-
-  function resetZoom() {
-    scale = 1.0;
-    panX = 0;
-    panY = 0;
-  }
-
   function getOptionLabels(s) {
     if (!s) return ['A', 'B', 'C', 'D'];
     if (s.type === 'tf') return ['T', 'F'];
@@ -236,61 +223,8 @@
   }
 </script>
 
-<div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
-  <!-- Pinned Canvas Controls inside the Canvas Workbench (ALWAYS perfectly positioned in top-right) -->
-  <div class="absolute top-4 right-6 bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg rounded-2xl p-1.5 flex items-center space-x-1.5 z-30">
-    <button
-      type="button"
-      onclick={() => { canvasLocked = !canvasLocked; }}
-      class={`px-3 h-8 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
-        canvasLocked
-          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-      }`}
-      title={canvasLocked ? 'Canvas viewport is locked (Scroll wheel & panning disabled)' : 'Canvas is interactive (Scroll wheel zooms, drag background to pan)'}
-    >
-      {#if canvasLocked}
-        <Lock class="size-3.5 text-amber-700" />
-        <span>Canvas Locked</span>
-      {:else}
-        <Unlock class="size-3.5 text-slate-600" />
-        <span>Canvas Active</span>
-      {/if}
-    </button>
-
-    <div class="h-4 w-px bg-slate-200 mx-1"></div>
-
-    <button
-      type="button"
-      onclick={() => zoomStep(-0.15)}
-      title="Zoom Out"
-      class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-    >
-      <Minus class="size-3.5" />
-    </button>
-    <span class="text-xs font-mono font-bold px-1.5 text-slate-800 min-w-[45px] text-center">
-      {Math.round(scale * 100)}%
-    </span>
-    <button
-      type="button"
-      onclick={() => zoomStep(0.15)}
-      title="Zoom In"
-      class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-    >
-      <Plus class="size-3.5" />
-    </button>
-    <button
-      type="button"
-      onclick={resetZoom}
-      title="Reset Zoom Fit"
-      class="px-2.5 h-8 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1 border border-slate-200/60"
-    >
-      <Maximize2 class="size-3" />
-      <span>Fit</span>
-    </button>
-  </div>
-
-  <!-- Canvas Viewport -->
+<div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100 select-none">
+  <!-- Canvas Viewport with No Scrollbars on Sheet -->
   <div
     class="w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing canvas-grid flex items-center justify-center"
     onwheel={handleWheel}
@@ -301,18 +235,19 @@
     role="region"
     aria-label="OMR sheet design viewport"
   >
-    <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm) -->
+    <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm, ZERO SCROLLBARS) -->
     <div
-      class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
+      class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 overflow-hidden"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
     >
-      <!-- Continuous Background Layer (HTML source preview ALWAYS rendered when present) -->
+      <!-- Continuous Background Layer (HTML source preview strictly contained without iframe scrollbars) -->
       {#if safeHtmlContent}
         <iframe
           srcdoc={safeHtmlContent}
           title="HTML Source Preview"
-          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white"
+          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white overflow-hidden"
           sandbox="allow-same-origin"
+          scrolling="no"
         ></iframe>
       {:else if rasterUrl}
         <img
@@ -510,30 +445,30 @@
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}
-          {@const bPitchMm = Number(sec.bubblePitchMm) || 12.0}
-          {@const rPitchMm = Number(sec.rowPitchMm) || 6.5}
-          {@const bubbleGapPx = Math.max(2, (bPitchMm * 2.476) - 14)}
-          {@const rowGapPx = Math.max(1, (rPitchMm * 2.476) - 16)}
-          {@const minW_mm = Math.round(16 + (labels.length - 1) * bPitchMm + 8)}
-          {@const minH_mm = Math.round(14 + (Math.min(Number(sec.questionsCount) || 1, 25) - 1) * rPitchMm + 10)}
-          {@const blockWidthMm = Math.max(Number(sec.w_mm) || 75, minW_mm)}
-          {@const blockHeightMm = Math.max(Number(sec.h_mm) || 140, minH_mm)}
+          {@const bPitchMm = Number(sec.bubblePitchMm) || 9.5}
+          {@const rPitchMm = Number(sec.rowPitchMm) || 4.2}
+          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - 14)}
+          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - 14)}
+          {@const minW_mm = Math.round(14 + (labels.length - 1) * bPitchMm + 8)}
+          {@const minH_mm = Math.round(14 + (Math.min(Number(sec.questionsCount) || 1, 50) - 1) * rPitchMm + 10)}
+          {@const blockWidthMm = Math.max(Number(sec.w_mm) || 56, minW_mm)}
+          {@const blockHeightMm = Math.max(Number(sec.h_mm) || 220, minH_mm)}
           <div
-            class={`absolute rounded-lg border-2 transition-all backdrop-blur-[0.5px] ${
+            class={`absolute rounded-lg border transition-all backdrop-blur-[0.5px] ${
               isSelected
                 ? 'border-emerald-600 border-dashed bg-emerald-500/15 ring-2 ring-emerald-400/60 z-20 shadow-sm'
                 : 'border-emerald-500/80 border-dashed bg-emerald-500/5 hover:border-emerald-600 z-10'
             }`}
-            style={`top: ${(Number(sec.posY) || 72) * 2.476}px; left: ${(Number(sec.posX) || 25) * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
+            style={`top: ${(Number(sec.posY) || 56) * 2.476}px; left: ${(Number(sec.posX) || 16) * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
             role="button"
             tabindex="0"
           >
             <!-- Section Header Chip with Mini Lock Button -->
-            <div class="px-1.5 py-0.5 bg-emerald-600/95 text-white rounded-t text-[7.5px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
-              <span class="truncate">[OPTICAL GRID] {sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
+            <div class="px-1.5 py-0.5 bg-emerald-600/95 text-white rounded-t text-[7px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
+              <span class="truncate">{sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
               <div class="flex items-center space-x-1 shrink-0">
-                <span class="opacity-85 text-[7px] font-normal">{bPitchMm}mm</span>
+                <span class="opacity-85 text-[6.5px] font-normal">{bPitchMm}mm</span>
                 <button
                   type="button"
                   onclick={(e) => {
@@ -555,12 +490,12 @@
 
             <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing -->
             <div
-              class="p-1.5 overflow-hidden h-[calc(100%-18px)] flex flex-col"
+              class="p-1 overflow-hidden h-[calc(100%-16px)] flex flex-col"
               style={`gap: ${rowGapPx}px;`}
             >
-              {#each Array.from({ length: Math.max(1, Math.min(Number(sec?.questionsCount) || 1, 20)) }) as _, r}
-                <div class="flex items-center text-[8px] font-mono text-emerald-950 shrink-0">
-                  <span class="w-4 text-[7px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1.5 shrink-0">
+              {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
+                <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0">
+                  <span class="w-3.5 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0">
                     {(Number(sec?.startQ) || 1) + r}
                   </span>
                   <div
@@ -568,18 +503,13 @@
                     style={`gap: ${bubbleGapPx}px;`}
                   >
                     {#each labels as opt}
-                      <div class="w-3.5 h-3.5 rounded-full border-2 border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[7px] font-bold shadow-xs shrink-0">
+                      <div class="w-3 h-3 rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0">
                         {opt}
                       </div>
                     {/each}
                   </div>
                 </div>
               {/each}
-              {#if (Number(sec?.questionsCount) || 0) > 20}
-                <div class="text-[7px] font-mono text-emerald-700 text-center italic mt-0.5 font-medium">
-                  + {(Number(sec?.questionsCount) || 0) - 20} more optical rows
-                </div>
-              {/if}
             </div>
 
             <!-- Resize Handle (Only visible when unlocked) -->
