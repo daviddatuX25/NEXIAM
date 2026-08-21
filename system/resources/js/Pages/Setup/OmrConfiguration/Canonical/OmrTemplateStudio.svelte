@@ -654,14 +654,42 @@
     panX = 0;
     panY = 0;
   }
+
+
+  /** Svelte action: strips padding and overflow from the page-layout <main> and its slot wrapper
+      so this component fills the remaining viewport edge-to-edge with zero scroll. */
+  function bleedParent(node) {
+    const slot = node.parentElement;
+    const pageMain = slot?.closest('main');
+    if (!pageMain) return;
+    const savedMain = { padding: pageMain.style.padding, overflow: pageMain.style.overflow, position: pageMain.style.position };
+    const savedSlot = slot ? { overflow: slot.style.overflow, maxHeight: slot.style.maxHeight } : null;
+    pageMain.style.padding = '0';
+    pageMain.style.overflow = 'hidden';
+    pageMain.style.position = 'relative';
+    if (slot && slot !== pageMain) {
+      slot.style.overflow = 'hidden';
+      slot.style.maxHeight = '100%';
+    }
+    return {
+      destroy() {
+        pageMain.style.padding = savedMain.padding;
+        pageMain.style.overflow = savedMain.overflow;
+        pageMain.style.position = savedMain.position;
+        if (slot && savedSlot) {
+          slot.style.overflow = savedSlot.overflow;
+          slot.style.maxHeight = savedSlot.maxHeight;
+        }
+      },
+    };
+  }
 </script>
 
-<!-- FULL-BLEED WORKSPACE CONTAINER: Dynamically fills remaining height (h-full flex-1), ZERO outer scrollbars -->
-<div class="w-full h-full flex-1 relative overflow-hidden bg-slate-100 flex select-none">
-  <!-- FULL-BLEED CANVAS BASE (Column 2) -->
-  <main class="w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
-    <!-- Scalable Canvas Viewport (Zero Scrollbars) -->
-    <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
+<!-- FULL-BLEED WORKSPACE: fills parent exactly. onMount strips the page layout <main> padding/overflow
+     so this container occupies the entire remaining viewport without any scroll. -->
+<div class="absolute inset-0 overflow-hidden bg-slate-100 select-none" use:bleedParent>
+  <!-- Canvas fills the entire workspace; all UI floats above it -->
+  <div class="absolute inset-0 overflow-hidden bg-slate-100">
       <StudioCanvas
         bind:scale
         bind:panX
@@ -708,10 +736,10 @@
         {currentStage}
         onGeometryChanged={triggerAutosave}
       />
-    </div>
+  </div>
 
-    <!-- FLOATING TOP STEPPER BAR (Positioned in the open canvas space to the right of Column 1, NEVER overlaps Column 1) -->
-    <div class="absolute top-4 left-[380px] right-4 flex items-center justify-between z-30 pointer-events-none gap-4">
+  <!-- FLOATING TOP STEPPER BAR (Positioned over the canvas, right of Column 1) -->
+  <div class="absolute top-4 left-[376px] right-4 flex items-center justify-between z-30 pointer-events-none gap-4">
       <!-- 4-Step Stepper Navigation -->
       <div class="pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1 shrink-0">
         {#each stageTitles as title, idx}
@@ -778,9 +806,8 @@
       </div>
     </div>
 
-    <!-- FLOATING CANVAS CONTROLS (Positioned at Bottom-Left beside Column 1 for easy reach) -->
-    <div class="absolute bottom-4 left-[376px] bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
-      <!-- Canvas Lock / Active Toggle -->
+  <!-- FLOATING CANVAS CONTROLS (Bottom-left beside Column 1) -->
+  <div class="absolute bottom-4 left-[376px] bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
       <button
         type="button"
         onclick={() => { canvasLocked = !canvasLocked; }}
@@ -836,7 +863,6 @@
         <span>Fit (78%)</span>
       </button>
     </div>
-  </main>
 
   <!-- COLUMN 1: FLOATING LEFT TOOL CARD (Positioned strictly inside top-4 to bottom-4) -->
   <aside class="absolute top-4 left-4 bottom-4 w-[350px] max-h-[calc(100%-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden z-20">
