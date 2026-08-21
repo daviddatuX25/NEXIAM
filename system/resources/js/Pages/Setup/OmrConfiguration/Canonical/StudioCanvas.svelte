@@ -2,6 +2,8 @@
   import {
     Lock,
     Loader2,
+    Minus,
+    Plus,
   } from 'lucide-svelte';
   import { contentBlockSizeMm } from '@/lib/omrStudioGeometry';
 
@@ -16,7 +18,10 @@
     showHeaderOverlay = true,
     headerTitle = 'EXAMINATION ANSWER SHEET',
     headerSubtitle = 'AUTOMATED OMR EVALUATION FORM',
-    headerFontSize = 14.0,
+    headerFontSize = $bindable(14.0),
+    headerFontFamily = $bindable('Inter, sans-serif'),
+    headerColor = $bindable('#0f172a'),
+    headerAlign = $bindable('left'),
     headerX = $bindable(25),
     headerY = $bindable(20),
     headerW = $bindable(160),
@@ -30,6 +35,9 @@
     qrLocked = false,
     showInstructionsOverlay = true,
     instructionsContent = 'Use 2B pencil only.',
+    instructionsFontSize = $bindable(9.0),
+    instructionsFontFamily = $bindable('Inter, sans-serif'),
+    instructionsColor = $bindable('#334155'),
     instX = $bindable(25),
     instY = $bindable(250),
     instW = $bindable(90),
@@ -37,6 +45,9 @@
     instLocked = false,
     showSignatureOverlay = true,
     signatureContent = 'EXAMINEE SIGNATURE',
+    signatureFontSize = $bindable(8.5),
+    signatureFontFamily = $bindable('Inter, sans-serif'),
+    signatureColor = $bindable('#475569'),
     sigX = $bindable(125),
     sigY = $bindable(250),
     sigW = $bindable(60),
@@ -60,7 +71,7 @@
   let isBlockDragging = $state(false);
   let isHandleDragging = $state(false);
   let dragBlockIndex = $state(null);
-  let selectedOverlay = $state('header'); // 'header' | 'qr' | 'signature' | 'instructions' | string
+  let selectedOverlay = $state('header'); // 'header' | 'qr' | 'signature' | 'instructions' | number
   let dragStartX = 0;
   let dragStartY = 0;
   let blockStartGeometry = { x: 0, y: 0, w: 0, h: 0 };
@@ -188,7 +199,7 @@
     blockStartGeometry = { ...geometry };
   }
 
-  // Section Bubble Drag & Resize Triggers (Stage 3)
+  // Section Bubble Drag Triggers (Stage 3)
   function handleBlockMouseDown(e, index) {
     const sec = sections[index];
     if (currentStage !== 3 || sec?.isLocked) return;
@@ -267,29 +278,61 @@
         ></div>
       {/if}
 
-      <!-- STAGE 2: Overlays (Header, Signature, Instructions, Custom text, Simulated QR) -->
+      <!-- STAGE 2: Overlays (Header, Signature, Instructions, Custom text, Simulated QR) with Typography Controls -->
       {#if currentStage === 2}
         <!-- Document Header Overlay -->
         {#if showHeaderOverlay}
           <div
-            class={`absolute flex justify-between items-center pb-2 border-b-2 border-slate-900 transition-all ${
+            class={`absolute flex justify-between items-center pb-1.5 border-b-2 border-slate-900 transition-all ${
               selectedOverlay === 'header' && !headerLocked
                 ? 'ring-2 ring-emerald-500 bg-emerald-500/10 rounded p-1 z-30'
                 : 'z-10'
             }`}
-            style={`top: ${headerY * 2.476}px; left: ${headerX * 2.476}px; width: ${headerW * 2.476}px;`}
+            style={`top: ${headerY * 2.476}px; left: ${headerX * 2.476}px; width: ${headerW * 2.476}px; text-align: ${headerAlign};`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH }, headerLocked)}
             role="button"
             tabindex="0"
           >
-            <div>
-              <h3 class="font-bold tracking-tight text-slate-900 leading-tight" style={`font-size: ${headerFontSize * 0.9}px;`}>
+            <div class="w-full" style={`text-align: ${headerAlign};`}>
+              <h3
+                class="font-bold tracking-tight leading-tight"
+                style={`font-size: ${headerFontSize * 0.9}px; font-family: ${headerFontFamily}; color: ${headerColor}; text-align: ${headerAlign};`}
+              >
                 {headerTitle}
               </h3>
-              <p class="text-[9px] text-slate-500 font-mono">{headerSubtitle}</p>
+              {#if headerSubtitle}
+                <p class="text-[9px] font-mono text-slate-500 mt-0.5" style={`text-align: ${headerAlign};`}>{headerSubtitle}</p>
+              {/if}
             </div>
 
+            <!-- On-Canvas Fast Style Pill for Header -->
             {#if selectedOverlay === 'header' && !headerLocked}
+              <div
+                class="absolute -top-7 left-0 bg-slate-900/90 text-white rounded-lg px-2 py-0.5 flex items-center space-x-1.5 shadow-lg text-[10px] z-40 pointer-events-auto"
+                onmousedown={(e) => e.stopPropagation()}
+                role="toolbar"
+                tabindex="0"
+              >
+                <button
+                  type="button"
+                  onclick={() => { headerFontSize = Math.max(9, headerFontSize - 1); if (onGeometryChanged) onGeometryChanged(); }}
+                  class="hover:text-emerald-400 p-0.5"
+                  title="Decrease font size"
+                >
+                  <Minus class="size-2.5" />
+                </button>
+                <span class="font-mono text-[9.5px]">{headerFontSize}pt</span>
+                <button
+                  type="button"
+                  onclick={() => { headerFontSize = Math.min(28, headerFontSize + 1); if (onGeometryChanged) onGeometryChanged(); }}
+                  class="hover:text-emerald-400 p-0.5"
+                  title="Increase font size"
+                >
+                  <Plus class="size-2.5" />
+                </button>
+              </div>
+
+              <!-- Resize Handle -->
               <div
                 class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleOverlayResizeMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH }, headerLocked)}
@@ -300,7 +343,7 @@
           </div>
         {/if}
 
-        <!-- Simulated Cryptographic QR Overlay (High-Contrast SVG Data Matrix) -->
+        <!-- Simulated Cryptographic QR Overlay -->
         {#if showQrOverlay}
           <div
             class={`absolute border rounded bg-white p-1 flex flex-col items-center justify-between transition-all ${
@@ -366,7 +409,7 @@
                 ? 'border-emerald-500 ring-2 ring-emerald-400/80 bg-white z-30 shadow-md'
                 : 'border-slate-300 bg-slate-50/90 text-slate-700 z-10'
             }`}
-            style={`top: ${instY * 2.476}px; left: ${instX * 2.476}px; width: ${instW * 2.476}px;`}
+            style={`top: ${instY * 2.476}px; left: ${instX * 2.476}px; width: ${instW * 2.476}px; font-family: ${instructionsFontFamily}; color: ${instructionsColor}; font-size: ${instructionsFontSize * 0.9}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH }, instLocked)}
             role="button"
             tabindex="0"
@@ -393,12 +436,14 @@
                 ? 'ring-2 ring-emerald-500 border-emerald-500 z-30 shadow-md'
                 : 'z-10'
             }`}
-            style={`top: ${sigY * 2.476}px; left: ${sigX * 2.476}px; width: ${sigW * 2.476}px; height: ${sigH * 2.476}px;`}
+            style={`top: ${sigY * 2.476}px; left: ${sigX * 2.476}px; width: ${sigW * 2.476}px; height: ${sigH * 2.476}px; font-family: ${signatureFontFamily};`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH }, sigLocked)}
             role="button"
             tabindex="0"
           >
-            <span class="text-[7px] font-bold uppercase tracking-wider text-slate-500">{signatureContent}</span>
+            <span class="font-bold uppercase tracking-wider" style={`font-size: ${signatureFontSize * 0.9}px; color: ${signatureColor}; font-family: ${signatureFontFamily};`}>
+              {signatureContent}
+            </span>
             <div class="border-b border-dashed border-slate-400 w-full mb-1"></div>
 
             {#if selectedOverlay === 'signature' && !sigLocked}
@@ -415,12 +460,12 @@
         <!-- Custom Text Items Overlay -->
         {#each customTextItems as t, idx}
           <div
-            class={`absolute text-slate-800 font-medium leading-tight p-0.5 rounded cursor-move transition-all ${
+            class={`absolute font-medium leading-tight p-0.5 rounded cursor-move transition-all ${
               selectedOverlay === idx && !t.isLocked
                 ? 'ring-2 ring-emerald-500 bg-emerald-50/50 z-30'
                 : 'z-10'
             }`}
-            style={`top: ${t.posY * 2.476}px; left: ${t.posX * 2.476}px; width: ${t.w_mm * 2.476}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
+            style={`top: ${t.posY * 2.476}px; left: ${t.posX * 2.476}px; width: ${t.w_mm * 2.476}px; font-size: ${(t.fontSize ?? 10) * 0.9}px; font-family: ${t.fontFamily || 'Inter, sans-serif'}; color: ${t.color || '#0f172a'}; text-align: ${t.align || 'left'}; font-weight: ${t.bold ? 'bold' : 'normal'}; font-style: ${t.italic ? 'italic' : 'normal'};`}
             onmousedown={(e) => handleOverlayMouseDown(e, idx, { x: t.posX, y: t.posY, w: t.w_mm, h: t.h_mm }, t.isLocked)}
             role="button"
             tabindex="0"
@@ -430,21 +475,21 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+: Multi-Section Question Bubble Grids (content-hug, constrained — no manual resize) -->
+      <!-- STAGE 3+: Multi-Section Question Bubble Grids (content-hug, constrained — ZERO wasted bottom space) -->
       {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}
           {@const bPitchMm = Number(sec.bubblePitchMm) || 9.5}
           {@const rPitchMm = Number(sec.rowPitchMm) || 4.2}
-          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - 14)}
-          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - 14)}
+          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - 12)}
+          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - 12)}
           {@const blockSize = contentBlockSizeMm(labels.length, Number(sec.questionsCount) || 1, bPitchMm, rPitchMm)}
           {@const blockWidthMm = blockSize.w_mm}
           {@const blockHeightMm = blockSize.h_mm}
           {@const qEnd = (Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1}
           <div
-            class={`absolute rounded-lg border transition-all backdrop-blur-[0.5px] ${
+            class={`absolute rounded-lg border transition-all backdrop-blur-[0.5px] overflow-hidden ${
               isSelected
                 ? 'border-emerald-600 border-dashed bg-emerald-500/15 ring-2 ring-emerald-400/60 z-20 shadow-sm'
                 : 'border-emerald-500/80 border-dashed bg-emerald-500/5 hover:border-emerald-600 z-10'
@@ -456,12 +501,12 @@
           >
             <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing (content-hug padding) -->
             <div
-              class="p-1 w-full h-full flex flex-col"
+              class="p-1 w-full h-full flex flex-col justify-start"
               style={`gap: ${rowGapPx}px;`}
             >
               {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
-                <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0">
-                  <span class="w-3.5 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0">
+                <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 h-3 leading-none">
+                  <span class="w-3.5 h-3 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center">
                     {(Number(sec?.startQ) || 1) + r}
                   </span>
                   <div

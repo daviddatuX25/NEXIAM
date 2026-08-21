@@ -125,12 +125,14 @@
   let headerTitle = $state(draft.name || 'EXAMINATION ANSWER SHEET');
   let headerSubtitle = $state(draft.code || 'AUTOMATED OMR EVALUATION FORM');
   let headerFontSize = $state(14.0);
+  let headerFontFamily = $state('Inter, sans-serif');
+  let headerColor = $state('#0f172a');
+  let headerAlign = $state('left');
   let headerX = $state(25);
   let headerY = $state(20);
   let headerW = $state(160);
   let headerH = $state(15);
   let headerLocked = $state(false);
-
   let showQrOverlay = $state(true);
   let qrX = $state(162);
   let qrY = $state(18);
@@ -141,6 +143,8 @@
   let showInstructionsOverlay = $state(false);
   let instructionsContent = $state('Use 2B pencil only. Shade bubbles completely. Erase cleanly to change.');
   let instructionsFontSize = $state(9.0);
+  let instructionsFontFamily = $state('Inter, sans-serif');
+  let instructionsColor = $state('#334155');
   let instX = $state(25);
   let instY = $state(250);
   let instW = $state(90);
@@ -150,6 +154,8 @@
   let showSignatureOverlay = $state(false);
   let signatureContent = $state('EXAMINEE SIGNATURE');
   let signatureFontSize = $state(8.5);
+  let signatureFontFamily = $state('Inter, sans-serif');
+  let signatureColor = $state('#475569');
   let sigX = $state(125);
   let sigY = $state(250);
   let sigW = $state(60);
@@ -300,8 +306,9 @@
       if (studio.headerTitle) headerTitle = studio.headerTitle;
       if (studio.headerSubtitle) headerSubtitle = studio.headerSubtitle;
       if (typeof studio.headerFontSize === 'number') headerFontSize = studio.headerFontSize;
-      if (typeof studio.headerX === 'number') headerX = studio.headerX;
-      if (typeof studio.headerY === 'number') headerY = studio.headerY;
+      if (studio.headerFontFamily) headerFontFamily = studio.headerFontFamily;
+      if (studio.headerColor) headerColor = studio.headerColor;
+      if (studio.headerAlign) headerAlign = studio.headerAlign;
       if (typeof studio.headerW === 'number') headerW = studio.headerW;
       if (typeof studio.headerH === 'number') headerH = studio.headerH;
       if (typeof studio.headerLocked === 'boolean') headerLocked = studio.headerLocked;
@@ -316,8 +323,8 @@
       if (typeof studio.showInstructionsOverlay === 'boolean') showInstructionsOverlay = studio.showInstructionsOverlay;
       if (studio.instructionsContent) instructionsContent = studio.instructionsContent;
       if (typeof studio.instructionsFontSize === 'number') instructionsFontSize = studio.instructionsFontSize;
-      if (typeof studio.instX === 'number') instX = studio.instX;
-      if (typeof studio.instY === 'number') instY = studio.instY;
+      if (studio.instructionsFontFamily) instructionsFontFamily = studio.instructionsFontFamily;
+      if (studio.instructionsColor) instructionsColor = studio.instructionsColor;
       if (typeof studio.instW === 'number') instW = studio.instW;
       if (typeof studio.instH === 'number') instH = studio.instH;
       if (typeof studio.instLocked === 'boolean') instLocked = studio.instLocked;
@@ -325,8 +332,8 @@
       if (typeof studio.showSignatureOverlay === 'boolean') showSignatureOverlay = studio.showSignatureOverlay;
       if (studio.signatureContent) signatureContent = studio.signatureContent;
       if (typeof studio.signatureFontSize === 'number') signatureFontSize = studio.signatureFontSize;
-      if (typeof studio.sigX === 'number') sigX = studio.sigX;
-      if (typeof studio.sigY === 'number') sigY = studio.sigY;
+      if (studio.signatureFontFamily) signatureFontFamily = studio.signatureFontFamily;
+      if (studio.signatureColor) signatureColor = studio.signatureColor;
       if (typeof studio.sigW === 'number') sigW = studio.sigW;
       if (typeof studio.sigH === 'number') sigH = studio.sigH;
       if (typeof studio.sigLocked === 'boolean') sigLocked = studio.sigLocked;
@@ -499,18 +506,24 @@
         headerTitle,
         headerSubtitle,
         headerFontSize,
+        headerFontFamily,
+        headerColor,
+        headerAlign,
         headerX, headerY, headerW, headerH, headerLocked,
         showQrOverlay,
         qrX, qrY, qrW, qrH, qrLocked,
         showInstructionsOverlay,
         instructionsContent,
         instructionsFontSize,
+        instructionsFontFamily,
+        instructionsColor,
         instX, instY, instW, instH, instLocked,
         showSignatureOverlay,
         signatureContent,
         signatureFontSize,
+        signatureFontFamily,
+        signatureColor,
         sigX, sigY, sigW, sigH, sigLocked,
-        showMetadataOverlay,
         metadataContent,
         metadataFontSize,
         showRollOverlay,
@@ -714,7 +727,10 @@
         {showHeaderOverlay}
         {headerTitle}
         {headerSubtitle}
-        {headerFontSize}
+        bind:headerFontSize
+        bind:headerFontFamily
+        bind:headerColor
+        bind:headerAlign
         bind:headerX
         bind:headerY
         bind:headerW
@@ -728,6 +744,9 @@
         bind:qrLocked
         {showInstructionsOverlay}
         {instructionsContent}
+        bind:instructionsFontSize
+        bind:instructionsFontFamily
+        bind:instructionsColor
         bind:instX
         bind:instY
         bind:instW
@@ -735,6 +754,9 @@
         bind:instLocked
         {showSignatureOverlay}
         {signatureContent}
+        bind:signatureFontSize
+        bind:signatureFontFamily
+        bind:signatureColor
         bind:sigX
         bind:sigY
         bind:sigW
@@ -1001,18 +1023,24 @@
           bind:headerTitle
           bind:headerSubtitle
           bind:headerFontSize
+          bind:headerFontFamily
+          bind:headerColor
+          bind:headerAlign
           bind:headerLocked
           bind:showQrOverlay
           bind:qrLocked
           bind:showInstructionsOverlay
           bind:instructionsContent
           bind:instructionsFontSize
+          bind:instructionsFontFamily
+          bind:instructionsColor
           bind:instLocked
           bind:showSignatureOverlay
           bind:signatureContent
           bind:signatureFontSize
+          bind:signatureFontFamily
+          bind:signatureColor
           bind:sigLocked
-          bind:customTextItems
           onChanged={triggerAutosave}
           onBack={() => requestGoToStage(1)}
           onNext={() => requestGoToStage(3)}
