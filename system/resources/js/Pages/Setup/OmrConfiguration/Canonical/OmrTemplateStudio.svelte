@@ -47,7 +47,7 @@
   let stage1Mode = $state((draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'html');
   let baseType = $state(draft.source_kind ?? 'html');
 
-  // Compact, Single-Page A4-Fitted 150-Q HTML Template (Fits 100% within A4 sheet bounds)
+  // Compact, Single-Page A4-Fitted 150-Q HTML Template
   const DEFAULT_150Q_HTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -120,7 +120,7 @@
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
   let markerPattern = $state('square');
-  let showHeaderOverlay = $state(false); // In HTML mode, header is already inside HTML template
+  let showHeaderOverlay = $state(false);
   let headerTitle = $state(draft.name || 'EXAMINATION ANSWER SHEET');
   let headerSubtitle = $state(draft.code || 'AUTOMATED OMR EVALUATION FORM');
   let headerFontSize = $state(14.0);
@@ -170,7 +170,7 @@
 
   let customTextItems = $state([]);
 
-  // Stage 3: Multi-Section Geometry & Canvas State (3 Columns corresponding to 150 items)
+  // Stage 3: Multi-Section Geometry & Canvas State
   let canvasLocked = $state(false);
   let sections = $state([
     {
@@ -228,7 +228,7 @@
   let activeSectionIndex = $state(0);
   let bubbleRadiusMm = $state(4.5);
 
-  // Canvas Pan & Zoom (Optimized Default Scale = 0.88 so entire A4 sheet is 100% visible & centered)
+  // Canvas Pan & Zoom (Optimized Default Scale = 0.88)
   let scale = $state(0.88);
   let panX = $state(0);
   let panY = $state(0);
@@ -650,15 +650,15 @@
   }
 
   function resetZoom() {
-    scale = 0.88; // Default optimal scale fitting 100% of A4 sheet vertically & horizontally
+    scale = 0.88;
     panX = 0;
     panY = 0;
   }
 </script>
 
-<!-- TEMPLATE STUDIO WORKBENCH: Contained height (calc(100vh - 3.5rem)) filling remaining vertical space with NO outer scroll -->
-<div class="h-[calc(100vh-3.5rem)] w-full flex bg-slate-100 text-slate-900 overflow-hidden font-sans select-none border-t border-slate-200">
-  <!-- COLUMN 1: LEFT WORKBENCH SIDEBAR (Strictly contained, fixed width, independent scroll) -->
+<!-- FULL-SCREEN WORKBENCH: Direct attachment to app sidebar, zero outer borders, h-screen overflow-hidden -->
+<div class="h-screen w-full flex bg-slate-100 text-slate-900 overflow-hidden font-sans select-none">
+  <!-- COLUMN 1: LEFT TOOL SIDEBAR (Directly attached to app sidebar, independent scroll) -->
   <aside class="w-[380px] h-full bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden shadow-xs z-20">
     <!-- Sidebar Header (Template Name & Code) -->
     <div class="h-12 border-b border-slate-200 px-5 flex items-center justify-between shrink-0 bg-white">
@@ -676,7 +676,7 @@
       </div>
     </div>
 
-    <!-- Scrollable Sidebar Tool Content Area (Independent Internal Scroll) -->
+    <!-- Scrollable Sidebar Tool Content Area -->
     <div class="flex-1 overflow-y-auto min-h-0">
       {#if currentStage === 1}
         <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
@@ -821,7 +821,7 @@
       {/if}
     </div>
 
-    <!-- Pinned Bottom Navigation Footer in Sidebar (Step 1 only; Steps 2-4 have their own footers) -->
+    <!-- Pinned Bottom Navigation Footer in Sidebar -->
     {#if currentStage === 1}
       <div class="shrink-0 p-4 border-t border-slate-200 bg-white">
         <button
@@ -836,12 +836,12 @@
     {/if}
   </aside>
 
-  <!-- COLUMN 2: RIGHT CANVAS WORKBENCH (Stationary Top Stepper & Controls Bar + Centered Canvas Area) -->
+  <!-- COLUMN 2: FULL-BLEED CANVAS WORKBENCH (Floating Stepper & Dedicated Bottom-Left Controls) -->
   <main class="flex-1 h-full flex flex-col min-w-0 bg-slate-100 overflow-hidden relative">
-    <!-- Stationary Top Bar (Above Canvas: 4-Step Stepper + Canvas Viewport Controls + Save) -->
-    <div class="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-2xs z-20">
-      <!-- 4-Step Stepper Navigation (Vertically centered with clean typography) -->
-      <div class="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+    <!-- FLOATING TOP NAVBAR (Glass Pill Bar with Stepper on Left/Center and Actions on Right) -->
+    <div class="absolute top-4 left-6 right-6 flex items-center justify-between z-30 pointer-events-none gap-4">
+      <!-- 4-Step Stepper Navigation -->
+      <div class="pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1 shrink-0">
         {#each stageTitles as title, idx}
           {@const stageNum = idx + 1}
           {@const isActive = currentStage === stageNum}
@@ -849,16 +849,16 @@
           <button
             type="button"
             onclick={() => requestGoToStage(stageNum)}
-            class={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 leading-none ${
+            class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
               isActive
                 ? 'bg-slate-900 text-white shadow-xs'
                 : isPast
-                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/70'
+                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
                   : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <span class={`size-3.5 rounded-full flex items-center justify-center text-[9px] font-extrabold leading-none shrink-0 ${
-              isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-300 text-slate-800' : 'bg-slate-200 text-slate-400'
+            <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
+              isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
             }`}>
               {stageNum}
             </span>
@@ -867,88 +867,30 @@
         {/each}
       </div>
 
-      <!-- Right Actions: Recompose Action (Step 3) + Canvas Viewport Controls + Save -->
-      <div class="flex items-center space-x-2">
+      <!-- Right Actions: Re-edit Design Button (Step 3) + Save Action -->
+      <div class="pointer-events-auto flex items-center space-x-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-md shrink-0">
         {#if currentStage === 3 && draft.raster_url}
           <button
             type="button"
             onclick={() => requestGoToStage(2)}
-            class="px-2.5 h-7 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition shadow-xs"
+            class="px-2.5 h-7 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition"
             title="Return to Step 2 to edit overlays or re-render page raster"
           >
             <RotateCcw class="size-3 text-emerald-600" />
             <span>Re-edit Design</span>
           </button>
-          <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
         {/if}
 
-        <!-- Canvas Lock Toggle Button -->
-        <button
-          type="button"
-          onclick={() => { canvasLocked = !canvasLocked; }}
-          class={`px-2.5 h-7 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
-            canvasLocked
-              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-          }`}
-          title={canvasLocked ? 'Canvas viewport is locked (Scroll wheel & panning disabled)' : 'Canvas is interactive (Scroll wheel zooms, drag background to pan)'}
-        >
-          {#if canvasLocked}
-            <Lock class="size-3 text-amber-700" />
-            <span>Canvas Locked</span>
-          {:else}
-            <Unlock class="size-3 text-slate-600" />
-            <span>Canvas Active</span>
-          {/if}
-        </button>
-
-        <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
-
-        <!-- Zoom Controls -->
-        <div class="flex items-center space-x-1 bg-slate-100 border border-slate-200 rounded-lg p-0.5">
-          <button
-            type="button"
-            onclick={() => zoomStep(-0.15)}
-            title="Zoom Out"
-            class="w-6 h-6 rounded flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
-          >
-            <Minus class="size-3" />
-          </button>
-          <span class="text-xs font-mono font-bold px-1 text-slate-800 min-w-[38px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            type="button"
-            onclick={() => zoomStep(0.15)}
-            title="Zoom In"
-            class="w-6 h-6 rounded flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
-          >
-            <Plus class="size-3" />
-          </button>
-          <button
-            type="button"
-            onclick={resetZoom}
-            title="Reset Zoom to Fit A4 Sheet (88%)"
-            class="px-1.5 h-6 rounded text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-white transition flex items-center gap-0.5"
-          >
-            <Maximize2 class="size-2.5" />
-            <span>Fit</span>
-          </button>
-        </div>
-
-        <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
-
-        <!-- Save Indicator & Save Button -->
-        <div class="flex items-center space-x-1.5 text-xs">
+        <div class="flex items-center space-x-1.5 text-xs px-2">
           {#if saveStatus === 'saving'}
-            <Loader2 class="size-3 text-amber-500 animate-spin" />
-            <span class="text-amber-600 font-mono text-[10px]">Saving…</span>
+            <Loader2 class="size-3.5 text-amber-500 animate-spin" />
+            <span class="text-amber-600 font-mono text-[11px]">Saving…</span>
           {:else if saveStatus === 'saved'}
-            <CheckCircle2 class="size-3 text-emerald-600" />
-            <span class="text-emerald-600 font-mono text-[10px]">Saved</span>
+            <CheckCircle2 class="size-3.5 text-emerald-600" />
+            <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
           {:else if saveStatus === 'error'}
-            <XCircle class="size-3 text-rose-600" />
-            <span class="text-rose-600 font-mono text-[10px] max-w-[100px] truncate" title={errorMessage}>
+            <XCircle class="size-3.5 text-rose-600" />
+            <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
               {errorMessage || 'Error'}
             </span>
           {/if}
@@ -957,14 +899,73 @@
         <button
           type="button"
           onclick={performSave}
-          class="px-3 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition shadow-xs"
+          class="px-3.5 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-xs"
         >
           Save
         </button>
       </div>
     </div>
 
-    <!-- Scalable Canvas Area -->
+    <!-- FLOATING CANVAS CONTROLS (Positioned at Bottom-Left near Column 1 with generous spacing) -->
+    <div class="absolute bottom-5 left-6 bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
+      <!-- Canvas Lock / Active Toggle -->
+      <button
+        type="button"
+        onclick={() => { canvasLocked = !canvasLocked; }}
+        class={`px-3 h-8 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
+          canvasLocked
+            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+        }`}
+        title={canvasLocked ? 'Canvas viewport is locked (Scroll wheel & panning disabled)' : 'Canvas is interactive (Scroll wheel zooms, drag background to pan)'}
+      >
+        {#if canvasLocked}
+          <Lock class="size-3.5 text-amber-700" />
+          <span>Canvas Locked</span>
+        {:else}
+          <Unlock class="size-3.5 text-slate-600" />
+          <span>Canvas Active</span>
+        {/if}
+      </button>
+
+      <div class="h-4 w-px bg-slate-200"></div>
+
+      <!-- Zoom In & Out Buttons -->
+      <div class="flex items-center space-x-1 bg-slate-100 border border-slate-200 rounded-xl p-0.5">
+        <button
+          type="button"
+          onclick={() => zoomStep(-0.15)}
+          title="Zoom Out"
+          class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
+        >
+          <Minus class="size-3.5" />
+        </button>
+        <span class="text-xs font-mono font-bold px-1.5 text-slate-800 min-w-[42px] text-center">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          type="button"
+          onclick={() => zoomStep(0.15)}
+          title="Zoom In"
+          class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
+        >
+          <Plus class="size-3.5" />
+        </button>
+      </div>
+
+      <!-- Fit Button -->
+      <button
+        type="button"
+        onclick={resetZoom}
+        title="Reset Zoom to Fit A4 Sheet (88%)"
+        class="px-2.5 h-8 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1 border border-slate-200"
+      >
+        <Maximize2 class="size-3" />
+        <span>Fit (88%)</span>
+      </button>
+    </div>
+
+    <!-- Scalable Canvas Viewport -->
     <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
       <StudioCanvas
         bind:scale
