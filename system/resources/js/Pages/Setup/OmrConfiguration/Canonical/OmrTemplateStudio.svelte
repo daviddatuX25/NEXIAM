@@ -43,6 +43,7 @@
   let {
     draft = {},
     marker_profiles = [],
+    aptitude_areas = [],
     urls = {},
     onMappingSaved = null,
   } = $props();
@@ -397,6 +398,38 @@
       copy[0].formCode = 'FORM 50-C';
       components = copy.filter((c) => !['Part_3', 'Part_4', 'Part_5', 'Part_6'].includes(c.id));
     }
+    syncComponentsToSections();
+  }
+
+  function scaffoldFromAptitudeAreas() {
+    let startQ = 1;
+    const newGrids = areas.map((area, idx) => {
+      const qCount = Math.min(50, Math.max(5, Number(area.max_items) || 25));
+      const grid = {
+        id: `Part_${idx + 1}`,
+        name: `Part ${idx + 1}: ${area.name} (Q${startQ}–${startQ + qCount - 1})`,
+        type: 'mcq',
+        subjectName: `${idx + 1}. ${area.name}`,
+        questionsCount: qCount,
+        cols: 1,
+        optionsCount: 4,
+        startQ: startQ,
+        customValuesStr: 'A, B, C, D',
+        bubblePitchMm: 6.0,
+        rowPitchMm: 6.8,
+        labelStyle: 'column_header',
+        posX: 10 + idx * 32,
+        posY: 88,
+        w_mm: 28,
+        h_mm: 175,
+        isLocked: false,
+      };
+      startQ += qCount;
+      return grid;
+    });
+
+    const otherComps = components.filter((c) => c.type !== 'mcq' && c.type !== 'tf' && c.type !== 'likert' && c.type !== 'custom');
+    components = [...otherComps, ...newGrids];
     syncComponentsToSections();
   }
 
@@ -1569,24 +1602,55 @@
                   {/if}
 
                   <!-- D. Subject Question Columns Overview -->
+                  <!-- D. Subject Question Columns Overview with Aptitude Area Binding -->
                   <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
                     <div class="flex items-center justify-between font-bold text-slate-800">
                       <span>Subject Sections ({questionGridComps.length} Columns)</span>
                       <span class="text-[9.5px] font-mono text-slate-500">{totalQuestionsCount} Qs Total</span>
                     </div>
-                    <div class="space-y-1">
+
+                    {#if aptitude_areas && aptitude_areas.length > 0}
+                      <button
+                        type="button"
+                        onclick={scaffoldFromAptitudeAreas}
+                        class="w-full py-1 px-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-[10.5px] font-semibold text-slate-700 transition flex items-center justify-center gap-1 shadow-2xs"
+                      >
+                        <Sparkles class="size-3 text-emerald-600" />
+                        <span>Scaffold from System Aptitude Areas ({aptitude_areas.length})</span>
+                      </button>
+                    {/if}
+
+                    <div class="space-y-1.5 pt-0.5">
                       {#each questionGridComps as g, idx}
-                        <div class="p-1.5 bg-white border border-slate-200 rounded-lg flex items-center justify-between text-[11px]">
-                          <input
-                            type="text"
-                            bind:value={g.subjectName}
-                            oninput={syncComponentsToSections}
-                            class="font-semibold text-slate-800 bg-transparent border-none p-0 focus:ring-0 text-[11px] w-28"
-                          />
-                          <div class="flex items-center gap-1.5">
+                        <div class="p-2 bg-white border border-slate-200 rounded-lg space-y-1 text-[11px]">
+                          <div class="flex items-center justify-between">
+                            <input
+                              type="text"
+                              bind:value={g.subjectName}
+                              oninput={syncComponentsToSections}
+                              class="font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 text-[11px] w-36"
+                            />
                             <span class="font-mono text-[10px] text-slate-500">Q{g.startQ}–{g.startQ + g.questionsCount - 1}</span>
-                            <span class="px-1 py-0.5 text-[9px] bg-slate-100 rounded text-slate-700 font-bold">4 Opt</span>
                           </div>
+
+                          {#if aptitude_areas && aptitude_areas.length > 0}
+                            <select
+                              class="w-full text-[10px] bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700"
+                              onchange={(e) => {
+                                const selectedArea = aptitude_areas.find((a) => a.code === e.target.value);
+                                if (selectedArea) {
+                                  g.subjectName = `${idx + 1}. ${selectedArea.name}`;
+                                  g.questionsCount = Number(selectedArea.max_items) || g.questionsCount;
+                                  syncComponentsToSections();
+                                }
+                              }}
+                            >
+                              <option value="">-- Bind Aptitude Area --</option>
+                              {#each aptitude_areas as area}
+                                <option value={area.code}>{area.name} ({area.max_items} Items)</option>
+                              {/each}
+                            </select>
+                          {/if}
                         </div>
                       {/each}
                     </div>
@@ -1751,10 +1815,10 @@
       <div class="shrink-0 p-3 border-t border-slate-200/80 bg-white/90">
         <button
           type="button"
-          onclick={() => requestGoToStage(2)}
+          onclick={() => requestGoToStage(stage1Mode === 'html' ? 3 : 2)}
           class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
         >
-          <span>Continue to Layout & Markers</span>
+          <span>{stage1Mode === 'html' ? 'Continue to Question Bubbles' : 'Continue to Layout & Markers'}</span>
           <ChevronRight class="size-3.5" />
         </button>
       </div>

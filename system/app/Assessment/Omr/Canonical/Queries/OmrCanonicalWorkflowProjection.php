@@ -6,8 +6,8 @@ use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrMarkerProfile;
 use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
+use App\Models\Foundation\AptitudeArea;
 use App\Models\User;
-
 use function count;
 use function in_array;
 use function route;
@@ -79,6 +79,18 @@ final class OmrCanonicalWorkflowProjection
                 ->orderBy('status')
                 ->orderBy('code')
                 ->get(['id', 'code', 'version', 'family', 'status', 'size_mm', 'quiet_zone_mm', 'asset_sha256'])
+                ->values()
+                ->all(),
+            'aptitude_areas' => AptitudeArea::query()
+                ->active()
+                ->orderBy('id')
+                ->get(['id', 'code', 'name', 'max_items'])
+                ->map(fn (AptitudeArea $area): array => [
+                    'id' => $area->id,
+                    'code' => $area->code,
+                    'name' => $area->name,
+                    'max_items' => $area->max_items,
+                ])
                 ->values()
                 ->all(),
             'stages' => [

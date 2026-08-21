@@ -11,6 +11,7 @@
   let {
     draft = {},
     marker_profiles = [],
+    aptitude_areas = [],
     stages = [],
     urls = {},
   } = $props();
@@ -264,6 +265,7 @@
       <OmrTemplateStudio
         {draft}
         {marker_profiles}
+        {aptitude_areas}
         {urls}
         onMappingSaved={() => {
           message = 'Studio layout autosaved. Mapping and overlay are synchronized.';
