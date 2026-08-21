@@ -441,6 +441,43 @@
     triggerAutosave();
   }
 
+  async function loadSampleUploadedDocument() {
+    if (!urls.source_ingest) return;
+    uploadRunning = true;
+    conversionStatusText = 'Importing standard 150-question test sheet…';
+    conversionError = '';
+
+    try {
+      const res = await fetch('/samples/omr/standard-150q-answer-sheet.png');
+      const blob = await res.blob();
+      const file = new File([blob], 'standard-150q-answer-sheet.png', { type: 'image/png' });
+
+      const form = new FormData();
+      form.append('source_kind', 'image');
+      form.append('source', file);
+      form.append('width_mm', '210');
+      form.append('height_mm', '297');
+      form.append('idempotency_key', newIdempotencyKey());
+
+      const uploadRes = await fetch(urls.source_ingest, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': getCsrfToken(), 'Accept': 'application/json' },
+        body: form,
+      });
+
+      if (!uploadRes.ok) {
+        const data = await uploadRes.json().catch(() => ({}));
+        throw new Error(data.message || 'File upload rejected.');
+      }
+
+      conversionStatusText = 'Rasterizing standard 150-Q answer sheet at 300 PPI…';
+      await pollConversionRun();
+    } catch (err) {
+      uploadRunning = false;
+      conversionError = err.message || 'Sample document import failed.';
+    }
+  }
+
   function confirmResetAndNavigate() {
     draft.raster_url = null;
     showResetConfirmModal = false;
@@ -1079,10 +1116,52 @@
           {:else}
             <!-- Option 2: Upload Document File -->
             <div class="space-y-3">
-              <div class="border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center hover:border-slate-400 bg-slate-50 transition">
-                <Upload class="size-6 text-slate-400 mx-auto mb-1.5" />
-                <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image</p>
-                <p class="text-[10px] text-slate-400 mt-0.5">Automatic 300 PPI print rasterization</p>
+              <!-- 1-Click Sample Sheet Ingestion -->
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <span class="flex items-center gap-1.5">
+                    <Sparkles class="size-3.5 text-emerald-600" />
+                    <span>Standard Test Sheet File</span>
+                  </span>
+                  <span class="text-[9.5px] font-mono text-slate-500 font-normal">PDF / PNG</span>
+                </div>
+                <p class="text-[10.5px] text-slate-500 leading-relaxed">
+                  Official 150-item evaluation sheet layout ready to import or download for manual testing.
+                </p>
+                <div class="flex flex-col gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onclick={loadSampleUploadedDocument}
+                    disabled={uploadRunning}
+                    class="w-full py-1.5 px-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <Sparkles class="size-3 text-emerald-400" />
+                    <span>Import Sample Test Sheet File</span>
+                  </button>
+                  <div class="flex items-center justify-between text-[10.5px] pt-1 text-slate-600 px-0.5">
+                    <a
+                      href="/samples/omr/standard-150q-answer-sheet.pdf"
+                      download="standard-150q-answer-sheet.pdf"
+                      class="text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1"
+                    >
+                      Download PDF
+                    </a>
+                    <span class="text-slate-300">&bull;</span>
+                    <a
+                      href="/samples/omr/standard-150q-answer-sheet.png"
+                      download="standard-150q-answer-sheet.png"
+                      class="text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1"
+                    >
+                      Download PNG
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-slate-400 bg-white transition">
+                <Upload class="size-5 text-slate-400 mx-auto mb-1" />
+                <p class="text-xs font-bold text-slate-700">Or Upload Custom Document</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">PDF, Word (.docx), or Image (PNG/JPG)</p>
                 <input
                   type="file"
                   accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
@@ -1093,12 +1172,11 @@
                 <button
                   type="button"
                   onclick={() => uploadFileInput?.click()}
-                  class="mt-2.5 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
+                  class="mt-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition"
                 >
-                  Select File
+                  Browse Computer
                 </button>
               </div>
-
               {#if uploadRunning}
                 <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
                   <Loader2 class="size-3.5 animate-spin text-blue-600 shrink-0" />
