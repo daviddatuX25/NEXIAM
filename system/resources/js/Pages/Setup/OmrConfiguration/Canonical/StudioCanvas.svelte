@@ -149,10 +149,12 @@
   }
 
   function getOptionLabels(s) {
+    if (!s) return ['A', 'B', 'C', 'D'];
     if (s.type === 'tf') return ['T', 'F'];
     if (s.type === 'likert') return ['1', '2', '3', '4', '5'];
     if (s.type === 'custom') return (s.customValuesStr || 'A, B').split(',').map((v) => v.trim()).filter(Boolean);
-    return ['A', 'B', 'C', 'D', 'E'].slice(0, s.optionsCount || 4);
+    const count = Number(s.optionsCount) || 4;
+    return ['A', 'B', 'C', 'D', 'E'].slice(0, Math.max(2, Math.min(5, count)));
   }
 </script>
 
@@ -339,9 +341,9 @@
 
             <!-- Bubble Rows Preview -->
             <div class="p-1.5 space-y-1 overflow-hidden h-[calc(100%-18px)]">
-              {#each Array.from({ length: Math.min(sec.questionsCount, 12) }) as _, r}
+              {#each Array.from({ length: Math.max(1, Math.min(Number(sec?.questionsCount) || 1, 12)) }) as _, r}
                 <div class="flex items-center justify-between text-[8px] font-mono text-slate-700">
-                  <span class="w-4 font-bold">{(sec.startQ || 1) + r}</span>
+                  <span class="w-4 font-bold">{(Number(sec?.startQ) || 1) + r}</span>
                   <div class="flex items-center space-x-1.5">
                     {#each labels as opt}
                       <div class="w-3.5 h-3.5 rounded-full border border-slate-700 flex items-center justify-center text-[7px] font-bold text-slate-800 bg-white">
@@ -351,9 +353,9 @@
                   </div>
                 </div>
               {/each}
-              {#if sec.questionsCount > 12}
+              {#if (Number(sec?.questionsCount) || 0) > 12}
                 <div class="text-[7px] font-mono text-slate-400 text-center italic mt-0.5">
-                  + {sec.questionsCount - 12} more rows
+                  + {(Number(sec?.questionsCount) || 0) - 12} more rows
                 </div>
               {/if}
             </div>
