@@ -115,7 +115,7 @@
         </div>
 
         <div class="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4">
-          <Button href="/setup/omr/templates/builder" variant="outline" size="xs">Builder</Button>
+          <Button href="/setup/omr/templates/builder" variant="outline" size="xs">Open Studio</Button>
           <Button href="/setup/omr/templates" variant="ghost" size="xs">
             View templates ({templates.length})
             <ArrowRight class="ml-1 size-3" />
