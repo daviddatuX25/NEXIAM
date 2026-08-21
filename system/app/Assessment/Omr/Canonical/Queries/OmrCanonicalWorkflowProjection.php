@@ -101,7 +101,7 @@ final class OmrCanonicalWorkflowProjection
                 'source_cancel' => route('setup.omr.templates.canonical.drafts.source.cancel', $draft),
                 'overlay' => route('setup.omr.templates.canonical.drafts.overlay', $draft),
                 'mapping' => route('setup.omr.templates.canonical.drafts.mapping', $draft),
-                'studio' => route('setup.omr.templates.canonical.drafts.studio', $draft),
+                'studio' => route('setup.omr.studio.save', $draft),
                 'booklet_options' => route('setup.omr.templates.canonical.drafts.booklet_options', $draft),
                 'digital_verification' => route('setup.omr.templates.canonical.drafts.verify.digital', $draft),
                 'compile' => route('setup.omr.templates.canonical.drafts.compile', $draft),

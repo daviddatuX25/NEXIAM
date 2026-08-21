@@ -466,6 +466,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/setup/omr/intake', [OmrConfigurationController::class, 'intake'])->name('setup.omr.intake');
     Route::post('/setup/omr/bundles', [OmrConfigurationController::class, 'storeBundle'])->name('setup.omr.bundles.store');
 
+    // Streamlined Template Studio Routes (Clean, short URLs)
+    Route::get('/setup/omr/studio/{draft?}', [OmrCanonicalTemplateController::class, 'studioDirect'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.studio');
+    Route::put('/setup/omr/studio/{draft}', [OmrCanonicalTemplateController::class, 'studio'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.studio.save');
+
     Route::get('/setup/omr/templates/canonical', [OmrCanonicalTemplateController::class, 'index'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.index');

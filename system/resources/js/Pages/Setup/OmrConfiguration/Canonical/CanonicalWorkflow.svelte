@@ -37,7 +37,7 @@
   const breadcrumbs = [
     { label: 'Setup', href: '/setup' },
     { label: 'OMR Configuration', href: '/setup/omr' },
-    { label: 'Canonical authoring' },
+    { label: 'Template Studio' },
   ];
 
   let activeStage = $state(domainView[draft.stage] ?? 'draft');
@@ -255,8 +255,8 @@
 
 <StaffLayout {breadcrumbs}>
   <PageHeaderBar
-    title={`Canonical authoring · ${draft.name ?? draft.code ?? 'Draft'}`}
-    description="Every source becomes one print-exact canonical page before staff maps OMR blocks."
+    title={`Template Studio · ${draft.name ?? draft.code ?? 'Answer Sheet'}`}
+    description="Design printable answer sheets, configure optical registration, and map question bubbles."
   />
 
   <section class="space-y-4 px-6 pt-2 pb-6">

@@ -66,6 +66,29 @@ class OmrCanonicalTemplateController extends Controller
         return Inertia::render('Setup/OmrConfiguration/Canonical/Index', $projection->indexProps($actor));
     }
 
+    public function studioDirect(
+        Request $request,
+        OmrCanonicalWorkflowProjection $projection,
+        ?OmrTemplateAuthoringDraft $draft = null,
+    ): Response|\Illuminate\Http\RedirectResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+
+        if ($draft === null) {
+            $draft = OmrTemplateAuthoringDraft::query()
+                ->where('owner_user_id', $actor->id)
+                ->orderByDesc('id')
+                ->first()
+                ?? OmrTemplateAuthoringDraft::query()->orderByDesc('id')->first();
+        }
+
+        if ($draft !== null) {
+            return Inertia::render('Setup/OmrConfiguration/Canonical/CanonicalWorkflow', $projection->workflowProps($draft, $actor));
+        }
+
+        return redirect()->route('setup.omr.templates.canonical.index');
+    }
+
     public function show(
         Request $request,
         OmrTemplateAuthoringDraft $draft,
