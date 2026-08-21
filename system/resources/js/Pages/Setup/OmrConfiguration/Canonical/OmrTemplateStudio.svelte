@@ -954,8 +954,9 @@
       bind:marginMm
       bind:markerPattern
       bind:canvasDragLocked
-      rasterUrl={draft.raster_url}
-      htmlContent={stage1Mode === 'html' ? htmlCode : null}
+      rasterUrl={stage1Mode === 'html' ? null : draft.raster_url}
+      htmlContent={htmlCode}
+      isHtmlMode={stage1Mode === 'html'}
       {isComposing}
       {showHeaderOverlay}
       {headerTitle}
