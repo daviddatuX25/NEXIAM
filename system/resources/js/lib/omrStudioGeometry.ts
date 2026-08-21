@@ -53,24 +53,16 @@ export function contentBlockSizeMm(
 ): { w_mm: number; h_mm: number } {
   const opts = Math.max(2, options || 4);
   const qs = Math.min(Math.max(1, questions || 1), 50);
-  const bPitch = Math.max(Number(bubblePitchMm) || 9.5, 6);
-  const rPitch = Math.max(Number(rowPitchMm) || 4.2, 3);
-  const PPM = 2.476; // Canvas preview ratio (520px / 210mm)
+  const bPitch = Math.max(Number(bubblePitchMm) || 6.0, 4.5);
+  const rPitch = Math.max(Number(rowPitchMm) || 3.8, 3.0);
 
-  const bubbleGapPx = Math.max(1.5, bPitch * PPM - 12);
-  const rowGapPx = Math.max(0.5, rPitch * PPM - 12);
+  // Physical bounds: bubble diameter (4.5mm) + pitch spans + 1.5mm padding
+  // Satisfies OmrMappingValidator requiredWidth (bubbleWidth + (options - 1) * optionPitch)
+  // with zero inter-block overlap.
+  const w_mm = Number((4.5 + (opts - 1) * bPitch + 1.5).toFixed(1));
+  const h_mm = Number((4.5 + (qs - 1) * rPitch + 1.5).toFixed(1));
 
-  // Width: 14px Q-num label + 4px margin + opts * 12px bubbles + (opts - 1) * bubbleGap + 8px padding
-  const wPx = 18 + opts * 12 + (opts - 1) * bubbleGapPx + 8;
-
-  // Height: qs * 12px rows + (qs - 1) * rowGap + 8px padding (4px top + 4px bottom)
-  // For 1 question: exactly 12px + 8px = 20px (8.1mm). Zero wasted bottom space.
-  const hPx = 12 + (qs - 1) * (12 + rowGapPx) + 8;
-
-  return {
-    w_mm: Number((wPx / PPM).toFixed(1)),
-    h_mm: Number((hPx / PPM).toFixed(1)),
-  };
+  return { w_mm, h_mm };
 }
 
 export interface InsetMargins {

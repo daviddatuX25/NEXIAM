@@ -45,11 +45,13 @@ final class SaveOmrCanonicalStudioState
         $this->drafts->assertOwner($draft, $actor);
 
         if (! in_array($draft->stage, [
+            OmrTemplateAuthoringDraft::STAGE_DRAFT,
+            OmrTemplateAuthoringDraft::STAGE_SOURCE_CONFIRMED,
             OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED,
             OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE,
             OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED,
         ], true)) {
-            throw new OmrAuthoringDraftException('studio_stage_invalid', 'Studio requires a prepared canonical page.');
+            throw new OmrAuthoringDraftException('studio_stage_invalid', 'Studio requires an editable authoring draft.');
         }
 
         $validatedOverlay = $this->spec->validate($overlay);
@@ -126,9 +128,12 @@ final class SaveOmrCanonicalStudioState
                 $authoring['verification'] = null;
             }
 
-            $nextStage = $validatedMapping !== null
-                ? OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE
-                : OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED;
+            $nextStage = $locked->stage;
+            if ($validatedMapping !== null) {
+                $nextStage = OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE;
+            } elseif ($locked->stage === OmrTemplateAuthoringDraft::STAGE_DRAFT) {
+                $nextStage = OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED;
+            }
 
             if ($locked->stage === OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED
                 && $validatedMapping !== null
@@ -136,7 +141,6 @@ final class SaveOmrCanonicalStudioState
                 && ($authoring['verification']['status'] ?? null) === 'passed') {
                 $nextStage = OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED;
             }
-
             $locked->forceFill([
                 'authoring_json' => $authoring,
                 'lock_version' => $expectedLockVersion + 1,

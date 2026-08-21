@@ -49,6 +49,7 @@
   let baseType = $state(draft.source_kind ?? 'html');
 
   // Compact, Single-Page A4-Fitted 150-Q HTML Template
+  // Compact, Single-Page A4-Fitted 150-Q HTML Template (6 Subjects x 25 Items)
   const DEFAULT_150Q_HTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -56,47 +57,59 @@
   <style>
     * { box-sizing: border-box; }
     html, body {
-      margin: 0; padding: 12px;
+      margin: 0; padding: 10px;
       font-family: 'Helvetica Neue', Arial, sans-serif;
       color: #0f172a;
       overflow: hidden;
       width: 100%; height: 100%;
     }
-    .header { text-align: center; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
-    .header h1 { font-size: 13px; margin: 0 0 1px 0; text-transform: uppercase; font-weight: 800; }
-    .header p { font-size: 8px; color: #475569; margin: 0; font-family: monospace; }
-    .info { display: flex; justify-content: space-between; font-size: 8px; margin-bottom: 6px; border: 1px solid #cbd5e1; padding: 3px 6px; border-radius: 4px; background: #f8fafc; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .header { text-align: center; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 4px; }
+    .header h1 { font-size: 11px; margin: 0 0 1px 0; text-transform: uppercase; font-weight: 800; }
+    .header p { font-size: 7px; color: #475569; margin: 0; font-family: monospace; }
+    .info { display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 4px; border: 1px solid #cbd5e1; padding: 2px 5px; border-radius: 4px; background: #f8fafc; }
+    .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3.5px; }
     .col { background: #fff; }
-    .part { font-size: 7.5px; font-weight: bold; background: #0f172a; color: #fff; padding: 2px 4px; border-radius: 3px; margin-bottom: 3px; text-align: center; text-transform: uppercase; }
-    .row { display: flex; align-items: center; justify-content: space-between; font-size: 7px; font-family: monospace; margin-bottom: 1.8px; }
-    .num { font-weight: bold; width: 14px; color: #334155; }
-    .bubs { display: flex; gap: 2px; }
-    .bub { width: 9.5px; height: 9.5px; border: 1px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: bold; }
+    .part { font-size: 6px; font-weight: bold; background: #0f172a; color: #fff; padding: 1.5px 2px; border-radius: 2px; margin-bottom: 2px; text-align: center; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .row { display: flex; align-items: center; justify-content: space-between; font-size: 6px; font-family: monospace; margin-bottom: 1px; }
+    .num { font-weight: bold; width: 10px; color: #334155; }
+    .bubs { display: flex; gap: 1px; }
+    .bub { width: 8px; height: 8px; border: 1px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 5px; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>University General Aptitude Test</h1>
-    <p>Standard 150-Item Answer Sheet &bull; ISO A4 (210 &times; 297 mm)</p>
+    <p>Standard 150-Item Answer Sheet &bull; 6 Subjects &times; 25 Items &bull; ISO A4 (210 &times; 297 mm)</p>
   </div>
   <div class="info">
-    <div><strong>Name:</strong> ____________________________</div>
+    <div><strong>Name:</strong> ________________________</div>
     <div><strong>Examinee No:</strong> __________</div>
     <div><strong>Date:</strong> _______</div>
   </div>
   <div class="grid">
     <div class="col">
-      <div class="part">Part 1: Verbal Ability</div>
-      ${Array.from({ length: 50 }).map((_, i) => `<div class="row"><span class="num">${String(i + 1).padStart(2, '0')}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="part">1. English</div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${String(i + 1).padStart(2, '0')}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">Part 2: Quantitative</div>
-      ${Array.from({ length: 50 }).map((_, i) => `<div class="row"><span class="num">${i + 51}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="part">2. Math</div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 26}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
     </div>
     <div class="col">
-      <div class="part">Part 3: Logical Reasoning</div>
-      ${Array.from({ length: 50 }).map((_, i) => `<div class="row"><span class="num">${i + 101}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+      <div class="part">3. Science</div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 51}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+    </div>
+    <div class="col">
+      <div class="part">4. Abstract</div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 76}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+    </div>
+    <div class="col">
+      <div class="part">5. Gen Info</div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 101}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
+    </div>
+    <div class="col">
+      <div class="part">6. Logic</div>
+      ${Array.from({ length: 25 }).map((_, i) => `<div class="row"><span class="num">${i + 126}</span><div class="bubs"><span class="bub">A</span><span class="bub">B</span><span class="bub">C</span><span class="bub">D</span></div></div>`).join('')}
     </div>
   </div>
 </body>
@@ -182,53 +195,104 @@
   let sections = $state([
     {
       id: 'Part_1',
-      name: 'Part 1 (Q1–50)',
+      name: 'Part 1: English (Q1–25)',
       type: 'mcq',
-      posX: 16,
+      posX: 14,
       posY: 56,
-      w_mm: 56,
-      h_mm: 220,
-      questionsCount: 50,
+      w_mm: 27,
+      h_mm: 115,
+      questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 1,
       customValuesStr: 'A, B, C, D',
-      bubblePitchMm: 9.5,
-      rowPitchMm: 4.2,
+      bubblePitchMm: 6.0,
+      rowPitchMm: 3.8,
       isLocked: false,
     },
     {
       id: 'Part_2',
-      name: 'Part 2 (Q51–100)',
+      name: 'Part 2: Math (Q26–50)',
       type: 'mcq',
-      posX: 77,
+      posX: 44,
       posY: 56,
-      w_mm: 56,
-      h_mm: 220,
-      questionsCount: 50,
+      w_mm: 27,
+      h_mm: 115,
+      questionsCount: 25,
       cols: 1,
       optionsCount: 4,
-      startQ: 51,
+      startQ: 26,
       customValuesStr: 'A, B, C, D',
-      bubblePitchMm: 9.5,
-      rowPitchMm: 4.2,
+      bubblePitchMm: 6.0,
+      rowPitchMm: 3.8,
       isLocked: false,
     },
     {
       id: 'Part_3',
-      name: 'Part 3 (Q101–150)',
+      name: 'Part 3: Science (Q51–75)',
       type: 'mcq',
-      posX: 138,
+      posX: 74,
       posY: 56,
-      w_mm: 56,
-      h_mm: 220,
-      questionsCount: 50,
+      w_mm: 27,
+      h_mm: 115,
+      questionsCount: 25,
+      cols: 1,
+      optionsCount: 4,
+      startQ: 51,
+      customValuesStr: 'A, B, C, D',
+      bubblePitchMm: 6.0,
+      rowPitchMm: 3.8,
+      isLocked: false,
+    },
+    {
+      id: 'Part_4',
+      name: 'Part 4: Abstract (Q76–100)',
+      type: 'mcq',
+      posX: 104,
+      posY: 56,
+      w_mm: 27,
+      h_mm: 115,
+      questionsCount: 25,
+      cols: 1,
+      optionsCount: 4,
+      startQ: 76,
+      customValuesStr: 'A, B, C, D',
+      bubblePitchMm: 6.0,
+      rowPitchMm: 3.8,
+      isLocked: false,
+    },
+    {
+      id: 'Part_5',
+      name: 'Part 5: Gen Info (Q101–125)',
+      type: 'mcq',
+      posX: 134,
+      posY: 56,
+      w_mm: 27,
+      h_mm: 115,
+      questionsCount: 25,
       cols: 1,
       optionsCount: 4,
       startQ: 101,
       customValuesStr: 'A, B, C, D',
-      bubblePitchMm: 9.5,
-      rowPitchMm: 4.2,
+      bubblePitchMm: 6.0,
+      rowPitchMm: 3.8,
+      isLocked: false,
+    },
+    {
+      id: 'Part_6',
+      name: 'Part 6: Logic (Q126–150)',
+      type: 'mcq',
+      posX: 164,
+      posY: 56,
+      w_mm: 27,
+      h_mm: 115,
+      questionsCount: 25,
+      cols: 1,
+      optionsCount: 4,
+      startQ: 126,
+      customValuesStr: 'A, B, C, D',
+      bubblePitchMm: 6.0,
+      rowPitchMm: 3.8,
       isLocked: false,
     },
   ]);
@@ -372,11 +436,10 @@
     }
   }
 
-  function executeGoToStage(step) {
+  async function executeGoToStage(step) {
     currentStage = step;
-    triggerAutosave();
+    await performSave();
   }
-
   function triggerAutosave() {
     if (!draft.can_edit) return;
     saveStatus = 'saving';
