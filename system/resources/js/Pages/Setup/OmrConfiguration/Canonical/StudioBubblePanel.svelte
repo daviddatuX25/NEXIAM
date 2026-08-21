@@ -2,6 +2,8 @@
   import {
     Plus,
     Trash2,
+    Lock,
+    Unlock,
     ChevronLeft,
     ChevronRight,
     Scan,
@@ -38,6 +40,7 @@
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 12.0,
       rowPitchMm: 6.5,
+      isLocked: false,
     };
 
     sections = [...sections, newSec];
@@ -65,6 +68,7 @@
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 12.0,
       rowPitchMm: 7.0,
+      isLocked: false,
     };
 
     sections = [...sections, newSec];
@@ -127,13 +131,16 @@
       <button
         type="button"
         onclick={() => { activeSectionIndex = i; }}
-        class={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+        class={`px-2.5 py-1 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
           activeSectionIndex === i
             ? 'bg-slate-900 text-white shadow-xs'
             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`}
       >
-        {sec.id} (Q{sec.startQ}&ndash;{Number(sec.startQ) + Number(sec.questionsCount) - 1})
+        <span>{sec.id} (Q{sec.startQ}&ndash;{Number(sec.startQ) + Number(sec.questionsCount) - 1})</span>
+        {#if sec.isLocked}
+          <Lock class="size-2.5 text-amber-400" />
+        {/if}
       </button>
     {/each}
   </div>
@@ -143,16 +150,38 @@
     <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4 text-xs">
       <div class="flex items-center justify-between">
         <span class="font-bold text-slate-900 text-sm">{activeSection.name}</span>
-        {#if sections.length > 1}
+        <div class="flex items-center space-x-2">
+          <!-- Per-Section Lock Toggle -->
           <button
             type="button"
-            onclick={() => removeSection(activeSectionIndex)}
-            class="text-red-500 hover:text-red-700 p-1"
-            title="Delete section"
+            onclick={() => { activeSection.isLocked = !activeSection.isLocked; handleInput(); }}
+            class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
+              activeSection.isLocked
+                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+            title={activeSection.isLocked ? 'Unlock section to allow dragging & resizing' : 'Lock section in place'}
           >
-            <Trash2 class="size-3.5" />
+            {#if activeSection.isLocked}
+              <Lock class="size-2.5 text-amber-700" />
+              <span>Locked</span>
+            {:else}
+              <Unlock class="size-2.5 text-slate-500" />
+              <span>Unlocked</span>
+            {/if}
           </button>
-        {/if}
+
+          {#if sections.length > 1}
+            <button
+              type="button"
+              onclick={() => removeSection(activeSectionIndex)}
+              class="text-red-500 hover:text-red-700 p-1"
+              title="Delete section"
+            >
+              <Trash2 class="size-3.5" />
+            </button>
+          {/if}
+        </div>
       </div>
 
       <!-- Question Count & Start Number -->
@@ -262,8 +291,8 @@
     </div>
   {/if}
 
-  <!-- Sticky Bottom Navigation Footer -->
-  <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 flex items-center justify-between gap-3 shadow-xs">
+  <!-- Bottom Navigation Buttons -->
+  <div class="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
     <button
       type="button"
       onclick={onBack}

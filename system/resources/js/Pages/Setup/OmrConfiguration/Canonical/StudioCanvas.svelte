@@ -14,7 +14,7 @@
     panY = $bindable(0),
     marginMm = 15,
     markerPattern = 'square',
-    canvasDragLocked = $bindable(false),
+    canvasLocked = $bindable(false),
     rasterUrl = null,
     showHeaderOverlay = true,
     headerTitle = 'EXAMINATION ANSWER SHEET',
@@ -24,23 +24,27 @@
     headerY = $bindable(20),
     headerW = $bindable(160),
     headerH = $bindable(15),
+    headerLocked = false,
     showQrOverlay = true,
     qrX = $bindable(150),
     qrY = $bindable(32),
     qrW = $bindable(32),
     qrH = $bindable(32),
+    qrLocked = false,
     showInstructionsOverlay = true,
     instructionsContent = 'Use 2B pencil only.',
     instX = $bindable(25),
     instY = $bindable(250),
     instW = $bindable(90),
     instH = $bindable(28),
+    instLocked = false,
     showSignatureOverlay = true,
     signatureContent = 'EXAMINEE SIGNATURE',
     sigX = $bindable(125),
     sigY = $bindable(250),
     sigW = $bindable(60),
     sigH = $bindable(28),
+    sigLocked = false,
     customTextItems = $bindable([]),
     htmlContent = null,
     isHtmlMode = true,
@@ -73,12 +77,14 @@
   });
 
   function handleWheel(e) {
+    if (canvasLocked) return; // Prevent zooming if canvas is locked
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     scale = Math.min(Math.max(0.35, scale * zoomFactor), 2.5);
   }
 
   function handleCanvasMouseDown(e) {
+    if (canvasLocked) return; // Prevent background pan if canvas is locked
     if (e.target.closest('button, input, select, textarea')) return;
     if (isBlockDragging || isHandleDragging) return;
     isPanning = true;
@@ -87,49 +93,47 @@
   }
 
   function handleCanvasMouseMove(e) {
-    if (isPanning) {
+    if (isPanning && !canvasLocked) {
       panX = e.clientX - panStartX;
       panY = e.clientY - panStartY;
       return;
     }
 
-    if (canvasDragLocked) return;
-
     const dXmm = (e.clientX - dragStartX) / (2.476 * scale);
     const dYmm = (e.clientY - dragStartY) / (2.476 * scale);
 
-    // STAGE 2: Overlay Elements Dragging & Resizing
+    // STAGE 2: Overlay Elements Dragging & Resizing (respects per-element locks)
     if (currentStage === 2) {
       if (isBlockDragging) {
-        if (selectedOverlay === 'header') {
+        if (selectedOverlay === 'header' && !headerLocked) {
           headerX = Math.max(marginMm, Math.min(210 - marginMm - headerW, Math.round(blockStartGeometry.x + dXmm)));
           headerY = Math.max(marginMm, Math.min(297 - marginMm - headerH, Math.round(blockStartGeometry.y + dYmm)));
-        } else if (selectedOverlay === 'qr') {
+        } else if (selectedOverlay === 'qr' && !qrLocked) {
           qrX = Math.max(marginMm, Math.min(210 - marginMm - qrW, Math.round(blockStartGeometry.x + dXmm)));
           qrY = Math.max(marginMm, Math.min(297 - marginMm - qrH, Math.round(blockStartGeometry.y + dYmm)));
-        } else if (selectedOverlay === 'signature') {
+        } else if (selectedOverlay === 'signature' && !sigLocked) {
           sigX = Math.max(marginMm, Math.min(210 - marginMm - sigW, Math.round(blockStartGeometry.x + dXmm)));
           sigY = Math.max(marginMm, Math.min(297 - marginMm - sigH, Math.round(blockStartGeometry.y + dYmm)));
-        } else if (selectedOverlay === 'instructions') {
+        } else if (selectedOverlay === 'instructions' && !instLocked) {
           instX = Math.max(marginMm, Math.min(210 - marginMm - instW, Math.round(blockStartGeometry.x + dXmm)));
           instY = Math.max(marginMm, Math.min(297 - marginMm - instH, Math.round(blockStartGeometry.y + dYmm)));
-        } else if (typeof selectedOverlay === 'number' && customTextItems[selectedOverlay]) {
+        } else if (typeof selectedOverlay === 'number' && customTextItems[selectedOverlay] && !customTextItems[selectedOverlay].isLocked) {
           const item = customTextItems[selectedOverlay];
           item.posX = Math.max(marginMm, Math.min(210 - marginMm - item.w_mm, Math.round(blockStartGeometry.x + dXmm)));
           item.posY = Math.max(marginMm, Math.min(297 - marginMm - item.h_mm, Math.round(blockStartGeometry.y + dYmm)));
         }
       } else if (isHandleDragging) {
-        if (selectedOverlay === 'header') {
+        if (selectedOverlay === 'header' && !headerLocked) {
           headerW = Math.max(40, Math.min(210 - headerX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
           headerH = Math.max(12, Math.min(297 - headerY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
-        } else if (selectedOverlay === 'qr') {
+        } else if (selectedOverlay === 'qr' && !qrLocked) {
           const newSize = Math.max(20, Math.min(50, Math.round(blockStartGeometry.w + dXmm)));
           qrW = newSize;
           qrH = newSize;
-        } else if (selectedOverlay === 'signature') {
+        } else if (selectedOverlay === 'signature' && !sigLocked) {
           sigW = Math.max(30, Math.min(210 - sigX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
           sigH = Math.max(15, Math.min(297 - sigY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
-        } else if (selectedOverlay === 'instructions') {
+        } else if (selectedOverlay === 'instructions' && !instLocked) {
           instW = Math.max(40, Math.min(210 - instX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
           instH = Math.max(15, Math.min(297 - instY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
         }
@@ -137,10 +141,10 @@
       return;
     }
 
-    // STAGE 3: Question Bubble Sections Dragging & Resizing
+    // STAGE 3: Question Bubble Sections Dragging & Resizing (respects sec.isLocked)
     if (currentStage === 3 && dragBlockIndex !== null) {
       const sec = sections[dragBlockIndex];
-      if (!sec) return;
+      if (!sec || sec.isLocked) return;
 
       if (isBlockDragging) {
         let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
@@ -167,8 +171,8 @@
   }
 
   // Overlay Drag & Resize Triggers (Stage 2)
-  function handleOverlayMouseDown(e, target, geometry) {
-    if (currentStage !== 2 || canvasDragLocked) return;
+  function handleOverlayMouseDown(e, target, geometry, isLocked = false) {
+    if (currentStage !== 2 || isLocked) return;
     e.stopPropagation();
     selectedOverlay = target;
     isBlockDragging = true;
@@ -177,8 +181,8 @@
     blockStartGeometry = { ...geometry };
   }
 
-  function handleOverlayResizeMouseDown(e, target, geometry) {
-    if (currentStage !== 2 || canvasDragLocked) return;
+  function handleOverlayResizeMouseDown(e, target, geometry, isLocked = false) {
+    if (currentStage !== 2 || isLocked) return;
     e.stopPropagation();
     selectedOverlay = target;
     isHandleDragging = true;
@@ -189,26 +193,26 @@
 
   // Section Bubble Drag & Resize Triggers (Stage 3)
   function handleBlockMouseDown(e, index) {
-    if (currentStage !== 3 || canvasDragLocked) return;
+    const sec = sections[index];
+    if (currentStage !== 3 || sec?.isLocked) return;
     e.stopPropagation();
     activeSectionIndex = index;
     isBlockDragging = true;
     dragBlockIndex = index;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-    const sec = sections[index];
     blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
   }
 
   function handleResizeMouseDown(e, index) {
-    if (currentStage !== 3 || canvasDragLocked) return;
+    const sec = sections[index];
+    if (currentStage !== 3 || sec?.isLocked) return;
     e.stopPropagation();
     activeSectionIndex = index;
     isHandleDragging = true;
     dragBlockIndex = index;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-    const sec = sections[index];
     blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
   }
 
@@ -232,29 +236,27 @@
   }
 </script>
 
-<div class="flex-1 bg-slate-100 flex flex-col relative overflow-hidden">
-  <!-- Pinned Floating Canvas Controls (ALWAYS VISIBLE, Never lost on zoom or pan) -->
-  <div class="fixed top-18 right-6 bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl rounded-2xl p-1.5 flex items-center space-x-1.5 z-50">
-    {#if currentStage === 2 || currentStage === 3}
-      <button
-        type="button"
-        onclick={() => { canvasDragLocked = !canvasDragLocked; }}
-        class={`px-3 h-8 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
-          canvasDragLocked
-            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-        }`}
-        title={canvasDragLocked ? 'Unlock canvas dragging and resizing' : 'Lock canvas positions'}
-      >
-        {#if canvasDragLocked}
-          <Lock class="size-3.5 text-slate-500" />
-          <span>Locked</span>
-        {:else}
-          <Unlock class="size-3.5 text-white" />
-          <span>Drag Active</span>
-        {/if}
-      </button>
-    {/if}
+<div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100">
+  <!-- Pinned Canvas Controls inside the Canvas Workbench (ALWAYS perfectly positioned in top-right) -->
+  <div class="absolute top-4 right-6 bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg rounded-2xl p-1.5 flex items-center space-x-1.5 z-30">
+    <button
+      type="button"
+      onclick={() => { canvasLocked = !canvasLocked; }}
+      class={`px-3 h-8 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
+        canvasLocked
+          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+      }`}
+      title={canvasLocked ? 'Canvas viewport is locked (Scroll wheel & panning disabled)' : 'Canvas is interactive (Scroll wheel zooms, drag background to pan)'}
+    >
+      {#if canvasLocked}
+        <Lock class="size-3.5 text-amber-700" />
+        <span>Canvas Locked</span>
+      {:else}
+        <Unlock class="size-3.5 text-slate-600" />
+        <span>Canvas Active</span>
+      {/if}
+    </button>
 
     <div class="h-4 w-px bg-slate-200 mx-1"></div>
 
@@ -346,12 +348,12 @@
         {#if showHeaderOverlay}
           <div
             class={`absolute flex justify-between items-center pb-2 border-b-2 border-slate-900 transition-all ${
-              selectedOverlay === 'header' && !canvasDragLocked
+              selectedOverlay === 'header' && !headerLocked
                 ? 'ring-2 ring-emerald-500 bg-emerald-500/10 rounded p-1 z-30'
                 : 'z-10'
             }`}
             style={`top: ${headerY * 2.476}px; left: ${headerX * 2.476}px; width: ${headerW * 2.476}px;`}
-            onmousedown={(e) => handleOverlayMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH })}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH }, headerLocked)}
             role="button"
             tabindex="0"
           >
@@ -362,10 +364,10 @@
               <p class="text-[9px] text-slate-500 font-mono">{headerSubtitle}</p>
             </div>
 
-            {#if selectedOverlay === 'header' && !canvasDragLocked}
+            {#if selectedOverlay === 'header' && !headerLocked}
               <div
                 class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
-                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH })}
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'header', { x: headerX, y: headerY, w: headerW, h: headerH }, headerLocked)}
                 role="button"
                 tabindex="0"
               ></div>
@@ -377,12 +379,12 @@
         {#if showQrOverlay}
           <div
             class={`absolute border rounded bg-white p-1 flex flex-col items-center justify-between transition-all ${
-              selectedOverlay === 'qr' && !canvasDragLocked
+              selectedOverlay === 'qr' && !qrLocked
                 ? 'border-emerald-500 ring-2 ring-emerald-400/80 z-30 shadow-md'
                 : 'border-slate-300 shadow-xs z-10'
             }`}
             style={`top: ${qrY * 2.476}px; left: ${qrX * 2.476}px; width: ${qrW * 2.476}px; height: ${qrH * 2.476}px;`}
-            onmousedown={(e) => handleOverlayMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH })}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH }, qrLocked)}
             role="button"
             tabindex="0"
           >
@@ -420,10 +422,10 @@
             </svg>
             <span class="text-[6.5px] font-mono font-bold text-slate-600 uppercase tracking-tighter text-center leading-none">INSTANCE QR</span>
 
-            {#if selectedOverlay === 'qr' && !canvasDragLocked}
+            {#if selectedOverlay === 'qr' && !qrLocked}
               <div
                 class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
-                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH })}
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH }, qrLocked)}
                 role="button"
                 tabindex="0"
               ></div>
@@ -435,22 +437,22 @@
         {#if showInstructionsOverlay}
           <div
             class={`absolute border p-2 rounded text-[8px] leading-tight transition-all ${
-              selectedOverlay === 'instructions' && !canvasDragLocked
+              selectedOverlay === 'instructions' && !instLocked
                 ? 'border-emerald-500 ring-2 ring-emerald-400/80 bg-white z-30 shadow-md'
                 : 'border-slate-300 bg-slate-50/90 text-slate-700 z-10'
             }`}
             style={`top: ${instY * 2.476}px; left: ${instX * 2.476}px; width: ${instW * 2.476}px;`}
-            onmousedown={(e) => handleOverlayMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH })}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH }, instLocked)}
             role="button"
             tabindex="0"
           >
             <span class="font-bold text-slate-900 uppercase block mb-0.5">Instructions:</span>
             {instructionsContent}
 
-            {#if selectedOverlay === 'instructions' && !canvasDragLocked}
+            {#if selectedOverlay === 'instructions' && !instLocked}
               <div
                 class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
-                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH })}
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'instructions', { x: instX, y: instY, w: instW, h: instH }, instLocked)}
                 role="button"
                 tabindex="0"
               ></div>
@@ -462,22 +464,22 @@
         {#if showSignatureOverlay}
           <div
             class={`absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between transition-all ${
-              selectedOverlay === 'signature' && !canvasDragLocked
+              selectedOverlay === 'signature' && !sigLocked
                 ? 'ring-2 ring-emerald-500 border-emerald-500 z-30 shadow-md'
                 : 'z-10'
             }`}
             style={`top: ${sigY * 2.476}px; left: ${sigX * 2.476}px; width: ${sigW * 2.476}px; height: ${sigH * 2.476}px;`}
-            onmousedown={(e) => handleOverlayMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH })}
+            onmousedown={(e) => handleOverlayMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH }, sigLocked)}
             role="button"
             tabindex="0"
           >
             <span class="text-[7px] font-bold uppercase tracking-wider text-slate-500">{signatureContent}</span>
             <div class="border-b border-dashed border-slate-400 w-full mb-1"></div>
 
-            {#if selectedOverlay === 'signature' && !canvasDragLocked}
+            {#if selectedOverlay === 'signature' && !sigLocked}
               <div
                 class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
-                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH })}
+                onmousedown={(e) => handleOverlayResizeMouseDown(e, 'signature', { x: sigX, y: sigY, w: sigW, h: sigH }, sigLocked)}
                 role="button"
                 tabindex="0"
               ></div>
@@ -489,12 +491,12 @@
         {#each customTextItems as t, idx}
           <div
             class={`absolute text-slate-800 font-medium leading-tight p-0.5 rounded cursor-move transition-all ${
-              selectedOverlay === idx && !canvasDragLocked
+              selectedOverlay === idx && !t.isLocked
                 ? 'ring-2 ring-emerald-500 bg-emerald-50/50 z-30'
                 : 'z-10'
             }`}
             style={`top: ${t.posY * 2.476}px; left: ${t.posX * 2.476}px; width: ${t.w_mm * 2.476}px; font-size: ${(t.fontSize ?? 10) * 0.9}px;`}
-            onmousedown={(e) => handleOverlayMouseDown(e, idx, { x: t.posX, y: t.posY, w: t.w_mm, h: t.h_mm })}
+            onmousedown={(e) => handleOverlayMouseDown(e, idx, { x: t.posX, y: t.posY, w: t.w_mm, h: t.h_mm }, t.isLocked)}
             role="button"
             tabindex="0"
           >
@@ -503,7 +505,7 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Translucent Optical Sensor Mask with Real-Time Dynamic Pitch) -->
+      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Translucent Optical Sensor Mask with Real-Time Dynamic Pitch & Mini Lock) -->
       {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
@@ -527,10 +529,28 @@
             role="button"
             tabindex="0"
           >
-            <!-- Section Header Chip: Clarifies this is an OMR recognition sensor mask -->
+            <!-- Section Header Chip with Mini Lock Button -->
             <div class="px-1.5 py-0.5 bg-emerald-600/95 text-white rounded-t text-[7.5px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
               <span class="truncate">[OPTICAL GRID] {sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
-              <span class="opacity-85 text-[7px] font-normal shrink-0">{bPitchMm}mm ↔ {rPitchMm}mm</span>
+              <div class="flex items-center space-x-1 shrink-0">
+                <span class="opacity-85 text-[7px] font-normal">{bPitchMm}mm</span>
+                <button
+                  type="button"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    sec.isLocked = !sec.isLocked;
+                    if (onGeometryChanged) onGeometryChanged();
+                  }}
+                  class="text-white/80 hover:text-white p-0.5 rounded transition"
+                  title={sec.isLocked ? 'Unlock section' : 'Lock section'}
+                >
+                  {#if sec.isLocked}
+                    <Lock class="size-2.5 text-amber-300" />
+                  {:else}
+                    <Unlock class="size-2.5 text-white/70" />
+                  {/if}
+                </button>
+              </div>
             </div>
 
             <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing -->
@@ -562,8 +582,8 @@
               {/if}
             </div>
 
-            <!-- Resize Handle -->
-            {#if isSelected && !canvasDragLocked}
+            <!-- Resize Handle (Only visible when unlocked) -->
+            {#if isSelected && !sec.isLocked}
               <div
                 class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleResizeMouseDown(e, i)}

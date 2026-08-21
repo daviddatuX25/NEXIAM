@@ -12,9 +12,6 @@
     Sparkles,
     ChevronRight,
     Upload,
-    RotateCcw,
-    Layers,
-    FileText,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -123,12 +120,14 @@
   let headerY = $state(20);
   let headerW = $state(160);
   let headerH = $state(15);
+  let headerLocked = $state(false);
 
   let showQrOverlay = $state(true);
   let qrX = $state(150);
   let qrY = $state(32);
   let qrW = $state(32);
   let qrH = $state(32);
+  let qrLocked = $state(false);
 
   let showInstructionsOverlay = $state(true);
   let instructionsContent = $state('Use 2B pencil only. Shade bubbles completely. Erase cleanly to change.');
@@ -137,6 +136,7 @@
   let instY = $state(250);
   let instW = $state(90);
   let instH = $state(28);
+  let instLocked = $state(false);
 
   let showSignatureOverlay = $state(true);
   let signatureContent = $state('EXAMINEE SIGNATURE');
@@ -145,6 +145,7 @@
   let sigY = $state(250);
   let sigW = $state(60);
   let sigH = $state(28);
+  let sigLocked = $state(false);
 
   let showMetadataOverlay = $state(false);
   let metadataContent = $state('ROOM / SEAT NO.');
@@ -161,8 +162,8 @@
 
   let customTextItems = $state([]);
 
-  // Stage 3: Multi-Section Geometry & Canvas State (Drag ACTIVE by default)
-  let canvasDragLocked = $state(false);
+  // Stage 3: Multi-Section Geometry & Canvas State (Per-Element Lock)
+  let canvasLocked = $state(false); // Controls canvas zoom/pan wheel lock
   let sections = $state([
     {
       id: 'Section_A',
@@ -179,6 +180,7 @@
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 12.0,
       rowPitchMm: 6.5,
+      isLocked: false,
     },
     {
       id: 'Section_B',
@@ -195,6 +197,7 @@
       customValuesStr: 'A, B, C, D',
       bubblePitchMm: 12.0,
       rowPitchMm: 6.5,
+      isLocked: false,
     },
   ]);
   let activeSectionIndex = $state(0);
@@ -275,12 +278,14 @@
       if (typeof studio.headerY === 'number') headerY = studio.headerY;
       if (typeof studio.headerW === 'number') headerW = studio.headerW;
       if (typeof studio.headerH === 'number') headerH = studio.headerH;
+      if (typeof studio.headerLocked === 'boolean') headerLocked = studio.headerLocked;
 
       if (typeof studio.showQrOverlay === 'boolean') showQrOverlay = studio.showQrOverlay;
       if (typeof studio.qrX === 'number') qrX = studio.qrX;
       if (typeof studio.qrY === 'number') qrY = studio.qrY;
       if (typeof studio.qrW === 'number') qrW = studio.qrW;
       if (typeof studio.qrH === 'number') qrH = studio.qrH;
+      if (typeof studio.qrLocked === 'boolean') qrLocked = studio.qrLocked;
 
       if (typeof studio.showInstructionsOverlay === 'boolean') showInstructionsOverlay = studio.showInstructionsOverlay;
       if (studio.instructionsContent) instructionsContent = studio.instructionsContent;
@@ -289,6 +294,7 @@
       if (typeof studio.instY === 'number') instY = studio.instY;
       if (typeof studio.instW === 'number') instW = studio.instW;
       if (typeof studio.instH === 'number') instH = studio.instH;
+      if (typeof studio.instLocked === 'boolean') instLocked = studio.instLocked;
 
       if (typeof studio.showSignatureOverlay === 'boolean') showSignatureOverlay = studio.showSignatureOverlay;
       if (studio.signatureContent) signatureContent = studio.signatureContent;
@@ -297,6 +303,7 @@
       if (typeof studio.sigY === 'number') sigY = studio.sigY;
       if (typeof studio.sigW === 'number') sigW = studio.sigW;
       if (typeof studio.sigH === 'number') sigH = studio.sigH;
+      if (typeof studio.sigLocked === 'boolean') sigLocked = studio.sigLocked;
 
       if (typeof studio.showMetadataOverlay === 'boolean') showMetadataOverlay = studio.showMetadataOverlay;
       if (studio.metadataContent) metadataContent = studio.metadataContent;
@@ -315,6 +322,10 @@
   });
 
   function goToStage(step) {
+    // Navigating back to Step 1 (Source) or Step 2 (Layout & Overlays) resets the composed raster
+    if ((step === 1 || step === 2) && draft.raster_url) {
+      draft.raster_url = null;
+    }
     currentStage = step;
     triggerAutosave();
   }
@@ -439,17 +450,17 @@
         headerTitle,
         headerSubtitle,
         headerFontSize,
-        headerX, headerY, headerW, headerH,
+        headerX, headerY, headerW, headerH, headerLocked,
         showQrOverlay,
-        qrX, qrY, qrW, qrH,
+        qrX, qrY, qrW, qrH, qrLocked,
         showInstructionsOverlay,
         instructionsContent,
         instructionsFontSize,
-        instX, instY, instW, instH,
+        instX, instY, instW, instH, instLocked,
         showSignatureOverlay,
         signatureContent,
         signatureFontSize,
-        sigX, sigY, sigW, sigH,
+        sigX, sigY, sigW, sigH, sigLocked,
         showMetadataOverlay,
         metadataContent,
         metadataFontSize,
@@ -672,200 +683,213 @@
     </div>
   </header>
 
-  <!-- MAIN STUDIO WORKBENCH SPLIT -->
+  <!-- MAIN STUDIO WORKBENCH SPLIT (Contained height with independent sidebar & canvas scrolling) -->
   <div class="flex-1 flex overflow-hidden">
-    <!-- LEFT WORKBENCH SIDEBAR (Tool Controls for Current Step) -->
-    <aside class="w-[390px] bg-white text-slate-900 border-r border-slate-200 flex flex-col justify-between shrink-0 overflow-y-auto shadow-xs">
-      {#if currentStage === 1}
-        <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
-        <div class="p-6 space-y-6 flex-1 flex flex-col justify-between">
-          <div class="space-y-5">
-            <div>
-              <h2 class="text-base font-bold text-slate-900">Source Substrate</h2>
-              <p class="text-xs text-slate-500 mt-0.5">Choose how to design or upload your exam answer sheet.</p>
+    <!-- LEFT WORKBENCH SIDEBAR (Strictly contained with its own internal scroll) -->
+    <aside class="w-[390px] h-full flex flex-col bg-white border-r border-slate-200 shrink-0 overflow-hidden shadow-xs">
+      <!-- Scrollable Panel Body -->
+      <div class="flex-1 overflow-y-auto min-h-0">
+        {#if currentStage === 1}
+          <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
+          <div class="p-6 space-y-6 flex flex-col justify-between min-h-full">
+            <div class="space-y-5">
+              <div>
+                <h2 class="text-base font-bold text-slate-900">Source Substrate</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Choose how to design or upload your exam answer sheet.</p>
+              </div>
+
+              <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
+              <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
+                  class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                    stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Paste / Edit HTML
+                </button>
+                <button
+                  type="button"
+                  onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
+                  class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                    stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Upload File
+                </button>
+              </div>
+
+              {#if stage1Mode === 'html'}
+                <!-- Option 1: Paste / Edit HTML Code -->
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
+                    <button
+                      type="button"
+                      onclick={() => {
+                        htmlCode = DEFAULT_150Q_HTML;
+                        triggerAutosave();
+                      }}
+                      class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                    >
+                      <Sparkles class="size-3" />
+                      <span>Reset 150-Q Template</span>
+                    </button>
+                  </div>
+                  <textarea
+                    bind:value={htmlCode}
+                    oninput={triggerAutosave}
+                    rows="12"
+                    class="w-full font-mono text-[11px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
+                    placeholder="Paste HTML markup here…"
+                  ></textarea>
+                </div>
+              {:else}
+                <!-- Option 2: Upload Document File -->
+                <div class="space-y-4">
+                  <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-slate-400 bg-slate-50 transition">
+                    <Upload class="size-8 text-slate-400 mx-auto mb-2" />
+                    <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image file</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Automatic rasterization at 300 PPI print resolution</p>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
+                      bind:this={uploadFileInput}
+                      onchange={handleFileUpload}
+                      class="hidden"
+                    />
+                    <button
+                      type="button"
+                      onclick={() => uploadFileInput?.click()}
+                      class="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
+                    >
+                      Select File
+                    </button>
+                  </div>
+
+                  {#if uploadRunning}
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
+                      <Loader2 class="size-4 animate-spin text-blue-600 shrink-0" />
+                      <span>{conversionStatusText || 'Converting file…'}</span>
+                    </div>
+                  {/if}
+
+                  {#if conversionError}
+                    <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+                      {conversionError}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
             </div>
 
-            <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
-            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <!-- Continue to Step 2 Button -->
+            <div class="pt-4 border-t border-slate-200 mt-auto">
               <button
                 type="button"
-                onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
-                class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                  stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onclick={() => goToStage(2)}
+                class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
               >
-                Paste / Edit HTML
-              </button>
-              <button
-                type="button"
-                onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
-                class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                  stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Upload File
+                <span>Continue to Layout & Markers</span>
+                <ChevronRight class="size-4" />
               </button>
             </div>
-
-            {#if stage1Mode === 'html'}
-              <!-- Option 1: Paste / Edit HTML Code -->
-              <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                  <label class="text-xs font-bold text-slate-700">HTML Source Code</label>
-                  <button
-                    type="button"
-                    onclick={() => {
-                      htmlCode = DEFAULT_150Q_HTML;
-                      triggerAutosave();
-                    }}
-                    class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                  >
-                    <Sparkles class="size-3" />
-                    <span>Reset 150-Q Template</span>
-                  </button>
-                </div>
-                <textarea
-                  bind:value={htmlCode}
-                  oninput={triggerAutosave}
-                  rows="12"
-                  class="w-full font-mono text-[11px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
-                  placeholder="Paste HTML markup here…"
-                ></textarea>
-              </div>
-            {:else}
-              <!-- Option 2: Upload Document File -->
-              <div class="space-y-4">
-                <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-slate-400 bg-slate-50 transition">
-                  <Upload class="size-8 text-slate-400 mx-auto mb-2" />
-                  <p class="text-xs font-bold text-slate-700">Drop PDF, Word (.docx), or Image file</p>
-                  <p class="text-[11px] text-slate-400 mt-1">Automatic rasterization at 300 PPI print resolution</p>
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.html"
-                    bind:this={uploadFileInput}
-                    onchange={handleFileUpload}
-                    class="hidden"
-                  />
-                  <button
-                    type="button"
-                    onclick={() => uploadFileInput?.click()}
-                    class="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition shadow-xs"
-                  >
-                    Select File
-                  </button>
-                </div>
-
-                {#if uploadRunning}
-                  <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800">
-                    <Loader2 class="size-4 animate-spin text-blue-600 shrink-0" />
-                    <span>{conversionStatusText || 'Converting file…'}</span>
-                  </div>
-                {/if}
-
-                {#if conversionError}
-                  <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
-                    {conversionError}
-                  </div>
-                {/if}
-              </div>
-            {/if}
           </div>
-
-          <!-- Continue to Step 2 Button -->
-          <div class="pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onclick={() => goToStage(2)}
-              class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
-            >
-              <span>Continue to Layout & Markers</span>
-              <ChevronRight class="size-4" />
-            </button>
-          </div>
-        </div>
-      {:else if currentStage === 2}
-        <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
-        <StudioOverlayPanel
-          bind:marginMm
-          bind:markerPattern
-          bind:showHeaderOverlay
-          bind:headerTitle
-          bind:headerSubtitle
-          bind:headerFontSize
-          bind:showQrOverlay
-          bind:showInstructionsOverlay
-          bind:instructionsContent
-          bind:instructionsFontSize
-          bind:showSignatureOverlay
-          bind:signatureContent
-          bind:signatureFontSize
-          bind:customTextItems
-          onChanged={triggerAutosave}
-          onBack={() => goToStage(1)}
-          onNext={() => goToStage(3)}
-        />
-      {:else if currentStage === 3}
-        <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
-        <StudioBubblePanel
-          bind:sections
-          bind:activeSectionIndex
-          onChanged={triggerAutosave}
-          onBack={() => goToStage(2)}
-          onNext={() => goToStage(4)}
-        />
-      {:else if currentStage === 4}
-        <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
-        <StudioExportVerifyPanel
-          {draft}
-          {jsonSchema}
-          {urls}
-          onBack={() => goToStage(3)}
-        />
-      {/if}
+        {:else if currentStage === 2}
+          <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
+          <StudioOverlayPanel
+            bind:marginMm
+            bind:markerPattern
+            bind:showHeaderOverlay
+            bind:headerTitle
+            bind:headerSubtitle
+            bind:headerFontSize
+            bind:headerLocked
+            bind:showQrOverlay
+            bind:qrLocked
+            bind:showInstructionsOverlay
+            bind:instructionsContent
+            bind:instructionsFontSize
+            bind:instLocked
+            bind:showSignatureOverlay
+            bind:signatureContent
+            bind:signatureFontSize
+            bind:sigLocked
+            bind:customTextItems
+            onChanged={triggerAutosave}
+            onBack={() => goToStage(1)}
+            onNext={() => goToStage(3)}
+          />
+        {:else if currentStage === 3}
+          <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
+          <StudioBubblePanel
+            bind:sections
+            bind:activeSectionIndex
+            onChanged={triggerAutosave}
+            onBack={() => goToStage(2)}
+            onNext={() => goToStage(4)}
+          />
+        {:else if currentStage === 4}
+          <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
+          <StudioExportVerifyPanel
+            {draft}
+            {jsonSchema}
+            {urls}
+            onBack={() => goToStage(3)}
+          />
+        {/if}
+      </div>
     </aside>
 
     <!-- RIGHT CANVAS WORKBENCH -->
-    <StudioCanvas
-      bind:scale
-      bind:panX
-      bind:panY
-      bind:marginMm
-      bind:markerPattern
-      bind:canvasDragLocked
-      rasterUrl={draft.raster_url}
-      htmlContent={htmlCode}
-      isHtmlMode={stage1Mode === 'html'}
-      {isComposing}
-      {showHeaderOverlay}
-      {headerTitle}
-      {headerSubtitle}
-      {headerFontSize}
-      bind:headerX
-      bind:headerY
-      bind:headerW
-      bind:headerH
-      {showQrOverlay}
-      bind:qrX
-      bind:qrY
-      bind:qrW
-      bind:qrH
-      {showInstructionsOverlay}
-      {instructionsContent}
-      bind:instX
-      bind:instY
-      bind:instW
-      bind:instH
-      {showSignatureOverlay}
-      {signatureContent}
-      bind:sigX
-      bind:sigY
-      bind:sigW
-      bind:sigH
-      bind:customTextItems
-      bind:sections
-      bind:activeSectionIndex
-      {currentStage}
-      onGeometryChanged={triggerAutosave}
-    />
+    <div class="flex-1 min-w-0 h-full relative overflow-hidden flex flex-col bg-slate-100">
+      <StudioCanvas
+        bind:scale
+        bind:panX
+        bind:panY
+        bind:marginMm
+        bind:markerPattern
+        bind:canvasLocked
+        rasterUrl={draft.raster_url}
+        htmlContent={htmlCode}
+        isHtmlMode={stage1Mode === 'html'}
+        {isComposing}
+        {showHeaderOverlay}
+        {headerTitle}
+        {headerSubtitle}
+        {headerFontSize}
+        bind:headerX
+        bind:headerY
+        bind:headerW
+        bind:headerH
+        bind:headerLocked
+        {showQrOverlay}
+        bind:qrX
+        bind:qrY
+        bind:qrW
+        bind:qrH
+        bind:qrLocked
+        {showInstructionsOverlay}
+        {instructionsContent}
+        bind:instX
+        bind:instY
+        bind:instW
+        bind:instH
+        bind:instLocked
+        {showSignatureOverlay}
+        {signatureContent}
+        bind:sigX
+        bind:sigY
+        bind:sigW
+        bind:sigH
+        bind:sigLocked
+        bind:customTextItems
+        bind:sections
+        bind:activeSectionIndex
+        {currentStage}
+        onGeometryChanged={triggerAutosave}
+      />
+    </div>
   </div>
 </div>

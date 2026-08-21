@@ -2,7 +2,8 @@
   import {
     Plus,
     Trash2,
-    QrCode,
+    Lock,
+    Unlock,
     ChevronLeft,
     ChevronRight,
   } from 'lucide-svelte';
@@ -13,11 +14,15 @@
     showHeaderOverlay = $bindable(true),
     headerTitle = $bindable('EXAMINATION ANSWER SHEET'),
     headerFontSize = $bindable(14.0),
+    headerLocked = $bindable(false),
     showSignatureOverlay = $bindable(true),
     signatureContent = $bindable('EXAMINEE SIGNATURE'),
+    sigLocked = $bindable(false),
     showInstructionsOverlay = $bindable(true),
     instructionsContent = $bindable('Use 2B pencil only. Shade bubbles completely.'),
+    instLocked = $bindable(false),
     showQrOverlay = $bindable(true),
+    qrLocked = $bindable(false),
     customTextItems = $bindable([]),
     onChanged = null,
     onBack = null,
@@ -37,6 +42,7 @@
         posY: Math.min(260, 230 + nextId * 10),
         w_mm: 80,
         h_mm: 15,
+        isLocked: false,
       },
     ];
     if (onChanged) onChanged();
@@ -96,7 +102,7 @@
     </div>
   </div>
 
-  <!-- Printable Overlay Elements -->
+  <!-- Printable Overlay Elements with Individual Locks -->
   <div class="space-y-4 border-t border-slate-100 pt-4">
     <div class="flex items-center justify-between">
       <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Printable Overlays</span>
@@ -113,8 +119,28 @@
     <!-- Header Title Overlay -->
     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-900">Document Header</span>
-        <input type="checkbox" bind:checked={showHeaderOverlay} onchange={handleInput} class="rounded text-slate-900" />
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" bind:checked={showHeaderOverlay} onchange={handleInput} class="rounded text-slate-900" />
+          <span class="text-xs font-bold text-slate-900">Document Header</span>
+        </div>
+        {#if showHeaderOverlay}
+          <button
+            type="button"
+            onclick={() => { headerLocked = !headerLocked; handleInput(); }}
+            class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
+              headerLocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+            title={headerLocked ? 'Header position is locked' : 'Header can be dragged and resized'}
+          >
+            {#if headerLocked}
+              <Lock class="size-2.5 text-amber-700" />
+              <span>Locked</span>
+            {:else}
+              <Unlock class="size-2.5 text-slate-500" />
+              <span>Unlocked</span>
+            {/if}
+          </button>
+        {/if}
       </div>
       {#if showHeaderOverlay}
         <div class="space-y-1.5 pt-1">
@@ -122,30 +148,37 @@
             type="text"
             bind:value={headerTitle}
             oninput={handleInput}
-            placeholder="Exam Title"
-            class="w-full text-xs font-semibold px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white"
+            placeholder="Header Title Text"
+            class="w-full text-xs p-2 bg-white rounded-lg border border-slate-200 font-semibold"
           />
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-[10px] text-slate-500">Font Size ({headerFontSize}pt)</span>
-            <input
-              type="range"
-              min="10"
-              max="24"
-              step="0.5"
-              bind:value={headerFontSize}
-              oninput={handleInput}
-              class="w-24 accent-slate-900"
-            />
-          </div>
         </div>
       {/if}
     </div>
 
-    <!-- Signature Box Overlay -->
+    <!-- Candidate Signature Box -->
     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-900">Candidate Signature Box</span>
-        <input type="checkbox" bind:checked={showSignatureOverlay} onchange={handleInput} class="rounded text-slate-900" />
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" bind:checked={showSignatureOverlay} onchange={handleInput} class="rounded text-slate-900" />
+          <span class="text-xs font-bold text-slate-900">Candidate Signature Box</span>
+        </div>
+        {#if showSignatureOverlay}
+          <button
+            type="button"
+            onclick={() => { sigLocked = !sigLocked; handleInput(); }}
+            class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
+              sigLocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            {#if sigLocked}
+              <Lock class="size-2.5 text-amber-700" />
+              <span>Locked</span>
+            {:else}
+              <Unlock class="size-2.5 text-slate-500" />
+              <span>Unlocked</span>
+            {/if}
+          </button>
+        {/if}
       </div>
       {#if showSignatureOverlay}
         <div class="space-y-1.5 pt-1">
@@ -153,18 +186,37 @@
             type="text"
             bind:value={signatureContent}
             oninput={handleInput}
-            placeholder="Signature Label"
-            class="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white"
+            placeholder="Signature Box Label"
+            class="w-full text-xs p-2 bg-white rounded-lg border border-slate-200 font-semibold"
           />
         </div>
       {/if}
     </div>
 
-    <!-- Instructions Box Overlay -->
+    <!-- Instructions Box -->
     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-900">Instructions Notice</span>
-        <input type="checkbox" bind:checked={showInstructionsOverlay} onchange={handleInput} class="rounded text-slate-900" />
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" bind:checked={showInstructionsOverlay} onchange={handleInput} class="rounded text-slate-900" />
+          <span class="text-xs font-bold text-slate-900">Instructions Notice</span>
+        </div>
+        {#if showInstructionsOverlay}
+          <button
+            type="button"
+            onclick={() => { instLocked = !instLocked; handleInput(); }}
+            class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
+              instLocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            {#if instLocked}
+              <Lock class="size-2.5 text-amber-700" />
+              <span>Locked</span>
+            {:else}
+              <Unlock class="size-2.5 text-slate-500" />
+              <span>Unlocked</span>
+            {/if}
+          </button>
+        {/if}
       </div>
       {#if showInstructionsOverlay}
         <div class="space-y-1.5 pt-1">
@@ -172,57 +224,84 @@
             bind:value={instructionsContent}
             oninput={handleInput}
             rows="2"
-            placeholder="Instructions text"
-            class="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white resize-none"
+            class="w-full text-xs p-2 bg-white rounded-lg border border-slate-200 font-medium"
           ></textarea>
         </div>
       {/if}
     </div>
 
-    <!-- QR Code Overlay Reservation -->
+    <!-- Blank Instance QR Box -->
     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-1.5">
-          <QrCode class="size-3.5 text-slate-700" />
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" bind:checked={showQrOverlay} onchange={handleInput} class="rounded text-slate-900" />
           <span class="text-xs font-bold text-slate-900">Blank Instance QR Reservation</span>
         </div>
-        <input type="checkbox" bind:checked={showQrOverlay} onchange={handleInput} class="rounded text-slate-900" />
+        {#if showQrOverlay}
+          <button
+            type="button"
+            onclick={() => { qrLocked = !qrLocked; handleInput(); }}
+            class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
+              qrLocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            {#if qrLocked}
+              <Lock class="size-2.5 text-amber-700" />
+              <span>Locked</span>
+            {:else}
+              <Unlock class="size-2.5 text-slate-500" />
+              <span>Unlocked</span>
+            {/if}
+          </button>
+        {/if}
       </div>
-      <p class="text-[10px] text-slate-500">
-        Reserves a 28&ndash;35mm zone. Real signed cryptographic QR codes are composited at physical print time.
+      <p class="text-[10px] text-slate-400">
+        Reserves a 28–35mm zone. Real signed cryptographic QR codes are composed at physical print time.
       </p>
     </div>
 
-    <!-- Custom Text Annotations List -->
-    {#if customTextItems.length > 0}
-      <div class="space-y-2">
-        <span class="text-xs font-bold text-slate-700">Custom Text Elements</span>
-        {#each customTextItems as item, idx}
-          <div class="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] font-semibold text-slate-800">{item.name}</span>
-              <button
-                type="button"
-                onclick={() => removeCustomText(idx)}
-                class="text-red-500 hover:text-red-700"
-              >
-                <Trash2 class="size-3" />
-              </button>
-            </div>
-            <input
-              type="text"
-              bind:value={item.content}
-              oninput={handleInput}
-              class="w-full text-xs px-2 py-1 border border-slate-200 rounded bg-white"
-            />
+    <!-- Custom Text Elements -->
+    {#each customTextItems as t, idx}
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-900">{t.name || `Text ${idx + 1}`}</span>
+          <div class="flex items-center space-x-2">
+            <button
+              type="button"
+              onclick={() => { t.isLocked = !t.isLocked; handleInput(); }}
+              class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
+                t.isLocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-700 border-slate-200'
+              }`}
+            >
+              {#if t.isLocked}
+                <Lock class="size-2.5 text-amber-700" />
+                <span>Locked</span>
+              {:else}
+                <Unlock class="size-2.5 text-slate-500" />
+                <span>Unlocked</span>
+              {/if}
+            </button>
+            <button
+              type="button"
+              onclick={() => removeCustomText(idx)}
+              class="text-red-500 hover:text-red-700 p-0.5"
+            >
+              <Trash2 class="size-3" />
+            </button>
           </div>
-        {/each}
+        </div>
+        <input
+          type="text"
+          bind:value={t.content}
+          oninput={handleInput}
+          class="w-full text-xs p-2 bg-white rounded-lg border border-slate-200"
+        />
       </div>
-    {/if}
+    {/each}
   </div>
 
-  <!-- Sticky Bottom Navigation Footer -->
-  <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 flex items-center justify-between gap-3 shadow-xs">
+  <!-- Bottom Navigation Buttons -->
+  <div class="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
     <button
       type="button"
       onclick={onBack}
