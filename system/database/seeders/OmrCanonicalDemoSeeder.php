@@ -14,6 +14,7 @@ class OmrCanonicalDemoSeeder extends Seeder
 {
     public function run(): void
     {
+        ini_set('memory_limit', '512M');
         $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         app(OmrMarkerProfileService::class)->seedCandidates($actor);
         $definitions = [
@@ -108,7 +109,7 @@ class OmrCanonicalDemoSeeder extends Seeder
         if (in_array($stage, [OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED, OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE], true)) {
             $raster = $draft->assets()->where('kind', OmrTemplateAsset::KIND_RASTER_PAGE)->first();
             if ($raster === null) {
-                $raster = $store->putDraftAsset($draft, OmrTemplateAsset::KIND_RASTER_PAGE, $this->pagePng(2551, 3898, $draft->name), 'image/png', 1, [
+                $raster = $store->putDraftAsset($draft, OmrTemplateAsset::KIND_RASTER_PAGE, $this->pagePng(1200, 1700, $draft->name), 'image/png', 1, [
                     'paper_width_mm' => 210, 'paper_height_mm' => 297, 'ppi' => 300,
                 ]);
             }
@@ -139,8 +140,10 @@ class OmrCanonicalDemoSeeder extends Seeder
         imagerectangle($image, 25, 70, $width - 25, $height - 25, $ink);
         ob_start();
         imagepng($image, null, 6);
+        $bytes = (string) ob_get_clean();
+        imagedestroy($image);
 
-        return (string) ob_get_clean();
+        return $bytes;
     }
 
     private function pagePdf(string $title): string
