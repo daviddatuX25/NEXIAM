@@ -224,21 +224,20 @@
       class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative shrink-0 select-none"
       style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
     >
-      <!-- STAGE 1: HTML Source Iframe Preview (if HTML mode) -->
-      {#if currentStage === 1 && htmlContent}
+      <!-- Continuous Background Layer (HTML preview OR raster image OR clean paper) -->
+      {#if rasterUrl}
+        <img
+          src={rasterUrl}
+          alt="Composed Page"
+          class="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-85"
+        />
+      {:else if htmlContent}
         <iframe
           srcdoc={htmlContent}
           title="HTML Source Preview"
           class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs"
           sandbox=""
         ></iframe>
-      {:else if rasterUrl}
-        <!-- Composed / Ingested Raster Background -->
-        <img
-          src={rasterUrl}
-          alt="Composed Canonical Page"
-          class="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-80"
-        />
       {/if}
       <!-- STAGE 2+: 4 Corner Registration Fiducial Markers -->
       {#if currentStage >= 2}
@@ -317,8 +316,9 @@
           </div>
         {/each}
       {/if}
-      <!-- STAGE 4+: Multi-Section Question Bubble Grids (ONLY rendered in Stage 4 & 5) -->
-      {#if currentStage >= 4}
+
+      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Rendered in Step 3 & 4) -->
+      {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}

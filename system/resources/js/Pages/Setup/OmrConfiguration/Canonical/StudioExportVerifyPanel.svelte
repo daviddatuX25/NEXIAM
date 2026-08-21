@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import {
     Camera,
     Upload,
@@ -11,6 +11,7 @@
     Download,
     Copy,
     Check,
+    ChevronLeft,
   } from 'lucide-svelte';
 
   let {
@@ -18,6 +19,7 @@
     urls = {},
     jsonSchema = {},
     getCsrfToken = () => '',
+    onBack = null,
   } = $props();
 
   let captureMode = $state('upload'); // 'camera' | 'upload'
@@ -392,5 +394,25 @@
       </button>
     </div>
     <pre class="p-3 bg-slate-900 text-emerald-400 font-mono text-[10px] rounded-xl overflow-x-auto max-h-44 leading-relaxed">{JSON.stringify(jsonSchema, null, 2)}</pre>
+  </div>
+
+  <!-- Sticky Bottom Navigation Footer -->
+  <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 flex items-center justify-between gap-3 shadow-xs">
+    <button
+      type="button"
+      onclick={onBack}
+      class="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center gap-1.5"
+    >
+      <ChevronLeft class="size-3.5" />
+      <span>Back to Question Bubbles</span>
+    </button>
+    <button
+      type="button"
+      onclick={downloadJSON}
+      class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+    >
+      <Download class="size-3.5" />
+      <span>Download template.json</span>
+    </button>
   </div>
 </div>

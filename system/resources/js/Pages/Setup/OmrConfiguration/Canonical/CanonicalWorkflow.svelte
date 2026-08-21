@@ -254,95 +254,22 @@
 </script>
 
 <StaffLayout {breadcrumbs}>
-  <PageHeaderBar
-    title={`Template Studio · ${draft.name ?? draft.code ?? 'Answer Sheet'}`}
-    description="Design printable answer sheets, configure optical registration, and map question bubbles."
-  />
-
-  <section class="space-y-4 px-6 pt-2 pb-6">
-    <div class="flex flex-wrap items-center gap-2 rounded-lg border border-border/80 bg-card p-2.5 shadow-xs">
-      {#each stages as stage, index}
-        <button
-          type="button"
-          class:font-semibold={stage === activeStage}
-          class="rounded-full border px-3 py-1 text-xs transition hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!draft.can_edit || index > unlockedIndex}
-          aria-current={stage === activeStage ? 'step' : undefined}
-          title={index > unlockedIndex ? 'Complete the previous stage first.' : stageMeta[stage]?.label}
-          onclick={() => (activeStage = stage)}
-        >
-          <span class="mr-1 text-slate-400">{index + 1}</span>{stageMeta[stage]?.short ?? stage}
-        </button>
-      {/each}
-      <span class="ml-auto rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Calibration: Unqualified</span>
-    </div>
-
-    {#if message}
-      <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900" role="status">{message}</div>
-    {/if}
-    {#if error}
-      <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900" role="alert">{error}</div>
-    {/if}
-    {#if !draft.can_edit}
-      <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Read-only view. The draft owner must make staged changes.</div>
-    {/if}
-
-    {#if activeStage === 'draft'}
-      <div class="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 class="text-lg font-semibold text-slate-950">Start with a source</h2>
-          <p class="mt-1 text-sm text-slate-600">HTML, DOCX, PDF, image, and preset sources share the same review gate.</p>
-          <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            <label class="text-sm font-medium text-slate-700">Source kind
-              <select bind:value={sourceKind} class="mt-1 block w-full rounded-md border-slate-300 text-sm" disabled={!draft.can_edit}>
-                <option value="html">HTML</option><option value="docx">DOCX</option><option value="pdf">PDF</option><option value="image">Image / photo</option><option value="preset">Existing preset</option>
-              </select>
-            </label>
-            <label class="text-sm font-medium text-slate-700">Source file
-              <input type="file" class="mt-1 block w-full text-sm" onchange={(event) => (sourceFile = event.currentTarget.files?.[0] ?? null)} disabled={!draft.can_edit} />
-            </label>
-          </div>
-          <button class="mt-6 rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50" type="button" onclick={submitIngest} disabled={busy || !sourceFile || !draft.can_edit}>{busy ? 'Queueing…' : 'Convert and inspect'}</button>
-          {#if conversionRun}
-            <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"><div class="flex flex-wrap items-center justify-between gap-2"><span>Status: <strong>{conversionRun.status}</strong> · {conversionRun.progress_done ?? 0}/{conversionRun.progress_total ?? 1}</span><div class="flex gap-2"><button type="button" class="font-medium underline" onclick={refreshConversionRun}>Refresh</button>{#if ['queued','processing'].includes(conversionRun.status)}<button type="button" class="font-medium text-red-700 underline" onclick={cancelConversionRun}>Cancel conversion</button>{/if}</div></div></div>
-          {/if}
-        </article>
-        <aside class="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
-          <h3 class="font-semibold text-slate-950">Boundary guarantees</h3>
-          <ul class="mt-3 list-disc space-y-2 pl-5"><li>25 MB upload and hostile-file preflight.</li><li>Remote HTML/scripts/macros/encrypted PDFs are blocked.</li><li>Photo rectification is server-authoritative.</li><li>Non-sRGB ICC is rejected until a deterministic pipeline is qualified.</li></ul>
-        </aside>
-      </div>
-    {:else if activeStage === 'convert_inspect'}
-      <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div class="flex flex-wrap items-start justify-between gap-4"><div><h2 class="text-lg font-semibold text-slate-950">Confirm every intermediate page</h2><p class="mt-1 text-sm text-slate-600">A wrong page cannot silently enter composition.</p></div><div class="flex gap-2"><Button size="sm" variant="outline" onclick={confirmPages} disabled={busy || !draft.can_edit}>Confirm all visible pages</Button><Button size="sm" onclick={compose} disabled={busy || !draft.can_edit}>Compose canonical page</Button></div></div>
-        <div class="mt-5 grid gap-3 md:grid-cols-2">{#each draft.authoring?.pages ?? [] as page (page.page_no)}<div class="rounded-lg border border-slate-200 p-4"><div class="flex items-center justify-between"><span class="font-medium">Page {page.page_no}</span><span class="text-xs text-slate-500">{page.width_mm ?? '—'} × {page.height_mm ?? '—'} mm</span></div><p class="mt-2 text-xs text-slate-600">{page.confirmed ? 'Confirmed' : 'Needs staff classification'}</p></div>{/each}</div>
-      </article>
-    {:else if ['page_prepare', 'overlay', 'map'].includes(activeStage)}
-      <div class="space-y-4">
-        <OmrTemplateStudio
-          {draft}
-          {marker_profiles}
-          {urls}
-          onMappingSaved={() => {
-            message = 'Studio layout autosaved. Mapping and overlay are synchronized.';
-            error = '';
-          }}
-        />
-      </div>
-    {:else if activeStage === 'digital_verify'}
-      <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold text-slate-950">Digital verification</h2><p class="mt-1 text-sm text-slate-600">Generate deterministic marks from the final composed page and run the declared no-go matrix. No applicant identity is fabricated.</p><Button class="mt-5" onclick={runDigitalVerification} disabled={busy || !draft.can_edit || draft.stage !== 'mapping_complete'}>Run digital proof and no-go matrix</Button></article>
-    {:else if activeStage === 'compile'}
-      <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold text-slate-950">Compile immutable version</h2><p class="mt-1 text-sm text-slate-600">Requires a qualified marker profile and passing digital evidence. Failure leaves no partial version.</p><Button class="mt-5" onclick={compile} disabled={busy || !draft.can_edit || draft.stage !== 'digital_verified'}>Compile immutable version</Button></article>
-    {:else if activeStage === 'physical_activate'}
-      <div class="grid gap-6 lg:grid-cols-2">
-        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold text-slate-950">Physical qualification</h2><p class="mt-1 text-sm text-slate-600">Print the exact compiled PDF, execute the physical matrix, and record measured marker-center distances.</p><div class="mt-4 grid gap-3 sm:grid-cols-2"><label class="text-xs font-medium text-slate-700">Printer identity<input class="mt-1 w-full rounded border-slate-300 text-sm" bind:value={printerIdentity} /></label><label class="text-xs font-medium text-slate-700">Camera / scanner device<input class="mt-1 w-full rounded border-slate-300 text-sm" bind:value={deviceIdentity} /></label><label class="text-xs font-medium text-slate-700">Measured frame width (mm)<input class="mt-1 w-full rounded border-slate-300 text-sm" type="number" step="0.1" bind:value={measuredWidthMm} /></label><label class="text-xs font-medium text-slate-700">Measured frame height (mm)<input class="mt-1 w-full rounded border-slate-300 text-sm" type="number" step="0.1" bind:value={measuredHeightMm} /></label></div><label class="mt-3 flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" bind:checked={physicalMatrixPassed} /> I executed the required print/device/paper matrix and every declared variant passed.</label><Button class="mt-5" onclick={physicalQualification} disabled={busy || !draft.can_edit || !printerIdentity || !deviceIdentity || !measuredWidthMm || !measuredHeightMm || !physicalMatrixPassed}>Record measured qualification</Button></article>
-        <article class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold text-slate-950">Activate immutable version</h2><p class="mt-1 text-sm text-slate-600">Activation stays blocked until physical evidence passes; the old active version remains live until commit.</p>{#if !draft.physical_qualified}<p class="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-900">Blocked: measured physical qualification is missing.</p>{/if}<Button class="mt-5" onclick={activate} disabled={busy || !draft.can_edit || !draft.physical_qualified}>Activate version</Button></article>
-      </div>
-    {:else if activeStage === 'blank_print'}
-      <div class="space-y-6">
+  <div class="h-[calc(100vh-3.5rem)] w-full flex flex-col overflow-hidden">
+    {#if activeStage === 'blank_print'}
+      <div class="p-6 space-y-6 max-w-5xl mx-auto w-full overflow-y-auto">
         <BlankInstancePrintPanel {quantity} {busy} disabled={!draft.can_edit || draft.compiled_version_status !== 'active'} onquantity={(value) => (quantity = value)} onprint={printBlankInstances} />
         <BlankInstanceHistoryPanel templateVersionId={draft.compiled_version_id} />
       </div>
+    {:else}
+      <OmrTemplateStudio
+        {draft}
+        {marker_profiles}
+        {urls}
+        onMappingSaved={() => {
+          message = 'Studio layout autosaved. Mapping and overlay are synchronized.';
+          error = '';
+        }}
+      />
     {/if}
-  </section>
+  </div>
 </StaffLayout>

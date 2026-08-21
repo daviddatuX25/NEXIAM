@@ -2,12 +2,16 @@
   import {
     Plus,
     Trash2,
+    ChevronLeft,
+    ChevronRight,
   } from 'lucide-svelte';
 
   let {
     sections = $bindable([]),
     activeSectionIndex = $bindable(0),
     onChanged = null,
+    onBack = null,
+    onNext = null,
   } = $props();
 
   let activeSection = $derived(sections[activeSectionIndex] ?? sections[0]);
@@ -242,4 +246,24 @@
       </div>
     </div>
   {/if}
+
+  <!-- Sticky Bottom Navigation Footer -->
+  <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 flex items-center justify-between gap-3 shadow-xs">
+    <button
+      type="button"
+      onclick={onBack}
+      class="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center gap-1.5"
+    >
+      <ChevronLeft class="size-3.5" />
+      <span>Back</span>
+    </button>
+    <button
+      type="button"
+      onclick={onNext}
+      class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+    >
+      <span>Test & Verify Sheet</span>
+      <ChevronRight class="size-3.5" />
+    </button>
+  </div>
 </div>

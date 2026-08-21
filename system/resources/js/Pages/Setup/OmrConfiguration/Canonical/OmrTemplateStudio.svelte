@@ -7,19 +7,13 @@
   } from '@/lib/omrStudioGeometry';
   import {
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     XCircle,
     Loader2,
-    FileText,
-    Layers,
-    ShieldCheck,
-    Code,
-    Upload,
-    Sparkles,
-    RefreshCw,
-    Play,
     Sliders,
+    Sparkles,
+    Play,
+    ChevronRight,
+    Upload,
   } from 'lucide-svelte';
 
   import StudioCanvas from './StudioCanvas.svelte';
@@ -34,14 +28,13 @@
     onMappingSaved = null,
   } = $props();
 
-  // 5-Stage Stepper Navigation
+  // 4-Step Streamlined Navigation
   let currentStage = $state(1);
   const stageTitles = [
-    'Stage 1: Base Template & Ingestion',
-    'Stage 2: Configure Layout, Markers & Overlays',
-    'Stage 3: Optical Registration Alignment',
-    'Stage 4: Multi-Section Bubble Coordinates & Pitch',
-    'Stage 5: Dual-Input Verification & Production Export',
+    'Step 1: Source Substrate & Ingestion',
+    'Step 2: Layout, Margins & Overlays',
+    'Step 3: Question Bubbles & Pitch Geometry',
+    'Step 4: Verification & Production Deliverables',
   ];
 
   // Stage 1: Base Mode ('blank' | 'html' | 'upload')
@@ -109,13 +102,11 @@
   // Direct Upload & Ingest State
   let uploadFileInput = $state(null);
   let uploadRunning = $state(false);
-  let uploadProgress = $state(0);
   let conversionStatusText = $state('');
   let conversionError = $state('');
 
   // Stage 3 Composition Loading
   let isComposing = $state(false);
-  let composeStatusText = $state('');
 
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
@@ -166,12 +157,12 @@
 
   let customTextItems = $state([]);
 
-  // Stage 4: Multi-Section Geometry & Canvas State
+  // Stage 3: Multi-Section Geometry & Canvas State
   let canvasDragLocked = $state(true);
   let sections = $state([
     {
       id: 'Section_A',
-      name: 'Section A (General Knowledge)',
+      name: 'Section A (General Ability)',
       type: 'mcq',
       posX: 25,
       posY: 72,
@@ -217,7 +208,7 @@
   let autosaveTimer = null;
 
   let totalQuestionsCount = $derived(
-    sections.reduce((sum, s) => sum + (s.questionsCount || 0), 0)
+    sections.reduce((sum, s) => sum + (Number(s.questionsCount) || 0), 0)
   );
 
   let jsonSchema = $derived.by(() => {
@@ -228,10 +219,10 @@
         origin_mm: [s.posX, s.posY],
         dimensions_mm: [s.w_mm, s.h_mm],
         columns: s.cols,
-        questions_range: [s.startQ, s.startQ + s.questionsCount - 1],
+        questions_range: [s.startQ, s.startQ + (Number(s.questionsCount) || 1) - 1],
         bubbles_pitch_mm: s.bubblePitchMm,
         rows_pitch_mm: s.rowPitchMm,
-        options: s.type === 'tf' ? ['T', 'F'] : s.type === 'likert' ? ['1', '2', '3', '4', '5'] : s.type === 'custom' ? (s.customValuesStr || '').split(',').map((v) => v.trim()) : ['A', 'B', 'C', 'D'].slice(0, s.optionsCount),
+        options: s.type === 'tf' ? ['T', 'F'] : s.type === 'likert' ? ['1', '2', '3', '4', '5'] : s.type === 'custom' ? (s.customValuesStr || '').split(',').map((v) => v.trim()) : ['A', 'B', 'C', 'D'].slice(0, s.optionsCount || 4),
       };
     });
 
@@ -306,14 +297,6 @@
     triggerAutosave();
   }
 
-  function nextStage() {
-    if (currentStage < 5) goToStage(currentStage + 1);
-  }
-
-  function prevStage() {
-    if (currentStage > 1) goToStage(currentStage - 1);
-  }
-
   function triggerAutosave() {
     if (!draft.can_edit) return;
     saveStatus = 'saving';
@@ -326,7 +309,7 @@
 
   function buildBlockList() {
     const blocks = sections.map((s) => {
-      let opts = s.optionsCount;
+      let opts = Number(s.optionsCount) || 4;
       if (s.type === 'tf') opts = 2;
       if (s.type === 'likert') opts = 5;
       if (s.type === 'custom') opts = (s.customValuesStr || '').split(',').length;
@@ -334,17 +317,17 @@
       return {
         id: s.id,
         type: s.type,
-        x_mm: s.posX,
-        y_mm: s.posY,
-        w_mm: s.w_mm,
-        h_mm: s.h_mm,
-        questions: s.questionsCount,
-        cols: s.cols,
+        x_mm: Number(s.posX) || 25,
+        y_mm: Number(s.posY) || 72,
+        w_mm: Number(s.w_mm) || 75,
+        h_mm: Number(s.h_mm) || 165,
+        questions: Number(s.questionsCount) || 10,
+        cols: Number(s.cols) || 1,
         options: opts,
-        start_q: s.startQ,
+        start_q: Number(s.startQ) || 1,
         custom_values: s.type === 'custom' ? (s.customValuesStr || '').split(',').map((v) => v.trim()) : undefined,
-        bubble_pitch_mm: s.bubblePitchMm,
-        row_pitch_mm: s.rowPitchMm,
+        bubble_pitch_mm: Number(s.bubblePitchMm) || 12.0,
+        row_pitch_mm: Number(s.rowPitchMm) || 6.5,
       };
     });
 
@@ -433,7 +416,7 @@
   }
 
   async function performSave() {
-    const saveUrl = urls.studio || `/setup/omr/templates/canonical/drafts/${draft.id}/studio`;
+    const saveUrl = urls.studio || `/setup/omr/studio/${draft.id}`;
 
     try {
       const { blocks, overlayBlocks } = buildBlockList();
@@ -632,11 +615,10 @@
     }
   }
 
-  // Stage 3 Composition
+  // Stage 2/3 Composition
   async function composeCanonicalPage() {
     if (!urls.compose) return;
     isComposing = true;
-    composeStatusText = 'Composing 300-PPI print raster & marker quad…';
 
     try {
       const res = await fetch(urls.compose, {
@@ -674,27 +656,27 @@
   }
 </script>
 
-<!-- Root Studio Container -->
-<div class="flex flex-col h-full bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
-  <!-- Stepper Header -->
-  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between z-20 shrink-0">
+<!-- Root Studio Container (Full-Bleed Single Workbench) -->
+<div class="flex flex-col h-full bg-slate-50 border-t border-slate-200 overflow-hidden select-none">
+  <!-- Workbench Header Bar -->
+  <header class="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between z-20 shrink-0 shadow-xs">
     <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-white font-bold text-sm shadow-xs">
+      <div class="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs shadow-xs">
         {currentStage}
       </div>
       <div>
-        <h1 class="text-sm font-bold text-slate-900 leading-tight">
+        <h1 class="text-xs font-bold text-slate-900 leading-tight">
           {stageTitles[currentStage - 1]}
         </h1>
-        <p class="text-[11px] text-slate-500 font-mono">
-          {draft.code || 'OMR-STUDIO'} &bull; Lock v{currentLockVersion} &bull; {totalQuestionsCount} Questions Total
+        <p class="text-[10px] text-slate-500 font-mono">
+          {draft.code || 'OMR-STUDIO'} &bull; {totalQuestionsCount} Questions Total
         </p>
       </div>
     </div>
 
-    <!-- Stepper Navigation Buttons -->
+    <!-- 4-Step Stepper Navigation Buttons -->
     <div class="hidden md:flex items-center space-x-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
-      {#each [1, 2, 3, 4, 5] as step}
+      {#each [1, 2, 3, 4] as step}
         <button
           type="button"
           onclick={() => goToStage(step)}
@@ -704,12 +686,12 @@
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          {step === 1 ? '1. Base' : step === 2 ? '2. Overlays' : step === 3 ? '3. Compose' : step === 4 ? '4. Bubbles' : '5. Verify'}
+          {step === 1 ? '1. Source' : step === 2 ? '2. Layout & Overlays' : step === 3 ? '3. Question Bubbles' : '4. Verify & Export'}
         </button>
       {/each}
     </div>
 
-    <!-- Status & Navigation Actions -->
+    <!-- Save Status & Action -->
     <div class="flex items-center space-x-2">
       {#if saveStatus === 'saving'}
         <span class="text-[11px] text-slate-500 flex items-center gap-1">
@@ -735,105 +717,80 @@
       >
         Save
       </button>
-
-      <button
-        type="button"
-        onclick={prevStage}
-        disabled={currentStage === 1}
-        class="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
-        title="Previous Stage"
-      >
-        <ChevronLeft class="size-4" />
-      </button>
-      <button
-        type="button"
-        onclick={nextStage}
-        disabled={currentStage === 5}
-        class="p-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition shadow-xs"
-        title="Next Stage"
-      >
-        <ChevronRight class="size-4" />
-      </button>
     </div>
   </header>
 
   <!-- Main Split Workbench -->
   <div class="flex flex-1 overflow-hidden relative">
-    <!-- LEFT CONFIGURATION SIDEBAR -->
-    <aside class="w-[380px] border-r border-slate-200 bg-white flex flex-col shrink-0 overflow-y-auto z-10">
+    <!-- LEFT CONFIGURATION SIDEBAR (Scrollable with Sticky Footer) -->
+    <aside class="w-[390px] border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 overflow-y-auto z-10">
+      <!-- STEP 1: Source Substrate & Ingestion -->
       {#if currentStage === 1}
-        <div class="p-6 space-y-6">
-          <div>
-            <h2 class="text-base font-bold text-slate-900">Template Base & Ingestion</h2>
-            <p class="text-xs text-slate-500 mt-1">Start from clean HTML, upload an existing document, or use a blank canvas.</p>
-          </div>
+        <div class="p-6 space-y-6 flex-1 flex flex-col justify-between">
+          <div class="space-y-6">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Source Substrate</h2>
+              <p class="text-xs text-slate-500 mt-1">Select starting mode: Blank vector sheet, Paste HTML, or Upload file.</p>
+            </div>
 
-          <!-- 3 Mode Switcher Tabs -->
-          <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onclick={() => { stage1Mode = 'blank'; baseType = 'blank'; triggerAutosave(); }}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'blank'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Blank Canvas
-            </button>
-            <button
-              type="button"
-              onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'html'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Paste HTML
-            </button>
-            <button
-              type="button"
-              onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'upload'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Upload File
-            </button>
-          </div>
-
-          <!-- Option 1: Blank Parametric Canvas -->
-          {#if stage1Mode === 'blank'}
-            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-              <div class="flex items-center gap-2">
-                <Sliders class="size-4 text-slate-700" />
-                <span class="text-xs font-bold text-slate-900">Parametric Vector Layout</span>
-              </div>
-              <p class="text-[11px] text-slate-500 leading-relaxed">
-                Generates a clean ISO A4 vector sheet (210 &times; 297 mm) with physical fiducials and customizable printable overlays.
-              </p>
+            <!-- 3 Mode Switcher Tabs -->
+            <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
               <button
                 type="button"
-                onclick={() => goToStage(2)}
-                class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                onclick={() => { stage1Mode = 'blank'; baseType = 'blank'; triggerAutosave(); }}
+                class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                  stage1Mode === 'blank'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <span>Continue to Overlays & Margins</span>
-                <ChevronRight class="size-3.5" />
+                Blank Canvas
+              </button>
+              <button
+                type="button"
+                onclick={() => { stage1Mode = 'html'; baseType = 'html'; triggerAutosave(); }}
+                class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                  stage1Mode === 'html'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Paste HTML
+              </button>
+              <button
+                type="button"
+                onclick={() => { stage1Mode = 'upload'; baseType = 'image'; triggerAutosave(); }}
+                class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
+                  stage1Mode === 'upload'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Upload File
               </button>
             </div>
 
-          <!-- Option 2: Paste / Edit HTML Code -->
-          {:else if stage1Mode === 'html'}
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">HTML Code Editor</span>
-                <button
-                  type="button"
-                  onclick={() => {
-                    htmlCode = `<!DOCTYPE html>
+            <!-- Option 1: Blank Parametric Canvas -->
+            {#if stage1Mode === 'blank'}
+              <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+                <div class="flex items-center gap-2">
+                  <Sliders class="size-4 text-slate-700" />
+                  <span class="text-xs font-bold text-slate-900">Standard ISO A4 Layout</span>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed">
+                  Creates a clean vector sheet (210 &times; 297 mm) with physical corner registration fiducials.
+                </p>
+              </div>
+
+            <!-- Option 2: Paste / Edit HTML Code -->
+            {:else if stage1Mode === 'html'}
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">HTML Code Editor</span>
+                  <button
+                    type="button"
+                    onclick={() => {
+                      htmlCode = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -889,79 +846,90 @@
   </div>
 </body>
 </html>`;
-                    triggerAutosave();
-                  }}
-                  class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Sparkles class="size-3" />
-                  <span>Insert 150-Q Template</span>
-                </button>
+                      triggerAutosave();
+                    }}
+                    class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  >
+                    <Sparkles class="size-3" />
+                    <span>Insert 150-Q Template</span>
+                  </button>
+                </div>
+
+                <textarea
+                  bind:value={htmlCode}
+                  oninput={triggerAutosave}
+                  rows="10"
+                  class="w-full font-mono text-[10px] p-2.5 bg-slate-900 text-emerald-400 rounded-xl border border-slate-800 leading-relaxed resize-y focus:outline-hidden"
+                  placeholder="Paste HTML markup here…"
+                ></textarea>
               </div>
 
-              <textarea
-                bind:value={htmlCode}
-                oninput={triggerAutosave}
-                rows="10"
-                class="w-full font-mono text-[10px] p-2.5 bg-slate-900 text-emerald-400 rounded-xl border border-slate-800 leading-relaxed resize-y focus:outline-hidden"
-                placeholder="Paste HTML markup here…"
-              ></textarea>
+            <!-- Option 3: Direct File Upload Dropzone (PDF / DOCX / Image) -->
+            {:else if stage1Mode === 'upload'}
+              <div class="space-y-3">
+                <input
+                  bind:this={uploadFileInput}
+                  type="file"
+                  accept=".pdf,.docx,.doc,image/jpeg,image/png,image/webp,text/html"
+                  onchange={handleFileUpload}
+                  class="hidden"
+                />
+                <button
+                  type="button"
+                  onclick={() => uploadFileInput?.click()}
+                  disabled={uploadRunning}
+                  class="w-full p-6 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl flex flex-col items-center justify-center text-center transition bg-slate-50/50 hover:bg-slate-50"
+                >
+                  <Upload class="size-8 text-slate-400 mb-2" />
+                  <span class="text-xs font-bold text-slate-800">
+                    Choose Document or Drag & Drop
+                  </span>
+                  <span class="text-[10px] text-slate-500 mt-1">Accepts PDF, Word (DOCX), Scanned JPG/PNG (Up to 25 MB)</span>
+                </button>
 
-              <button
-                type="button"
-                onclick={compileHtmlSource}
-                disabled={uploadRunning || !htmlCode}
-                class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
-              >
                 {#if uploadRunning}
-                  <Loader2 class="size-3.5 animate-spin" />
-                  <span>{conversionStatusText}</span>
-                {:else}
-                  <Play class="size-3.5 text-emerald-400" />
-                  <span>Compile HTML into 300-PPI Sheet</span>
+                  <div class="p-3 bg-slate-100 rounded-xl text-xs flex items-center gap-2 text-slate-700 font-medium">
+                    <Loader2 class="size-4 animate-spin text-slate-900" />
+                    <span>{conversionStatusText}</span>
+                  </div>
                 {/if}
-              </button>
-            </div>
 
-          <!-- Option 3: Direct File Upload Dropzone (PDF / DOCX / Image) -->
-          {:else if stage1Mode === 'upload'}
-            <div class="space-y-3">
-              <input
-                bind:this={uploadFileInput}
-                type="file"
-                accept=".pdf,.docx,.doc,image/jpeg,image/png,image/webp,text/html"
-                onchange={handleFileUpload}
-                class="hidden"
-              />
-              <button
-                type="button"
-                onclick={() => uploadFileInput?.click()}
-                disabled={uploadRunning}
-                class="w-full p-6 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl flex flex-col items-center justify-center text-center transition bg-slate-50/50 hover:bg-slate-50"
-              >
-                <Upload class="size-8 text-slate-400 mb-2" />
-                <span class="text-xs font-bold text-slate-800">
-                  Choose Document or Drag & Drop
-                </span>
-                <span class="text-[10px] text-slate-500 mt-1">Accepts PDF, Word (DOCX), Scanned JPG/PNG (Up to 25 MB)</span>
-              </button>
+                {#if conversionError}
+                  <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-center gap-2 font-medium">
+                    <XCircle class="size-4 text-red-600 shrink-0" />
+                    <span>{conversionError}</span>
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
 
+          <!-- Sticky Sidebar Footer: Continue to Step 2 -->
+          <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 mt-6">
+            <button
+              type="button"
+              onclick={() => {
+                if (stage1Mode === 'html' && !draft.raster_url) {
+                  compileHtmlSource();
+                } else {
+                  goToStage(2);
+                }
+              }}
+              disabled={uploadRunning}
+              class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+            >
               {#if uploadRunning}
-                <div class="p-3 bg-slate-100 rounded-xl text-xs flex items-center gap-2 text-slate-700 font-medium">
-                  <Loader2 class="size-4 animate-spin text-slate-900" />
-                  <span>{conversionStatusText}</span>
-                </div>
+                <Loader2 class="size-3.5 animate-spin" />
+                <span>{conversionStatusText || 'Converting…'}</span>
+              {:else}
+                <span>Continue to Layout & Markers</span>
+                <ChevronRight class="size-3.5" />
               {/if}
-
-              {#if conversionError}
-                <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-center gap-2 font-medium">
-                  <XCircle class="size-4 text-red-600 shrink-0" />
-                  <span>{conversionError}</span>
-                </div>
-              {/if}
-            </div>
-          {/if}
+            </button>
+          </div>
         </div>
 
+      <!-- STEP 2: Layout & Overlays -->
       {:else if currentStage === 2}
         <StudioOverlayPanel
           bind:marginMm
@@ -976,60 +944,28 @@
           bind:showQrOverlay
           bind:customTextItems
           onChanged={triggerAutosave}
+          onBack={() => goToStage(1)}
+          onNext={() => goToStage(3)}
         />
 
+      <!-- STEP 3: Question Bubbles & Pitch Geometry -->
       {:else if currentStage === 3}
-        <div class="p-6 space-y-6">
-          <div>
-            <h2 class="text-base font-bold text-slate-900">300-PPI Registration & Quad</h2>
-            <p class="text-xs text-slate-500 mt-1">Composites fiducial markers and freezes the 300-PPI print authority.</p>
-          </div>
-
-          <div class="p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 text-xs text-emerald-900 space-y-2">
-            <div class="flex items-center gap-1.5 font-bold">
-              <ShieldCheck class="size-4 text-emerald-600" />
-              <span>Normalization-First Quad Authority</span>
-            </div>
-            <p class="text-[11px] leading-relaxed text-emerald-800">
-              The 4 corner fiducials define identically the <code class="font-mono bg-emerald-100 px-1 rounded">(0,0)</code> quad. In Stage 4, your question bubbles will map directly onto this calibrated quad with zero coordinate drift.
-            </p>
-          </div>
-
-          <!-- 300-PPI Compose Trigger -->
-          <div class="space-y-2">
-            <button
-              type="button"
-              onclick={composeCanonicalPage}
-              disabled={isComposing}
-              class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
-            >
-              {#if isComposing}
-                <Loader2 class="size-3.5 animate-spin" />
-                <span>{composeStatusText}</span>
-              {:else}
-                <RefreshCw class="size-3.5 text-emerald-400" />
-                <span>Build 300-PPI Canonical Print Raster</span>
-              {/if}
-            </button>
-            <p class="text-[10px] text-slate-500 text-center">
-              Re-renders print authority with physical markers and custom overlays.
-            </p>
-          </div>
-        </div>
-
-      {:else if currentStage === 4}
         <StudioBubblePanel
           bind:sections
           bind:activeSectionIndex
           onChanged={triggerAutosave}
+          onBack={() => goToStage(2)}
+          onNext={() => goToStage(4)}
         />
 
-      {:else if currentStage === 5}
+      <!-- STEP 4: Verification & Production Deliverables -->
+      {:else if currentStage === 4}
         <StudioExportVerifyPanel
           {draft}
           {urls}
           {jsonSchema}
           {getCsrfToken}
+          onBack={() => goToStage(3)}
         />
       {/if}
     </aside>
