@@ -1,9 +1,9 @@
 <script>
   import {
     Lock,
-    Unlock,
     Loader2,
   } from 'lucide-svelte';
+  import { contentBlockSizeMm } from '@/lib/omrStudioGeometry';
 
   let {
     scale = $bindable(1.0),
@@ -138,22 +138,22 @@
       return;
     }
 
-    // STAGE 3: Question Bubble Sections Dragging & Resizing (respects sec.isLocked)
+    // STAGE 3: Question Bubble Sections Dragging only (constrained — no manual resize)
     if (currentStage === 3 && dragBlockIndex !== null) {
       const sec = sections[dragBlockIndex];
-      if (!sec || sec.isLocked) return;
+      if (!sec || sec.isLocked || !isBlockDragging) return;
 
-      if (isBlockDragging) {
-        let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
-        let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
-        sec.posX = Math.max(marginMm, Math.min(210 - marginMm - (Number(sec.w_mm) || 75), nx));
-        sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - (Number(sec.h_mm) || 140), ny));
-      } else if (isHandleDragging) {
-        let nw = Math.round((blockStartGeometry.w + dXmm) / 2) * 2;
-        let nh = Math.round((blockStartGeometry.h + dYmm) / 2) * 2;
-        sec.w_mm = Math.max(35, Math.min(210 - sec.posX - marginMm, nw));
-        sec.h_mm = Math.max(18, Math.min(297 - sec.posY - marginMm, nh));
-      }
+      const { w_mm, h_mm } = contentBlockSizeMm(
+        getOptionLabels(sec).length,
+        Number(sec.questionsCount) || 1,
+        Number(sec.bubblePitchMm) || 9.5,
+        Number(sec.rowPitchMm) || 4.2
+      );
+
+      let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
+      let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
+      sec.posX = Math.max(marginMm, Math.min(210 - marginMm - w_mm, nx));
+      sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - h_mm, ny));
     }
   }
 
@@ -195,18 +195,6 @@
     e.stopPropagation();
     activeSectionIndex = index;
     isBlockDragging = true;
-    dragBlockIndex = index;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
-  }
-
-  function handleResizeMouseDown(e, index) {
-    const sec = sections[index];
-    if (currentStage !== 3 || sec?.isLocked) return;
-    e.stopPropagation();
-    activeSectionIndex = index;
-    isHandleDragging = true;
     dragBlockIndex = index;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -442,7 +430,7 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+: Multi-Section Question Bubble Grids (Translucent Optical Sensor Mask with Real-Time Dynamic Pitch & Mini Lock) -->
+      <!-- STAGE 3+: Multi-Section Question Bubble Grids (content-hug, constrained — no manual resize) -->
       {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
@@ -451,10 +439,10 @@
           {@const rPitchMm = Number(sec.rowPitchMm) || 4.2}
           {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - 14)}
           {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - 14)}
-          {@const minW_mm = Math.round(14 + (labels.length - 1) * bPitchMm + 8)}
-          {@const minH_mm = Math.round(14 + (Math.min(Number(sec.questionsCount) || 1, 50) - 1) * rPitchMm + 10)}
-          {@const blockWidthMm = Math.max(Number(sec.w_mm) || 56, minW_mm)}
-          {@const blockHeightMm = Math.max(Number(sec.h_mm) || 220, minH_mm)}
+          {@const blockSize = contentBlockSizeMm(labels.length, Number(sec.questionsCount) || 1, bPitchMm, rPitchMm)}
+          {@const blockWidthMm = blockSize.w_mm}
+          {@const blockHeightMm = blockSize.h_mm}
+          {@const qEnd = (Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1}
           <div
             class={`absolute rounded-lg border transition-all backdrop-blur-[0.5px] ${
               isSelected
@@ -466,33 +454,9 @@
             role="button"
             tabindex="0"
           >
-            <!-- Section Header Chip with Mini Lock Button -->
-            <div class="px-1.5 py-0.5 bg-emerald-600/95 text-white rounded-t text-[7px] font-mono font-bold flex justify-between items-center select-none shadow-xs">
-              <span class="truncate">{sec.id} (Q{Number(sec.startQ) || 1}&ndash;{(Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1})</span>
-              <div class="flex items-center space-x-1 shrink-0">
-                <span class="opacity-85 text-[6.5px] font-normal">{bPitchMm}mm</span>
-                <button
-                  type="button"
-                  onclick={(e) => {
-                    e.stopPropagation();
-                    sec.isLocked = !sec.isLocked;
-                    if (onGeometryChanged) onGeometryChanged();
-                  }}
-                  class="text-white/80 hover:text-white p-0.5 rounded transition"
-                  title={sec.isLocked ? 'Unlock section' : 'Lock section'}
-                >
-                  {#if sec.isLocked}
-                    <Lock class="size-2.5 text-amber-300" />
-                  {:else}
-                    <Unlock class="size-2.5 text-white/70" />
-                  {/if}
-                </button>
-              </div>
-            </div>
-
-            <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing -->
+            <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing (content-hug padding) -->
             <div
-              class="p-1 overflow-hidden h-[calc(100%-16px)] flex flex-col"
+              class="p-1 w-full h-full flex flex-col"
               style={`gap: ${rowGapPx}px;`}
             >
               {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
@@ -514,14 +478,19 @@
               {/each}
             </div>
 
-            <!-- Resize Handle (Only visible when unlocked) -->
-            {#if isSelected && !sec.isLocked}
-              <div
-                class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
-                onmousedown={(e) => handleResizeMouseDown(e, i)}
-                role="button"
-                tabindex="0"
-              ></div>
+            <!-- Minimal Floating Q-Range Label (no header bar, no pitch text) -->
+            <div
+              class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
+                isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
+              }`}
+            >
+              Q{Number(sec.startQ) || 1}{qEnd > (Number(sec.startQ) || 1) ? `–${qEnd}` : ''}
+            </div>
+
+            {#if sec.isLocked}
+              <div class="absolute top-0.5 left-0.5 text-amber-600 pointer-events-none select-none">
+                <Lock class="size-2.5" />
+              </div>
             {/if}
           </div>
         {/each}

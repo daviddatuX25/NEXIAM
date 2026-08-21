@@ -1,4 +1,5 @@
 <script>
+  import StudioTip from './StudioTip.svelte';
   import {
     Plus,
     Trash2,
@@ -113,15 +114,14 @@
     </div>
   </div>
 
-  <!-- OMR Optical Grid Notice -->
-  <div class="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-blue-950 space-y-1 text-xs">
-    <div class="flex items-center gap-1.5 font-bold text-blue-900">
-      <Scan class="size-3.5 text-blue-600 shrink-0" />
-      <span>OMR Optical Recognition Grid</span>
-    </div>
-    <p class="text-[11px] text-blue-700 leading-relaxed">
-      These translucent blue halos define the optical sensor coordinates for OMR recognition. They align over your document's printed bubbles and do not add duplicate print text.
-    </p>
+  <!-- OMR Optical Grid Notice (compact row; details in tooltip) -->
+  <div class="flex items-center gap-1.5 px-1">
+    <Scan class="size-3.5 text-blue-600 shrink-0" />
+    <span class="text-xs font-semibold text-blue-900">OMR Optical Recognition Grid</span>
+    <StudioTip
+      position="top"
+      text="These translucent blue halos define the optical sensor coordinates for OMR recognition. They align over your document's printed bubbles and do not add duplicate print text."
+    />
   </div>
 
   <!-- Section Select Tabs -->
@@ -229,10 +229,12 @@
       <div class="space-y-3 border-t border-slate-200/80 pt-3">
         <div class="space-y-1.5">
           <div class="flex justify-between font-semibold text-slate-700">
-            <span>Bubble Spacing (Horizontal)</span>
+            <span class="flex items-center gap-1">
+              Bubble Spacing (Horizontal)
+              <StudioTip text="Horizontal center-to-center distance between option bubbles (A ↔ B ↔ C ↔ D)." />
+            </span>
             <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{activeSection.bubblePitchMm} mm</span>
           </div>
-          <p class="text-[10px] text-slate-500">Horizontal center-to-center distance between option bubbles (A ↔ B ↔ C ↔ D).</p>
           <input
             type="range"
             min="6.0"
@@ -248,10 +250,12 @@
         {#if (Number(activeSection.questionsCount) || 1) > 1}
           <div class="space-y-1.5">
             <div class="flex justify-between font-semibold text-slate-700">
-              <span>Row Spacing (Vertical)</span>
+              <span class="flex items-center gap-1">
+                Row Spacing (Vertical)
+                <StudioTip text="Vertical center-to-center distance between question rows (Q1 ↕ Q2)." />
+              </span>
               <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{activeSection.rowPitchMm} mm</span>
             </div>
-            <p class="text-[10px] text-slate-500">Vertical center-to-center distance between question rows (Q1 ↕ Q2).</p>
             <input
               type="range"
               min="3.0"

@@ -1,4 +1,5 @@
 <script>
+  import StudioTip from './StudioTip.svelte';
   import {
     Plus,
     Trash2,
@@ -67,7 +68,10 @@
   <!-- Physical Insets Slider -->
   <div class="space-y-2">
     <div class="flex justify-between text-xs font-semibold text-slate-700">
-      <span>Physical Margin Inset</span>
+      <span class="flex items-center gap-1">
+        Physical Margin Inset
+        <StudioTip text="Quiet zone from paper edge to corner fiducial registration quad." />
+      </span>
       <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{marginMm} mm</span>
     </div>
     <input
@@ -79,7 +83,6 @@
       oninput={handleInput}
       class="w-full accent-slate-900"
     />
-    <p class="text-[10px] text-slate-400">Quiet zone from paper edge to corner fiducial registration quad.</p>
   </div>
 
   <!-- Marker Profile Picker -->
@@ -255,9 +258,9 @@
           </button>
         {/if}
       </div>
-      <p class="text-[10px] text-slate-400">
-        Reserves a 28–35mm zone. Real signed cryptographic QR codes are composed at physical print time.
-      </p>
+      <div class="flex items-center gap-1">
+        <StudioTip text="Reserves a 28–35mm zone. Real signed cryptographic QR codes are composed at physical print time." />
+      </div>
     </div>
 
     <!-- Custom Text Elements -->

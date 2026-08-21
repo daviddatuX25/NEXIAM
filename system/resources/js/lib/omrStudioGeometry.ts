@@ -35,6 +35,33 @@ export function pxToMm(px: number): number {
   return Number((px / PX_PER_MM).toFixed(2));
 }
 
+/**
+ * Content-derived block bounds for a question section.
+ *
+ * The builder no longer hand-resizes section rectangles (constrained by design);
+ * bounds are derived purely from bubble/row pitch and question/option counts so
+ * the canvas rect always hugs its bubbles and the native mapping stays in sync.
+ *
+ * `minW_mm`/`minH_mm` mirror the canvas preview heuristic (14 = bubble diameter,
+ * 8/10 = inner padding, 50 = max rendered rows).
+ */
+export function contentBlockSizeMm(
+  options: number,
+  questions: number,
+  bubblePitchMm: number,
+  rowPitchMm: number
+): { w_mm: number; h_mm: number } {
+  const opts = Math.max(2, options || 4);
+  const qs = Math.min(Math.max(1, questions || 1), 50);
+  const bPitch = Math.max(Number(bubblePitchMm) || 9.5, 1);
+  const rPitch = Math.max(Number(rowPitchMm) || 4.2, 1);
+
+  return {
+    w_mm: Math.round(14 + (opts - 1) * bPitch + 8),
+    h_mm: Math.round(14 + (qs - 1) * rPitch + 10),
+  };
+}
+
 export interface InsetMargins {
   top_mm: number;
   right_mm: number;

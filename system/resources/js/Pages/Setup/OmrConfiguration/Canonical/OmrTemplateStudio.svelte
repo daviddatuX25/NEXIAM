@@ -4,6 +4,7 @@
   import {
     emitNativeMapping,
     emitOverlayBoxes,
+    contentBlockSizeMm,
   } from '@/lib/omrStudioGeometry';
   import {
     CheckCircle2,
@@ -386,13 +387,22 @@
       if (s.type === 'likert') opts = 5;
       if (s.type === 'custom') opts = (s.customValuesStr || '').split(',').length;
 
+      // Section bounds are content-derived (no manual resize in the builder),
+      // so the native mapping always matches the minimized canvas rectangle.
+      const { w_mm, h_mm } = contentBlockSizeMm(
+        opts,
+        Number(s.questionsCount) || 10,
+        Number(s.bubblePitchMm) || 12.0,
+        Number(s.rowPitchMm) || 6.5
+      );
+
       return {
         id: s.id,
         type: s.type,
         x_mm: Number(s.posX) || 25,
         y_mm: Number(s.posY) || 72,
-        w_mm: Number(s.w_mm) || 75,
-        h_mm: Number(s.h_mm) || 165,
+        w_mm,
+        h_mm,
         questions: Number(s.questionsCount) || 10,
         cols: Number(s.cols) || 1,
         options: opts,
