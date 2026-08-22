@@ -24,7 +24,7 @@ class ApplicantLoginRequest extends FormRequest
                 'max:32',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if (! is_string($value) || ! ApplicantAccessKey::isValidShape($value)) {
-                        $fail('Enter a valid access key (format ABCD-EFGH).');
+                        $fail('Enter a valid 8-character access key (format ABCD-EFGH).');
                     }
                 },
             ],

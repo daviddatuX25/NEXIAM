@@ -66,4 +66,84 @@ diff --git a/src/utils/interaction.py b/src/utils/interaction.py
      # for positioning image windows
      window_x, window_y = 0, 0
      reset_pos = [0, 0]
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NEXIAM <engineering@nexiam.test>
+Date: Wed, 12 Aug 2026 00:00:00 +0000
+Subject: [PATCH] return the clean aligned raster from read_omr_response
+
+The second tuple value is the debug-annotated final_marked canvas (marked
+rectangles, value labels, translucent overlay), which NEXIAM previously
+stored as clean aligned evidence. Return the pre-annotation page raster as
+final_align instead; debug previews move to align_preview and stay internal
+to the optional show_image_level paths. Classification is untouched.
+
+---
+ src/core.py | 25 ++++++++++++++++++++-----
+ 1 file changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/src/core.py b/src/core.py
+--- a/src/core.py
++++ b/src/core.py
+@@ -59,6 +59,9 @@
+             # Processing copies
+             transp_layer = img.copy()
+             final_marked = img.copy()
++            # Clean aligned raster: returned to callers as unannotated
++            # evidence. Debug marks are only ever drawn on final_marked.
++            final_align = img.copy()
+ 
+             morph = img.copy()
+             self.append_save_img(3, morph)
+@@ -198,18 +201,20 @@
+                     #   "origin:", field_block.origin,'\n')
+                 # print("End Alignment")
+ 
+-            final_align = None
++            # Debug-only alignment preview; never returned to callers so the
++            # clean aligned raster stays unannotated.
++            align_preview = None
+             if config.outputs.show_image_level >= 2:
+                 initial_align = self.draw_template_layout(img, template, shifted=False)
+-                final_align = self.draw_template_layout(
++                align_preview = self.draw_template_layout(
+                     img, template, shifted=True, draw_qvals=True
+                 )
+                 # appendSaveImg(4,mean_vals)
+                 self.append_save_img(2, initial_align)
+-                self.append_save_img(2, final_align)
++                self.append_save_img(2, align_preview)
+ 
+                 if auto_align:
+-                    final_align = np.hstack((initial_align, final_align))
++                    align_preview = np.hstack((initial_align, align_preview))
+             self.append_save_img(5, img)
+ 
+             # Get mean bubbleValues n other stats
+@@ -408,13 +413,13 @@
+                 plt.tight_layout(pad=0.5)
+                 plt.show()
+ 
+-            if config.outputs.show_image_level >= 3 and final_align is not None:
+-                final_align = ImageUtils.resize_util_h(
+-                    final_align, int(config.dimensions.display_height)
++            if config.outputs.show_image_level >= 3 and align_preview is not None:
++                align_preview = ImageUtils.resize_util_h(
++                    align_preview, int(config.dimensions.display_height)
+                 )
+                 # [final_align.shape[1],0])
+                 InteractionUtils.show(
+-                    "Template Alignment Adjustment", final_align, 0, 0, config=config
++                    "Template Alignment Adjustment", align_preview, 0, 0, config=config
+                 )
+ 
+             if config.outputs.save_detections and save_dir is not None:
+@@ -429,7 +434,7 @@
+                 for i in range(config.outputs.save_image_level):
+                     self.save_image_stacks(i + 1, name, save_dir)
+ 
+-            return omr_response, final_marked, multi_marked, multi_roll
++            return omr_response, final_align, multi_marked, multi_roll
+ 
+         except Exception as e:
+             raise e
 *** End Patch

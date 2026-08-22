@@ -8,6 +8,7 @@ use App\Assessment\Actions\Omr\RegisterNativeBundle;
 use App\Assessment\Actions\Omr\RetireOmrConfiguration;
 use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
 use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
+use App\Assessment\Actions\Omr\TestCaptureOmrTemplate;
 use App\Authorization\CapabilityAuthorizer;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Setup\Concerns\HasSetupCapabilities;
@@ -19,6 +20,7 @@ use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Foundation\AptitudeArea;
 use App\Printing\RenderBundlePdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -209,6 +211,7 @@ class OmrConfigurationController extends Controller
                     'engine_name' => $version->engine_name,
                     'engine_commit' => $version->engine_commit,
                     'patch_identity' => $version->patch_identity,
+                    'capture_policy' => \App\Assessment\Omr\OmrCapturePolicy::forVersion($version),
                     'activated_at' => $version->activated_at?->toIso8601String(),
                     'pair_ids' => $version->pairs->pluck('id')->map(fn ($id) => (int) $id)->all(),
                 ])->values()->all(),
@@ -235,10 +238,21 @@ class OmrConfigurationController extends Controller
         ]);
     }
 
-    public function builder(Request $request, CapabilityAuthorizer $authorizer): Response
+    public function builder(Request $request, CapabilityAuthorizer $authorizer): Response|\Illuminate\Http\RedirectResponse
     {
         $this->requireAssessment($authorizer, $request);
+        if ((bool) config('omr.canonical.enabled', true)) {
+            $targetDraft = \App\Models\Assessment\OmrTemplateAuthoringDraft::query()
+                ->where('source_kind', 'preset')
+                ->orWhere('stage', 'mapping_complete')
+                ->orderByDesc('id')
+                ->first() ?? \App\Models\Assessment\OmrTemplateAuthoringDraft::query()->first();
+            if ($targetDraft !== null) {
+                return redirect()->route('setup.omr.templates.canonical.drafts.show', $targetDraft);
+            }
 
+            return redirect()->route('setup.omr.templates.canonical.index');
+        }
         $draftVersion = null;
         $draftRefusal = null;
         if ($request->integer('version') > 0) {
@@ -622,6 +636,89 @@ class OmrConfigurationController extends Controller
             ],
             'template_json_hash' => $solved->templateJsonHash,
             'diagnostics' => [],
+        ]);
+    }
+
+    /**
+     * Read-only builder Test capture (tasks 10.5/10.6 backend seam).
+     *
+     * Authorized setup staff upload a photo of the printed marker-bearing
+     * sheet; the worker runs marker registration in diagnostic mode and the
+     * response exposes the normalized raster, the engine layout overlay,
+     * per-bubble means, marker diagnostics, and shift gates. Nothing here
+     * mutates activation, pairs, answer keys, or scores; marker-less versions
+     * are rejected with a typed error.
+     */
+    public function testCapture(
+        Request $request,
+        CapabilityAuthorizer $authorizer,
+        TestCaptureOmrTemplate $action,
+        OmrAnswerSheetTemplateVersion $version,
+    ): JsonResponse {
+        $this->requireAssessment($authorizer, $request);
+
+        $validated = $request->validate([
+            'image' => ['required', 'file', 'image', 'mimes:jpeg,png,webp', 'max:25600'],
+        ]);
+
+        /** @var \Illuminate\Http\UploadedFile $image */
+        $image = $validated['image'];
+        try {
+            $result = $action->handle($version, (string) $image->get(), (string) $image->getMimeType(), $request->user());
+        } catch (RuntimeException $exception) {
+            return response()->json(['error' => $exception->getMessage()], 422);
+        }
+
+        if (! $result->succeeded()) {
+            return response()->json([
+                'outcome' => 'failed',
+                'code' => $result->code,
+                'detail' => $result->detail,
+            ], 422);
+        }
+
+        $token = (string) \Illuminate\Support\Str::uuid();
+        $directory = 'omr-diagnostics/'.$token;
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $disk->put($directory.'/aligned.png', (string) $result->alignedBytes);
+        $disk->put($directory.'/layout-overlay.png', (string) $result->overlayBytes);
+
+        return response()->json([
+            'outcome' => 'succeeded',
+            'aligned_url' => route('setup.omr.templates.test_capture_asset', ['token' => $token, 'file' => 'aligned.png']),
+            'overlay_url' => route('setup.omr.templates.test_capture_asset', ['token' => $token, 'file' => 'layout-overlay.png']),
+            'aligned_image' => $result->alignedImage,
+            'overlay_image' => $result->overlayImage,
+            'marker_matches' => $result->markerMatches,
+            'field_block_shifts' => $result->fieldBlockShifts,
+            'bubble_means' => $result->bubbleMeans,
+            'item_evidence' => $result->itemEvidence,
+            'gates' => $result->gates,
+            'calibration_status' => 'unqualified',
+            'timings' => [
+                'preprocess_ms' => $result->preprocessMs,
+                'verification_ms' => $result->verificationMs,
+            ],
+        ]);
+    }
+
+    /** Streams one stored test-capture raster (capability-gated, no-store). */
+    public function testCaptureAsset(Request $request, CapabilityAuthorizer $authorizer, string $token, string $file)
+    {
+        $this->requireAssessment($authorizer, $request);
+
+        if (! in_array($file, ['aligned.png', 'layout-overlay.png'], true)) {
+            abort(404);
+        }
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $path = 'omr-diagnostics/'.$token.'/'.$file;
+        if (! $disk->exists($path)) {
+            abort(404);
+        }
+
+        return response($disk->get($path), 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'private, no-store',
         ]);
     }
 

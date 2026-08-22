@@ -21,7 +21,7 @@ class StoreOmrSheetRequest extends FormRequest
             'capture_mode' => ['required', 'in:manual,auto'],
             'client_capture_id' => ['required', 'uuid'],
             'page_no' => ['sometimes', 'integer', 'min:1', 'max:10'],
-            'image' => ['required', 'file', 'mimes:jpeg,png,webp', 'max:10240'],
+            'image' => ['required', 'file', 'mimes:jpeg,png,webp', 'max:25600'],
         ];
     }
 }

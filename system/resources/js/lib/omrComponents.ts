@@ -687,3 +687,155 @@ export function componentToSectionData(c: OmrComponent): SectionData | null {
   }
   return null;
 }
+
+export type ComponentKind = 'header' | 'candidate_info' | 'instructions' | 'roll' | 'question_grid' | 'custom_text' | 'signature';
+
+export const COMPONENT_PALETTE: Array<{ kind: ComponentKind; label: string; description: string }> = [
+  { kind: 'header', label: 'Document Header', description: 'Exam title, subtitle, and form code badge' },
+  { kind: 'candidate_info', label: 'Candidate Info', description: 'Name line, birthdate, and room/seat write-in boxes' },
+  { kind: 'instructions', label: 'Instructions', description: 'Pencil / shading rules notice box' },
+  { kind: 'roll', label: 'Examinee ID Matrix', description: 'Write-in boxes + 0–9 vertical bubble columns' },
+  { kind: 'question_grid', label: 'Question Grid', description: 'Numbered question rows with A–D option bubbles' },
+  { kind: 'custom_text', label: 'Custom Text', description: 'Free-positioned text label' },
+  { kind: 'signature', label: 'Signature Box', description: 'Signature line with certification text' },
+];
+
+export const FONT_FAMILY_OPTIONS = [
+  { value: 'Inter, sans-serif', label: 'Inter' },
+  { value: 'IBM Plex Sans, sans-serif', label: 'IBM Plex Sans' },
+  { value: 'Georgia, "Times New Roman", serif', label: 'Georgia / Serif' },
+  { value: '"Courier New", Courier, monospace', label: 'Courier / Mono' },
+  { value: 'Arial, Helvetica, sans-serif', label: 'Arial' },
+];
+
+let componentSeq = 0;
+
+/**
+ * Create a blank component instance of the given kind.
+ */
+export function createComponent(kind: ComponentKind): OmrComponent {
+  componentSeq += 1;
+  const seq = componentSeq;
+  switch (kind) {
+    case 'header':
+      return {
+        id: `Header_${seq}`,
+        type: 'header',
+        title: 'EXAMINATION ANSWER SHEET',
+        subtitle: 'Automated OMR Evaluation Form',
+        formCode: 'FORM 1-A',
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 13, fontWeight: 900, textAlign: 'left' },
+        showBorderBottom: true,
+      };
+    case 'candidate_info':
+      return {
+        id: `Candidate_${seq}`,
+        type: 'candidate_info',
+        candidateNameLabel: 'Candidate Name (Print: Surname, First Name, Middle Initial)',
+        birthdateLabel: 'Birthdate (MM / DD / YYYY)',
+        roomSeatLabel: 'Room / Seat / Group No.',
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
+        heightMm: 24,
+      };
+    case 'instructions':
+      return {
+        id: `Instructions_${seq}`,
+        type: 'instructions',
+        content: 'Use Black Pencil/Pen (#2 or HB). Shade circle completely. Erase cleanly if changing answers. Make no stray marks on this sheet.',
+        showMarkExamples: true,
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 600, textColor: '#334155', lineHeight: 1.3 },
+        borderColor: '#cbd5e1',
+        backgroundColor: '#ffffff',
+      };
+    case 'roll':
+      return {
+        id: `Examinee_ID_${seq}`,
+        type: 'roll',
+        title: 'Examinee Number',
+        digitsCount: 7,
+        bubblePitchMm: 5.5,
+        rowPitchMm: 4.8,
+        posX: 125,
+        posY: 22,
+        w_mm: 58,
+        h_mm: 54,
+        isLocked: false,
+      };
+    case 'question_grid':
+      return {
+        id: `Grid_${seq}`,
+        name: 'Subject Section',
+        type: 'mcq',
+        subjectName: 'Subject',
+        questionsCount: 25,
+        cols: 1,
+        optionsCount: 4,
+        startQ: 1,
+        customValuesStr: 'A, B, C, D',
+        bubblePitchMm: 6.0,
+        rowPitchMm: 6.8,
+        labelStyle: 'column_header',
+        posX: 10,
+        posY: 88,
+        w_mm: 28,
+        h_mm: 175,
+        isLocked: false,
+      };
+    case 'custom_text':
+      return {
+        id: `Text_${seq}`,
+        type: 'custom_text',
+        text: 'Custom note / label',
+        posX: 25,
+        posY: 250,
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 9, fontWeight: 600 },
+      };
+    case 'signature':
+      return {
+        id: `Signature_${seq}`,
+        type: 'signature',
+        title: 'EXAMINEE SIGNATURE',
+        certificationText: 'I certify that all answers marked on this sheet are my own.',
+        heightMm: 15,
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 8.5, fontWeight: 700, textColor: '#475569' },
+      };
+  }
+}
+
+export const COMPONENT_SUITE_CSS = `/* NEXIAM OMR Component Suite — shared CSS contract (v1) */
+.omr-header { border-bottom: 2px solid #0f172a; padding-bottom: 3px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end; }
+.omr-title h1 { font-size: 13pt; font-weight: 900; text-transform: uppercase; line-height: 1.1; color: #0f172a; }
+.omr-title p { font-size: 7pt; color: #475569; font-weight: 600; text-transform: uppercase; }
+.omr-sheet-code { font-family: monospace; font-size: 8pt; font-weight: 800; border: 1px solid #0f172a; padding: 2px 5px; border-radius: 2px; }
+.omr-top-section { display: grid; grid-template-columns: 1fr 150px; gap: 10px; margin-bottom: 8px; }
+.omr-field-box { border: 1.2px solid #334155; border-radius: 3px; padding: 3px 6px; background: #f8fafc; }
+.omr-field-label { font-size: 6.5pt; font-weight: 800; text-transform: uppercase; color: #475569; }
+.omr-field-line { border-bottom: 1px dashed #94a3b8; height: 11px; }
+.omr-instructions { border: 1px solid #cbd5e1; border-radius: 3px; padding: 3px 6px; background: #ffffff; }
+.omr-id-container { border: 1.5px solid #0f172a; border-radius: 3px; padding: 4px 5px; background: #fafafa; }
+.omr-id-box { width: 11px; height: 13px; border: 1.2px solid #0f172a; border-radius: 2px; background: #ffffff; }
+.omr-id-bub, .omr-bub { border: 1.1px solid #1e293b; border-radius: 50%; background: #ffffff; }
+.omr-id-bub { width: 11px; height: 8.5px; }
+.omr-bub { width: 9px; height: 8.5px; }
+.omr-exam-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(28mm, 1fr)); gap: 5px; border-top: 1.5px solid #0f172a; padding-top: 5px; }
+.omr-subject-header { font-size: 6pt; font-weight: 900; background: #0f172a; color: #ffffff; padding: 2px 3px; border-radius: 2px; text-align: center; text-transform: uppercase; }
+.omr-option-header { display: flex; justify-content: flex-end; gap: 3.5px; font-size: 5.5pt; font-weight: 900; }
+.omr-q-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2px; }
+.omr-q-num { font-size: 6pt; font-weight: 700; font-family: monospace; color: #334155; width: 11px; text-align: right; padding-right: 2px; }`;
+
+export const COMPONENT_SUITE_PROMPT = `You are reproducing a NEXIAM OMR answer sheet using the following component suite contract.
+
+SUITE COMPONENTS:
+1. Document Header — exam title, subtitle, form code badge. Typography: fontSizePt, fontFamily, fontWeight, textColor, textAlign.
+2. Candidate Info — candidate name write-in line, birthdate digit boxes (MM/DD/YYYY), room/seat write-in line.
+3. Instructions — bordered notice box with pencil shading rules and mark examples.
+4. Examinee ID Matrix (QTYPE_INT) — N digit write-in boxes on top, vertical 0–9 bubble columns below each.
+5. Question Grid (QTYPE_MCQ) — numbered question rows, 4/5 option bubbles (A–D / A–E), column-top option headers, configurable bubble pitch (X) and row pitch (Y) in millimetres.
+6. Custom Text — free-positioned text label with full typography controls.
+7. Signature Box — signature line plus certification text.
+
+GEOMETRY CONTRACT: single A4 page (210mm x 297mm), print-safe margins, all bubbles >= 4.5mm diameter, bubble pitch >= 5.76mm, row pitch >= 3.5mm. Option letters are placed as column headers, never inside the circles.
+
+OUTPUT: print-exact static HTML/CSS with the suite CSS classes below. Do not add scripts, remote assets, or interactive JS.
+
+${COMPONENT_SUITE_CSS}`;

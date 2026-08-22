@@ -11,6 +11,9 @@
     PRESET_150Q_COMPONENTS,
     DEFAULT_A4_SETTINGS,
     componentToSectionData,
+    createComponent,
+    COMPONENT_PALETTE,
+    COMPONENT_SUITE_PROMPT,
   } from '@/lib/omrComponents';
   import {
     CheckCircle2,
@@ -33,12 +36,13 @@
     AlignLeft,
     AlignCenter,
     AlignRight,
+    Trash2,
   } from 'lucide-svelte';
-
   import StudioCanvas from './StudioCanvas.svelte';
   import StudioOverlayPanel from './StudioOverlayPanel.svelte';
   import StudioBubblePanel from './StudioBubblePanel.svelte';
   import StudioExportVerifyPanel from './StudioExportVerifyPanel.svelte';
+  import StudioTypographyControls from './StudioTypographyControls.svelte';
 
   let {
     draft = {},
@@ -57,9 +61,10 @@
     '4. Verify & Export',
   ];
 
-  // Stage 1: Base Mode ('html' | 'upload')
+  // Stage 1: Base Mode ('html' | 'upload'). Chosen at the entry gate before the canvas appears.
   let stage1Mode = $state((draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'html');
   let baseType = $state(draft.source_kind ?? 'html');
+  let hasChosenMode = $state(Boolean(draft.authoring?.studio?.stage1Mode));
 
   // Compact, Single-Page A4-Fitted 150-Q HTML Template
   // Componentized Single-Page A4-Fitted 150-Q HTML Template (Examinee ID Matrix + 6 Subjects x 25 Qs)
@@ -364,21 +369,73 @@
 </body>
 </html>`;
 
-  // Stage 1: Component-Driven Native Designer State
+  // Stage 1: Sheet Designer Component State — starts BLANK; components come from the palette.
   let designerSubTab = $state('designer'); // 'designer' | 'raw_html'
-  let components = $state(JSON.parse(JSON.stringify(PRESET_150Q_COMPONENTS)));
+  let components = $state([]);
+  let selectedComponentId = $state(null);
 
   let headerComp = $derived(components.find((c) => c.type === 'header'));
   let candidateInfoComp = $derived(components.find((c) => c.type === 'candidate_info'));
   let instructionsComp = $derived(components.find((c) => c.type === 'instructions'));
   let rollIdComp = $derived(components.find((c) => c.type === 'roll'));
   let questionGridComps = $derived(components.filter((c) => c.type === 'mcq' || c.type === 'tf' || c.type === 'likert' || c.type === 'custom'));
+  let selectedComponent = $derived(components.find((c) => c.id === selectedComponentId) ?? null);
+
+  function componentLabel(c) {
+    switch (c.type) {
+      case 'header': return 'Document Header';
+      case 'candidate_info': return 'Candidate Info';
+      case 'instructions': return 'Instructions';
+      case 'roll': return 'Examinee ID Matrix';
+      case 'mcq': case 'tf': case 'likert': case 'custom': return c.subjectName || c.name || 'Question Grid';
+      case 'custom_text': return 'Custom Text';
+      case 'signature': return 'Signature Box';
+      default: return c.type;
+    }
+  }
 
   function syncComponentsToSections() {
-    htmlCode = renderFullSheetHtml(components);
+    htmlCode = components.length > 0 ? renderFullSheetHtml(components) : '';
     sections = components
       .map((c) => componentToSectionData(c))
       .filter((s) => s !== null);
+    triggerAutosave();
+  }
+
+  function addComponent(kind) {
+    const comp = createComponent(kind);
+    components = [...components, comp];
+    selectedComponentId = comp.id;
+    syncComponentsToSections();
+  }
+  function selectComponent(id) {
+    selectedComponentId = id;
+    const idx = sections.findIndex((s) => s.id === id);
+    if (idx >= 0) activeSectionIndex = idx;
+  }
+
+  function removeComponent(id) {
+    components = components.filter((c) => c.id !== id);
+    if (selectedComponentId === id) selectedComponentId = null;
+    syncComponentsToSections();
+  }
+
+  function updateSelectedComponent(patch) {
+    if (!selectedComponentId) return;
+    components = components.map((c) => (c.id === selectedComponentId ? { ...c, ...patch } : c));
+    syncComponentsToSections();
+  }
+
+  function handlePaletteDrop(e) {
+    e.preventDefault();
+    const kind = e.dataTransfer?.getData('application/x-omr-component') || window.__omrDragKind;
+    if (kind) addComponent(kind);
+  }
+
+  function chooseMode(mode) {
+    stage1Mode = mode;
+    baseType = mode === 'html' ? 'html' : 'image';
+    hasChosenMode = true;
     triggerAutosave();
   }
 
@@ -398,10 +455,13 @@
       copy[0].formCode = 'FORM 50-C';
       components = copy.filter((c) => !['Part_3', 'Part_4', 'Part_5', 'Part_6'].includes(c.id));
     }
+    selectedComponentId = null;
     syncComponentsToSections();
   }
 
   function scaffoldFromAptitudeAreas() {
+    if (!aptitude_areas || aptitude_areas.length === 0) return;
+    const areas = aptitude_areas.slice(0, 6);
     let startQ = 1;
     const newGrids = areas.map((area, idx) => {
       const qCount = Math.min(50, Math.max(5, Number(area.max_items) || 25));
@@ -433,15 +493,15 @@
     syncComponentsToSections();
   }
 
-  // HTML Code Editor State
-  let htmlCode = $state(DEFAULT_150Q_HTML);
+  // HTML Code Editor State (blank until components are placed)
+  let htmlCode = $state('');
   // Mode Switch Confirmation Modal State
   let showModeSwitchModal = $state(false);
   let pendingTargetMode = $state(null);
 
   function requestSwitchMode(targetMode) {
     if (targetMode === stage1Mode) return;
-    const hasModified = draft.raster_url || (stage1Mode === 'html' && components.length > 0 && draft.lock_version > 0);
+    const hasModified = draft.raster_url || components.length > 0 || uploadRunning;
     if (hasModified) {
       pendingTargetMode = targetMode;
       showModeSwitchModal = true;
@@ -459,11 +519,9 @@
     draft.raster_url = null;
     showModeSwitchModal = false;
     pendingTargetMode = null;
-    if (stage1Mode === 'html') {
-      applyPreset('150q');
-    }
     triggerAutosave();
   }
+
 
   // Direct Upload & Ingest State
   let uploadFileInput = $state(null);
@@ -722,8 +780,12 @@
       if (studio.stage1Mode) stage1Mode = studio.stage1Mode;
       if (studio.baseType) baseType = studio.baseType;
 
-      if (Array.isArray(studio.sections) && studio.sections.length > 0) sections = studio.sections;
-      if (typeof studio.marginMm === 'number') marginMm = studio.marginMm;
+      if (Array.isArray(studio.components) && studio.components.length > 0) {
+        components = JSON.parse(JSON.stringify(studio.components));
+        htmlCode = components.length > 0 ? renderFullSheetHtml(components) : '';
+      } else if (Array.isArray(studio.sections) && studio.sections.length > 0) {
+        sections = studio.sections;
+      }
       if (studio.markerPattern) markerPattern = studio.markerPattern;
       if (typeof studio.bubbleRadiusMm === 'number') bubbleRadiusMm = studio.bubbleRadiusMm;
 
@@ -990,6 +1052,7 @@
       const studioPayload = {
         current_stage: currentStage,
         sections,
+        components,
         marginMm,
         markerPattern,
         bubbleRadiusMm,
@@ -1199,10 +1262,57 @@
 <!-- FULL-BLEED WORKSPACE: fills parent exactly. onMount strips the page layout <main> padding/overflow
      so this container occupies the entire remaining viewport without any scroll. -->
 <div class="absolute inset-0 overflow-hidden bg-slate-100 select-none" use:bleedParent>
-  <!-- Canvas fills the entire workspace; all UI floats above it -->
-  <div class="absolute inset-0 overflow-hidden bg-slate-100">
+  <!-- ENTRY GATE: Choose how to start before any canvas or template UI appears -->
+  {#if !hasChosenMode}
+    <div class="absolute inset-0 z-[60] bg-slate-50 flex items-center justify-center p-6">
+      <div class="w-full max-w-2xl space-y-6">
+        <div class="text-center space-y-1.5">
+          <h2 class="text-xl font-black text-slate-900">Start a New Template</h2>
+          <p class="text-sm text-slate-500">Choose how you want to create this answer sheet. This choice defines your workflow.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onclick={() => chooseMode('html')}
+            class="group bg-white border-2 border-slate-200 hover:border-emerald-500 rounded-2xl p-6 text-left transition shadow-sm hover:shadow-md space-y-3"
+          >
+            <div class="size-11 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+              <Sliders class="size-5" />
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-slate-900">Sheet Designer</h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Build the answer sheet from scratch with the draggable component suite — headers, candidate fields, ID matrix, and question grids.
+              </p>
+            </div>
+            <span class="text-[11px] font-bold text-emerald-700 group-hover:underline">Start designing →</span>
+          </button>
+          <button
+            type="button"
+            onclick={() => chooseMode('upload')}
+            class="group bg-white border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 text-left transition shadow-sm hover:shadow-md space-y-3"
+          >
+            <div class="size-11 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
+              <Upload class="size-5" />
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-slate-900">Upload Document</h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Ingest an existing PDF, Word document, or scanned image, then overlay markers and OMR components on it.
+              </p>
+            </div>
+            <span class="text-[11px] font-bold text-blue-700 group-hover:underline">Upload a file →</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+  <div
+    class="absolute inset-0 overflow-hidden bg-slate-100"
+    ondragover={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+    ondrop={handlePaletteDrop}
+  >
       <StudioCanvas
-        bind:scale
         bind:panX
         bind:panY
         bind:marginMm
@@ -1408,62 +1518,87 @@
       {#if currentStage === 1}
         <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
         <div class="space-y-4">
-          <!-- 2-Mode Switcher Tabs (HTML / File Upload) -->
-          <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+          <!-- Creation Mode Indicator (deliberate change only, not an easy switch) -->
+          <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="flex items-center gap-2">
+              <span class={`px-2 py-1 rounded-lg text-[10.5px] font-bold ${
+                stage1Mode === 'html' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {stage1Mode === 'html' ? 'Sheet Designer' : 'Substrate Ingest'}
+              </span>
+              <span class="text-[10px] text-slate-500">
+                {stage1Mode === 'html' ? 'Build from scratch with components' : 'Overlay on an uploaded document'}
+              </span>
+            </div>
             <button
               type="button"
-              onclick={() => requestSwitchMode('html')}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              onclick={() => requestSwitchMode(stage1Mode === 'html' ? 'upload' : 'html')}
+              class="text-[10.5px] font-semibold text-slate-600 hover:text-slate-900 underline underline-offset-2"
             >
-              Native Builder
-            </button>
-            <button
-              type="button"
-              onclick={() => requestSwitchMode('upload')}
-              class={`py-1.5 px-2 rounded-lg text-xs font-semibold transition text-center ${
-                stage1Mode === 'upload' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Upload File
+              Change mode
             </button>
           </div>
 
           {#if stage1Mode === 'html'}
-            <!-- Sub-Mode: Visual Component Designer vs Raw HTML Code -->
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-900">Answer Sheet Components</span>
-                <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                  <button
-                    type="button"
-                    onclick={() => { designerSubTab = 'designer'; }}
-                    class={`px-2 py-0.5 rounded-md text-[10.5px] font-semibold transition ${
-                      designerSubTab === 'designer' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Visual Builder
-                  </button>
-                  <button
-                    type="button"
-                    onclick={() => { designerSubTab = 'raw_html'; }}
-                    class={`px-2 py-0.5 rounded-md text-[10.5px] font-semibold transition ${
-                      designerSubTab === 'raw_html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    HTML Code
-                  </button>
-                </div>
-              </div>
+            <!-- Sub-Mode: Visual Designer vs Compiled HTML -->
+            <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onclick={() => { designerSubTab = 'designer'; }}
+                class={`flex-1 py-1 rounded-md text-[10.5px] font-semibold transition ${
+                  designerSubTab === 'designer' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Visual Designer
+              </button>
+              <button
+                type="button"
+                onclick={() => { designerSubTab = 'raw_html'; }}
+                class={`flex-1 py-1 rounded-md text-[10.5px] font-semibold transition ${
+                  designerSubTab === 'raw_html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Compiled HTML
+              </button>
+            </div>
 
-              {#if designerSubTab === 'designer'}
-                <!-- 1. Presets Selector -->
+            {#if designerSubTab === 'designer'}
+              <div class="space-y-3">
+                <!-- 1. Draggable Component Palette -->
+                <div>
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-slate-900">Component Palette</span>
+                    <span class="text-[9.5px] text-slate-400">Drag onto canvas or click to add</span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    {#each COMPONENT_PALETTE as item}
+                      <button
+                        type="button"
+                        draggable="true"
+                        ondragstart={(e) => {
+                          window.__omrDragKind = item.kind;
+                          try {
+                            e.dataTransfer?.setData('application/x-omr-component', item.kind);
+                            e.dataTransfer.effectAllowed = 'copy';
+                          } catch {}
+                        }}
+                        onclick={() => addComponent(item.kind)}
+                        class="text-left p-2 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-lg transition cursor-grab active:cursor-grabbing"
+                        title={item.description}
+                      >
+                        <span class="block text-[10.5px] font-bold text-slate-800 leading-tight">{item.label}</span>
+                        <span class="block text-[9px] text-slate-400 mt-0.5 leading-snug">{item.description}</span>
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+
+                <!-- 2. Quick Scaffolds -->
                 <div class="p-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl space-y-1.5">
                   <div class="flex items-center justify-between text-xs font-bold text-emerald-950">
                     <span class="flex items-center gap-1">
                       <Sparkles class="size-3 text-emerald-600" />
-                      <span>Exam Presets</span>
+                      <span>Quick Scaffolds</span>
                     </span>
                     <span class="text-[9.5px] font-mono text-emerald-700">{totalQuestionsCount} Items</span>
                   </div>
@@ -1490,57 +1625,145 @@
                       50-Q (2 Subj)
                     </button>
                   </div>
+                  {#if aptitude_areas && aptitude_areas.length > 0}
+                    <button
+                      type="button"
+                      onclick={scaffoldFromAptitudeAreas}
+                      class="w-full py-1 px-2 bg-white hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[10.5px] font-semibold text-emerald-900 transition flex items-center justify-center gap-1"
+                    >
+                      <Sparkles class="size-3 text-emerald-600" />
+                      <span>Scaffold from System Aptitude Areas ({aptitude_areas.length})</span>
+                    </button>
+                  {/if}
                 </div>
 
-                <!-- 2. Universal Components Accordion / Section Controls -->
-                <div class="space-y-3">
-                  <!-- A. Document Header Section -->
-                  {#if headerComp}
-                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
-                      <div class="flex items-center justify-between font-bold text-slate-800">
-                        <span class="flex items-center gap-1.5">
-                          <Type class="size-3.5 text-blue-600" />
-                          <span>Document Header</span>
-                        </span>
-                      </div>
-                      <div class="space-y-1.5">
-                        <input
-                          type="text"
-                          bind:value={headerComp.title}
-                          oninput={syncComponentsToSections}
-                          placeholder="Institution / Exam Title"
-                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
-                        />
-                        <div class="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            bind:value={headerComp.subtitle}
-                            oninput={syncComponentsToSections}
-                            placeholder="Subtitle"
-                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
-                          />
-                          <input
-                            type="text"
-                            bind:value={headerComp.formCode}
-                            oninput={syncComponentsToSections}
-                            placeholder="Form Code"
-                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-mono"
-                          />
+                <!-- 3. Placed Components List -->
+                <div>
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-slate-900">Sheet Components ({components.length})</span>
+                  </div>
+                  {#if components.length === 0}
+                    <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center text-[11px] text-slate-400 leading-relaxed">
+                      No components yet.<br />
+                      Drag items from the palette onto the canvas — or click one to add it.
+                    </div>
+                  {:else}
+                    <div class="space-y-1">
+                      {#each components as c}
+                        <div
+                          class={`p-2 rounded-lg border flex items-center justify-between cursor-pointer text-[11px] transition ${
+                            selectedComponentId === c.id
+                              ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                          onclick={() => selectComponent(c.id)}
+                          role="button"
+                          tabindex="0"
+                        >
+                          <span class="font-bold text-slate-800">{componentLabel(c)}</span>
+                          <div class="flex items-center gap-1">
+                            {#if c.type === 'roll' || c.type === 'mcq' || c.type === 'tf' || c.type === 'likert' || c.type === 'custom'}
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); c.isLocked = !c.isLocked; syncComponentsToSections(); }}
+                                class={`p-1 rounded transition ${c.isLocked ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-slate-600'}`}
+                                title={c.isLocked ? 'Unlock position' : 'Lock position'}
+                              >
+                                {#if c.isLocked}<Lock class="size-3" />{:else}<Unlock class="size-3" />{/if}
+                              </button>
+                            {/if}
+                            <button
+                              type="button"
+                              onclick={(e) => { e.stopPropagation(); removeComponent(c.id); }}
+                              class="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                              title="Remove component"
+                            >
+                              <Trash2 class="size-3" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      {/each}
                     </div>
                   {/if}
+                </div>
 
-                  <!-- B. Examinee ID Matrix (0–9 Digits) -->
-                  {#if rollIdComp}
-                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
-                      <div class="flex items-center justify-between font-bold text-slate-800">
-                        <span class="flex items-center gap-1.5">
-                          <Sliders class="size-3.5 text-emerald-600" />
-                          <span>Examinee ID Matrix</span>
-                        </span>
-                        <span class="text-[9.5px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded">0–9 Digits</span>
+                <!-- 4. Component Inspector (selected component configuration) -->
+                {#if selectedComponent}
+                  <div class="p-3 bg-white border border-emerald-200 rounded-xl space-y-2 text-xs shadow-xs">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black text-slate-900">Inspector — {componentLabel(selectedComponent)}</span>
+                      <button
+                        type="button"
+                        onclick={() => removeComponent(selectedComponent.id)}
+                        class="text-red-500 hover:text-red-700 flex items-center gap-1 text-[10px] font-semibold"
+                      >
+                        <Trash2 class="size-3" /> Remove
+                      </button>
+                    </div>
+
+                    {#if selectedComponent.type === 'header'}
+                      <input
+                        type="text"
+                        bind:value={selectedComponent.title}
+                        oninput={syncComponentsToSections}
+                        placeholder="Institution / Exam Title"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                      />
+                      <div class="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          bind:value={selectedComponent.subtitle}
+                          oninput={syncComponentsToSections}
+                          placeholder="Subtitle"
+                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+                        />
+                        <input
+                          type="text"
+                          bind:value={selectedComponent.formCode}
+                          oninput={syncComponentsToSections}
+                          placeholder="Form Code"
+                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-mono"
+                        />
                       </div>
+                      <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
+
+                    {:else if selectedComponent.type === 'candidate_info'}
+                      <input
+                        type="text"
+                        bind:value={selectedComponent.candidateNameLabel}
+                        oninput={syncComponentsToSections}
+                        placeholder="Candidate Name Label"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                      />
+                      <div class="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          bind:value={selectedComponent.birthdateLabel}
+                          oninput={syncComponentsToSections}
+                          placeholder="Birthdate Label"
+                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                        />
+                        <input
+                          type="text"
+                          bind:value={selectedComponent.roomSeatLabel}
+                          oninput={syncComponentsToSections}
+                          placeholder="Room / Seat Label"
+                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                        />
+                      </div>
+                      <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
+
+                    {:else if selectedComponent.type === 'instructions'}
+                      <textarea
+                        bind:value={selectedComponent.content}
+                        oninput={syncComponentsToSections}
+                        rows="3"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed"
+                        placeholder="Instructions text…"
+                      ></textarea>
+                      <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
+
+                    {:else if selectedComponent.type === 'roll'}
                       <div class="grid grid-cols-2 gap-2">
                         <div>
                           <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Digit Columns</label>
@@ -1548,7 +1771,7 @@
                             type="number"
                             min="2"
                             max="10"
-                            bind:value={rollIdComp.digitsCount}
+                            bind:value={selectedComponent.digitsCount}
                             oninput={syncComponentsToSections}
                             class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
                           />
@@ -1557,129 +1780,158 @@
                           <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Matrix Title</label>
                           <input
                             type="text"
-                            bind:value={rollIdComp.title}
+                            bind:value={selectedComponent.title}
                             oninput={syncComponentsToSections}
                             class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
                           />
                         </div>
                       </div>
-                    </div>
-                  {/if}
 
-                  <!-- C. Candidate Details Strip -->
-                  {#if candidateInfoComp}
-                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                      <div class="font-bold text-slate-800 flex items-center gap-1.5">
-                        <FileText class="size-3.5 text-slate-600" />
-                        <span>Candidate Info Fields</span>
-                      </div>
-                      <div class="space-y-1.5">
-                        <input
-                          type="text"
-                          bind:value={candidateInfoComp.candidateNameLabel}
-                          oninput={syncComponentsToSections}
-                          placeholder="Candidate Name Label"
-                          class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
-                        />
-                        <div class="grid grid-cols-2 gap-2">
+                    {:else if selectedComponent.type === 'mcq' || selectedComponent.type === 'tf' || selectedComponent.type === 'likert' || selectedComponent.type === 'custom'}
+                      <input
+                        type="text"
+                        bind:value={selectedComponent.subjectName}
+                        oninput={syncComponentsToSections}
+                        placeholder="Subject name"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                      />
+                      <div class="grid grid-cols-2 gap-2">
+                        <div>
+                          <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Questions</label>
                           <input
-                            type="text"
-                            bind:value={candidateInfoComp.birthdateLabel}
+                            type="number"
+                            min="1"
+                            max="100"
+                            bind:value={selectedComponent.questionsCount}
                             oninput={syncComponentsToSections}
-                            placeholder="Birthdate Label"
-                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
                           />
+                        </div>
+                        <div>
+                          <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Options</label>
                           <input
-                            type="text"
-                            bind:value={candidateInfoComp.roomSeatLabel}
+                            type="number"
+                            min="2"
+                            max="5"
+                            bind:value={selectedComponent.optionsCount}
                             oninput={syncComponentsToSections}
-                            placeholder="Room / Seat Label"
-                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Start Q#</label>
+                          <input
+                            type="number"
+                            min="1"
+                            bind:value={selectedComponent.startQ}
+                            oninput={syncComponentsToSections}
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Row Pitch (mm)</label>
+                          <input
+                            type="number"
+                            min="3"
+                            step="0.1"
+                            bind:value={selectedComponent.rowPitchMm}
+                            oninput={syncComponentsToSections}
+                            class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
                           />
                         </div>
                       </div>
-                    </div>
-                  {/if}
+                      {#if aptitude_areas && aptitude_areas.length > 0}
+                        <select
+                          class="w-full text-[10px] bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700"
+                          onchange={(e) => {
+                            const area = aptitude_areas.find((a) => a.code === e.target.value);
+                            if (area) {
+                              updateSelectedComponent({ subjectName: area.name, questionsCount: Number(area.max_items) || 25 });
+                            }
+                          }}
+                        >
+                          <option value="">-- Bind Aptitude Area --</option>
+                          {#each aptitude_areas as area}
+                            <option value={area.code}>{area.name} ({area.max_items} Items)</option>
+                          {/each}
+                        </select>
+                      {/if}
 
-                  <!-- D. Subject Question Columns Overview -->
-                  <!-- D. Subject Question Columns Overview with Aptitude Area Binding -->
-                  <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                    <div class="flex items-center justify-between font-bold text-slate-800">
-                      <span>Subject Sections ({questionGridComps.length} Columns)</span>
-                      <span class="text-[9.5px] font-mono text-slate-500">{totalQuestionsCount} Qs Total</span>
-                    </div>
+                    {:else if selectedComponent.type === 'custom_text'}
+                      <input
+                        type="text"
+                        bind:value={selectedComponent.text}
+                        oninput={syncComponentsToSections}
+                        placeholder="Custom text…"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                      />
+                      <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
 
-                    {#if aptitude_areas && aptitude_areas.length > 0}
-                      <button
-                        type="button"
-                        onclick={scaffoldFromAptitudeAreas}
-                        class="w-full py-1 px-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-[10.5px] font-semibold text-slate-700 transition flex items-center justify-center gap-1 shadow-2xs"
-                      >
-                        <Sparkles class="size-3 text-emerald-600" />
-                        <span>Scaffold from System Aptitude Areas ({aptitude_areas.length})</span>
-                      </button>
+                    {:else if selectedComponent.type === 'signature'}
+                      <input
+                        type="text"
+                        bind:value={selectedComponent.title}
+                        oninput={syncComponentsToSections}
+                        placeholder="Signature label"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                      />
+                      <input
+                        type="text"
+                        bind:value={selectedComponent.certificationText}
+                        oninput={syncComponentsToSections}
+                        placeholder="Certification text"
+                        class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10.5px]"
+                      />
+                      <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
                     {/if}
-
-                    <div class="space-y-1.5 pt-0.5">
-                      {#each questionGridComps as g, idx}
-                        <div class="p-2 bg-white border border-slate-200 rounded-lg space-y-1 text-[11px]">
-                          <div class="flex items-center justify-between">
-                            <input
-                              type="text"
-                              bind:value={g.subjectName}
-                              oninput={syncComponentsToSections}
-                              class="font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 text-[11px] w-36"
-                            />
-                            <span class="font-mono text-[10px] text-slate-500">Q{g.startQ}–{g.startQ + g.questionsCount - 1}</span>
-                          </div>
-
-                          {#if aptitude_areas && aptitude_areas.length > 0}
-                            <select
-                              class="w-full text-[10px] bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700"
-                              onchange={(e) => {
-                                const selectedArea = aptitude_areas.find((a) => a.code === e.target.value);
-                                if (selectedArea) {
-                                  g.subjectName = `${idx + 1}. ${selectedArea.name}`;
-                                  g.questionsCount = Number(selectedArea.max_items) || g.questionsCount;
-                                  syncComponentsToSections();
-                                }
-                              }}
-                            >
-                              <option value="">-- Bind Aptitude Area --</option>
-                              {#each aptitude_areas as area}
-                                <option value={area.code}>{area.name} ({area.max_items} Items)</option>
-                              {/each}
-                            </select>
-                          {/if}
-                        </div>
-                      {/each}
-                    </div>
                   </div>
+                {/if}
+              </div>
+            {:else}
+              <!-- Compiled HTML + Suite Reference Export -->
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-slate-700">Compiled HTML Markup</label>
+                  <button
+                    type="button"
+                    onclick={() => navigator.clipboard?.writeText(htmlCode || '')}
+                    class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                  >
+                    <Check class="size-3" />
+                    <span>Copy</span>
+                  </button>
                 </div>
-              {:else}
-                <!-- Raw HTML Code Editor -->
-                <div class="space-y-2.5">
-                  <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-slate-700">Compiled HTML Markup</label>
-                    <button
-                      type="button"
-                      onclick={() => applyPreset('150q')}
-                      class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                    >
-                      <Sparkles class="size-3" />
-                      <span>Reset to 150-Q</span>
-                    </button>
-                  </div>
-                  <textarea
-                    bind:value={htmlCode}
-                    oninput={triggerAutosave}
-                    rows="12"
-                    class="w-full font-mono text-[10px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-inner"
-                    placeholder="Paste HTML markup here…"
-                  ></textarea>
+                <textarea
+                  readonly
+                  bind:value={htmlCode}
+                  rows="9"
+                  class="w-full font-mono text-[10px] leading-relaxed p-2.5 bg-slate-950 text-emerald-400 rounded-xl border border-slate-800 resize-y"
+                  placeholder="Compiled HTML appears here as you add components."
+                ></textarea>
+
+                <div class="flex items-center justify-between pt-1">
+                  <label class="text-xs font-bold text-slate-700">Suite Reference (HTML / CSS + AI Prompt)</label>
+                  <button
+                    type="button"
+                    onclick={() => navigator.clipboard?.writeText(COMPONENT_SUITE_PROMPT)}
+                    class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  >
+                    <Check class="size-3" />
+                    <span>Copy</span>
+                  </button>
                 </div>
-              {/if}
-            </div>
+                <textarea
+                  readonly
+                  value={COMPONENT_SUITE_PROMPT}
+                  rows="7"
+                  class="w-full font-mono text-[9px] leading-relaxed p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-300 resize-y"
+                  placeholder="Suite definition…"
+                ></textarea>
+                <p class="text-[10px] text-slate-400 leading-relaxed">
+                  Copy the suite reference to reproduce this component system in another interface or paste it into an AI assistant.
+                </p>
+              </div>
+            {/if}
           {:else}
             <!-- Option 2: Upload Document File -->
             <div class="space-y-3">
@@ -1871,15 +2123,15 @@
             <AlertTriangle class="size-5" />
           </div>
           <div>
-            <h3 class="text-sm font-bold text-slate-900">Switch Creation Mode?</h3>
+            <h3 class="text-sm font-bold text-slate-900">Change creation mode?</h3>
             <p class="text-xs text-slate-500 mt-0.5">
-              Switching to {pendingTargetMode === 'html' ? 'Native Builder' : 'File Upload'} will reset the current draft layout.
+              Switching to {pendingTargetMode === 'html' ? 'Sheet Designer' : 'Upload Document'} will clear the current sheet layout.
             </p>
           </div>
         </div>
 
         <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-          Native Builder creates the document from scratch with editable OMR components, while File Upload ingests an existing PDF or image.
+          Sheet Designer builds the answer sheet from scratch with draggable OMR components. Upload Document ingests an existing PDF, Word file, or image for overlay work.
         </p>
 
         <div class="flex items-center justify-end space-x-2 pt-2">

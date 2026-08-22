@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXIAM Markdown Viewer</title>
+<style>
+:root{--ink:#18232d;--muted:#5b6873;--line:#d5dde4;--blue:#174a7e;--soft:#f5f8fa;--yellow:#f0c94c}
+*{box-sizing:border-box}body{margin:0;background:#edf2f5;color:var(--ink);font:15px/1.55 Arial,Helvetica,sans-serif}.top{position:sticky;top:0;z-index:2;background:#174a7e;color:#fff;padding:11px calc((100% - 1120px)/2 + 18px);display:flex;align-items:center;gap:13px;box-shadow:0 2px 7px #0003}.top strong{font-size:15px}.top a{color:#fff;text-decoration:none;font-size:12px;margin-left:auto}.toolbar{max-width:1120px;margin:17px auto 0;padding:0 18px;display:flex;gap:8px;align-items:center}.toolbar select,.toolbar button{font:inherit;font-size:12px;border:1px solid #b9c7d2;border-radius:5px;background:#fff;padding:7px 9px}.toolbar button{cursor:pointer;background:#e7eef5;color:var(--blue)}.status{font-size:12px;color:var(--muted);margin-left:auto}.paper{max-width:1120px;margin:14px auto 40px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 24px #174a7e12;padding:38px 48px}.paper h1{font-size:30px;line-height:1.18;color:var(--blue);border-bottom:5px solid var(--yellow);padding-bottom:12px;margin:0 0 20px}.paper h2{font-size:22px;color:var(--blue);border-bottom:2px solid #9bb2c6;padding-bottom:5px;margin:31px 0 12px}.paper h3{font-size:17px;color:#294b69;margin:23px 0 7px}.paper p{margin:7px 0 12px}.paper a{color:#145b97}.paper table{border-collapse:collapse;width:100%;margin:12px 0 18px;font-size:12px}.paper th,.paper td{border:1px solid #cbd5dd;padding:7px;vertical-align:top}.paper th{background:#e8eef4;color:#173650;text-align:left}.paper tr:nth-child(even) td{background:#fafcfd}.paper blockquote{background:#f5f8fa;border-left:5px solid var(--blue);margin:13px 0;padding:10px 15px;color:#344756}.paper pre{background:#f7f9fa;border:1px solid #aebbc5;border-left:5px solid #5c7cfa;padding:15px;overflow:auto;font:12px/1.3 Consolas,"Liberation Mono",monospace;white-space:pre}.paper code{font:0.92em Consolas,"Liberation Mono",monospace;background:#edf2f5;border-radius:3px;padding:1px 4px}.paper pre code{background:transparent;padding:0}.paper ul,.paper ol{padding-left:25px}.paper li{margin:3px 0}.paper hr{border:0;border-top:1px solid #ccd6de;margin:24px 0}.paper .task{font-size:1.02em}.error{max-width:1120px;margin:14px auto;background:#fff0f0;border:1px solid #e4a5a5;padding:15px 18px;color:#8a2626}.loading{color:var(--muted);padding:20px 0}@media(max-width:650px){.top{padding:10px 15px}.toolbar{padding:0 12px}.paper{margin-top:10px;padding:25px 19px;border-left:0;border-right:0}.paper h1{font-size:25px}.status{display:none}}
+@media print{body{background:#fff}.top,.toolbar{display:none}.paper{margin:0;max-width:none;box-shadow:none;border:0;padding:0}.paper h2{break-before:page}.paper h2:first-of-type{break-before:auto}.paper table{break-inside:auto}.paper tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header class="top"><strong>NEXIAM Markdown Viewer</strong><a href="index.html">Back to documentation home</a></header>
+<div class="toolbar"><label for="doc">Document:</label><select id="doc"><option value="client-brief.md">client-brief.md</option><option value="ascii-wireframes.md">ascii-wireframes.md</option><option value="README.md">README.md</option></select><button id="print">Print</button><span id="status" class="status"></span></div>
+<div id="error" class="error" hidden></div>
+<main id="paper" class="paper"><div class="loading">Loading document…</div></main>
+<script>
+const allowed = new Set(['client-brief.md','ascii-wireframes.md','README.md']);
+const select = document.getElementById('doc');
+const paper = document.getElementById('paper');
+const errorBox = document.getElementById('error');
+const statusBox = document.getElementById('status');
+const esc = value => value.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+function inline(value){
+  const tokens=[];
+  const stash = html => { const key='\u0000'+tokens.length+'\u0000'; tokens.push(html); return key; };
+  value=esc(value);
+  value=value.replace(/!?(\[([^\]]+)\])\(([^)]+)\)/g,(m,whole,label,url)=>{
+    const safe=/^(https?:\/\/|\.\.?\/|#)/.test(url) ? url : '#';
+    return stash('<a href="'+esc(safe)+'">'+label+'</a>');
+  });
+  value=value.replace(/`([^`]+)`/g,(_,x)=>stash('<code>'+x+'</code>'));
+  value=value.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  value=value.replace(/__([^_]+)__/g,'<strong>$1</strong>');
+  value=value.replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  value=value.replace(/_([^_]+)_/g,'<em>$1</em>');
+  value=value.replace(/\u0000(\d+)\u0000/g,(_,n)=>tokens[Number(n)]);
+  return value;
+}
+function isTableDivider(line){return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)}
+function splitTable(line){let s=line.trim(); if(s.startsWith('|'))s=s.slice(1); if(s.endsWith('|'))s=s.slice(0,-1); return s.split('|').map(x=>x.trim());}
+function renderTable(lines){
+  const head=splitTable(lines[0]); const rows=lines.slice(2).map(splitTable);
+  let out='<table><thead><tr>'+head.map(x=>'<th>'+inline(x)+'</th>').join('')+'</tr></thead><tbody>';
+  for(const row of rows) out+='<tr>'+head.map((_,i)=>'<td>'+inline(row[i]||'')+'</td>').join('')+'</tr>';
+  return out+'</tbody></table>';
+}
+function renderMarkdown(source){
+  source=source.replace(/\r\n/g,'\n');
+  const lines=source.split('\n'); let out=''; let i=0;
+  while(i<lines.length){
+    const line=lines[i];
+    if(!line.trim()){i++;continue;}
+    if(line.trim()==='---'){out+='<hr>';i++;continue;}
+    if(line.trim()==='```' || line.startsWith('```')){
+      const lang=line.slice(3).trim(); const buf=[]; i++;
+      while(i<lines.length && !lines[i].trim().startsWith('```')){buf.push(lines[i]);i++;}
+      if(i<lines.length)i++;
+      out+='<pre><code class="language-'+esc(lang)+'">'+esc(buf.join('\n'))+'</code></pre>';continue;
+    }
+    if(/^#{1,6}\s/.test(line)){const m=line.match(/^(#{1,6})\s+(.*)$/);const level=m[1].length;out+='<h'+level+'>'+inline(m[2])+'</h'+level+'>';i++;continue;}
+    if(line.includes('|') && i+1<lines.length && isTableDivider(lines[i+1])){
+      const rows=[line,lines[i+1]];i+=2;while(i<lines.length && lines[i].includes('|') && lines[i].trim())rows.push(lines[i++]);out+=renderTable(rows);continue;
+    }
+    if(/^\s*>/.test(line)){const buf=[];while(i<lines.length && /^\s*>/.test(lines[i])){buf.push(lines[i].replace(/^\s*>\s?/,''));i++;}out+='<blockquote>'+buf.map(inline).join('<br>')+'</blockquote>';continue;}
+    if(/^\s*[-*+]\s+/.test(line)){const items=[];while(i<lines.length && /^\s*[-*+]\s+/.test(lines[i])){items.push(lines[i].replace(/^\s*[-*+]\s+/,''));i++;}out+='<ul>'+items.map(x=>'<li>'+task(inline(x))+'</li>').join('')+'</ul>';continue;}
+    if(/^\s*\d+\.\s+/.test(line)){const items=[];while(i<lines.length && /^\s*\d+\.\s+/.test(lines[i])){items.push(lines[i].replace(/^\s*\d+\.\s+/,''));i++;}out+='<ol>'+items.map(x=>'<li>'+inline(x)+'</li>').join('')+'</ol>';continue;}
+    const para=[line];i++;while(i<lines.length && lines[i].trim() && !/^#{1,6}\s/.test(lines[i]) && !/^\s*[-*+]\s+/.test(lines[i]) && !/^\s*\d+\.\s+/.test(lines[i]) && !/^\s*>/.test(lines[i]) && lines[i].trim()!=='---' && !(lines[i].includes('|')&&i+1<lines.length&&isTableDivider(lines[i+1])) && lines[i].trim()!=='```'){para.push(lines[i]);i++;}out+='<p>'+inline(para.join(' '))+'</p>';
+  }
+  return out;
+}
+function task(value){return value.replace(/^\[x\]\s*/i,'<span class="task">☑ </span>').replace(/^\[\s\]\s*/,'<span class="task">☐ </span>');}
+async function load(){
+  const doc=new URLSearchParams(location.search).get('doc')||'client-brief.md';
+  if(!allowed.has(doc)){showError('That document is not available in this viewer.');return;}
+  select.value=doc; errorBox.hidden=true; paper.innerHTML='<div class="loading">Loading '+esc(doc)+'…</div>';
+  try{const response=await fetch(doc,{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const text=await response.text();paper.innerHTML=renderMarkdown(text);statusBox.textContent=doc;document.title='NEXIAM — '+doc;}catch(e){showError('Could not load '+doc+'. Start the local server before opening this page.');}}
+function showError(message){errorBox.textContent=message;errorBox.hidden=false;paper.innerHTML='';}
+select.addEventListener('change',()=>{location.href='markdown-viewer.html?doc='+encodeURIComponent(select.value)});
+document.getElementById('print').addEventListener('click',()=>window.print());
+load();
+</script>
+</body></html>

@@ -4,7 +4,7 @@ ARG OMRCHECKER_COMMIT=de3f6982822895491be760325fd43e65e90fa293
 ARG OMRCHECKER_ARCHIVE_SHA256=d1a988ee363784d5a51e2f12f3e10bd24c11ba73622a43b4dfbbdd88a197eac0
 ARG OMRCHECKER_LICENSE_SHA256=3d72ab01aefdb28fcf2ec73f6a0564cd855bd880aa3a55ea37efa8c49d4fe94d
 ARG NEXIAM_REQUIREMENTS_LOCK_SHA256=6f947e03bc841daf10c26698ab7c921114acf2680e33999fcc411cc86e0cb7c2
-ARG OWNED_PATCH_SHA256=dacd18ef49de349699ca9dc5346106d6fc06adb0622dcb2ce8060f8f4442be71
+ARG OWNED_PATCH_SHA256=442ba84a8c18bf02b3ef0ca8ba5c7ba887f6b5dd25bcf342f56fcc58d946322b
 
 ENV MPLBACKEND=Agg \
     PYTHONPATH=/opt/omrchecker \
@@ -37,7 +37,7 @@ RUN echo "${OWNED_PATCH_SHA256}  /tmp/0001-headless-overlay.patch" | sha256sum -
 
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin nexiam-omr
 
-COPY --chown=10001:10001 server.py activate.py detect.py generate_fixture.py ./
+COPY --chown=10001:10001 server.py activate.py detect.py verify.py preflight.py rectify.py marker_states.py fiducial.py omr_marker.jpg generate_fixture.py verify_fixture.py ./
 
 USER 10001:10001
 

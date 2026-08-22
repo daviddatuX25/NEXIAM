@@ -115,12 +115,32 @@ final readonly class NativeBundle
         $pages = self::pagesOf($template);
         self::validateBundleShape($pages, $config, $manifest, $code, $version);
 
+        // Marker-bearing versions declare their fiducial asset. The declared
+        // file MUST ride the bundle: a missing asset fails validation here
+        // (never a child exit(31) at engine template load).
+        $markerAsset = self::markerAssetNameOf($template);
+        if ($markerAsset !== null) {
+            if (preg_match('/^[a-z0-9][a-z0-9._-]{0,63}$/', $markerAsset) !== 1) {
+                throw new RuntimeException(sprintf('OMR native bundle declares an unsafe marker asset name: %s.', $markerAsset));
+            }
+            $assetPath = $directory.'/'.$markerAsset;
+            if (! is_file($assetPath)) {
+                throw new RuntimeException(sprintf(
+                    'OMR native bundle %s v%d declares marker asset %s but the bundle file is missing; a marker-bearing bundle must carry its fiducial asset.',
+                    $code,
+                    $version,
+                    $markerAsset,
+                ));
+            }
+            $paths[$markerAsset] = $assetPath;
+        }
+
         $fileHashes = [];
         foreach ($paths as $name => $path) {
             $fileHashes[$name] = hash_file('sha256', $path);
         }
         ksort($fileHashes);
-        self::validateManifestFileHashes($manifest, $fileHashes);
+        self::validateManifestFileHashes($manifest, $fileHashes, $markerAsset);
 
         $bundleHash = self::hashCanonical([
             'files' => $fileHashes,
@@ -134,6 +154,58 @@ final readonly class NativeBundle
     public function pageCount(): int
     {
         return count($this->pages);
+    }
+
+    /** True when any page declares the fiducial marker contract. */
+    public function hasMarkerPages(): bool
+    {
+        return self::markerAssetNameOf($this->template) !== null;
+    }
+
+    /** Name of the declared fiducial asset (e.g. fiducial.png), or null. */
+    public function markerAssetName(): ?string
+    {
+        return self::markerAssetNameOf($this->template);
+    }
+
+    /**
+     * Read a bundle asset's bytes (the fiducial rides the bundle to the
+     * worker via OmrPinnedSnapshot; this is the disk-side source).
+     */
+    public function assetBytes(string $name): string
+    {
+        if (! isset($this->fileHashes[$name])) {
+            throw new RuntimeException(sprintf('OMR native bundle has no asset %s.', $name));
+        }
+
+        $path = self::resolveDirectory($this->code, $this->version).'/'.$name;
+        $bytes = @file_get_contents($path);
+        if ($bytes === false) {
+            throw new RuntimeException(sprintf('OMR native bundle asset is unreadable: %s.', $name));
+        }
+
+        return $bytes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $template
+     */
+    private static function markerAssetNameOf(array $template): ?string
+    {
+        $pages = $template['pages'] ?? null;
+        if (is_array($pages)) {
+            foreach ($pages as $page) {
+                if (is_array($page['markers'] ?? null) && is_string($page['markers']['asset_name'] ?? null)) {
+                    return $page['markers']['asset_name'];
+                }
+            }
+
+            return null;
+        }
+
+        $markers = $template['markers'] ?? null;
+
+        return is_array($markers) && is_string($markers['asset_name'] ?? null) ? $markers['asset_name'] : null;
     }
 
     /** @return array<string, mixed> */
@@ -345,7 +417,7 @@ final readonly class NativeBundle
     }
 
     /** @param array<string, mixed> $manifest @param array<string, string> $fileHashes */
-    private static function validateManifestFileHashes(array $manifest, array $fileHashes): void
+    private static function validateManifestFileHashes(array $manifest, array $fileHashes, ?string $markerAsset = null): void
     {
         $referenceFiles = [];
         foreach (array_keys($fileHashes) as $name) {
@@ -355,12 +427,17 @@ final readonly class NativeBundle
         }
         sort($referenceFiles);
         $expectedFiles = ['template.json', 'config.json', ...$referenceFiles];
+        if ($markerAsset !== null) {
+            $expectedFiles[] = $markerAsset;
+        }
 
         $manifestFiles = $manifest['files'] ?? null;
 
         if (! is_array($manifestFiles) || count($manifestFiles) !== count($expectedFiles)
             || array_keys($manifestFiles) !== $expectedFiles) {
-            throw new RuntimeException('OMR native bundle manifest must declare template, config, and reference asset hashes.');
+            throw new RuntimeException($markerAsset !== null
+                ? 'OMR native bundle manifest must declare template, config, reference, and fiducial asset hashes.'
+                : 'OMR native bundle manifest must declare template, config, and reference asset hashes.');
         }
 
         foreach ($expectedFiles as $name) {

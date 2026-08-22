@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             PrivacyPolicySeeder::class,
             IntakeGradeFieldSeeder::class,
             ResultSheetTemplateSeeder::class,
+            OmrCanonicalDemoSeeder::class,
         ];
     }
 
@@ -52,7 +53,8 @@ class DatabaseSeeder extends Seeder
             IntakeGradeFieldSeeder::class,
             ResultSheetTemplateSeeder::class,
             JourneyFixtureSeeder::class,
-            OmrDemoSeeder::class,
+            OmrFocusedDemoSeeder::class,
+            OmrCanonicalDemoSeeder::class,
             AdmissionSupportDemoSeeder::class,
         ]);
 

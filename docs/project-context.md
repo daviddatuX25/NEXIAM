@@ -3,9 +3,9 @@
 **Status:** ACTIVE — permanent AI/agent implementation context
 **Entry point:** [`GREENFIELD-MASTER-REFERENCE.md`](GREENFIELD-MASTER-REFERENCE.md)
 **Product PRD:** [`prd.md`](prd.md) (PROMOTED 2026-08-05; E2 cut-line = Tier A + REQ-VS)
-**Active implementation OpenSpec:** `2026-08-15-applicant-portal-interface` — ACTIVE, implementation complete (status-spine hub, mode-aware results, ✦ optional-ack default, shared reservation UX, My Application, truthful notifications, landing/login polish; slip page DEFERRED). Archive pending founder review.
+**Current implementation OpenSpecs:** `institutional-public-experience` — implementation complete; founder review remains for simulated media/copy. `2026-08-15-applicant-portal-interface` — implementation complete; archive pending founder review. `omr-profile-test-readiness` — still in progress pending physical-device acceptance.
 **Nexi architecture:** [`greenfield-foundation/architecture/ai-assistant-foundation/`](greenfield-foundation/architecture/ai-assistant-foundation/) (FINAL; AD-3 pack-as-lens; AD-13 AiGateway; AD-25 knowledge archived)
-**Next:** founder review of the applicant portal hub → archive `2026-08-15-applicant-portal-interface` (implementation + evidence complete). Also open: result-sheet printing completion, E2 exit evidence G2–G4/H4, legacy parity ledger, pre-existing suite-parity restoration (incl. `ReleaseFlowTest` release-notify failure — picks seeded EX-AS-1 via `firstOrFail`, unrelated to the portal cut), and the deferred admission slip page. YuKee artifact/K-Means, deterministic/rule-based, BGE, and other real provider work remain later evidence-gated changes.
+**Next:** founder review the institution-first public homepage, replace simulated media/copy, and archive `institutional-public-experience`; then archive `2026-08-15-applicant-portal-interface` after its pending review. Continue result-sheet printing, E2 exit evidence G2–G4/H4, the legacy parity ledger, OMR physical acceptance, pre-existing suite-parity restoration, and the deferred admission slip page. YuKee artifact/K-Means, deterministic/rule-based, BGE, and other real provider work remain later evidence-gated changes.
 **Phase roadmap:** [`MASTER-DELIVERY-ROADMAP.md`](MASTER-DELIVERY-ROADMAP.md)
 **Target code:** `system/`
 **Legacy evidence:** `legacy_codebase/application/` + `docs/legacy-reference/`

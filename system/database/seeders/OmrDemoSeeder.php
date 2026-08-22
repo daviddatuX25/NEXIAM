@@ -46,6 +46,7 @@ class OmrDemoSeeder extends Seeder
 
         $this->seedAuthoredV5WithBirthdate();
         $this->seedCompactProfile();
+        $this->seedMarkerBearingProfile();
         $this->seedDraftBookletB();
         $this->retireFirstPair();
     }
@@ -247,8 +248,11 @@ class OmrDemoSeeder extends Seeder
     /**
      * Seeds the canonical one-page six-domain profile through the server-owned
      * layout solver, then pairs it with a matching authored answer key.
+     *
+     * The single near-production dataset: one template, one booklet, one
+     * active pair. Idempotent.
      */
-    private function seedCompactProfile(): void
+    protected function seedCompactProfile(): void
     {
         $templateCode = 'SYN-OMR-PROFILE-150';
         $bookletCode = 'SYN-OMR-PROFILE-KEY';
@@ -290,7 +294,9 @@ class OmrDemoSeeder extends Seeder
             : OmrAnswerSheetTemplateVersion::query()
                 ->where('template_id', $template->id)
                 ->where('status', OmrAnswerSheetTemplateVersion::STATUS_DRAFT)
-                ->latest('version')
+                ->get()
+                ->filter(fn (OmrAnswerSheetTemplateVersion $version): bool => ! $this->isMarkerBearing($version))
+                ->sortByDesc('version')
                 ->first();
 
         if ($draft !== null) {
@@ -406,6 +412,138 @@ class OmrDemoSeeder extends Seeder
 
         app(ActivateOmrConfiguration::class)->handle($draft->fresh(), $bookletVersion->fresh(), $actor);
         $this->command?->info('Synthetic compact OMR profile ready: '.$templateCode.' + '.$bookletCode.' (150 items, one page).');
+    }
+
+    /**
+     * Seeds the marker-bearing profile as a NEW IMMUTABLE draft template
+     * (camera registration pipeline, tasks 10.2–10.4).
+     *
+     * A distinct template code keeps SYN-OMR-PROFILE-150 at exactly one
+     * version (the marker-less scan pair stays the default dataset). The
+     * fiducial seed is assigned by SaveAuthoredTemplateDraft as
+     * `code|v<nextVersion>`, so every marker-bearing version carries a
+     * version-unique pattern. Swapping the default seed to the marker pair
+     * happens only after the marker pipeline is proven (task 10.9).
+     */
+    protected function seedMarkerBearingProfile(): void
+    {
+        $templateCode = 'SYN-OMR-PROFILE-CAM';
+        $areaCodes = ['PROFILE_VERBAL', 'PROFILE_QUANT', 'LOGIC', 'SPATIAL', 'MEMORY', 'LANGUAGE'];
+
+        $template = OmrAnswerSheetTemplate::query()->where('code', $templateCode)->first();
+        $markerDrafts = $template === null
+            ? collect()
+            : OmrAnswerSheetTemplateVersion::query()
+                ->where('template_id', $template->id)
+                ->get()
+                ->filter(fn (OmrAnswerSheetTemplateVersion $version): bool => $this->isMarkerBearing($version));
+
+        if ($markerDrafts->isNotEmpty()) {
+            // Migration: drafts saved before the official-bullseye decision
+            // carried the custom fiducial (custom asset name / blueprint
+            // markers seed). They are disposable drafts — replace the stale
+            // ones with a fresh version under the current contract instead of
+            // mutating any active data.
+            $latest = $markerDrafts->sortByDesc('version')->first();
+            $blueprint = is_array($latest->layout_blueprint_json) ? $latest->layout_blueprint_json : [];
+            $assetName = \App\Assessment\Omr\Fiducial\OmrFiducial::ASSET_NAME;
+            $usesOfficialAsset = is_array($latest->native_bundle_json)
+                && isset($latest->native_bundle_json['template']['pages'][0]['markers']['asset_name'])
+                && $latest->native_bundle_json['template']['pages'][0]['markers']['asset_name'] === $assetName
+                && is_array($blueprint['markers'] ?? null)
+                && ! isset($blueprint['markers']['seed'])
+                && ! isset($blueprint['markers']['family']);
+            if ($usesOfficialAsset) {
+                return;
+            }
+            Storage::disk('local')->deleteDirectory('omr-bundles/'.$templateCode.'/v'.$latest->version);
+            $latest->delete();
+        }
+
+        $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+        $areas = AptitudeArea::query()
+            ->whereIn('code', $areaCodes)
+            ->where('is_active', true)
+            ->get()
+            ->keyBy('code');
+
+        if ($areas->count() !== count($areaCodes)) {
+            throw new RuntimeException('Synthetic OMR marker-bearing profile requires all six active aptitude areas.');
+        }
+
+        $sections = [];
+        foreach ($areaCodes as $index => $areaCode) {
+            $sections[] = [
+                'area_code' => $areaCode,
+                'question_from' => 1,
+                'question_to' => 25,
+                'option_count' => 4,
+                'break_before' => $index === 0 ? null : 'next_column',
+            ];
+        }
+
+        $draft = app(SaveAuthoredTemplateDraft::class)->handle(
+            $templateCode,
+            'Synthetic compact aptitude profile (marker-bearing)',
+            [],
+            $actor,
+            [
+                'title' => 'NEXIAM ANSWER SHEET',
+                'header_lines' => ['SIX-DOMAIN PRACTICE PROFILE · CAMERA REGISTRATION'],
+                'edq_header' => true,
+                'edq_header_label' => 'EDQ / HEADER ZONE',
+                'exam_information_lines' => ['EXAM: __________ · BATCH: __________'],
+                'instructions_lines' => ['Shade one answer per question.'],
+                'birthdate_label' => 'BIRTHDATE:',
+                'birthdate_placeholder' => 'MMDDYYYY',
+                'footer_lines' => [],
+                'show_calibration' => false,
+                'show_frame' => false,
+                'edq_layout' => ['columns' => 3, 'gap_mm' => 4, 'reserve_native_identity' => true],
+                'name_box_label' => 'NAME (PRINT):',
+                'per_page' => [],
+            ],
+            true,
+            [
+                'schema' => 'nexiam.omr.layout-blueprint.v1',
+                'paper' => 'long',
+                'columns' => 6,
+                'identity' => [
+                    'applicant_number' => true,
+                    'birthdate' => false,
+                    'repeat_on_every_page' => true,
+                ],
+                'markers' => ['enabled' => true],
+                'sections' => $sections,
+            ],
+        );
+
+        $this->command?->info('Synthetic marker-bearing OMR profile draft ready: '.$templateCode.' v'.$draft->version.' (camera registration, unqualified).');
+    }
+
+    /**
+     * True when a version carries the marker-bearing fiducial contract (its
+     * blueprint or solved bundle declares `markers`).
+     */
+    private function isMarkerBearing(OmrAnswerSheetTemplateVersion $version): bool
+    {
+        $blueprint = is_array($version->layout_blueprint_json) ? $version->layout_blueprint_json : [];
+        if (is_array($blueprint['markers'] ?? null)) {
+            return true;
+        }
+
+        $bundle = is_array($version->native_bundle_json) ? $version->native_bundle_json : [];
+        $template = $bundle['template'] ?? null;
+        if (! is_array($template)) {
+            return false;
+        }
+        foreach ((array) ($template['pages'] ?? []) as $page) {
+            if (is_array($page['markers'] ?? null)) {
+                return true;
+            }
+        }
+
+        return is_array($template['markers'] ?? null);
     }
     /**
      * Seeds an unpaired QUANT-only draft booklet (all-A key) so the

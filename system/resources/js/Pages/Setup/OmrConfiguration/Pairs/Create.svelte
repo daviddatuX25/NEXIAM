@@ -88,7 +88,7 @@
         <p class="mt-2 text-sm text-muted-foreground">
           {#if draft_templates.length === 0}
             No draft template versions are available.
-            <Link href="/setup/omr/templates/builder" class="font-medium text-primary underline underline-offset-4">Open the template builder</Link>
+            <Link href="/setup/omr/templates/canonical" class="font-medium text-primary underline underline-offset-4">Open the template builder</Link>
             to create one.
           {/if}
           {#if draft_booklets.length === 0}

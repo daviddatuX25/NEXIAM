@@ -14,18 +14,35 @@ use function strlen;
 /**
  * Validates provider observations against the exact v2 request. This is the
  * only boundary before persistence; answer-key comparison happens in NEXIAM.
+ *
+ * Returns the effective success: the provider payload unchanged when it is
+ * well-formed and safely aligned, or an amended copy carrying a required
+ * `sheet_misaligned` issue when a field-block shift can cross the native
+ * option/row pitch. Callers MUST persist and project the returned value, and
+ * MUST suppress answer/score proposals whenever that required issue is present.
+ * Non-succeeded outcomes pass through and yield null for the caller to handle.
+ *
+ * @throws OmrInvalidDetectionOutput
  */
 final class OmrDetectionResultValidator
 {
     private const CALIBRATION_STATUSES = ['synthetic', 'unqualified', 'qualified'];
 
     /**
+     * A shift reaching half the option pitch puts a bubble center at the
+     * boundary of the neighbouring option, so readings are at best ambiguous
+     * and may be fabricated as the adjacent option. Conservative: gate at
+     * half the native pitch, never at full image bounds.
+     */
+    private const SAFETY_SHIFT_FRACTION = 0.5;
+
+    /**
      * @throws OmrInvalidDetectionOutput
      */
-    public function validate(OmrDetectionRequest $request, OmrDetectionResult $result): void
+    public function validate(OmrDetectionRequest $request, OmrDetectionResult $result): ?OmrDetectionSuccess
     {
         if ($result->outcome !== OmrDetectionOutcome::Succeeded) {
-            return;
+            return null;
         }
 
         $success = $result->success;
@@ -40,6 +57,12 @@ final class OmrDetectionResultValidator
                 'Provider output failed validation: '.implode('; ', array_slice($errors, 0, 20)),
             );
         }
+
+        if ($this->unsafeFieldBlockShifts($request, $success) !== []) {
+            return $this->withRequiredMisalignment($success);
+        }
+
+        return $success;
     }
 
     /** @return list<string> */
@@ -278,6 +301,136 @@ final class OmrDetectionResultValidator
         }
 
         return $errors;
+    }
+
+    /**
+     * Field-block names whose reported shift can cross the native option or
+     * row pitch of their block. The pitch is derived from the pinned native
+     * block geometry (bubblesGap/labelsGap and orientation), so the gate
+     * adapts to compact and legacy sheets alike and needs no calibration.
+     *
+     * @return list<string>
+     */
+    private function unsafeFieldBlockShifts(OmrDetectionRequest $request, OmrDetectionSuccess $success): array
+    {
+        $blocks = $request->nativeTemplate['fieldBlocks'] ?? null;
+        if (! is_array($blocks) || $blocks === []) {
+            return [];
+        }
+
+        $unsafe = [];
+        foreach ($success->fieldBlockShifts as $shift) {
+            if (! is_array($shift) || ! is_string($shift['block'] ?? null)
+                || ! is_int($shift['x'] ?? null) || ! is_int($shift['y'] ?? null)) {
+                continue;
+            }
+
+            $block = $blocks[$shift['block']] ?? null;
+            if (! is_array($block)) {
+                continue;
+            }
+
+            [$pitchX, $pitchY] = $this->optionPitch($block);
+            $crosses = ($pitchX !== null && abs($shift['x']) >= $pitchX * self::SAFETY_SHIFT_FRACTION)
+                || ($pitchY !== null && abs($shift['y']) >= $pitchY * self::SAFETY_SHIFT_FRACTION);
+
+            if ($crosses) {
+                $unsafe[] = (string) $shift['block'];
+            }
+        }
+
+        return array_values(array_unique($unsafe));
+    }
+
+    /**
+     * Native option pitch in pixels for one field block: the center-to-center
+     * distance between neighbouring bubbles along each axis. OMRChecker lays
+     * MCQ4 rows along `direction` (option pitch = bubblesGap, row pitch =
+     * labelsGap) and stacks QTYPE_INT digit grids vertically (digit pitch =
+     * bubblesGap, column pitch = labelsGap). Unknown orientations degrade to
+     * the smaller known gap on both axes; a null axis has no derivable pitch.
+     *
+     * @param  array<string, mixed>  $block
+     * @return array{0: ?float, 1: ?float}
+     */
+    private function optionPitch(array $block): array
+    {
+        $bubblesGap = (float) ($block['bubblesGap'] ?? 0);
+        $labelsGap = (float) ($block['labelsGap'] ?? 0);
+        $direction = (string) ($block['direction'] ?? '');
+        $fieldType = (string) ($block['fieldType'] ?? '');
+
+        if ($fieldType === 'QTYPE_INT' || $direction === 'vertical') {
+            return [
+                $labelsGap > 0 ? $labelsGap : null,
+                $bubblesGap > 0 ? $bubblesGap : null,
+            ];
+        }
+        if ($direction === 'horizontal') {
+            return [
+                $bubblesGap > 0 ? $bubblesGap : null,
+                $labelsGap > 0 ? $labelsGap : null,
+            ];
+        }
+
+        $gaps = array_values(array_filter(
+            [$bubblesGap, $labelsGap],
+            static fn (float $gap): bool => $gap > 0,
+        ));
+        if ($gaps === []) {
+            return [null, null];
+        }
+        $pitch = min($gaps);
+
+        return [$pitch, $pitch];
+    }
+
+    /**
+     * Amends the success so a required `sheet_misaligned` issue is present:
+     * the provider's own required issue is retained; otherwise one is derived
+     * from the geometry gate so review can fail closed without a fabricated
+     * answer proposal.
+     */
+    private function withRequiredMisalignment(OmrDetectionSuccess $success): OmrDetectionSuccess
+    {
+        foreach ($success->issues as $issue) {
+            if ($issue->code === OmrDetectionIssue::CODE_SHEET_MISALIGNED
+                && $issue->severity === OmrDetectionIssue::SEVERITY_REQUIRED) {
+                return $success;
+            }
+        }
+
+        return new OmrDetectionSuccess(
+            engineName: $success->engineName,
+            engineVersion: $success->engineVersion,
+            engineCommit: $success->engineCommit,
+            inputHash: $success->inputHash,
+            configHash: $success->configHash,
+            applicantNumberProposal: $success->applicantNumberProposal,
+            applicantNumberConfidence: $success->applicantNumberConfidence,
+            identityFields: $success->identityFields,
+            items: $success->items,
+            issues: [...$success->issues, new OmrDetectionIssue(
+                OmrDetectionIssue::CODE_SHEET_MISALIGNED,
+                OmrDetectionIssue::SEVERITY_REQUIRED,
+            )],
+            sheetConfidence: $success->sheetConfidence,
+            responseEnvelopeVersion: $success->responseEnvelopeVersion,
+            runId: $success->runId,
+            correlationId: $success->correlationId,
+            bookletHash: $success->bookletHash,
+            nativeBundleHash: $success->nativeBundleHash,
+            manifestHash: $success->manifestHash,
+            patchIdentity: $success->patchIdentity,
+            calibrationStatus: $success->calibrationStatus,
+            providerDiagnostics: $success->providerDiagnostics,
+            fieldBlockShifts: $success->fieldBlockShifts,
+            alignedImage: $success->alignedImage,
+            imageMime: $success->imageMime,
+            imageWidth: $success->imageWidth,
+            imageHeight: $success->imageHeight,
+            birthdateProposal: $success->birthdateProposal,
+        );
     }
 
     private function isConfidence(?float $value): bool

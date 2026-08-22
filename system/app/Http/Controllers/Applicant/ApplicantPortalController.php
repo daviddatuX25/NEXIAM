@@ -1,10 +1,10 @@
 <?php
 
 namespace App\Http\Controllers\Applicant;
-
 use App\Admission\Actions\AmendPendingAdmissionAttempt;
 use App\Admission\Actions\AuthenticateApplicantWithAccessKey;
 use App\Admission\Actions\ResubmitApplicationCorrection;
+use App\Admission\Support\ApplicantAccessKey;
 use App\Admission\Support\ApplicantScope;
 use App\Applicant\Support\ApplicantPortalProjection;
 use App\Http\Controllers\Controller;
@@ -15,6 +15,7 @@ use App\Models\Foundation\Program;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,15 +53,48 @@ class ApplicantPortalController extends Controller
         ApplicantLoginRequest $request,
         AuthenticateApplicantWithAccessKey $action,
     ): RedirectResponse {
-        try {
-            $user = $action->handle(
-                $request->string('access_key')->toString(),
-                $request->date('birthdate')->format('Y-m-d'),
-            );
-        } catch (RuntimeException $exception) {
+        $accessKey = (string) $request->input('access_key');
+        $keyHash = ApplicantAccessKey::hash($accessKey);
+        $keyThrottle = 'applicant-login:key:'.$keyHash;
+        $ipThrottle = 'applicant-login:ip:'.$request->ip();
+
+        // 1. Check IP rate limit (10 attempts per minute)
+        if (RateLimiter::tooManyAttempts($ipThrottle, 10)) {
+            $seconds = RateLimiter::availableIn($ipThrottle);
             return back()
                 ->withInput($request->except('access_key'))
-                ->withErrors(['access_key' => $exception->getMessage()]);
+                ->withErrors(['access_key' => "Too many attempts from this IP address. Please try again in {$seconds} seconds."]);
+        }
+
+        // 2. Check Per-Key Lockout (3 failed attempts -> 15-minute lock)
+        if (RateLimiter::tooManyAttempts($keyThrottle, 3)) {
+            $seconds = RateLimiter::availableIn($keyThrottle);
+            $minutes = (int) ceil($seconds / 60);
+            return back()
+                ->withInput($request->except('access_key'))
+                ->withErrors(['access_key' => "This access key is temporarily locked due to repeated failed attempts. Please try again in {$minutes} minute(s)."]);
+        }
+
+        try {
+            $user = $action->handle(
+                $accessKey,
+                $request->date('birthdate')->format('Y-m-d'),
+            );
+
+            RateLimiter::clear($keyThrottle);
+            RateLimiter::clear($ipThrottle);
+        } catch (RuntimeException $exception) {
+            RateLimiter::hit($keyThrottle, 900);
+            RateLimiter::hit($ipThrottle, 60);
+
+            $remaining = RateLimiter::remaining($keyThrottle, 3);
+            $warning = $remaining > 0
+                ? " ({$remaining} attempt".($remaining === 1 ? '' : 's').' remaining before lockout)'
+                : '';
+
+            return back()
+                ->withInput($request->except('access_key'))
+                ->withErrors(['access_key' => 'Invalid access key or birthdate.'.$warning]);
         }
 
         Auth::guard('web')->login($user);

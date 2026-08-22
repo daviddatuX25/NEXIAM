@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXIAM Lofi ASCII Wireframes</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#e8ecef;color:#202830;font-family:Arial,Helvetica,sans-serif}
+main{max-width:1120px;margin:20px auto;background:#fff;padding:30px 34px}h1{font-size:27px;margin:0;color:#174a7e;border-bottom:4px solid #f0c94c;padding-bottom:12px}
+h2{font-size:21px;color:#174a7e;border-bottom:2px solid #8da9c2;padding:14px 0 5px;margin:30px 0 14px;page-break-before:always}h2:first-of-type{page-break-before:auto}
+h3{font-size:16px;color:#334c63;margin:22px 0 7px;page-break-after:avoid}.note{font-size:12px;color:#56616b;line-height:1.45}
+pre{font:11px/1.25 Consolas,"Liberation Mono",monospace;background:#fbfcfd;border:1px solid #9da9b3;border-left:5px solid #5c7cfa;padding:13px;overflow:auto;white-space:pre;page-break-inside:avoid;margin:8px 0 20px}
+.legend{background:#fff4bd;border-left:5px solid #d9ae00;padding:10px 13px;font-size:12px;margin:12px 0 20px}a{color:#145b97}
+@media print{body{background:#fff}main{margin:0;padding:14mm 10mm;max-width:none}pre{font-size:9px}}
+</style>
+</head>
+<body><main>
+<h1>NEXIAM — Lofi ASCII Wireframes</h1>
+<p class="note"><strong>RAD User Design — Session 1 (simulated)</strong> · 23 proposed screens · Print this page set for the client review/photo activity.</p>
+<div class="legend"><strong>How to use:</strong> These are proposed low-fidelity layouts, not evidence of the current office process. Ask: “What is missing?”, “What should be removed?”, and “What should happen when this action fails?” Record changes in <a href="client-brief.html">client-brief.html</a>. The complete text version is <a href="ascii-wireframes.md">ascii-wireframes.md</a>.</div>
+
+<h2>PART A — APPLICANT PORTAL (5 screens)</h2>
+<h3>A1. Login / Entry</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM]  ISPSC Tagudin — Admission Portal                    [Help] |
++----------------------------------------------------------------------+
+|                         Welcome to NEXIAM                            |
+|                    Admission Testing Portal                          |
+|      Enter your ID Key: [ APP-2026-XXXX________________ ]            |
+|                    [ Continue ]   [ I forgot my key ]                |
+|  ID Key was given at application and is printed on the admission slip.|
++----------------------------------------------------------------------+</pre>
+<h3>A2. Dashboard / Status tracker</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Applicant: Juan Dela Cruz              ID: APP-2026-0451   |
++----------------------------------------------------------------------+
+| Home | My Application | Admission Slip | Chatbot | Results            |
+|                                                                      |
+| APPLICATION STATUS: 1 Submitted [DONE]  2 Exam [SCHEDULED]          |
+|                     3 Taken [PENDING]  4 Results [WAITING]          |
+| NEXT STEP: Exam July 18, 2026 · 8:00 AM · Room 204                  |
+|                         [ View admission slip ]                     |
+| Ask the chatbot about requirements, schedule, or status.             |
++----------------------------------------------------------------------+</pre>
+<h3>A3. Application Form</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Applicant: Juan Dela Cruz              ID: APP-2026-0451   |
++----------------------------------------------------------------------+
+| MY APPLICATION                                                        |
+| 1. Personal: Name [Juan Dela Cruz] Birthdate [2006-03-14] Sex [M]   |
+| 2. Program: First [ BS Information Technology v ] Second [ BSCE v ] |
+| 3. Requirements: [x] Report card [ ] Brgy clearance                 |
+|                  [x] PSA birth cert [ ] 2x2 ID photo               |
+|                     [ Submit application ]                           |
+| Drafts save automatically as you type.                              |
++----------------------------------------------------------------------+</pre>
+<h3>A4. Admission Slip</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM]                 ADMISSION SLIP                         [Print]|
++----------------------------------------------------------------------+
+| ISPSC TAGUDIN CAMPUS — COLLEGE ADMISSION TEST                       |
+| Applicant: Juan Dela Cruz     ID: APP-2026-0451                      |
+| Program: BS Information Technology                                  |
+| Date: July 18, 2026   Time: 8:00 AM   Room: 204   Seat: A-12       |
+| [ QR / ID KEY ]  Bring pencil, eraser, and this slip.              |
+| Arrive 30 minutes early. Phones are not allowed inside the room.    |
++----------------------------------------------------------------------+</pre>
+<h3>A5. Chatbot</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Applicant: Juan Dela Cruz              ID: APP-2026-0451   |
++----------------------------------------------------------------------+
+| NEXIAM ASSISTANT                                                     |
+| Nexi: Hi Juan! Ask about requirements, schedules, or status.         |
+| You: Kelan po ang exam?                                               |
+| Nexi: July 18, 2026, 8:00 AM, Room 204. [Show my slip]              |
+| Suggested: [Requirements] [Exam schedule] [Status] [Talk to staff]   |
+| [ type your question ........................................ ] [Send]|
++----------------------------------------------------------------------+</pre>
+
+<h2>PART B — GUIDANCE OFFICE (6 screens)</h2>
+<h3>B1. Triage Dashboard</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Guidance · Triage Dashboard                 [Guidance Cslr] |
++----------------------------------------------------------------------+
+| Triage | OMR | Scheduling | Release | Consultation | Proctoring      |
+| APPLICANT: Juan Dela Cruz / APP-2026-0451                            |
+| Aptitude Profile: Math-Dominant · Confidence 0.89                    |
+| Recommended: BSIT · BSCE · BS Mathematics                            |
+| Interest Match: BSIT .92 · BSCE .84 · BSA .61                        |
+| Exam score: 87/100   HS GPA: 91   [Open notes] [Recommend...]        |
+| NOTE: engines suggest only. Counselor decides.                       |
++----------------------------------------------------------------------+</pre>
+<h3>B2. OMR Scoring</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Guidance · OMR Scoring                     [Guidance Cslr] |
++----------------------------------------------------------------------+
+| BATCH: ICAT June 2026 — Session 4 (45 sheets)                        |
+| [ Upload scans ]  [ Run OMR check ]                                  |
+| PROGRESS: [#########--------] 23/45                                  |
+| FLAGGED FOR HUMAN VERIFICATION: #12 double-marked [View] [Accept]    |
+|                                #34 erased + remark [View] [Accept]   |
+| Manual fallback: [ Enter scores by hand ]                            |
+| [ Confirm batch ] → conversion + result preparation + audit record   |
++----------------------------------------------------------------------+</pre>
+<h3>B3. Exam Scheduling</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Guidance · Exam Scheduling                 [Guidance Cslr] |
++----------------------------------------------------------------------+
+| PROPOSED: July 18 · 8:00 AM · Room 204 · 40 applicants               |
+| Proctor: A. / Counselor on duty: M. Santos                          |
+| Constraints: room capacity 50 · availability · batch limit 30       |
+| Student booking option: [ ] allow self-booking                       |
+| Actions: [Edit] [Re-propose] [ Confirm & publish ]                   |
+| PUBLISHED → applicant sees the slot in the portal.                   |
++----------------------------------------------------------------------+</pre>
+<h3>B4. Result Release</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Guidance · Result Release                   [Guidance Cslr] |
++----------------------------------------------------------------------+
+| BATCH: ICAT June 2026 — Session 4                                     |
+| Conversion: raw score → official result (stored conversion table)    |
+| APP-0451 Juan Dela Cruz  88% OK     APP-0452 Maria Garcia 92% OK    |
+| APP-0453 [flagged → verify]                                           |
+| [Preview] [Print result sheets] [ Release online ] → portal + email  |
+| Nothing publishes automatically — a counselor confirms first.        |
++----------------------------------------------------------------------+</pre>
+<h3>B5. Consultation Notes</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Guidance · Consultation                     [Guidance Cslr] |
++----------------------------------------------------------------------+
+| TODAY: 50 max · 24 booked · hourly slots · mode [F2F] [Online]       |
+| [9:00] Juan Dela Cruz   [9:00] Maria Garcia   [10:00] — open —        |
+| Notes for Juan (auto-saved):                                         |
+| [ Recommended BSIT. Strong math profile. Follow up: PSA copy ... ]   |
+| Follow-up: [open] [date: Jul 25]  Quota check: BSIT 120/150          |
+| [ Save & complete ] — note and audit record                           |
++----------------------------------------------------------------------+</pre>
+<h3>B6. Proctoring / Offline mode</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Guidance · Proctoring                         [Proctor]    |
++----------------------------------------------------------------------+
+| SESSION: ICAT July 18 · Room 204 · 8:00 AM                           |
+| Status: [ OFFLINE — local mode; will sync ]                          |
+| Attendance: [Scan] APP-0451 Juan Dela Cruz ✓  [Scan] APP-0452 ✓      |
+| Present: 40/40   Absent: 0                                           |
+| Incident log: [ + Add incident ] — timestamped, works offline       |
+| [ End session ] → sync when the connection returns                   |
++----------------------------------------------------------------------+</pre>
+
+<h2>PART C — REGISTRAR OFFICE (5 screens)</h2>
+<h3>C1. Applications List</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Registrar · Applications                     [Registrar Staff]|
++----------------------------------------------------------------------+
+| [Search name/ID____] Status [All v] Program [All v] Batch [All v]    |
+| APPLICANTS (1,240 this cycle)                                        |
+| APP-0451 Juan Dela Cruz BSIT Complete   APP-0452 Maria BSCE Review   |
+| APP-0453 Ben Cruz       BSED Quota hit  [ Export CSV ]              |
+| Records are registrar-scoped.                                       |
++----------------------------------------------------------------------+</pre>
+<h3>C2. Import</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Registrar · Import                         [Registrar Staff]|
++----------------------------------------------------------------------+
+| [ Choose CSV / Excel file ]  [ Download template ]                    |
+| File [Name] → full_name ✓   [Course] → program ✓                      |
+| [NOA #] → id_key ⚠ duplicate                                            |
+| Errors: 2 (duplicate NOA; empty name)                                 |
+| [ Fix in file ] [ Import valid rows only ]                             |
+| Every import is logged.                                               |
++----------------------------------------------------------------------+</pre>
+<h3>C3. Processing</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Registrar · Processing                       [Registrar Staff]|
++----------------------------------------------------------------------+
+| APPLICANT: Maria Garcia / APP-2026-0452                               |
+| Requirements: [x] Report card [x] PSA birth cert [ ] Brgy [ ] 2x2    |
+| Status: [ IN REVIEW ] → [ Verified ]                                  |
+| ⚠ BSCE has reached 100% quota. [ Alert guidance office ]              |
+| History: created Jun 30 · verified Jul 02 · audit logged              |
++----------------------------------------------------------------------+</pre>
+<h3>C4. Reports</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Registrar · Reports                         [Registrar Admin]|
++----------------------------------------------------------------------+
+| Report [Pre-enrollment list v] Period [June–July 2026 v] [Generate]  |
+| Total: 1,240 · Verified: 1,180                                        |
+| Program | Applied | Verified | Quota | %                               |
+| BSIT    | 168     | 160      | 150   | 107%                            |
+| BSCE    | 122     | 118      | 120   | 98%                             |
+| [ Export PDF ] [ Export CSV ]                                         |
++----------------------------------------------------------------------+</pre>
+<h3>C5. Setup</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Registrar · Setup                            [Registrar Admin]|
++----------------------------------------------------------------------+
+| REGISTRAR STAFF: R. Mallari / Staff · A. Ramos / Staff                |
+| [ + Create account ]                                                   |
+| Default program quotas [edit]   Identity key [APP-2026-XXXX]          |
+| Registrar settings are office-scoped. Guidance cannot see this page.  |
++----------------------------------------------------------------------+</pre>
+
+<h2>PART D — PROGRAM HEADS (3 screens)</h2>
+<h3>D1. Quota Pipeline</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Program Head · BSIT Quota                     [Program Head]|
++----------------------------------------------------------------------+
+| QUOTA 150 · APPLIED 168 · FILLED 107%                                 |
+| [#########------] 118 slotted · 42 pending                            |
+| ⚠ Quota reached on Jul 02 — Registrar alerted; Guidance notified.    |
+| [ Update quota ] [ Set alert threshold (95%) ]                        |
+| You see only your own program’s data.                                |
++----------------------------------------------------------------------+</pre>
+<h3>D2. Pre-Enrollment Slate</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Program Head · BSIT Slate                    [Program Head]|
++----------------------------------------------------------------------+
+| Rank | Name           | Score | Cluster                                |
+| 1    | Juan Dela Cruz | 88%   | Math-Dominant                          |
+| 2    | Maria Garcia   | 92%   | Math-Dominant                          |
+| 3    | Ben Cruz       | 85%   | Spatial                                |
+| [Add comment] [Request review] → Guidance coordinator                 |
+| Slate is advisory — admission decisions stay with Guidance/Registrar. |
++----------------------------------------------------------------------+</pre>
+<h3>D3. Program Reports</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] Program Head · Reports                       [Program Head]|
++----------------------------------------------------------------------+
+| BSIT INTAKE SUMMARY — 2026                                            |
+| Applied 168 · Verified 160 · Quota 150 · [chart: applied vs quota]   |
+| Top municipalities: Sta. Cruz, Bangar, Sudipen                       |
+| Avg exam score of slotted: 81/100                                    |
+| [ Export PDF ] [ Export CSV ]                                        |
+| Descriptive planning information only.                                |
++----------------------------------------------------------------------+</pre>
+
+<h2>PART E — SYSTEM IT ADMIN (4 screens)</h2>
+<h3>E1. User Management</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] System Admin · User Management                     [IT Admin]|
++----------------------------------------------------------------------+
+| Filter: Office [All] Role [All]                                      |
+| Sir Sonny  Guidance  Admin      Active                               |
+| M. Santos  Guidance  Counselor  Active                               |
+| R. Mallari Registrar Staff      Active                               |
+| [ + Create account ] [Deactivate] [Reset password]                   |
+| Role assignment is office-scoped.                                    |
++----------------------------------------------------------------------+</pre>
+<h3>E2. Audit Logs</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] System Admin · Audit Logs                         [IT Admin]|
++----------------------------------------------------------------------+
+| [ Check integrity ] → OK (HMAC)                                      |
+| 2026-07-02 09:14 A. Ramos verified APP-0452                         |
+| 2026-07-02 09:15 System alert: BSCE quota 100%                       |
+| 2026-07-02 11:02 M. Santos released batch 4                          |
+| Views, edits, releases, and changes are recorded.                    |
++----------------------------------------------------------------------+</pre>
+<h3>E3. Engine Registry</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] System Admin · Engine Registry                    [IT Admin]|
++----------------------------------------------------------------------+
+| Yukee Cluster v1 [running] [config] [logs]                            |
+| BGE Interest v1 [running] [config] [logs]                             |
+| OMR CV Engine   [ready]   [threshold 0.85]                            |
+| Nexi RAG        [running] [document sources]                           |
+| Engines suggest only; humans decide.                                 |
++----------------------------------------------------------------------+</pre>
+<h3>E4. Settings</h3><pre>+----------------------------------------------------------------------+
+| [NEXIAM] System Admin · Settings                         [IT Admin]  |
++----------------------------------------------------------------------+
+| OMR confidence threshold [0.85]   Default batch size [30]             |
+| Result release [human-confirmed] Student self-booking [off]          |
+| Consultation max/day [50]        Notifications [email + portal]      |
+| [ Save ] — every change is audit-logged.                              |
++----------------------------------------------------------------------+</pre>
+
+<p class="note">End of wireframe pad — 23 screens: 5 Applicant + 6 Guidance + 5 Registrar + 3 Program Head + 4 Admin.</p>
+</main></body></html>

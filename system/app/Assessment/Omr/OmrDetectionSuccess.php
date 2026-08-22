@@ -14,6 +14,7 @@ final readonly class OmrDetectionSuccess
      * @param  list<OmrDetectedItem>  $items
      * @param  list<OmrDetectionIssue>  $issues
      * @param  list<array<string, mixed>>  $fieldBlockShifts
+     * @param  array<string, mixed>  $providerDiagnostics
      * @param  array<string, mixed>|null  $alignedImage
      */
     public function __construct(
@@ -42,6 +43,7 @@ final readonly class OmrDetectionSuccess
         public ?int $imageWidth = null,
         public ?int $imageHeight = null,
         public ?string $birthdateProposal = null,
+        public array $providerDiagnostics = [],
     ) {
     }
 }

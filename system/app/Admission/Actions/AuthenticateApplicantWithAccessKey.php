@@ -45,8 +45,8 @@ class AuthenticateApplicantWithAccessKey
                 throw new RuntimeException('Invalid access key or birthdate.');
             }
 
-            $storedBirthdate = $identity->birthdate?->format('Y-m-d');
-            if ($storedBirthdate !== $birthdate) {
+            $storedBirthdate = (string) ($identity->birthdate?->format('Y-m-d') ?? '');
+            if ($storedBirthdate === '' || ! hash_equals($storedBirthdate, $birthdate)) {
                 throw new RuntimeException('Invalid access key or birthdate.');
             }
 

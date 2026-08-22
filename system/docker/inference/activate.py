@@ -1,4 +1,6 @@
+import base64
 import json
+import re
 import sys
 import tempfile
 from contextlib import redirect_stdout
@@ -36,15 +38,31 @@ def expand(payload: dict) -> dict:
     template_json = payload.get("template")
     config_json = payload.get("config", {})
     bundle = payload.get("bundle", {})
+    assets = payload.get("assets", {})
 
     if not isinstance(template_json, dict) or not isinstance(config_json, dict) or not isinstance(bundle, dict):
         raise ValueError("activation payload must contain template, config, and bundle objects")
+    if not isinstance(assets, dict):
+        raise ValueError("activation payload assets must be an object")
 
     defaults, template_class = load_omrchecker()
 
     with tempfile.TemporaryDirectory(prefix="nexiam-omr-activation-") as directory:
         template_path = Path(directory) / "template.json"
         template_path.write_text(json.dumps(template_json, separators=(",", ":")), encoding="utf-8")
+        for name, encoded in assets.items():
+            if not isinstance(name, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", name) is None:
+                raise ValueError(f"activation payload asset name is unsafe: {name!r}")
+            if not isinstance(encoded, str):
+                raise ValueError(f"activation payload asset {name} must be base64 text")
+            try:
+                decoded = base64.b64decode(encoded, validate=True)
+            except (ValueError, TypeError):
+                raise ValueError(f"activation payload asset {name} is not valid base64") from None
+            if not decoded or len(decoded) > 1_000_000:
+                raise ValueError(f"activation payload asset {name} has invalid bytes")
+            (Path(directory) / name).write_bytes(decoded)
+
         with redirect_stdout(sys.stderr):
             template = template_class(template_path, merge_config(config_json, defaults))
 

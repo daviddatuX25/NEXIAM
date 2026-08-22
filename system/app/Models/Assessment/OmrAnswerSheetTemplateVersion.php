@@ -24,6 +24,7 @@ class OmrAnswerSheetTemplateVersion extends Model
         'engine_name', 'engine_commit', 'patch_identity',
         'review_manifest_json', 'review_manifest_hash', 'print_overlay_json',
         'layout_blueprint_json', 'layout_blueprint_hash', 'layout_solver_version',
+        'authoring_manifest',
         'activated_by_user_id', 'activated_at',
     ];
 
@@ -39,6 +40,7 @@ class OmrAnswerSheetTemplateVersion extends Model
             'review_manifest_json' => 'array',
             'print_overlay_json' => 'array',
             'layout_blueprint_json' => 'array',
+            'authoring_manifest' => 'array',
             'activated_at' => 'datetime',
         ];
     }
@@ -47,6 +49,21 @@ class OmrAnswerSheetTemplateVersion extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(OmrAnswerSheetTemplate::class, 'template_id');
+    }
+
+    public function authoringDrafts(): HasMany
+    {
+        return $this->hasMany(OmrTemplateAuthoringDraft::class, 'compiled_version_id');
+    }
+
+    public function canonicalAssets(): HasMany
+    {
+        return $this->hasMany(OmrTemplateAsset::class, 'template_version_id');
+    }
+
+    public function blankInstances(): HasMany
+    {
+        return $this->hasMany(OmrBlankInstance::class, 'template_version_id');
     }
 
     public function activatedBy(): BelongsTo

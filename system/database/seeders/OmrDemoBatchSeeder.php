@@ -14,7 +14,6 @@ use App\Support\SensitiveAssetStore;
 use App\Models\Examination\ExamAssignment;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -27,19 +26,45 @@ use function sprintf;
 use function strlen;
 
 /**
- * Seeds one demo OMR batch with sheets in every capture state (needs-review
- * two-page set, incomplete resumable set, terminal-failed sheet) so the
- * capture/review/confirm/retry surfaces can be exercised without scanning.
+ * Seeds ONE demo OMR batch containing a single needs-review sheet for one
+ * whole examinee (bound to an exam assignment) against the active profile
+ * pair — the focused near-production dataset. Founder decision 2026-08-17:
+ * the default seeded state must look like production (one answer sheet, one
+ * pair, one booklet), not a synthetic state gallery.
+ *
+ * The multi-state fixture (pending-pages + terminal-failed sheets for the
+ * capture/review/retry surfaces) lives in {@see OmrDemoMultiStateBatchSeeder}.
  */
 class OmrDemoBatchSeeder extends Seeder
 {
     public function run(): void
     {
+        $ctx = $this->context();
+        if ($ctx === null) {
+            return;
+        }
+
+        $batch = $this->batchFor($ctx);
+        if ($batch === null) {
+            $batch = $this->createBatch($ctx);
+            $this->createNeedsReviewSheet($ctx, $batch);
+        }
+
+        $this->command?->info(sprintf('OMR demo batch #%d ready: 1 needs-review examinee sheet (focused near-production dataset).', $batch->id));
+    }
+
+    /**
+     * Resolves the demo context shared by the focused and multi-state seeders.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function context(): ?array
+    {
         $session = GradingSession::query()->orderByDesc('id')->first();
         if ($session === null) {
             $this->command?->warn('No grading session found; skipping OMR demo batch.');
 
-            return;
+            return null;
         }
 
         $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
@@ -66,34 +91,8 @@ class OmrDemoBatchSeeder extends Seeder
         if ($pair === null) {
             $this->command?->warn('No active OMR pair found; skipping OMR demo batch.');
 
-            return;
+            return null;
         }
-
-        $existingBatch = OmrCaptureBatch::query()
-            ->where('grading_session_id', $session->id)
-            ->where('template_version_id', (int) $pair->template_version_id)
-            ->first();
-        if ($existingBatch !== null) {
-            if ($existingBatch->sheets()->count() >= 3) {
-                $this->command?->info('OMR demo batch already seeded for this session.');
-
-                return;
-            }
-            // Partial batch from an interrupted seed: remove and rebuild.
-            foreach ($existingBatch->sheets as $sheet) {
-                $sheet->pages()->delete();
-            }
-            $existingBatch->sheets()->delete();
-            $existingBatch->delete();
-        }
-
-        $batch = app(CreateOmrCaptureBatch::class)->handle(
-            $session,
-            $actor,
-            (int) $pair->template_version_id,
-            (int) $pair->booklet_version_id,
-            'omr-demo-batch',
-        );
 
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
         $assetStore = app(SensitiveAssetStore::class);
@@ -108,7 +107,93 @@ class OmrDemoBatchSeeder extends Seeder
         $items = $profilePair ? $this->profileItems() : $this->items(200);
         $pageItems = $profilePair ? $items : $this->items(100);
 
-        // 1. Needs-review set (clean, ready to bind and confirm).
+        return [
+            'session' => $session,
+            'actor' => $actor,
+            'pair' => $pair,
+            'profilePair' => $profilePair,
+            'pageCount' => $pageCount,
+            'items' => $items,
+            'pageItems' => $pageItems,
+            'bytes' => $bytes,
+            'assetStore' => $assetStore,
+            'assetHmac' => $assetHmac,
+            'assignment' => $assignment,
+        ];
+    }
+
+    /**
+     * Existing needs-review batch for this session+pair, or null to rebuild.
+     *
+     * @param  array<string, mixed>  $ctx
+     */
+    protected function batchFor(array $ctx): ?OmrCaptureBatch
+    {
+        /** @var GradingSession $session */
+        $session = $ctx['session'];
+        /** @var OmrTemplateBookletPair $pair */
+        $pair = $ctx['pair'];
+
+        $batch = OmrCaptureBatch::query()
+            ->where('grading_session_id', $session->id)
+            ->where('template_version_id', (int) $pair->template_version_id)
+            ->first();
+
+        if ($batch === null) {
+            return null;
+        }
+
+        if ($batch->sheets()->where('status', OmrCaptureSheet::STATUS_NEEDS_REVIEW)->exists()) {
+            return $batch;
+        }
+
+        // Partial batch from an interrupted seed: remove and rebuild.
+        foreach ($batch->sheets as $sheet) {
+            $sheet->pages()->delete();
+        }
+        $batch->sheets()->delete();
+        $batch->delete();
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $ctx
+     */
+    protected function createBatch(array $ctx): OmrCaptureBatch
+    {
+        /** @var GradingSession $session */
+        $session = $ctx['session'];
+        /** @var User $actor */
+        $actor = $ctx['actor'];
+        /** @var OmrTemplateBookletPair $pair */
+        $pair = $ctx['pair'];
+
+        return app(CreateOmrCaptureBatch::class)->handle(
+            $session,
+            $actor,
+            (int) $pair->template_version_id,
+            (int) $pair->booklet_version_id,
+            'omr-demo-batch',
+        );
+    }
+
+    /**
+     * The one whole examinee: a single needs-review sheet bound to the exam
+     * assignment with private evidence and profile-aligned proposal.
+     *
+     * @param  array<string, mixed>  $ctx
+     */
+    protected function createNeedsReviewSheet(array $ctx, OmrCaptureBatch $batch): OmrCaptureSheet
+    {
+        $profilePair = (bool) $ctx['profilePair'];
+        $pageCount = (int) $ctx['pageCount'];
+        $items = $ctx['items'];
+        $bytes = $ctx['bytes'];
+        $assetHmac = $ctx['assetHmac'];
+        $assignment = $ctx['assignment'];
+        $actor = $ctx['actor'];
+
         $reviewClientCaptureId = (string) Str::uuid();
         $reviewAssetPath = $pageCount === 1 ? 'omr/demo/review-'.$reviewClientCaptureId.'.bin' : null;
         $reviewSheet = OmrCaptureSheet::query()->create([
@@ -134,14 +219,18 @@ class OmrDemoBatchSeeder extends Seeder
             'detected_birthdate' => $profilePair ? null : '01012010',
             'sheet_confidence' => $profilePair ? null : 0.92,
             'proposal_json' => $this->proposal($items, $pageCount, ! $profilePair),
-            'captured_by_user_id' => $actor->id,
+            'captured_by_user_id' => (int) $actor->id,
             'captured_at' => now()->subMinutes(20),
         ]);
         if ($reviewAssetPath !== null) {
+            /** @var SensitiveAssetStore $assetStore */
+            $assetStore = $ctx['assetStore'];
             $assetStore->store($bytes, $reviewAssetPath);
         }
         foreach (range(1, $pageCount) as $pageNo) {
             $pageAssetPath = 'omr/demo/'.$reviewSheet->id.'-p'.$pageNo.'.bin';
+            /** @var SensitiveAssetStore $assetStore */
+            $assetStore = $ctx['assetStore'];
             $assetStore->store($bytes, $pageAssetPath);
             OmrCaptureSheetPage::query()->create([
                 'sheet_id' => $reviewSheet->id,
@@ -155,11 +244,24 @@ class OmrDemoBatchSeeder extends Seeder
                 'asset_state' => OmrCaptureSheet::ASSET_LIVE,
                 'original_mime' => 'image/png',
                 'original_bytes' => strlen($bytes),
-                'proposal_json' => $this->pageProposal($pageNo, $pageItems, $pageCount, ! $profilePair),
+                'proposal_json' => $this->pageProposal($pageNo, $ctx['pageItems'], $pageCount, ! $profilePair),
             ]);
         }
 
-        // 2. Incomplete set (resumable from page 2 when using the two-page pair).
+        return $reviewSheet;
+    }
+
+    /**
+     * Incomplete resumable set (queued page 1, missing remaining pages).
+     *
+     * @param  array<string, mixed>  $ctx
+     */
+    protected function createPendingSheet(array $ctx, OmrCaptureBatch $batch): void
+    {
+        $pageCount = (int) $ctx['pageCount'];
+        $bytes = $ctx['bytes'];
+        $assetHmac = $ctx['assetHmac'];
+
         $pendingClientCaptureId = (string) Str::uuid();
         $pendingAssetPath = $pageCount === 1 ? 'omr/demo/pending-'.$pendingClientCaptureId.'.bin' : null;
         $pendingSheet = OmrCaptureSheet::query()->create([
@@ -179,13 +281,17 @@ class OmrDemoBatchSeeder extends Seeder
                 'original_mime' => 'image/png',
                 'original_bytes' => strlen($bytes),
             ] : []),
-            'captured_by_user_id' => $actor->id,
+            'captured_by_user_id' => (int) $ctx['actor']->id,
             'captured_at' => now()->subMinutes(8),
         ]);
         if ($pendingAssetPath !== null) {
+            /** @var SensitiveAssetStore $assetStore */
+            $assetStore = $ctx['assetStore'];
             $assetStore->store($bytes, $pendingAssetPath);
         }
         $pendingPageAssetPath = 'omr/demo/'.$pendingSheet->id.'-p1.bin';
+        /** @var SensitiveAssetStore $assetStore */
+        $assetStore = $ctx['assetStore'];
         $assetStore->store($bytes, $pendingPageAssetPath);
         OmrCaptureSheetPage::query()->create([
             'sheet_id' => $pendingSheet->id,
@@ -200,8 +306,18 @@ class OmrDemoBatchSeeder extends Seeder
             'original_mime' => 'image/png',
             'original_bytes' => strlen($bytes),
         ]);
+    }
 
-        // 3. Terminal-failed sheet (retry-able from the gallery card).
+    /**
+     * Terminal-failed sheet (retry-able from the gallery card).
+     *
+     * @param  array<string, mixed>  $ctx
+     */
+    protected function createFailedSheet(array $ctx, OmrCaptureBatch $batch): void
+    {
+        $bytes = $ctx['bytes'];
+        $assetHmac = $ctx['assetHmac'];
+
         $failedAssetPath = 'omr/demo/'.$batch->id.'-failed.bin';
         $failedSheet = OmrCaptureSheet::query()->create([
             'batch_id' => $batch->id,
@@ -218,9 +334,11 @@ class OmrDemoBatchSeeder extends Seeder
             'asset_state' => OmrCaptureSheet::ASSET_LIVE,
             'original_mime' => 'image/png',
             'original_bytes' => strlen($bytes),
-            'captured_by_user_id' => $actor->id,
+            'captured_by_user_id' => (int) $ctx['actor']->id,
             'captured_at' => now()->subMinutes(30),
         ]);
+        /** @var SensitiveAssetStore $assetStore */
+        $assetStore = $ctx['assetStore'];
         $assetStore->store($bytes, $failedAssetPath);
         $failedPageAssetPath = 'omr/demo/'.$failedSheet->id.'-p1.bin';
         $assetStore->store($bytes, $failedPageAssetPath);
@@ -237,9 +355,8 @@ class OmrDemoBatchSeeder extends Seeder
             'original_mime' => 'image/png',
             'original_bytes' => strlen($bytes),
         ]);
-
-        $this->command?->info(sprintf('OMR demo batch #%d ready: 1 needs-review, 1 incomplete, 1 failed.', $batch->id));
     }
+
     /**
      * @return list<array<string, mixed>>
      */

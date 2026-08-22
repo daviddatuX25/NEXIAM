@@ -128,10 +128,14 @@ final class NativeManifestDeriver
             )),
         )));
 
-        if (count($identityLabels) !== 10 || $identitySymbols !== $expectedIdentitySymbols) {
+        $identityPolicy = (string) ($bundle->manifest['identity_policy'] ?? 'required');
+        $hasIdentity = $identityLabels !== [] || $identitySymbols !== [];
+        if ($identityPolicy !== 'optional' && (count($identityLabels) !== 10 || $identitySymbols !== $expectedIdentitySymbols)) {
             throw new RuntimeException('Native bundle applicant-number identity must declare ten positions with symbols 0 through 9.');
         }
-
+        if ($identityPolicy === 'optional' && $hasIdentity && (count($identityLabels) !== 10 || $identitySymbols !== $expectedIdentitySymbols)) {
+            throw new RuntimeException('Canonical identity grids must be complete when declared.');
+        }
         if ($birthdateLabels !== [] && (count($birthdateLabels) !== 6 || $birthdateSymbols !== $expectedIdentitySymbols)) {
             throw new RuntimeException('Native bundle birthdate identity must declare six positions with symbols 0 through 9.');
         }
@@ -146,7 +150,7 @@ final class NativeManifestDeriver
             'page_count' => $bundle->pageCount(),
             'pages' => $pages,
             'identity' => [
-                'mode' => 'bubbled_applicant_number',
+                'mode' => $hasIdentity ? 'bubbled_applicant_number' : 'none',
                 'labels' => $identityLabels,
                 'symbols' => $identitySymbols,
                 'free_form_supported' => false,

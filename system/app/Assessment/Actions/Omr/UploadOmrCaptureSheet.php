@@ -73,23 +73,7 @@ final class UploadOmrCaptureSheet
                 ->lockForUpdate()
                 ->first();
 
-            if ($sheet === null) {
-                $sheet = OmrCaptureSheet::query()->create([
-                    'batch_id' => $batch->id,
-                    'admission_attempt_id' => $admissionAttemptId,
-                    'status' => $pageCount === 1
-                        ? OmrCaptureSheet::STATUS_QUEUED
-                        : OmrCaptureSheet::STATUS_PENDING_PAGES,
-                    'capture_mode' => $captureMode,
-                    'version' => 0,
-                    'expected_page_count' => $pageCount,
-                    'client_capture_id' => $clientCaptureId,
-                    'captured_by_user_id' => $actor->id,
-                    'captured_at' => now(),
-                ]);
-            }
-
-            $existingPage = $sheet->pages()->where('page_no', $pageNo)->first();
+            $existingPage = $sheet?->pages()->where('page_no', $pageNo)->first();
             if ($existingPage !== null && $existingPage->asset_path !== null) {
                 throw new RuntimeException("Page {$pageNo} of this sheet set was already uploaded.");
             }
@@ -100,7 +84,7 @@ final class UploadOmrCaptureSheet
             );
 
             $pageFields = [
-                'sheet_id' => $sheet->id,
+                'sheet_id' => $sheet->id ?? null,
                 'page_no' => $pageNo,
                 'status' => OmrCaptureSheetPage::STATUS_QUEUED,
                 'asset_path' => $path,
@@ -112,6 +96,40 @@ final class UploadOmrCaptureSheet
                 'original_mime' => $mime,
                 'original_bytes' => strlen($imageBytes),
             ];
+
+            if ($sheet === null) {
+                $sheetFields = [
+                    'batch_id' => $batch->id,
+                    'admission_attempt_id' => $admissionAttemptId,
+                    'status' => $pageCount === 1
+                        ? OmrCaptureSheet::STATUS_QUEUED
+                        : OmrCaptureSheet::STATUS_PENDING_PAGES,
+                    'capture_mode' => $captureMode,
+                    'version' => 0,
+                    'expected_page_count' => $pageCount,
+                    'client_capture_id' => $clientCaptureId,
+                    'captured_by_user_id' => $actor->id,
+                    'captured_at' => now(),
+                ];
+
+                // Single-page sheets must carry the asset mirror at insert
+                // time: `omr_capture_sheets_asset_check` requires
+                // `asset_path IS NOT NULL` unless `expected_page_count > 1`.
+                if ($pageCount === 1) {
+                    $sheetFields += [
+                        'asset_path' => $path,
+                        'asset_hmac' => $pageFields['asset_hmac'],
+                        'asset_hmac_key_id' => $pageFields['asset_hmac_key_id'],
+                        'asset_format_version' => $pageFields['asset_format_version'],
+                        'asset_key_id' => $pageFields['asset_key_id'],
+                        'asset_state' => $pageFields['asset_state'],
+                        'original_mime' => $mime,
+                        'original_bytes' => strlen($imageBytes),
+                    ];
+                }
+
+                $sheet = OmrCaptureSheet::query()->create($sheetFields);
+            }
 
             if ($existingPage !== null) {
                 $existingPage->update($pageFields);

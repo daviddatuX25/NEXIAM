@@ -55,10 +55,6 @@ final class RequestResultSheetPrint
             throw new RuntimeException('Only current, released records can be printed.');
         }
 
-        if ($releases->contains(fn (ResultRelease $release): bool => $release->mode === ReleaseResult::MODE_ONLINE)) {
-            throw new RuntimeException('Result sheets cannot be printed for online releases.');
-        }
-
         $template = ResultSheetTemplate::active();
 
         if ($template === null) {

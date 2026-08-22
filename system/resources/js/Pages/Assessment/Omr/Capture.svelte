@@ -3,7 +3,9 @@
   import { router } from '@inertiajs/svelte';
   import { ArrowLeft, Camera, Check, ChevronLeft, FileImage, Image as ImageIcon, Info, LayoutGrid, Maximize2, RefreshCw, ScanLine, Settings2, ShieldCheck, Trash2, Upload, UserCheck, X } from 'lucide-svelte';
   import { success as toastSuccess, error as toastError, info as toastInfo } from '@/lib/toast.js';
+  import { newIdempotencyKey } from '@/lib/utils.js';
   import ToastManager from '@/Components/kit/ToastManager.svelte';
+  import OmrRegionCrop from './OmrRegionCrop.svelte';
 
   let {
     page_state = 'empty',
@@ -20,7 +22,7 @@
   let mode = $state('auto');
   let cameraState = $state(camera_enabled ? 'requesting' : 'unavailable');
   let activeTab = $state('draft');
-  let selectedSheet = $state(null);
+  let selectedSheetId = $state(null);
   let selectedAttemptId = $state(null);
   let desktopLayout = $state('split');
   let fileInput;
@@ -42,9 +44,46 @@
   let confirmingBatch = $state(false);
   let abstainReason = $state('');
   let resolvingIssueId = $state(null);
+  // Server-driven capture preflight (marker batches run CropOnMarkers; scan
+  // batches answer not_applicable and keep the normal upload path).
+  let preflightState = $state('idle'); // idle | checking | validated | rejected | error
+  let preflight = $state(null); // typed preflight payload
+  let preflightError = $state('');
+
+  function csrfToken() {
+    const el = document.querySelector('meta[name="csrf-token"]');
+    return el instanceof HTMLMetaElement ? el.content : '';
+  }
+
+  const preflightGateOrder = ['marker_count', 'registration', 'dimensions', 'shifts'];
+
+  function preflightGateLabel(key) {
+    return {
+      marker_count: 'Marker count',
+      registration: 'Registration',
+      dimensions: 'Dimensions',
+      shifts: 'Field-block shifts',
+    }[key] ?? key;
+  }
+
+  function preflightBusy() {
+    return preflightState === 'checking';
+  }
+
+  function resetPreflight() {
+    preflight = null;
+    preflightError = '';
+    preflightState = 'idle';
+  }
 
   const sheets = $derived(batch?.sheets ?? []);
   const gallery = $derived(sheets);
+  // Selected sheet identity, re-derived from every refreshed batch so polling
+  // replaces the stale object (queued → processing → needs_review|failed).
+  const selectedSheet = $derived(sheets.find((sheet) => sheet.id === selectedSheetId) ?? null);
+  const reviewBusy = $derived(['pending_pages', 'queued', 'processing'].includes(selectedSheet?.status));
+  const reviewFailed = $derived(selectedSheet?.status === 'failed_terminal');
+  const reviewReady = $derived(Boolean(selectedSheet) && !reviewBusy && !reviewFailed);
   let activeReviewPage = $state(1);
   const pageCount = $derived(Number(batch?.template?.page_count ?? 1));
   const allReviewed = $derived(gallery.length > 0 && gallery.every((sheet) => ['reviewed', 'committed'].includes(sheet.status)));
@@ -78,11 +117,40 @@
 
   const captureTemplate = $derived(batch?.template ?? template ?? { identity_region: null, items: [] });
   const templateItems = $derived(captureTemplate.items ?? []);
-  const reviewItems = $derived((selectedSheet?.proposal?.items?.length ? selectedSheet.proposal.items : templateItems).map((item) => {
+  // Immutable template geometry is authoritative: never trust proposal item
+  // regions/options/page attribution, only the detection fields.
+  const reviewItems = $derived((selectedSheet?.proposal?.items?.length ? selectedSheet.proposal.items : []).map((item) => {
     const geometry = templateItems.find((candidate) => candidate.position === item.position);
 
-    return { ...geometry, ...item, region: item.region ?? geometry?.region ?? null };
+    return {
+      ...item,
+      ...geometry,
+      region: geometry?.region ?? item.region ?? null,
+      options: geometry?.options?.length ? geometry.options : (item.options ?? []),
+      page_no: geometry?.page_no ?? item.page_no ?? 1,
+      correct_option_code: item.correct_option_code ?? geometry?.correct_option_code ?? null,
+    };
   }));
+  const pageItems = $derived(reviewItems.filter((item) => (item.page_no ?? 1) === activeReviewPage));
+  const overlayItems = $derived(pageItems
+    .filter((item) => item.region && Number(item.region.w) > 0 && Number(item.region.h) > 0)
+    .map((item) => {
+      const marked = item.state === 'marked' && item.detected_answer;
+      const ambiguous = item.state === 'ambiguous' || item.state === 'unreadable';
+      const correct = marked && item.detected_answer === item.correct_option_code;
+      const ovClass = correct ? 'correct' : marked ? 'incorrect' : ambiguous ? 'ambiguous' : null;
+      const detectedRegion = marked
+        ? (item.options ?? []).find((option) => option.code === item.detected_answer)?.region ?? null
+        : null;
+
+      return {
+        ...item,
+        ovClass,
+        detectedRegion,
+        ovLabel: `${item.area_code ?? 'Sheet'} item ${item.question_no}: ${correct ? 'correct' : marked ? 'incorrect' : 'ambiguous/unreadable'}`,
+      };
+    })
+    .filter((item) => item.ovClass !== null));
   const scoreRows = $derived(Object.entries(selectedSheet?.reviewed?.per_area_scores ?? selectedSheet?.proposal?.per_area_scores ?? {}).map(([areaId, proposal]) => {
     const area = templateItems.find((item) => String(item.area_id) === String(areaId));
 
@@ -151,11 +219,19 @@
     failedImageIds = new Set(failedImageIds).add(key);
   }
 
-  function cropStyle(region) {
-    if (!region || region.w <= 0 || region.h <= 0) return '';
-
-    return `left: ${-(region.x / region.w) * 100}%; top: ${-(region.y / region.h) * 100}%; width: ${100 / region.w}%; height: ${100 / region.h}%;`;
+  function isRegion(value) {
+    return Boolean(value && typeof value === 'object' && Number(value.w) > 0 && Number(value.h) > 0);
   }
+
+  const pageIdentityRegions = $derived(captureTemplate.identity_regions?.[String(activeReviewPage)] ?? null);
+  const identityRegion = $derived(
+    isRegion(pageIdentityRegions?.applicant_number)
+      ? pageIdentityRegions.applicant_number
+      : isRegion(captureTemplate.identity_region)
+        ? captureTemplate.identity_region
+        : null,
+  );
+  const nameRegion = $derived(isRegion(pageIdentityRegions?.name) ? pageIdentityRegions.name : null);
 
   function manualScoresHref(areaId = null) {
     if (!editAttemptId) return null;
@@ -164,6 +240,10 @@
 
   function itemStateLabel(item) {
     return { marked: 'Marked', blank: 'Blank', ambiguous: 'Ambiguous', unreadable: 'Unreadable' }[item.state] ?? 'Unavailable';
+  }
+
+  function itemCropTitle(item) {
+    return `Item ${item.question_no} · ${item.area_code ?? item.area_name ?? 'Aptitude area'}${(item.page_no ?? 1) > 1 ? ` · P${item.page_no}` : ''}`;
   }
 
   function issueLabel(issue) {
@@ -229,7 +309,7 @@
 
   function openCamera() {
     screen = 'camera';
-    selectedSheet = null;
+    selectedSheetId = null;
   }
 
   function setDesktopLayout(layout) {
@@ -382,7 +462,7 @@
     router.post(`/grading/sessions/${session.id}/omr/batches`, {
       template_version_id: pair.template_version_id,
       booklet_version_id: pair.booklet_version_id,
-      idempotency_key: crypto.randomUUID(),
+      idempotency_key: newIdempotencyKey(),
     }, {
       onFinish: () => { startingBatch = false; },
     });
@@ -423,7 +503,7 @@
   function uploadSheet(file, onFinish) {
     if (!file || !batch) return;
 
-    if (!activeSetId) activeSetId = crypto.randomUUID();
+    if (!activeSetId) activeSetId = newIdempotencyKey();
     cameraState = 'uploading';
     toastInfo(`Uploading page ${currentPage} of ${pageCount}…`);
     router.post(`/grading/sessions/${session.id}/omr/sheets`, {
@@ -434,36 +514,117 @@
     }, {
       forceFormData: true,
       onSuccess: finishSetAndAdvance,
-      onError: (errors) => { toastError(errors.omr ?? 'The sheet could not be uploaded.'); },
+      onError: (errors) => {
+        const message = errors.omr ?? errors.image ?? Object.values(errors).flat()[0];
+        toastError(typeof message === 'string' ? message : 'The sheet could not be uploaded.');
+      },
       onFinish: () => {
         cameraState = cameraStream ? 'ready' : 'unavailable';
+        resetPreflight();
         onFinish?.();
       },
     });
   }
 
+  // Server-driven preflight gate. Never sends the frame to /sheets when the
+  // marker registration is rejected or the check itself errors (fail closed).
+  // Scan (CropPage) batches answer not_applicable and continue to the normal
+  // upload path — scan validation stays authoritative.
+  async function runPreflight(file) {
+    if (!file || !batch) return null;
+
+    preflight = null;
+    preflightError = '';
+    preflightState = 'checking';
+
+    const form = new FormData();
+    form.append('image', file);
+
+    try {
+      const res = await fetch(`/grading/sessions/${session.id}/omr/batches/${batch.id}/preflight`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+          Accept: 'application/json',
+        },
+        credentials: 'same-origin',
+        body: form,
+      });
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok && !body?.mode) {
+        // Non-typed validation/HTTP failure — fail closed with a retry path.
+        preflightState = 'error';
+        preflightError = body?.error ?? body?.message ?? 'The sheet could not be checked before upload.';
+        return null;
+      }
+
+      preflight = body;
+      if (body.mode === 'scan') {
+        // CropPage scan batches: proceed with the existing upload path and
+        // never show a false Validated state.
+        preflightState = 'idle';
+        return body;
+      }
+      if (body.outcome === 'validated' && body.submit_allowed) {
+        preflightState = 'validated';
+        return body;
+      }
+      preflightState = 'rejected';
+      return body;
+    } catch {
+      preflightState = 'error';
+      preflightError = 'The check service is unavailable — retake or retry before uploading.';
+      return null;
+    }
+  }
+
+  async function preflightAndUpload(file, onFinish) {
+    const result = await runPreflight(file);
+    if (!result) return false;
+    if (result.mode === 'scan' || (result.outcome === 'validated' && result.submit_allowed)) {
+      uploadSheet(file, onFinish);
+      return true;
+    }
+    return false;
+  }
+
   function handleFiles(event) {
-    const file = event.currentTarget.files?.[0];
+    const input = event.currentTarget;
+    const file = input?.files?.[0];
     if (!file) return;
 
     if (replacingSheet && replacingPage) {
-      toastInfo(`Replacing scan #${replacingSheet.id} page ${replacingPage}…`);
-      router.post(`/grading/sessions/${session.id}/omr/sheets/${replacingSheet.id}/pages/${replacingPage}/replace`, {
-        image: file,
-      }, {
-        forceFormData: true,
-        onSuccess: () => {
-          toastSuccess(`Scan #${replacingSheet.id} page ${replacingPage} replaced.`);
-          replacingSheet = null;
-          replacingPage = null;
-        },
-        onError: (errors) => { toastError(errors.omr ?? 'The page could not be replaced.'); },
-        onFinish: () => { event.currentTarget.value = ''; },
+      // Replacing a page obeys the same preflight gate as a fresh capture:
+      // marker batches must validate before the replacement is accepted.
+      runPreflight(file).then((result) => {
+        if (!result) {
+          if (input) input.value = '';
+          return;
+        }
+        if (result.mode !== 'scan' && result.outcome !== 'validated') {
+          if (input) input.value = '';
+          return;
+        }
+        toastInfo(`Replacing scan #${replacingSheet.id} page ${replacingPage}…`);
+        router.post(`/grading/sessions/${session.id}/omr/sheets/${replacingSheet.id}/pages/${replacingPage}/replace`, {
+          image: file,
+        }, {
+          forceFormData: true,
+          onSuccess: () => {
+            toastSuccess(`Scan #${replacingSheet.id} page ${replacingPage} replaced.`);
+            replacingSheet = null;
+            replacingPage = null;
+          },
+          onError: (errors) => { toastError(errors.omr ?? 'The page could not be replaced.'); },
+          onFinish: () => { if (input) input.value = ''; resetPreflight(); },
+        });
       });
       return;
     }
 
-    uploadSheet(file, () => { event.currentTarget.value = ''; });
+    preflightAndUpload(file, () => { if (input) input.value = ''; });
   }
 
   function retrySheet(sheet) {
@@ -501,7 +662,7 @@
   }
 
   function capture() {
-    if (cameraState !== 'ready' || !videoEl || !batch) return;
+    if (cameraState !== 'ready' || preflightBusy() || !videoEl || !batch) return;
 
     const width = videoEl.videoWidth;
     const height = videoEl.videoHeight;
@@ -523,20 +684,28 @@
         return;
       }
 
-      uploadSheet(new File([blob], `omr-capture-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+      preflightAndUpload(new File([blob], `omr-capture-${Date.now()}.jpg`, { type: 'image/jpeg' }));
     }, 'image/jpeg', 0.92);
   }
 
   function openReview(sheet) {
-    selectedSheet = sheet;
+    selectedSheetId = sheet.id;
     selectedAttemptId = sheet.admission_attempt_id ?? null;
     activeReviewPage = 1;
     abstainReason = '';
     screen = 'review';
   }
 
+  // If the reviewed sheet disappears (batch rejected/regenerated), return to
+  // the gallery instead of rendering a dead review.
+  $effect(() => {
+    if (screen === 'review' && selectedSheetId != null && !selectedSheet) {
+      screen = 'gallery';
+    }
+  });
+
   function saveReview(action = 'confirm') {
-    if (!selectedSheet || savingReview) return;
+    if (!selectedSheet || savingReview || reviewBusy) return;
     if (action === 'abstain' && !abstainReason.trim()) {
       toastError('Enter a reason before marking this sheet for manual follow-up.');
       return;
@@ -741,14 +910,16 @@
             <div class="frame frame-tl"></div><div class="frame frame-tr"></div>
             <div class="frame frame-bl"></div><div class="frame frame-br"></div>
             <video class="camera-feed" bind:this={videoEl} autoplay playsinline muted aria-label="Live camera preview"></video>
-            <div class="camera-readiness" role="status" aria-live="polite">
-              <span class="readiness-dot"></span>
-              <span><strong>Ready to capture</strong><small>Keep the sheet flat, fully visible, and well lit.</small></span>
-            </div>
+            {#if preflightState === 'idle'}
+              <div class="camera-readiness" role="status" aria-live="polite">
+                <span class="readiness-dot"></span>
+                <span><strong>Ready to check</strong><small>Keep the sheet flat, fully visible, and well lit.</small></span>
+              </div>
+            {/if}
             {#if pageCount > 1}
               <div class="page-badge" role="status">Page {currentPage} of {pageCount}</div>
             {/if}
-            <p class="camera-caption">Camera stream active · OMR quality is verified after upload</p>
+            <p class="camera-caption">Camera stream active · preflight checks the frame before upload · recognition stays Unqualified</p>
           {:else if cameraState === 'requesting'}
             <div class="camera-message"><RefreshCw class="spin" size={24} /><strong>Requesting camera access…</strong><small>Allow camera access to capture in place.</small></div>
           {:else if cameraState === 'uploading'}
@@ -763,11 +934,62 @@
               </button>
             </div>
           {/if}
+
+          {#if preflightState === 'checking'}
+            <div class="preflight-panel" role="status" aria-live="polite">
+              <span class="preflight-badge neutral"><RefreshCw class="spin" size={12} /> Checking</span>
+              <p class="preflight-detail">Server registration check in progress — hold the sheet steady.</p>
+            </div>
+          {:else if preflightState === 'validated'}
+            <div class="preflight-panel validated" role="status" aria-live="polite">
+              <div class="preflight-head">
+                <span class="preflight-badge ok"><Check size={12} /> Validated</span>
+                <small class="preflight-calibration">Calibration: Unqualified</small>
+              </div>
+              <div class="gate-chips">
+                {#each preflightGateOrder as key (key)}
+                  {@const gate = preflight?.gates?.[key]}
+                  {#if gate}
+                    <span class="gate-chip {gate === 'pass' ? 'gate-pass' : 'gate-fail'}" title={gate === 'pass' ? `${preflightGateLabel(key)} passed` : `${preflightGateLabel(key)} failed`}>
+                      {preflightGateLabel(key)} · {gate}
+                    </span>
+                  {/if}
+                {/each}
+              </div>
+              {#if preflight?.normalized_dimensions}
+                <p class="preflight-meta">Normalized {preflight.normalized_dimensions.width}×{preflight.normalized_dimensions.height}px — uploading…</p>
+              {:else}
+                <p class="preflight-meta">Uploading the checked frame…</p>
+              {/if}
+            </div>
+          {:else if preflightState === 'rejected'}
+            <div class="preflight-panel rejected" role="alert" aria-live="polite">
+              <div class="preflight-head">
+                <span class="preflight-badge bad"><X size={12} /> Rejected</span>
+                {#if preflight?.code}
+                  <small class="preflight-code">{preflight.code}</small>
+                {/if}
+              </div>
+              <p class="preflight-detail">{preflight?.detail ?? 'The sheet did not pass the marker registration check.'}</p>
+              {#if preflight?.orientation_hint}
+                <p class="preflight-hint">{preflight.orientation_hint}</p>
+              {/if}
+              <button type="button" class="text-button preflight-retake" onclick={resetPreflight}><RefreshCw size={14} /> Retake / replace</button>
+            </div>
+          {:else if preflightState === 'error'}
+            <div class="preflight-panel rejected" role="alert" aria-live="polite">
+              <div class="preflight-head">
+                <span class="preflight-badge bad"><X size={12} /> Check failed</span>
+              </div>
+              <p class="preflight-detail">{preflightError}</p>
+              <button type="button" class="text-button preflight-retake" onclick={resetPreflight}><RefreshCw size={14} /> Retry</button>
+            </div>
+          {/if}
         </div>
 
         <div class="capture-controls">
           <button class="control-side" type="button" aria-label="Open scans gallery" onclick={openGallery}><ImageIcon size={23} /><span>Gallery</span></button>
-          <button class="shutter" type="button" aria-label={pageCount > 1 ? `Capture page ${currentPage} of ${pageCount}` : 'Capture sheet'} onclick={capture} disabled={cameraState !== 'ready'}><span><Camera size={25} /></span></button>
+          <button class="shutter" type="button" aria-label={pageCount > 1 ? `Capture page ${currentPage} of ${pageCount}` : 'Capture sheet'} onclick={capture} disabled={cameraState !== 'ready' || preflightBusy() || preflightState === 'rejected' || preflightState === 'error'}><span><Camera size={25} /></span></button>
           <div class="mode-toggle" role="group" aria-label="Capture mode">
             <button class:active={mode === 'manual'} type="button" onclick={() => setMode('manual')}>Manual</button>
             <button class:active={mode === 'auto'} type="button" onclick={() => setMode('auto')}>Auto</button>
@@ -793,8 +1015,23 @@
                 <ChevronLeft size={16} />
                 <span>Back to scans gallery</span>
               </button>
-              <span class="review-status-tag {selectedSheet?.status}">{statusLabel(selectedSheet?.status)}</span>
+              <span class="review-status-tag {selectedSheet?.status}">
+                {#if reviewBusy}<RefreshCw size={11} class="spin tag-spin" />{/if}
+                {statusLabel(selectedSheet?.status)}
+              </span>
             </div>
+            {#if reviewBusy}
+              <div class="review-busy" role="status" aria-live="polite">
+                <RefreshCw size={16} class="spin" />
+                <div><strong>Analysis in progress</strong><span>This scan is {statusLabel(selectedSheet?.status)}. The review below refreshes automatically when analysis completes.</span></div>
+              </div>
+            {:else if reviewFailed}
+              <div class="review-failed" role="alert">
+                <X size={16} />
+                <div><strong>Analysis failed</strong><span>No answer evidence is available for this scan. Retry the scan or replace its page.</span></div>
+                <button type="button" class="table-edit" onclick={() => retrySheet(selectedSheet)} disabled={confirmingBatch}><RefreshCw size={13} /> Retry scan</button>
+              </div>
+            {/if}
             {#if reviewPages && reviewPages.length > 1}
               <div class="review-page-tabs" role="tablist" aria-label="Sheet pages">
                 {#each reviewPages as page (page.page_no)}
@@ -813,12 +1050,32 @@
             {/if}
             <div class="review-image">
               {#if hasImageEvidence(selectedSheet)}
-                <img class="review-photo" src={reviewImageUrl} alt={`Captured answer sheet evidence${activeReviewPageData ? ` page ${activeReviewPageData.page_no}` : ''}`} onerror={() => markImageUnavailable(selectedSheet)} />
+                <div class="review-photo-wrap">
+                  <img class="review-photo" src={reviewImageUrl} alt={`Captured answer sheet evidence${activeReviewPageData ? ` page ${activeReviewPageData.page_no}` : ''}`} onerror={() => markImageUnavailable(selectedSheet)} />
+                  {#if reviewReady && overlayItems.length > 0}
+                    <div class="overlay-layer" aria-hidden="true">
+                      {#each overlayItems as item (item.position)}
+                        <span class="ov-row {item.ovClass}" style="left:{item.region.x * 100}%;top:{item.region.y * 100}%;width:{item.region.w * 100}%;height:{item.region.h * 100}%;" title={item.ovLabel}></span>
+                        {#if item.detectedRegion}
+                          <span class="ov-option {item.ovClass}" style="left:{item.detectedRegion.x * 100}%;top:{item.detectedRegion.y * 100}%;width:{item.detectedRegion.w * 100}%;height:{item.detectedRegion.h * 100}%;" title={item.ovLabel}><b>{item.detected_answer}</b></span>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               {:else}
                 <div class="review-paper"><span class="paper-brand">NEXIAM · ANSWER SHEET</span><div class="paper-rule"></div><div class="paper-bubbles">{#each Array(18) as _, index}<i class:marked={index % 5 === 1} class:warning={index === 7}></i>{/each}</div><div class="paper-rule"></div><span class="paper-footer">{evidenceLabel(selectedSheet)}</span></div>
               {/if}
               <div class="overlay-label">{#if hasImageEvidence(selectedSheet)}{#if activeReviewPageData}<Check size={14} /> Page {activeReviewPageData.page_no} of {reviewPages.length} evidence{:else}<Check size={14} /> Captured evidence{/if}{:else}<Info size={14} /> {evidenceLabel(selectedSheet)}{/if}</div>
             </div>
+            {#if hasImageEvidence(selectedSheet) && reviewReady && overlayItems.length > 0}
+              <div class="overlay-legend" role="note" aria-label="Answer overlay legend">
+                <span class="legend-entry"><i class="legend-swatch correct"></i>Correct</span>
+                <span class="legend-entry"><i class="legend-swatch incorrect"></i>Incorrect</span>
+                <span class="legend-entry"><i class="legend-swatch ambiguous"></i>Ambiguous / unreadable</span>
+                <span class="legend-entry"><i class="legend-swatch blank"></i>Blank — no mark</span>
+              </div>
+            {/if}
             {#if reviewPages && reviewPages.length > 1 && (reviewPages.some((page) => page.detected_applicant_number != null) || reviewPages.some((page) => page.detected_birthdate))}
               <div class="review-identity-per-page">
                 {#each reviewPages as page (page.page_no)}
@@ -837,10 +1094,12 @@
               <div class="review-card-heading"><h2>Examinee</h2>{#if editAttemptId}<a class="edit-link" href={manualScoresHref()}>Edit</a>{/if}</div>
               <div class="identity-row">
                 <div class="identity-crop">
-                  {#if hasImageEvidence(selectedSheet) && captureTemplate.identity_region}
-                    <img src={selectedSheet.image_url} style={cropStyle(captureTemplate.identity_region)} alt="Cropped applicant identity evidence" onerror={() => markImageUnavailable(selectedSheet)} />
+                  {#if hasImageEvidence(selectedSheet) && reviewReady && identityRegion}
+                    {#key `${selectedSheet?.version ?? ''}:${reviewImageUrl ?? ''}:${activeReviewPage}`}
+                      <OmrRegionCrop imageUrl={reviewImageUrl} region={identityRegion} alt="Cropped applicant identity evidence" width={120} />
+                    {/key}
                   {:else}
-                    <span>{hasImageEvidence(selectedSheet) ? 'No crop' : evidenceLabel(selectedSheet)}</span>
+                    <span>{!reviewReady ? statusLabel(selectedSheet?.status) : hasImageEvidence(selectedSheet) ? 'No crop' : evidenceLabel(selectedSheet)}</span>
                   {/if}
                 </div>
                 <div class="identity-copy">
@@ -854,6 +1113,18 @@
               </div>
               <p class="review-note">Cropped identity evidence from sheet photo. Detection is advisory; confirm paper against session roster.</p>
             </div>
+
+            {#if hasImageEvidence(selectedSheet) && reviewReady && nameRegion}
+              <div class="review-card name-card">
+                <div class="review-card-heading"><h2>Handwritten name</h2></div>
+                <div class="name-crop-wrap">
+                  {#key `${selectedSheet?.version ?? ''}:${reviewImageUrl ?? ''}:${activeReviewPage}`}
+                    <OmrRegionCrop imageUrl={reviewImageUrl} region={nameRegion} alt="Cropped handwritten name evidence" width={240} />
+                  {/key}
+                  <p class="review-note">Crop-only evidence — handwriting is not read automatically. Confirm the printed name against the session roster.</p>
+                </div>
+              </div>
+            {/if}
 
             <label class="binding-field">
               <span>Bind to roster examinee</span>
@@ -902,16 +1173,20 @@
             {/if}
 
             <div class="review-card item-editor-card">
-              <div class="review-card-heading"><div><h2>Item review</h2><p>Detected answer, mark, and score for each bubble row.</p></div>{#if editAttemptId}<a class="edit-link" href={manualScoresHref()}>Open manual editor</a>{/if}</div>
-              {#if reviewItems.length > 0}
+              <div class="review-card-heading"><div><h2>Item review</h2><p>Detected answer, mark, and score for each bubble row on page {activeReviewPage}.</p></div>{#if editAttemptId}<a class="edit-link" href={manualScoresHref()}>Open manual editor</a>{/if}</div>
+              {#if reviewBusy}
+                <p class="empty-review"><RefreshCw size={13} class="spin inline-icon" /> Detection is in progress — per-item evidence appears here automatically when analysis finishes.</p>
+              {:else if reviewFailed}
+                <p class="empty-review">Analysis failed; no per-item evidence is available. Retry the scan above.</p>
+              {:else if pageItems.length > 0}
                 <div class="item-table-wrap">
                   <table class="item-table">
                     <thead><tr><th>Item evidence</th><th>Detected</th><th>Confidence</th><th>Mark</th><th>Score</th><th>Action</th></tr></thead>
                     <tbody>
-                      {#each reviewItems as item (item.position)}
+                      {#each pageItems as item (item.position)}
                         {@const mark = itemMark(item)}
                         <tr>
-                          <td><div class="item-evidence"><div class="item-crop">{#if hasImageEvidence(selectedSheet) && item.region}<img src={selectedSheet.image_url} style={cropStyle(item.region)} alt={`Cropped item ${item.question_no} evidence`} onerror={() => markImageUnavailable(selectedSheet)} />{:else}<span>{hasImageEvidence(selectedSheet) ? '—' : 'No image'}</span>{/if}</div><div><strong>Item {item.question_no}</strong><small>{item.area_code ?? item.area_name ?? 'Aptitude area'}</small></div></div></td>
+                          <td><div class="item-evidence"><div class="item-crop">{#if hasImageEvidence(selectedSheet) && reviewReady && item.region}<OmrRegionCrop imageUrl={reviewImageUrl} region={item.region} options={item.options} detectedOption={item.state === 'marked' ? item.detected_answer : null} correctOption={item.correct_option_code} state={item.state} alt={`Cropped item ${item.question_no} evidence`} title={itemCropTitle(item)} />{:else}<span>—</span>{/if}</div><div><strong>Item {item.question_no}</strong><small>{item.area_code ?? item.area_name ?? 'Aptitude area'}{#if (item.page_no ?? 1) > 1} · P{item.page_no}{/if}</small></div></div></td>
                           <td><span class="answer-chip {item.detected_answer ? '' : 'empty'}">{item.detected_answer ?? '—'}</span></td>
                           <td class="confidence">{confidenceLabel(item.confidence)}</td>
                           <td><span class="item-mark {mark.tone}">{mark.label}</span></td>
@@ -936,9 +1211,9 @@
             <div class="review-actions">
               <button class="outline-button" type="button" onclick={openGallery}><ChevronLeft size={16} /> Back to scans</button>
               {#if requiredIssues.length > 0}
-                <button class="outline-button" type="button" onclick={() => saveReview('abstain')} disabled={savingReview || !selectedAttemptId}><Info size={16} /> {savingReview ? 'Saving…' : 'Abstain for manual follow-up'}</button>
+                <button class="outline-button" type="button" onclick={() => saveReview('abstain')} disabled={savingReview || reviewBusy || !selectedAttemptId}><Info size={16} /> {savingReview ? 'Saving…' : 'Abstain for manual follow-up'}</button>
               {/if}
-              <button class="primary-button" type="button" onclick={() => saveReview()} disabled={savingReview || !selectedAttemptId || requiredIssues.length > 0}><Check size={16} /> {savingReview ? 'Saving…' : 'Save review'}</button>
+              <button class="primary-button" type="button" onclick={() => saveReview()} disabled={savingReview || reviewBusy || !selectedAttemptId || requiredIssues.length > 0}><Check size={16} /> {savingReview ? 'Saving…' : 'Save review'}</button>
             </div>
           </section>
         {:else}
@@ -1179,6 +1454,23 @@
   .camera-readiness strong { color: white; font-size: 11px; letter-spacing: .03em; }
   .camera-readiness small { color: color-mix(in oklab, var(--omr-stage-text) 82%, transparent); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .readiness-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #65c18c; box-shadow: 0 0 0 4px color-mix(in oklab, #65c18c 18%, transparent); }
+  .preflight-panel { position: absolute; left: 50%; bottom: 21%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; width: min(92%, 400px); padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in oklab, var(--omr-primary) 45%, white 12%); background: color-mix(in oklab, var(--omr-stage-deep) 88%, transparent); color: var(--omr-stage-text); box-shadow: 0 4px 18px rgba(0, 0, 0, .22); backdrop-filter: blur(3px); }
+  .preflight-panel.validated { border-color: color-mix(in oklab, #65c18c 60%, white 10%); }
+  .preflight-panel.rejected { border-color: color-mix(in oklab, #e05252 65%, white 8%); }
+  .preflight-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .preflight-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .preflight-badge.ok { background: color-mix(in oklab, #65c18c 22%, transparent); color: #a7e3bc; }
+  .preflight-badge.bad { background: color-mix(in oklab, #e05252 22%, transparent); color: #f2a8a8; }
+  .preflight-badge.neutral { background: color-mix(in oklab, var(--omr-primary) 18%, transparent); color: var(--omr-stage-text); }
+  .preflight-calibration, .preflight-code { color: color-mix(in oklab, var(--omr-stage-text) 78%, transparent); font-size: 10px; }
+  .preflight-detail { color: var(--omr-stage-text); font-size: 12px; line-height: 1.45; }
+  .preflight-hint { color: #f2c9a8; font-size: 11px; }
+  .preflight-meta { color: color-mix(in oklab, var(--omr-stage-text) 80%, transparent); font-size: 11px; }
+  .preflight-retake { align-self: flex-start; margin-top: 2px; }
+  .gate-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .gate-chip { padding: 2px 8px; border-radius: 999px; border: 1px solid; font-size: 10px; font-weight: 600; letter-spacing: .02em; }
+  .gate-chip.gate-pass { border-color: color-mix(in oklab, #65c18c 55%, transparent); background: color-mix(in oklab, #65c18c 14%, transparent); color: #a7e3bc; }
+  .gate-chip.gate-fail { border-color: color-mix(in oklab, #e05252 60%, transparent); background: color-mix(in oklab, #e05252 14%, transparent); color: #f2a8a8; }
   .frame { width: 31px; height: 31px; position: absolute; opacity: .9; border-color: color-mix(in oklab, var(--primary) 70%, white); }
   .frame-tl { top: 12%; left: 8%; border-left: 2px solid; border-top: 2px solid; }
   .frame-tr { top: 12%; right: 8%; border-right: 2px solid; border-top: 2px solid; }
@@ -1275,6 +1567,37 @@
   .paper-bubbles i.warning { background: var(--warning); border-color: var(--warning); }
   .paper-footer { color: oklch(0.52 0.03 148); font: 10px var(--font-mono); }
   .review-photo { max-width: 100%; max-height: 620px; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow-xl); }
+  .review-photo-wrap { position: relative; display: inline-block; line-height: 0; }
+  .review-photo-wrap .review-photo { display: block; }
+  .overlay-layer { position: absolute; inset: 0; pointer-events: none; }
+  .ov-row { position: absolute; border: 2px solid transparent; border-radius: 3px; box-sizing: border-box; }
+  .ov-row.correct { border-color: #2fdd8d; }
+  .ov-row.incorrect { border-color: #ff6b68; }
+  .ov-row.ambiguous { border-color: #ffc24d; }
+  .ov-option { position: absolute; display: grid; place-items: center; border-radius: 50%; border: 2px solid transparent; background: rgba(255, 255, 255, 0.16); box-sizing: border-box; }
+  .ov-option.correct { border-color: #2fdd8d; }
+  .ov-option.incorrect { border-color: #ff6b68; }
+  .ov-option.ambiguous { border-color: #ffc24d; }
+  .ov-option b { font: 700 10px var(--font-mono); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85); }
+  .overlay-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 2px 0; padding: 9px 12px; border: 1px solid var(--omr-border); border-radius: var(--radius-md); background: var(--omr-surface); }
+  .legend-entry { display: inline-flex; align-items: center; gap: 6px; color: var(--omr-muted); font: 600 10px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .legend-swatch.correct { background: #2fdd8d; }
+  .legend-swatch.incorrect { background: #ff6b68; }
+  .legend-swatch.ambiguous { background: #ffc24d; }
+  .legend-swatch.blank { border: 1px dashed var(--omr-muted); background: transparent; }
+  .review-busy, .review-failed { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; padding: 11px 13px; border-radius: var(--radius-md); font-size: 12px; }
+  .review-busy { border: 1px solid color-mix(in oklab, #b7791f 42%, var(--omr-border)); background: color-mix(in oklab, #b7791f 6%, var(--omr-surface-solid)); color: var(--omr-text); }
+  .review-failed { border: 1px solid color-mix(in oklab, #b94a48 45%, var(--omr-border)); background: color-mix(in oklab, #b94a48 6%, var(--omr-surface-solid)); color: var(--omr-text); align-items: center; }
+  .review-busy strong, .review-failed strong { display: block; font-size: 12px; }
+  .review-busy span, .review-failed span { display: block; margin-top: 2px; color: var(--omr-muted); font-size: 11px; line-height: 1.4; }
+  .review-busy > svg { color: #966515; flex-shrink: 0; margin-top: 1px; }
+  .review-failed > svg { color: #a33c3a; flex-shrink: 0; }
+  .review-failed .table-edit { margin-left: auto; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .tag-spin { display: inline-block; vertical-align: -2px; margin-right: 4px; }
+  .inline-icon { display: inline-block; vertical-align: -2px; margin-right: 6px; }
+  .name-crop-wrap { margin-top: 14px; max-width: 320px; }
+  .name-crop-wrap .review-note { margin-top: 10px; }
   .overlay-label, .review-badge { display: inline-flex; align-items: center; gap: 6px; }
   .overlay-label { position: absolute; top: 12px; left: 12px; padding: 6px 9px; border-radius: var(--radius-md); background: var(--omr-primary); color: var(--primary-foreground); font-size: 11px; font-weight: 650; }
 
@@ -1286,8 +1609,7 @@
   .edit-link, .table-edit { color: var(--omr-primary); font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; }
   .edit-link:hover, .table-edit:hover { text-decoration: underline; }
   .identity-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
-  .identity-crop { position: relative; flex: 0 0 86px; width: 86px; height: 58px; overflow: hidden; border: 1px solid var(--omr-border); border-radius: var(--radius-md); background: var(--omr-stage-deep); color: var(--omr-muted); display: grid; place-items: center; font: 10px var(--font-mono); }
-  .identity-crop img, .item-crop img { position: absolute; max-width: none; object-fit: fill; }
+  .identity-crop { position: relative; flex: 0 0 96px; width: 96px; min-height: 56px; overflow: hidden; border: 1px solid var(--omr-border); border-radius: var(--radius-md); background: var(--omr-stage-deep); color: var(--omr-muted); display: grid; place-items: center; font: 10px var(--font-mono); }
   .identity-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
   .identity-copy strong { color: var(--omr-text); font-size: 15px; }
   .identity-copy span { color: var(--omr-muted); font-size: 11px; line-height: 1.4; }
@@ -1310,11 +1632,11 @@
   .review-nav-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--omr-border); }
   .back-gallery-btn { border: 0; background: transparent; color: var(--omr-primary); font-size: 12px; font-weight: 650; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 0; }
   .back-gallery-btn:hover { text-decoration: underline; }
-  .review-status-tag { font: 700 10px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; background: var(--omr-primary-soft); color: var(--omr-primary); }
+  .review-status-tag { display: inline-flex; align-items: center; font: 700 10px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; background: var(--omr-primary-soft); color: var(--omr-primary); }
   .review-status-tag.reviewed, .review-status-tag.committed { background: color-mix(in oklab, #2f8f62 14%, var(--omr-surface-solid)); color: #26724f; }
   .review-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; }
   .hidden-input { display: none; }
-  .item-crop { position: relative; flex: 0 0 68px; width: 68px; height: 36px; overflow: hidden; border: 1px solid var(--omr-border); border-radius: 5px; background: var(--omr-stage-deep); color: var(--omr-muted); display: grid; place-items: center; font: 10px var(--font-mono); }
+  .item-crop { position: relative; flex: 0 0 170px; width: 170px; overflow: hidden; border-radius: 5px; background: var(--omr-stage-deep); color: var(--omr-muted); display: grid; place-items: center; font: 10px var(--font-mono); }
   .answer-chip, .item-mark { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; padding: 5px 8px; border-radius: 999px; font: 700 10px var(--font-mono); }
   .answer-chip { background: color-mix(in oklab, var(--omr-primary) 12%, var(--omr-surface-solid)); color: var(--omr-primary); }
   .answer-chip.empty, .item-mark.neutral { background: var(--omr-stage-deep); color: var(--omr-muted); }
@@ -1333,7 +1655,7 @@
     .review-card { padding: 14px; }
     .review-card-heading h2 { font-size: 15px; }
     .identity-row { align-items: flex-start; }
-    .identity-crop { flex-basis: 72px; width: 72px; height: 52px; }
+    .identity-crop { flex-basis: 72px; width: 72px; min-height: 44px; }
     .review-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .top-action span, .scan-count { display: none; }
     .capture-controls { padding-inline: 15px; }

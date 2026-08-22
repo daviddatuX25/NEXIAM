@@ -6,8 +6,7 @@
   import { Button } from '@/Components/ui/button';
   import * as Table from '@/Components/ui/table';
   import { Link, router, usePage } from '@inertiajs/svelte';
-  import { CheckCircle2, Circle, Lock, ScanLine, UserCheck } from 'lucide-svelte';
-
+  import { CheckCircle2, Circle, Lock, ScanLine, UserCheck, Printer } from 'lucide-svelte';
   let {
     page_state = 'ready',
     degraded = false,
@@ -61,6 +60,10 @@
           <Link href={`/grading/sessions/${session.id}/omr`} class="inline-flex min-h-10 items-center gap-2 rounded-md border border-primary/40 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/10">
             <ScanLine class="size-4" />
             Open scanner
+          </Link>
+          <Link href={`/release/print/batches/${session.id}`} class="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+            <Printer class="size-4 text-muted-foreground" />
+            Print results
           </Link>
           <div class="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
             <UserCheck class="size-4 text-muted-foreground" />

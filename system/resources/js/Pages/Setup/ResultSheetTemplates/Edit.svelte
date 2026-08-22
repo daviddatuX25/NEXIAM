@@ -7,11 +7,12 @@
   import { Textarea } from '@/Components/ui/textarea';
   import { useForm, usePage, router } from '@inertiajs/svelte';
   import { FileCode, FileText, Play } from 'lucide-svelte';
+  import { csrfToken } from '@/lib/utils';
 
   let { template = {}, placeholderGroups = {}, domainPlaceholders = [] } = $props();
 
   const page = usePage();
-  const csrfToken = $derived(page.props.csrf_token ?? '');
+  const token = $derived(page.props.csrf_token || csrfToken());
 
   const form = useForm({
     name: template.name ?? '',
@@ -49,7 +50,8 @@
       const res = await fetch('/setup/result-templates/validate-document', {
         method: 'POST',
         body: fd,
-        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfToken },
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token },
+        credentials: 'same-origin',
       });
       validationResult = res.ok ? await res.json() : null;
     } catch {
@@ -79,7 +81,8 @@
       const res = await fetch('/setup/result-templates/preview', {
         method: 'POST',
         body: fd,
-        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfToken },
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token },
+        credentials: 'same-origin',
       });
       const data = res.ok ? await res.json() : null;
       previewHtml = data?.html ?? '';

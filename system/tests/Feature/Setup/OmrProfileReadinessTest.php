@@ -1,16 +1,25 @@
 <?php
 
+use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
+use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
 use App\Assessment\Omr\NativeBundle;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
+use App\Models\Assessment\OmrCaptureSheetPage;
 use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Printing\BundleRenderer;
 use Database\Seeders\OmrDemoBatchSeeder;
+use Database\Seeders\OmrDemoMultiStateBatchSeeder;
 use Database\Seeders\OmrDemoSeeder;
+use App\Jobs\Assessment\AnalyzeOmrCaptureSheetJob;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 test('profile pair persists one bounded page and a matching 150-question key', function (): void {
     $fixture = buildOmrGradingFixture($this);
@@ -31,6 +40,7 @@ test('profile pair persists one bounded page and a matching 150-question key', f
         $page['fieldBlocks'],
         static fn (array $block): bool => $block['fieldType'] === 'QTYPE_MCQ4',
     ));
+    usort($questionBlocks, static fn (array $left, array $right): int => $left['origin'][0] <=> $right['origin'][0]);
     $areaCodes = ['PROFILE_VERBAL', 'PROFILE_QUANT', 'LOGIC', 'SPATIAL', 'MEMORY', 'LANGUAGE'];
 
     expect(OmrTemplateBookletPair::query()
@@ -49,10 +59,10 @@ test('profile pair persists one bounded page and a matching 150-question key', f
             'MEMORY_Q_001..025',
             'LANGUAGE_Q_001..025',
         ])
-        ->and($page['fieldBlocks'][0]['fieldLabels'])->toBe(['APPLICANT_NUMBER_1..10'])
-        ->and($page['fieldBlocks'][0]['origin'])->toBe([200, 300])
+        ->and($page['fieldBlocks']['ApplicantNumber']['fieldLabels'])->toBe(['APPLICANT_NUMBER_1..10'])
+        ->and($page['fieldBlocks']['ApplicantNumber']['origin'])->toBe([200, 300])
         ->and($questionBlocks[0]['origin'])->toBe([120, 940])
-        ->and($page['fieldBlocks'][0]['origin'][1] + (9 * 52) + 40)->toBeLessThan($questionBlocks[0]['origin'][1])
+        ->and($page['fieldBlocks']['ApplicantNumber']['origin'][1] + (9 * 52) + 40)->toBeLessThan($questionBlocks[0]['origin'][1])
         ->and(array_values(array_filter($page['fieldBlocks'], static fn (array $block): bool => $block['fieldType'] === 'QTYPE_INT')))->toHaveCount(1)
         ->and($version->layout_blueprint_json['columns'])->toBe(6)
         ->and($version->layout_blueprint_json['identity']['birthdate'])->toBeFalse()
@@ -117,7 +127,7 @@ test('profile capture seed exposes all review states without fake confidence', f
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
-    (new OmrDemoBatchSeeder)->run();
+    (new OmrDemoMultiStateBatchSeeder)->run();
 
     $batch = OmrCaptureBatch::query()
         ->where('grading_session_id', $fixture['grading']->id)
@@ -142,7 +152,7 @@ test('profile capture seed exposes all review states without fake confidence', f
         ->and($review->proposal_json['sheet_confidence'])->toBeNull()
         ->and($review->pages)->toHaveCount(1);
 
-    (new OmrDemoBatchSeeder)->run();
+    (new OmrDemoMultiStateBatchSeeder)->run();
     expect($batch->fresh()->sheets()->count())->toBe(3);
 
     $this->actingAs($guidance)
@@ -153,5 +163,97 @@ test('profile capture seed exposes all review states without fake confidence', f
             ->where('page_state', 'ready')
             ->where('batch.template.page_count', 1)
             ->has('batch.sheets', 3)
+        );
+});
+
+test('default batch seed is a focused single-examinee dataset', function (): void {
+    Storage::fake('sensitive');
+    $fixture = buildOmrGradingFixture($this);
+    $guidance = $fixture['guidance'];
+
+    (new OmrDemoBatchSeeder)->run();
+
+    $batch = OmrCaptureBatch::query()
+        ->where('grading_session_id', $fixture['grading']->id)
+        ->whereHas('templateVersion.template', fn ($query) => $query->where('code', 'SYN-OMR-PROFILE-150'))
+        ->firstOrFail();
+    $sheets = $batch->sheets()->with('pages')->get();
+
+    expect($sheets)->toHaveCount(1)
+        ->and($sheets->first()->status)->toBe(OmrCaptureSheet::STATUS_NEEDS_REVIEW)
+        ->and($sheets->first()->admission_attempt_id)->not->toBeNull()
+        ->and($sheets->first()->detected_applicant_number)->toBe('1234567890')
+        ->and($sheets->first()->pages)->toHaveCount(1);
+
+    (new OmrDemoBatchSeeder)->run();
+    expect($batch->fresh()->sheets()->count())->toBe(1);
+
+    $this->actingAs($guidance)
+        ->get(route('grading.sessions.omr', $fixture['grading']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Assessment/Omr/Capture')
+            ->where('page_state', 'ready')
+            ->where('batch.template.page_count', 1)
+            ->has('batch.sheets', 1)
+        );
+});
+
+test('single-page profile upload carries the asset mirror and queues analysis', function (): void {
+    Storage::fake('sensitive');
+    Queue::fake();
+    $fixture = buildOmrGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    $grading = $fixture['grading'];
+
+    $pair = OmrTemplateBookletPair::query()
+        ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
+        ->whereHas('templateVersion.template', fn ($query) => $query->where('code', 'SYN-OMR-PROFILE-150'))
+        ->firstOrFail();
+
+    $batch = app(CreateOmrCaptureBatch::class)->handle(
+        $grading,
+        $guidance,
+        (int) $pair->template_version_id,
+        (int) $pair->booklet_version_id,
+        'profile-upload-'.uniqid(),
+    );
+
+    $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+    $setId = (string) Str::uuid();
+    $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1);
+
+    // Regression: `omr_capture_sheets_asset_check` requires the asset mirror
+    // on the sheet row at insert time for single-page bundles.
+    expect($sheet->status)->toBe(OmrCaptureSheet::STATUS_QUEUED)
+        ->and($sheet->asset_path)->not->toBeNull()
+        ->and($sheet->pages()->count())->toBe(1)
+        ->and($sheet->pages()->first()->status)->toBe(OmrCaptureSheetPage::STATUS_QUEUED)
+        ->and($sheet->processingRuns()->count())->toBe(1);
+
+    Queue::assertPushed(AnalyzeOmrCaptureSheetJob::class, fn ($job) => $job->runId === $sheet->processingRuns()->first()->id);
+
+    // Same client capture id is rejected as already uploaded.
+    expect(fn () => app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1))
+        ->toThrow(RuntimeException::class);
+});
+
+test('capture reports the configured live OMR provider', function (): void {
+    $fixture = buildOmrGradingFixture($this);
+    $guidance = $fixture['guidance'];
+
+    Config::set([
+        'omr.provider.driver' => 'omrchecker',
+        'omr.omrchecker.engine_name' => 'OMRChecker',
+        'omr.omrchecker.engine_commit' => 'test-commit',
+    ]);
+
+    $this->actingAs($guidance)
+        ->get(route('grading.sessions.omr', $fixture['grading']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('provider.name', 'OMRChecker')
+            ->where('provider.version', 'test-commit')
+            ->where('provider.synthetic', false)
         );
 });

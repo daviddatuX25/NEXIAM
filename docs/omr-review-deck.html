@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NEXIAM OMR Engine — Axiomatic Architecture & Full Test Review Deck</title>
+  
+  <!-- Google Fonts: IBM Plex Sans & IBM Plex Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ==========================================
+       DESIGN TOKENS & SYSTEM BASE (UI Kit Locked)
+       ========================================== */
+    :root {
+      --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      
+      --radius: 0.5rem;
+      --radius-sm: 0.25rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+
+      /* Palette Tokens */
+      --primary: oklch(0.52 0.13 144.33);          /* #1a6e43 Brand Green */
+      --primary-hover: oklch(0.45 0.13 144.33);    /* Darker Brand Green */
+      --primary-light: oklch(0.95 0.03 144.33);    /* #e8f5ec Soft Green Tint */
+      --primary-border: oklch(0.85 0.06 144.33);   /* Soft Green Border */
+      
+      --background: oklch(0.97 0.01 87.41);       /* #f9f8f3 Layered paper background */
+      --foreground: oklch(0.25 0.03 148.20);       /* Dark Slate Text */
+      --foreground-muted: oklch(0.48 0.02 150);   /* Muted Body Text */
+      
+      --card: rgba(255, 255, 255, 0.94);
+      --card-solid: #ffffff;
+      --card-border: oklch(0.88 0.02 77.29);
+      
+      --accent-badge-bg: oklch(0.92 0.04 146.01);
+      --accent-badge-fg: oklch(0.38 0.12 144.33);
+      
+      --success-bg: oklch(0.93 0.05 142.90);
+      --success-fg: oklch(0.35 0.14 142.90);
+      --warning-bg: oklch(0.95 0.08 65);
+      --warning-fg: oklch(0.40 0.14 45);
+      --danger-bg: oklch(0.94 0.06 20);
+      --danger-fg: oklch(0.45 0.16 25);
+      
+      --glass-panel-bg: rgba(255, 255, 255, 0.88);
+      --glass-panel-border: rgba(26, 110, 67, 0.16);
+      
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Background texture gradient */
+    .bg-gradient-container {
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 10% 10%, rgba(26, 110, 67, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, rgba(26, 110, 67, 0.04) 0%, transparent 50%),
+        var(--background);
+      z-index: -1;
+    }
+
+    /* Layout Header */
+    .deck-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1.5rem;
+      background: var(--card);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 2rem;
+      height: 2rem;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      letter-spacing: 0.05em;
+    }
+
+    .brand-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--foreground);
+      line-height: 1.2;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--foreground-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Stepper Navigation */
+    .stepper-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(0, 0, 0, 0.04);
+      padding: 0.25rem;
+      border-radius: var(--radius-lg);
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .step-pill {
+      background: transparent;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .step-pill.active {
+      background: var(--card-solid);
+      color: var(--foreground);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .deck-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--card-border);
+      background: var(--card-solid);
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Main Deck Stage */
+    .deck-stage {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Slide Card */
+    .slide-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      display: none;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: fadeIn 0.2s ease forwards;
+    }
+
+    .slide-card.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1rem;
+    }
+
+    .slide-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .slide-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--foreground);
+      letter-spacing: -0.01em;
+    }
+
+    .slide-subtitle {
+      font-size: 0.85rem;
+      color: var(--foreground-muted);
+    }
+
+    /* Axiom Box */
+    .axiom-box {
+      background: var(--primary-light);
+      border: 1px solid var(--primary-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .axiom-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .axiom-formula {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--foreground);
+      background: #ffffff;
+      padding: 0.6rem 0.85rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--primary-border);
+    }
+
+    .axiom-text {
+      font-size: 0.8rem;
+      color: var(--foreground);
+      line-height: 1.6;
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .metric-card {
+      background: var(--card-solid);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--foreground);
+      line-height: 1.1;
+    }
+
+    .metric-sub {
+      font-size: 0.7rem;
+      color: var(--success-fg);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Test Case Row */
+    .test-row {
+      background: var(--card-solid);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color 0.15s ease;
+    }
+
+    .test-row:hover {
+      border-color: var(--primary);
+    }
+
+    .test-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .test-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .test-badge {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+      background: var(--success-bg);
+      color: var(--success-fg);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .test-desc {
+      font-size: 0.75rem;
+      color: var(--foreground-muted);
+    }
+
+    .test-prevents {
+      background: var(--danger-bg);
+      color: var(--danger-fg);
+      padding: 0.4rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      font-weight: 500;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.35rem;
+    }
+
+    /* Interactive Calculator Card */
+    .calc-box {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .calc-inputs {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .calc-field {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+    }
+
+    .calc-input {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.35rem 0.6rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--card-border);
+      width: 5rem;
+      text-align: center;
+    }
+
+    .calc-res {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* Reviewer Feedback Pad */
+    .feedback-pad {
+      background: var(--card-solid);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .feedback-textarea {
+      width: 100%;
+      min-height: 5rem;
+      padding: 0.75rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--card-border);
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      color: var(--foreground);
+      outline: none;
+      resize: vertical;
+    }
+
+    .feedback-textarea:focus {
+      border-color: var(--primary);
+    }
+
+    /* Footer Floating Nav */
+    .deck-footer {
+      background: var(--card);
+      border-top: 1px solid var(--card-border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      bottom: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+
+    .progress-bar-container {
+      flex: 1;
+      max-width: 300px;
+      height: 4px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0 1rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 11.11%;
+      transition: width 0.2s ease;
+    }
+
+    /* Responsive Mobile Overrides */
+    @media (max-width: 640px) {
+      .deck-header { padding: 0.65rem 1rem; }
+      .brand-title { font-size: 0.8rem; }
+      .deck-stage { padding: 1rem 0.5rem 2rem 0.5rem; }
+      .slide-card { padding: 1.25rem; }
+      .slide-title { font-size: 1.15rem; }
+      .stepper-nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-gradient-container"></div>
+
+  <!-- DECK HEADER -->
+  <header class="deck-header">
+    <div class="brand-group">
+      <div class="brand-logo">N</div>
+      <div>
+        <h1 class="brand-title">NEXIAM OMR Reviewer Deck</h1>
+        <p class="brand-subtitle">Axiomatic Architecture & Tests</p>
+      </div>
+    </div>
+
+    <!-- Interactive Stepper -->
+    <nav class="stepper-nav">
+      <button class="step-pill active" onclick="goToSlide(1)">1. Overview</button>
+      <button class="step-pill" onclick="goToSlide(2)">2. Math Invariants</button>
+      <button class="step-pill" onclick="goToSlide(3)">3. Optical Fiducials</button>
+      <button class="step-pill" onclick="goToSlide(4)">4. Bubble Tolerance</button>
+      <button class="step-pill" onclick="goToSlide(5)">5. Input Security</button>
+      <button class="step-pill" onclick="goToSlide(6)">6. Signed QRs</button>
+      <button class="step-pill" onclick="goToSlide(7)">7. Test Matrix</button>
+      <button class="step-pill" onclick="goToSlide(8)">8. 5-Stage Studio</button>
+      <button class="step-pill" onclick="goToSlide(9)">9. Feedback Pad</button>
+    </nav>
+
+    <div class="deck-actions">
+      <a href="/setup/omr/templates/builder" class="btn btn-primary">
+        Launch Studio
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN DECK STAGE -->
+  <main class="deck-stage">
+
+    <!-- SLIDE 1: OVERVIEW & THESIS -->
+    <section class="slide-card active" id="slide-1">
+      <div class="slide-header">
+        <span class="slide-tag">Domain Overview</span>
+        <h2 class="slide-title">Executive Architecture & Verification Thesis</h2>
+        <p class="slide-subtitle">NEXIAM Canonical OMR engine designed for zero license cost, physical determinism, and mobile photo robustness.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="metric-card">
+          <span class="metric-label">Canonical Test Suites</span>
+          <span class="metric-value">22</span>
+          <span class="metric-sub">✓ 100% Passing (56 Cases)</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Total Assertions</span>
+          <span class="metric-value">261</span>
+          <span class="metric-sub">✓ Zero Failure Tolerance</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Native Sampling Standard</span>
+          <span class="metric-value">300 PPI</span>
+          <span class="metric-sub">✓ 1 mm = 11.811 px</span>
+        </div>
+      </div>
+
+      <div class="axiom-box">
+        <span class="axiom-title">Core Architectural Axiom</span>
+        <div class="axiom-formula">Authority = Frame-Anchored Solver Grid ∧ Signed HMAC-SHA256 Instances</div>
+        <p class="axiom-text">
+          Traditional OMR tools fail because coordinates are measured from the edge of physical paper—which shifts in printer trays and gets distorted when photographed on phones. NEXIAM anchors all coordinates to the optical centers of 4 asymmetric corner fiducials, making mobile scans invariant to rotation, skew, and print displacement.
+        </p>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: PHYSICAL GEOMETRY & PAPER MATH -->
+    <section class="slide-card" id="slide-2">
+      <div class="slide-header">
+        <span class="slide-tag">Mathematical Foundations</span>
+        <h2 class="slide-title">Axiom 1.1: Metric-to-Pixel Determinism</h2>
+        <p class="slide-subtitle">Physical measurements in millimetres convert bijectively to digital pixels at 300 PPI.</p>
+      </div>
+
+      <div class="axiom-box">
+        <span class="axiom-title">Axiom 1.1 Formula</span>
+        <div class="axiom-formula">px = round( mm × 300 / 25.4 ) = round( mm × 11.8110236 )</div>
+        <p class="axiom-text">
+          Guarantees that 1mm on screen is identically 1mm on physical paper without floating-point accumulation errors across multiple edits.
+        </p>
+      </div>
+
+      <!-- Interactive Calculator -->
+      <div class="calc-box">
+        <span class="axiom-title">Live Physical Math Simulator</span>
+        <div class="calc-inputs">
+          <div class="calc-field">
+            <label for="calc-mm-input-docs">Input Millimetres:</label>
+            <input type="number" id="calc-mm-input-docs" class="calc-input" value="4.5" step="0.1" oninput="updateCalculator(this.value)">
+            <span>mm</span>
+          </div>
+          <span>→</span>
+          <div class="calc-field">
+            <span>Result:</span>
+            <span class="calc-res" id="calc-px-res">53 px</span>
+            <span style="font-size: 0.7rem; color: var(--foreground-muted);">@ 300 PPI</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">A4 Standard Box</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">210.0 × 297.0 mm converts to exactly 2480 × 3508 px.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Aspect ratio warping and edge clipping on standard laser printers.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Resolution Floor (150 DPI)</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Enlargements that drop resolution below 150 DPI fail closed.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Low-resolution camera screenshots from producing blurry, unscannable sheets.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: OPTICAL FIDUCIALS & SKEW IMMUNITY -->
+    <section class="slide-card" id="slide-3">
+      <div class="slide-header">
+        <span class="slide-tag">Computer Vision & Optics</span>
+        <h2 class="slide-title">Axiom 1.2: 4-Quadrant Optical Registration</h2>
+        <p class="slide-subtitle">Homography perspective warp measured relative to marker centroids.</p>
+      </div>
+
+      <div class="axiom-box">
+        <span class="axiom-title">Axiom 1.2 Optical Spatial Decomposition</span>
+        <div class="axiom-formula">Zones = w/2 × h/3  (Top third: 2 fiducials, Bottom two-thirds: 2 fiducials)</div>
+        <p class="axiom-text">
+          OMRChecker matches 4 corner markers across non-symmetric vertical bands. Coordinates for all answer bubbles are evaluated from the detected Top-Left fiducial center (0, 0), completely neutralizing 1–3mm physical printer tray shifts.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Safe Inset Range [3mm, 40mm]</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Markers must be located between 3mm and 40mm from the paper edge.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Printer feed rollers from cropping or smudging corner registration markers.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Rotation & Inversion Rejection</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Asymmetric quadrants fail closed if a sheet is upside-down without fiducials.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Answers for question 1 being misread as question 50 when sheets are scanned inverted.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: BUBBLE DENSITY & SMEAR IMMUNITY -->
+    <section class="slide-card" id="slide-4">
+      <div class="slide-header">
+        <span class="slide-tag">Tolerance Engineering</span>
+        <h2 class="slide-title">Theorem 1.3: Graphite Smear Immunity</h2>
+        <p class="slide-subtitle">Physical limits preventing adjacent bubble fill marks from triggering false multi-marks.</p>
+      </div>
+
+      <div class="axiom-box">
+        <span class="axiom-title">Theorem 1.3 Physical Lower Bounds</span>
+        <div class="axiom-formula">Bubble Diameter ≥ 4.2 mm (≈ 50 px) ∧ Option Edge Gap ≥ 1.26 mm (≈ 15 px)</div>
+        <p class="axiom-text">
+          Standard pencil stroke variance on porous 70–80 gsm bond paper has a spread σ ≤ 0.45mm. Enforcing an edge-to-edge gap ≥ 1.26mm guarantees the probability of optical mark bleed between options A and B is P(Bleed) &lt; 10⁻⁵.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Underfull / Tight Pitch Block</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">OmrMappingValidator rejects blocks where options are squeezed together.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Pencil shading in bubble A spilling into bubble B and invalidating the student's answer.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">AABB Collision Elimination</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Axis-Aligned Bounding Box checks block overlapping question sections.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Conflicting scores from overlapping bubble grids or duplicate question keys.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: INPUT SECURITY & SANITIZATION -->
+    <section class="slide-card" id="slide-5">
+      <div class="slide-header">
+        <span class="slide-tag">Security & Hostile Preflight</span>
+        <h2 class="slide-title">Hostile File & Script Defense</h2>
+        <p class="slide-subtitle">Protecting staff background workers from malicious uploads and PII leaks.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">HTMLPurifier 4.19.0 Allowlist</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Strips JavaScript, remote CSS, &lt;iframe&gt;, and dynamic student tags.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Cross-Site Scripting (XSS) and exam templates from leaking applicant personal data.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">DOCX Macro Rejection</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Inspects OpenXML packages and fails closed on vbaProject.bin streams.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Macro viruses from executing in headless LibreOffice workers.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Encrypted PDF Rejection</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Evaluates PDF trailer /Encrypt dictionary and rejects password-locked PDFs.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Silent background queue worker crashes and hung conversion jobs.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">sRGB Color Consistency</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Rejects non-sRGB ICC profiles (e.g. Adobe RGB) and flattens alpha onto white.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> CMYK gamma shifts from turning light bubble centers into false positive dark marks.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: SIGNED INSTANCE QRS & STATE LIFECYCLE -->
+    <section class="slide-card" id="slide-6">
+      <div class="slide-header">
+        <span class="slide-tag">Cryptographic Provenance</span>
+        <h2 class="slide-title">HMAC-SHA256 Signed QRs & Lifecycle</h2>
+        <p class="slide-subtitle">Preventing counterfeit exam paper and preserving permanent audit integrity.</p>
+      </div>
+
+      <div class="axiom-box">
+        <span class="axiom-title">Cryptographic Envelope Protocol</span>
+        <div class="axiom-formula">Signature = HMAC-SHA256( ServerKeyring, InstanceUUID ∥ ManifestHash )</div>
+        <p class="axiom-text">
+          Every printed exam sheet carries a unique, signed QR code. The state transitions follow an irreversible state machine: printed → { captured | superseded | void }. Once an exam is graded, it can never be voided.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Key Rotation Tolerance</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Keyrings verify historical signatures even after server keys rotate.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Old exam sheets becoming unscannable during multi-year audits.
+          </div>
+        </div>
+
+        <div class="test-row">
+          <div class="test-header">
+            <span class="test-name">Torn Sheet Display Code</span>
+            <span class="test-badge">Verified</span>
+          </div>
+          <p class="test-desc">Checksummed Crockford base32 human code (e.g. NI-4892-AK92) provides fallback.</p>
+          <div class="test-prevents">
+            <span>Prevents:</span> Student answer sheets being discarded if the corner QR code is physically torn.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: FULL TEST MATRIX -->
+    <section class="slide-card" id="slide-7">
+      <div class="slide-header">
+        <span class="slide-tag">Full Verification Inventory</span>
+        <h2 class="slide-title">22-Suite Canonical Test Matrix</h2>
+        <p class="slide-subtitle">All 22 test suites and 261 assertions passing with 100% green status.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <span class="test-name">1. OmrPageDimensionMathTest (6 tests)</span>
+          <p class="test-desc">Physical 300-PPI math, 9-point alignment, DPI floor, memory caps.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">2. OmrMarkerProfileTest (3 tests)</span>
+          <p class="test-desc">Candidate qualification lifecycle, single active profile rule.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">3. OmrCapturePolicyTest (6 tests)</span>
+          <p class="test-desc">4-quadrant placement, rotation invariance, answer key isolation.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">4. OmrSourceAdapterTest (6 tests)</span>
+          <p class="test-desc">HTML sanitization, DOCX macro rejection, PDF encryption checks.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">5. OmrMappingValidatorTest (4 tests)</span>
+          <p class="test-desc">Bubble diameter limits, option pitch, multi-column grid parity.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">6. OmrQrPayloadTest &amp; Renderer (5 tests)</span>
+          <p class="test-desc">HMAC-SHA256 signatures, key rotation, deterministic SVG/PNG bytes.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">7. OmrBlankInstanceLifecycleTest (2 tests)</span>
+          <p class="test-desc">Terminal state rules (printed → captured|superseded|void).</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">8. OmrTestCaptureTest (5 tests)</span>
+          <p class="test-desc">Worker diagnostic verification, bubble crop means, confidence gates.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: 5-STAGE STUDIO WORKFLOW -->
+    <section class="slide-card" id="slide-8">
+      <div class="slide-header">
+        <span class="slide-tag">Interface Design</span>
+        <h2 class="slide-title">5-Stage Linear Wizard Architecture</h2>
+        <p class="slide-subtitle">Replaced fragmented multi-page modals with a streamlined split-screen studio.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="test-row">
+          <span class="test-name">Stage 1: Base &amp; Booklet Binding</span>
+          <p class="test-desc">Choose between Photo/Scan, PDF, HTML, or Blank canvas, and bind master answer keys.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">Stage 2: Layout &amp; Margins</span>
+          <p class="test-desc">Continuous 5–35mm margin slider, fiducial marker pattern selector, QR toggle.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">Stage 3: Optical Alignment Lock</span>
+          <p class="test-desc">4/4 corner registration anchor coordinates locked for perspective homography.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">Stage 4: Bubble Coordinates &amp; Schema</span>
+          <p class="test-desc">Multi-column MCQ grid tuning, X/Y position sliders, bubble radius adjustments.</p>
+        </div>
+        <div class="test-row">
+          <span class="test-name">Stage 5: Verification &amp; Export</span>
+          <p class="test-desc">Download production template.json, print 100% test sheets, live JSON schema preview.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: REVIEWER COMMENT & FEEDBACK PAD -->
+    <section class="slide-card" id="slide-9">
+      <div class="slide-header">
+        <span class="slide-tag">Reviewer Console</span>
+        <h2 class="slide-title">Interactive Reviewer Feedback Pad</h2>
+        <p class="slide-subtitle">Record slide-by-slide observations directly from your phone. Stored locally in your browser.</p>
+      </div>
+
+      <div class="feedback-pad">
+        <span class="axiom-title">Reviewer Notes for Slide <span id="feedback-slide-num">1</span>:</span>
+        <textarea id="reviewer-notes" class="feedback-textarea" placeholder="Type comments, questions, or UX feedback here..." oninput="saveCurrentNote(this.value)"></textarea>
+        
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+          <button onclick="copyAllNotes()" class="btn">Copy All Feedback</button>
+          <button onclick="exportNotesJSON()" class="btn btn-primary">Export Feedback (JSON)</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- DECK FOOTER NAVIGATION -->
+  <footer class="deck-footer">
+    <button onclick="prevSlide()" id="deck-prev-btn" class="btn" disabled>
+      ← Prev
+    </button>
+
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <span style="font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;" id="slide-counter">1 / 9</span>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="deck-progress"></div>
+      </div>
+    </div>
+
+    <button onclick="nextSlide()" id="deck-next-btn" class="btn btn-primary">
+      Next →
+    </button>
+  </footer>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 9;
+    const notesStorageKey = 'nexiam_omr_review_notes';
+    let slideNotes = JSON.parse(localStorage.getItem(notesStorageKey) || '{}');
+
+    function goToSlide(num) {
+      if (num < 1 || num > totalSlides) return;
+      currentSlide = num;
+
+      // Update slide cards
+      document.querySelectorAll('.slide-card').forEach((card, idx) => {
+        if (idx + 1 === num) {
+          card.classList.add('active');
+        } else {
+          card.classList.remove('active');
+        }
+      });
+
+      // Update header stepper pills
+      document.querySelectorAll('.step-pill').forEach((pill, idx) => {
+        if (idx + 1 === num) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+
+      // Update footer counter & progress bar
+      document.getElementById('slide-counter').innerText = `${num} / ${totalSlides}`;
+      document.getElementById('deck-progress').style.width = `${(num / totalSlides) * 100}%`;
+
+      // Update button states
+      document.getElementById('deck-prev-btn').disabled = (num === 1);
+      document.getElementById('deck-next-btn').innerText = (num === totalSlides) ? 'Finish' : 'Next →';
+
+      // Update feedback pad
+      document.getElementById('feedback-slide-num').innerText = num;
+      document.getElementById('reviewer-notes').value = slideNotes[num] || '';
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) goToSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) goToSlide(currentSlide - 1);
+    }
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    // Touch swipe navigation for mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    window.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      if (touchStartX - touchEndX > 60) nextSlide();
+      if (touchEndX - touchStartX > 60) prevSlide();
+    }, { passive: true });
+
+    // Interactive Physical Calculator
+    function updateCalculator(val) {
+      const mm = parseFloat(val) || 0;
+      const px = Math.round(mm * (300 / 25.4));
+      document.getElementById('calc-px-res').innerText = `${px} px`;
+    }
+
+    // Reviewer Notes Storage
+    function saveCurrentNote(val) {
+      slideNotes[currentSlide] = val;
+      localStorage.setItem(notesStorageKey, JSON.stringify(slideNotes));
+    }
+
+    function copyAllNotes() {
+      const summary = Object.entries(slideNotes)
+        .map(([slide, note]) => `[Slide ${slide}]: ${note}`)
+        .join('\n\n');
+      navigator.clipboard.writeText(summary || 'No notes taken yet.');
+      alert('All review notes copied to clipboard!');
+    }
+
+    function exportNotesJSON() {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(slideNotes, null, 2));
+      const dl = document.createElement('a');
+      dl.setAttribute('href', dataStr);
+      dl.setAttribute('download', 'nexiam_omr_review_feedback.json');
+      dl.click();
+    }
+
+    // Init
+    goToSlide(1);
+  </script>
+</body>
+</html>

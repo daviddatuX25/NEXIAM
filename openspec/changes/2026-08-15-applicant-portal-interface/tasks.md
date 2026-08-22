@@ -50,3 +50,13 @@
 - [x] HANDOFF.md: applicant access key + birthdate credentials, reset command, expected starting state per scenario, feature URLs.
 - [x] Playwright/browser: mobile 375px + desktop walkthrough (hub → reserve → consult → ack → results by mode); zero console errors (REQ-VS-018/031).
 - [x] Full suite + fresh-seed proof; archive change and update master-reference checkpoint + archive README.
+
+## Phase 7 — Legacy home page port (founder-directed 2026-08-17)
+
+- [x] Traced legacy `Pages/Home/Index.svelte` + `Layouts/HomeLayout.svelte` + `Components/blocks/ProcessFlow.svelte` (disposition: PRESERVE interaction shape; REWRITE chrome on locked kit tokens; greenfield routes only).
+- [x] `Layouts/HomeLayout.svelte`: public shell (sticky header, Home/Application nav, auth-aware pill — `/staff` for staff, `/applicant/portal` for applicants, `/login` fallback; footer © ISPSC Tagudin).
+- [x] `Components/blocks/ProcessFlow.svelte`: 5-phase glass cards (desktop) + vertical timeline (mobile); Registrar/Guidance offices, phase colors from legacy baseline.
+- [x] `Pages/Home.svelte`: one-screener hero (glassmorphic wash, season badge + window, institution eyebrow, gradient headline, Admissions CTA) extended with greenfield features: applicant sign-in (`/applicant/login`), staff sign-in (`/login`), D-085 access-key hint.
+- [x] `tw-animate-css` added (also activates latent `animate-in` utilities used by existing kit components); entrance animations now render.
+- [x] Pest: seeded `/` asserts `activeSeason.name` + `activeSeason.window` payload (FoundationHealthTest); existing home contract unchanged.
+- [x] Browser proof (Chrome, zero console errors): desktop 1280 — badge/headline/CTAs/5 cards, no overflow; mobile 390 — vertical timeline, no horizontal scroll; applicant login (PORT-DEFL/2003-09-25) → "View Portal" pill; staff login (registrar.clerk@nexiam.test/password) → "Staff Portal" pill; Admissions CTA → `/apply`.

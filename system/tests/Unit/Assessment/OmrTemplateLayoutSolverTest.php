@@ -30,7 +30,15 @@ test('4-column solve matches the canonical shipped sheet geometry', function () 
     $result = $solver->solve(blueprint(sections: [section('VERBAL', 1, 100)]));
 
     expect($result->templateJsonHash)->toBeString()->toHaveLength(64)
-        ->and($result->pages)->toHaveCount(1);
+        ->and($result->pages)->toHaveCount(1)
+        ->and(array_keys($result->pages[0]['fieldBlocks']))->toBe([
+            'ApplicantNumber',
+            'Birthdate',
+            'VERBALPartA',
+            'VERBALPartB',
+            'VERBALPartC',
+            'VERBALPartD',
+        ]);
 
     $blocks = questionBlocks($result->pages[0]);
     expect(array_map(fn (array $b): string => $b['fieldLabels'][0], $blocks))->toBe([
@@ -53,8 +61,9 @@ test('identity grids repeat on every page and sit outside the flow', function ()
         expect($labels)->toContain('APPLICANT_NUMBER_1..10')
             ->and($labels)->toContain('BIRTHDATE_1..6');
     }
-    expect($result->pages[1]['fieldBlocks'][0]['origin'])->toBe([200, 260]);
+    expect($result->pages[1]['fieldBlocks']['ApplicantNumber']['origin'])->toBe([200, 260]);
 });
+
 
 test('final column overflow starts the next page and rows are atomic', function () use ($solver): void {
     $result = $solver->solve(blueprint(sections: [section('VERBAL', 1, 101)]));

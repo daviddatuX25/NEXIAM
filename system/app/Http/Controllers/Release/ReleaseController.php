@@ -123,9 +123,48 @@ class ReleaseController extends Controller
     public function index(Request $request, CapabilityAuthorizer $authorizer): Response
     {
         if (! $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)) {
-            return Inertia::render('Release/Index', ['page_state' => 'denied']);
+            return Inertia::render('Release/Index', ['page_state' => 'denied', 'sessions' => [], 'active_template' => null]);
         }
 
-        return Inertia::render('Release/Index', ['page_state' => 'ready']);
+        $template = \App\Models\ResultSheet\ResultSheetTemplate::active();
+
+        $sessions = \App\Models\Assessment\GradingSession::query()
+            ->with(['examSession.room'])
+            ->latest('id')
+            ->get()
+            ->map(function (\App\Models\Assessment\GradingSession $gs) {
+                $attemptIds = $gs->scoreRecords()->select('admission_attempt_id')->distinct()->pluck('admission_attempt_id');
+                $total = $attemptIds->count();
+                $released = \App\Models\Release\ResultRelease::query()
+                    ->whereIn('admission_attempt_id', $attemptIds)
+                    ->where('is_current', true)
+                    ->whereNull('unreleased_at')
+                    ->count();
+
+                return [
+                    'id' => $gs->id,
+                    'exam_code' => (string) ($gs->examSession?->code ?? "Session #{$gs->id}"),
+                    'room_name' => (string) ($gs->examSession?->room?->name ?? '—'),
+                    'starts_at' => $gs->examSession?->starts_at?->format('M d, Y h:i A') ?? '—',
+                    'status' => $gs->status,
+                    'examinees_count' => $total,
+                    'released_count' => $released,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Release/Index', [
+            'page_state' => 'ready',
+            'sessions' => $sessions,
+            'active_template' => $template ? [
+                'id' => $template->id,
+                'name' => $template->name,
+                'mode' => $template->mode,
+                'paper_size' => $template->paper_size,
+                'orientation' => $template->orientation,
+            ] : null,
+            'can_manage_templates' => $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG),
+        ]);
     }
 }

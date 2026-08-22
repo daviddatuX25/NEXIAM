@@ -20,9 +20,11 @@
     ExternalLink,
     AlertCircle,
     Sliders,
-    Sparkles
+    Sparkles,
+    ScanLine
   } from 'lucide-svelte';
   import { error as toastError, success as toastSuccess } from '@/lib/toast.js';
+  import TestCapturePanel from './TestCapturePanel.svelte';
 
   let { template = {}, pairs = [], capabilities = {}, errors = {} } = $props();
 
@@ -114,6 +116,13 @@
   let sheetPerPageNotes = $state('');
   let sheetSaving = $state(false);
 
+  // Read-only Test capture drawer (marker-bearing versions only)
+  let testOpenVersionId = $state(null);
+
+  function toggleTestCapture(version) {
+    testOpenVersionId = testOpenVersionId === version.id ? null : version.id;
+  }
+
   // Technical hashes collapse toggle state
   let showTechDetails = $state({});
 
@@ -196,7 +205,7 @@
   >
     {#snippet actions()}
       <Button asChild size="sm">
-        <Link href="/setup/omr/templates/builder">Template builder</Link>
+        <Link href="/setup/omr/templates/canonical">Template builder</Link>
       </Button>
     {/snippet}
   </PageHeaderBar>
@@ -254,6 +263,19 @@
                     Preview sheet
                   </Button>
 
+                  <!-- Read-only Test capture (marker-bearing versions only) -->
+                  {#if version.capture_policy != null}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onclick={() => toggleTestCapture(version)}
+                      title="Run the fiducial registration diagnostic against a photo of the printed sheet"
+                    >
+                      <ScanLine class="mr-1.5 size-3.5" />
+                      Test capture
+                    </Button>
+                  {/if}
+
                   <!-- Custom Sheet Text (Header/Footer/Title) -->
                   <Button
                     variant="outline"
@@ -267,9 +289,9 @@
                   <!-- Draft: Continue in Builder -->
                   {#if isDraft}
                     <Button asChild size="sm">
-                      <Link href={`/setup/omr/templates/builder?version=${version.id}`}>
+                      <Link href={`/setup/omr/templates/canonical`}>
                         <Edit3 class="mr-1.5 size-3.5" />
-                        Edit in builder
+                        Edit in canonical builder
                       </Link>
                     </Button>
                   {/if}
@@ -398,6 +420,13 @@
                     </Button>
                     <Button size="xs" variant="outline" onclick={() => (sheetOpenVersionId = null)}>Cancel</Button>
                   </div>
+                </div>
+              {/if}
+
+              <!-- Read-only Test capture drawer (marker-bearing versions) -->
+              {#if testOpenVersionId === version.id}
+                <div class="mt-4">
+                  <TestCapturePanel versionId={version.id} markerBearing={true} />
                 </div>
               {/if}
 

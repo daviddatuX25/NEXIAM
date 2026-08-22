@@ -1,6 +1,7 @@
 /**
  * Client transport for OpenSpec 3 Nexi runs — never treats responses as authz.
  */
+import { newIdempotencyKey } from '@/lib/utils.js';
 
 export type NexiTurnAccepted = {
   conversation_id: string;
@@ -52,7 +53,7 @@ export async function submitNexiTurn(input: {
       message: input.message,
       page_pack_key: input.pagePackKey ?? null,
       page_pack_version: input.pagePackVersion ?? null,
-      idempotency_key: input.idempotencyKey ?? crypto.randomUUID(),
+      idempotency_key: input.idempotencyKey ?? newIdempotencyKey(),
       mode: input.mode ?? 'inquiry',
     }),
   });
@@ -213,7 +214,7 @@ export async function confirmNexiProposal(
     },
     credentials: 'same-origin',
     body: JSON.stringify({
-      idempotency_key: idempotencyKey ?? crypto.randomUUID(),
+      idempotency_key: idempotencyKey ?? newIdempotencyKey(),
     }),
   });
   if (!res.ok) {

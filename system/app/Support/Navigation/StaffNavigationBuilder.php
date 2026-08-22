@@ -85,6 +85,12 @@ final class StaffNavigationBuilder
             'match' => 'prefix',
         ];
         $assessment[] = [
+            'href' => '/setup/result-templates',
+            'label' => 'Result Templates',
+            'icon' => 'Printer',
+            'match' => 'prefix',
+        ];
+        $assessment[] = [
             'href' => '/release',
             'label' => 'Release',
             'icon' => 'Send',
@@ -153,8 +159,8 @@ final class StaffNavigationBuilder
         return match ($item['href']) {
             '/exams/monitoring' => $this->canMonitor($user),
             '/grading' => $this->allows($user, CapabilityCatalog::GUIDANCE_SCORING_MANUAL),
+            '/setup/result-templates' => $this->allows($user, CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG),
             '/release' => $this->allows($user, CapabilityCatalog::GUIDANCE_RESULTS_RELEASE),
-            '/consultation' => $this->allows($user, CapabilityCatalog::GUIDANCE_CONSULTATION_DECIDE),
             default => false,
         };
     }

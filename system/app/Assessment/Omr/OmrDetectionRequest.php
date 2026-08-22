@@ -21,6 +21,7 @@ final readonly class OmrDetectionRequest
      * @param  array<string, mixed>  $nativeConfig
      * @param  array<string, mixed>  $nativeBundleMetadata
      * @param  array<string, mixed>  $reviewManifest
+     * @param  array<string, string>  $nativeAssets  bounded marker assets (name => bytes) the worker materializes next to template.json
      */
     public function __construct(
         public string $envelopeVersion,
@@ -49,6 +50,7 @@ final readonly class OmrDetectionRequest
         public array $expectedOptionCodes,
         public float $providerDeadline,
         public int $pageNo = 1,
+        public array $nativeAssets = [],
     ) {
     }
 

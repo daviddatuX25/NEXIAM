@@ -29,7 +29,7 @@
     description="Bubble-sheet designs used for OMR scanning. Each template keeps an immutable version history."
   >
     {#snippet actions()}
-      <Button href="/setup/omr/templates/builder" size="sm">New template</Button>
+      <Button href="/setup/omr/templates/canonical" size="sm">New template</Button>
       <Button href="/setup/omr/intake" variant="outline" size="sm">Register bundle</Button>
     {/snippet}
   </PageHeaderBar>
@@ -98,7 +98,7 @@
             Design a bubble sheet in the visual builder or register an existing native bundle.
           </p>
           <div class="mt-4 flex items-center justify-center gap-2">
-            <Button href="/setup/omr/templates/builder" size="sm">Open builder</Button>
+            <Button href="/setup/omr/templates/canonical" size="sm">Create template</Button>
             <Button href="/setup/omr/intake" variant="outline" size="sm">Register bundle</Button>
           </div>
         </div>

@@ -123,6 +123,42 @@ class ReleasePrintController extends Controller
             'template_error' => null,
         ]);
     }
+    public function showApplicant(
+        Request $request,
+        CapabilityAuthorizer $authorizer,
+        GradingSession $gradingSession,
+        \App\Models\Admission\AdmissionAttempt $attempt,
+        ResultSheetDataProvider $dataProvider,
+        ResultSheetPlaceholderService $placeholders,
+        ResultSheetCssService $css,
+    ): Response {
+        abort_unless($authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_RESULTS_RELEASE), 403);
+
+        $template = ResultSheetTemplate::active();
+
+        if ($template === null) {
+            return Inertia::render('Release/ResultSheet', [
+                'applicant' => [
+                    'name' => $attempt->identity ? trim($attempt->identity->first_name.' '.$attempt->identity->last_name) : '—',
+                    'reference' => (string) $attempt->reference_code,
+                ],
+                'sheetHtml' => null,
+                'paper_size' => 'a4',
+                'template_error' => 'No active result sheet template. Please activate one in Result Templates setup.',
+            ]);
+        }
+
+        $data = $dataProvider->forAttempt($attempt);
+        $replacements = $placeholders->buildReplacements([$data]);
+        $raw = $placeholders->renderRaw((string) $template->content, $replacements);
+
+        return Inertia::render('Release/ResultSheet', [
+            'applicant' => $data,
+            'sheetHtml' => $css->wrap($raw),
+            'paper_size' => $template->paper_size,
+            'template_error' => null,
+        ]);
+    }
 
     public function request(
         RequestResultSheetPrintRequest $request,

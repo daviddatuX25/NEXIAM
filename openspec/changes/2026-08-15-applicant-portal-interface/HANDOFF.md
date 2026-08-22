@@ -1,7 +1,7 @@
 # HANDOFF — Applicant Portal Interface (`2026-08-15-applicant-portal-interface`)
 
 ## Status
-ACTIVE — implementation complete; tests green; browser-verified. Sole active OpenSpec change.
+ACTIVE — applicant interface implementation complete; tests green; browser-verified. Archive pending founder review. The public landing is now owned by `institutional-public-experience`.
 
 ## What ships
 
@@ -13,6 +13,8 @@ ACTIVE — implementation complete; tests green; browser-verified. Sole active O
 - **Shared reservation UX**: `ReservationSlotList` + `ReservationConfirmSheet` components adopted by Schedule and Consultation (identical slot anatomy + confirm sheet).
 - **Landing**: active-season badge + 5-step process strip + 3 CTAs.
 - **Login** now lands on the hub (`/applicant/portal`) instead of the schedule.
+
+- **Public landing ownership:** `/` is now the institution-first surface documented in `openspec/changes/institutional-public-experience/`; the legacy process-strip notes below are historical baseline only.
 
 ## Temporary login default (2026-08-15)
 
@@ -61,3 +63,28 @@ Fresh DB: 3 released demo applicants at the states above, each with exam seat + 
 - Admission slip page — excluded; founder resolves later.
 - Missed-exam/reassignment policy — separate parity item.
 - Notification delivery outbox — parked DEFERRED change.
+
+## Landing baseline — superseded by institutional public experience (2026-08-17)
+
+The public `/` page was previously a port of legacy `Home/Index.svelte` (one-screener hero, season badge, institution eyebrow, Admissions CTA, and 5-phase process strip). That baseline remains recorded for traceability; it is not the current public composition.
+
+- **Applicant sign in** → `/applicant/login` (D-085 access key + birthdate)
+- **Staff sign in** → `/login`
+- **Auth-aware portal pill** in the header: staff → `/staff` ("Staff Portal"), applicant → `/applicant/portal` ("View Portal"), guests → Login
+- Access-key hint copy under the CTAs
+
+### Verify (fresh seed)
+
+```bash
+cd system && docker compose exec -T app php artisan foundation:reset --force
+```
+
+- Historical verification only: the former landing showed the season badge, gradient headline, process cards/timeline, footer, and applicant/staff CTAs. Current homepage verification and replacement inventory live in `institutional-public-experience/HANDOFF.md`.
+
+### Files
+
+- `resources/js/Pages/Home.svelte` (rewrite)
+- `resources/js/Layouts/HomeLayout.svelte` (new — legacy `HomeLayout` port)
+- `resources/js/Components/blocks/ProcessFlow.svelte` (new — legacy block port)
+- `resources/css/app.css` + `package.json` (`tw-animate-css` — activates `animate-in` utilities already referenced by kit components)
+- `tests/Feature/FoundationHealthTest.php` (seeded `activeSeason` payload assertion)

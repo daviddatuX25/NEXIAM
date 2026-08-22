@@ -10,6 +10,7 @@
   import { Button } from '@/Components/ui/button';
   import * as Table from '@/Components/ui/table';
   import { router } from '@inertiajs/svelte';
+  import { newIdempotencyKey } from '@/lib/utils';
   import { CheckCircle2, Circle, UserCheck, UserX, FileCheck } from 'lucide-svelte';
 
   let {
@@ -34,7 +35,7 @@
     setBusy(assignmentId, 'attendance', true);
     router.post(
       `/exams/sessions/${session.id}/monitoring/assignments/${assignmentId}/attendance`,
-      { outcome, idempotency_key: crypto.randomUUID() },
+      { outcome, idempotency_key: newIdempotencyKey() },
       {
         preserveScroll: true,
         onFinish: () => setBusy(assignmentId, 'attendance', false),
@@ -46,7 +47,7 @@
     setBusy(assignmentId, 'submission', true);
     router.post(
       `/exams/sessions/${session.id}/monitoring/assignments/${assignmentId}/submission`,
-      { idempotency_key: crypto.randomUUID() },
+      { idempotency_key: newIdempotencyKey() },
       {
         preserveScroll: true,
         onFinish: () => setBusy(assignmentId, 'submission', false),

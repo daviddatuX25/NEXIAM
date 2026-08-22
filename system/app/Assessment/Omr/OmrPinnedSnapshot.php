@@ -32,6 +32,7 @@ final readonly class OmrPinnedSnapshot
      * @param  array<string, mixed>  $nativeConfig
      * @param  array<string, mixed>  $nativeBundleMetadata
      * @param  array<string, mixed>  $reviewManifest
+     * @param  array<string, string>  $nativeAssets  bounded marker assets (name => bytes) carried to the worker
      */
     public function __construct(
         public array $areas,
@@ -55,6 +56,7 @@ final readonly class OmrPinnedSnapshot
         public int $pageCount,
         public array $pageTemplates,
         public array $pageIdentityRegions,
+        public array $nativeAssets = [],
     ) {
     }
 
@@ -168,6 +170,21 @@ final readonly class OmrPinnedSnapshot
             $pageIdentityRegions[$pageNo] ??= $identityRegions;
         }
 
+        // Marker-bearing versions carry the fiducial asset to the worker. The
+        // bytes come from the immutable on-disk bundle (declared in the
+        // hash-covered files map); a declared-but-missing asset fails closed.
+        $nativeAssets = [];
+        $markerMetadata = \App\Assessment\Omr\OmrCapturePolicy::markerMetadata($nativeBundle['template'] ?? []);
+        if ($markerMetadata !== null) {
+            $manifestCode = $nativeBundle['manifest']['template_code'] ?? null;
+            $manifestVersion = (int) ($nativeBundle['manifest']['template_version'] ?? 0);
+            if (! is_string($manifestCode) || $manifestCode === '' || $manifestVersion <= 0) {
+                throw new RuntimeException('A pinned marker-bearing OMR template is missing its bundle identity.');
+            }
+            $pinnedBundle = NativeBundle::load($manifestCode, $manifestVersion);
+            $nativeAssets[$markerMetadata['asset_name']] = $pinnedBundle->assetBytes($markerMetadata['asset_name']);
+        }
+
         return new self(
             areas: $areas,
             areaIdsByCode: $areaIdsByCode,
@@ -194,6 +211,7 @@ final readonly class OmrPinnedSnapshot
             pageCount: $pageCount,
             pageTemplates: $pageTemplates,
             pageIdentityRegions: $pageIdentityRegions,
+            nativeAssets: $nativeAssets,
         );
     }
 

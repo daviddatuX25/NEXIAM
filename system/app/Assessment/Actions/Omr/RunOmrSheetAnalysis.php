@@ -4,6 +4,7 @@ namespace App\Assessment\Actions\Omr;
 
 use App\Assessment\Omr\OmrDetectionOutcome;
 use App\Assessment\Omr\OmrDetectionPort;
+use App\Assessment\Omr\OmrDetectionIssue;
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrDetectionResult;
 use App\Assessment\Omr\OmrDetectionResultValidator;
@@ -88,13 +89,19 @@ final class RunOmrSheetAnalysis
             $sheet->batch->bookletVersion,
         );
 
+        try {
+            $success = $this->validator->validate($request, $result) ?? $result->success;
+        } catch (OmrInvalidDetectionOutput) {
+            return $this->fail($run->id, $claimToken, false, 'provider_output_invalid');
+        }
+
         return $this->persistSuccess(
             $run->id,
             $claimToken,
             $actor,
             $request,
             $result,
-            $result->success,
+            $success,
             $snapshot,
         );
     }
@@ -264,6 +271,7 @@ final class RunOmrSheetAnalysis
             nativeConfig: $snapshot->nativeConfig,
             nativeBundleMetadata: $snapshot->nativeBundleMetadata,
             reviewManifest: $snapshot->reviewManifest,
+            nativeAssets: $snapshot->nativeAssets,
             engineName: (string) $run->provider_name,
             engineCommit: $run->provider_commit !== null ? (string) $run->provider_commit : null,
             patchIdentity: $snapshot->patchIdentity,
@@ -359,15 +367,13 @@ final class RunOmrSheetAnalysis
                     $sheet->update([
                         'status' => OmrCaptureSheet::STATUS_NEEDS_REVIEW,
                         'version' => (int) $sheet->version + 1,
-                        'sheet_confidence' => $success->sheetConfidence,
+                        'sheet_confidence' => $proposal['sheet_confidence'],
                         'proposal_json' => $proposal,
-                        'detected_applicant_number' => $success->applicantNumberProposal,
-                        'detected_applicant_confidence' => $success->applicantNumberProposal !== null
-                            ? $success->applicantNumberConfidence
-                            : null,
-                        'detected_birthdate' => $success->birthdateProposal,
+                        'detected_applicant_number' => $proposal['applicant_number_proposal'],
+                        'detected_applicant_confidence' => $proposal['applicant_number_confidence'],
+                        'detected_birthdate' => $proposal['birthdate_proposal'],
                     ]);
-                    $this->flagInvalidBirthdate($sheet, $success->birthdateProposal);
+                    $this->flagInvalidBirthdate($sheet, $proposal['birthdate_proposal']);
                 } else {
                     $this->maybeMerge($sheet);
                 }
@@ -758,6 +764,10 @@ final class RunOmrSheetAnalysis
         OmrDetectionSuccess $success,
         OmrPinnedSnapshot $snapshot,
     ): array {
+        if ($this->hasRequiredMisalignment($success)) {
+            return $this->misalignedProposal($request, $success);
+        }
+
         $items = array_map(function (OmrDetectedItem $item) use ($snapshot): array {
             $correctOption = $snapshot->correctOptionsByPosition[$item->position] ?? null;
             $score = $item->selectedOption !== null && $correctOption !== null && $item->selectedOption === $correctOption ? 1 : 0;
@@ -813,6 +823,7 @@ final class RunOmrSheetAnalysis
             'native_bundle_hash' => $request->nativeBundleHash,
             'manifest_hash' => $request->manifestHash,
             'config_hash' => $success->configHash,
+            'provider_diagnostics' => $success->providerDiagnostics,
             'patch_identity' => $request->patchIdentity,
             'image' => [
                 'mime' => $success->imageMime,
@@ -832,6 +843,66 @@ final class RunOmrSheetAnalysis
             'sheet_confidence' => $success->sheetConfidence,
             'per_area_scores' => $perArea,
             'items' => $items,
+        ];
+    }
+
+    private function hasRequiredMisalignment(OmrDetectionSuccess $success): bool
+    {
+        foreach ($success->issues as $issue) {
+            if ($issue->code === OmrDetectionIssue::CODE_SHEET_MISALIGNED
+                && $issue->severity === OmrDetectionIssue::SEVERITY_REQUIRED) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Fail-closed proposal for unsafe alignment: keep the envelope, provider
+     * identity, evidence hashes, and observed field-block shifts, but never
+     * persist answer or score proposals built from shifted bubble reads.
+     * Confidence stays unqualified and identity proposals are withheld so
+     * review resolves them instead of binding a misread number.
+     *
+     * @return array<string, mixed>
+     */
+    private function misalignedProposal(OmrDetectionRequest $request, OmrDetectionSuccess $success): array
+    {
+        return [
+            'envelope' => $request->envelopeVersion,
+            'provider' => [
+                'name' => $success->engineName,
+                'version' => $success->engineVersion,
+                'commit' => $success->engineCommit,
+                'calibration_status' => $success->calibrationStatus,
+            ],
+            'input_hash' => $success->inputHash,
+            'native_bundle_hash' => $request->nativeBundleHash,
+            'manifest_hash' => $request->manifestHash,
+            'config_hash' => $success->configHash,
+            'provider_diagnostics' => $success->providerDiagnostics,
+            'patch_identity' => $request->patchIdentity,
+            'image' => [
+                'mime' => $success->imageMime,
+                'width' => $success->imageWidth,
+                'height' => $success->imageHeight,
+            ],
+            'field_block_shifts' => $success->fieldBlockShifts,
+            'aligned_image' => $success->alignedImage === null ? null : [
+                'mime' => $success->alignedImage['mime'] ?? null,
+                'width' => $success->alignedImage['width'] ?? null,
+                'height' => $success->alignedImage['height'] ?? null,
+                'hash' => $success->alignedImage['hash'] ?? null,
+            ],
+            'applicant_number_proposal' => null,
+            'applicant_number_confidence' => null,
+            'birthdate_proposal' => null,
+            'sheet_confidence' => null,
+            'per_area_scores' => [],
+            'items' => [],
+            'abstained' => true,
+            'reason' => 'sheet_misaligned',
         ];
     }
 

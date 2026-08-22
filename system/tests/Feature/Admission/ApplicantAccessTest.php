@@ -158,3 +158,56 @@ test('seeded demo accepted applicant can sign in with fixed access key', functio
             ->has('pipeline', 4)
         );
 });
+
+test('access key shape validation and disambiguation handles lookalike characters', function (): void {
+    // Valid 8-character keys
+    expect(ApplicantAccessKey::isValidShape('ABCD-EFGH'))->toBeTrue()
+        ->and(ApplicantAccessKey::isValidShape('ABCDEFGH'))->toBeTrue()
+        ->and(ApplicantAccessKey::isValidShape('2345-6789'))->toBeTrue()
+        ->and(ApplicantAccessKey::isValidShape('PORT-DEFL'))->toBeTrue()
+        ->and(ApplicantAccessKey::isValidShape('DEMO-ACPT'))->toBeTrue();
+
+    // Disambiguation: 0 maps to O, 1 maps to I
+    expect(ApplicantAccessKey::normalize('ABCD-EFG0'))->toBe('ABCDEFGO')
+        ->and(ApplicantAccessKey::normalize('ABCD-EFG1'))->toBe('ABCDEFGI')
+        ->and(ApplicantAccessKey::normalize('abcd-efgh'))->toBe('ABCDEFGH');
+
+    // Invalid lengths or characters
+    expect(ApplicantAccessKey::isValidShape('SHORT'))->toBeFalse()
+        ->and(ApplicantAccessKey::isValidShape('WAY-TOO-LONG-KEY'))->toBeFalse()
+        ->and(ApplicantAccessKey::isValidShape('!@#$-%^&*'))->toBeFalse();
+});
+
+test('three failed birthdate attempts locks the access key for 15 minutes', function (): void {
+    seedE2Foundation();
+    $result = submitSyntheticApplicant('lockout-test@example.test');
+    $key = $result['access_token'];
+
+    // Attempt 1: Wrong birthdate
+    $this->post(route('applicant.login.store'), [
+        'access_key' => $key,
+        'birthdate' => '1999-01-01',
+    ])->assertSessionHasErrors('access_key');
+
+    // Attempt 2: Wrong birthdate
+    $this->post(route('applicant.login.store'), [
+        'access_key' => $key,
+        'birthdate' => '1999-01-02',
+    ])->assertSessionHasErrors('access_key');
+
+    // Attempt 3: Wrong birthdate -> Triggers lockout
+    $this->post(route('applicant.login.store'), [
+        'access_key' => $key,
+        'birthdate' => '1999-01-03',
+    ])->assertSessionHasErrors('access_key');
+
+    // Attempt 4: Even with the CORRECT birthdate, login is blocked due to active lockout
+    $this->post(route('applicant.login.store'), [
+        'access_key' => $key,
+        'birthdate' => '2001-01-01',
+    ])->assertSessionHasErrors([
+        'access_key' => 'This access key is temporarily locked due to repeated failed attempts. Please try again in 15 minute(s).',
+    ]);
+
+    $this->assertGuest();
+});

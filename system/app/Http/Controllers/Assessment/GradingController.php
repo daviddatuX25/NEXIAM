@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Assessment;
 
 use App\Assessment\Actions\Omr\ConfirmOmrCaptureBatch;
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
+use App\Assessment\Actions\Omr\PreflightOmrCapture;
 use App\Assessment\Actions\Omr\RejectOmrCaptureBatch;
 use App\Assessment\Actions\Omr\ReplaceOmrSheetPage;
 use App\Assessment\Actions\Omr\RetryOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ReviewOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ResolveOmrCaptureSheetIssue;
 use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
+use App\Http\Requests\Assessment\PreflightOmrCaptureRequest;
 use App\Http\Requests\Assessment\ReviewOmrSheetRequest;
 use App\Http\Requests\Assessment\StoreOmrBatchRequest;
 use App\Http\Requests\Assessment\ResolveOmrSheetIssueRequest;
@@ -17,6 +19,7 @@ use App\Http\Requests\Assessment\StoreOmrSheetRequest;
 use App\Assessment\Actions\FinalizeGradingSession;
 use App\Assessment\Actions\OpenGradingSession;
 use App\Assessment\Support\GradingRoster;
+use App\Printing\BundleRenderer;
 use App\Http\Controllers\Controller;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Http\Requests\Assessment\OpenGradingSessionRequest;
@@ -32,6 +35,7 @@ use App\Models\Examination\ExamAttendanceRecord;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AptitudeArea;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -204,13 +208,20 @@ class GradingController extends Controller
                 'templateVersion',
                 'templateVersion.areas.aptitudeArea',
                 'bookletVersion.questions.templateQuestion',
+                'bookletVersion.questions.templateQuestion.options',
                 'bookletVersion.questions.aptitudeArea',
                 'sheets' => fn ($query) => $query->orderByDesc('created_at')->with(['pages', 'issues']),
             ])
             ->first();
         $template = $batch?->templateVersion;
         $identityRegions = $template?->identity_regions_json ?? [];
-        $identityRegion = $identityRegions['name'] ?? $identityRegions['applicant_number'] ?? null;
+        $nativeTemplate = is_array($template?->native_bundle_json)
+            ? ($template->native_bundle_json['template'] ?? [])
+            : [];
+        $reviewOverlayRegions = $template === null
+            ? []
+            : app(BundleRenderer::class)->reviewOverlayRegions($nativeTemplate, (array) $template->print_overlay_json);
+        $identityRegion = $this->identityRegionAt($identityRegions);
         $templateItems = $batch?->bookletVersion?->questions
             ->sortBy('question_position')
             ->map(fn ($item): array => [
@@ -220,12 +231,26 @@ class GradingController extends Controller
                 'area_name' => $item->aptitudeArea?->name ?? 'Aptitude area',
                 'question_no' => (int) ($item->templateQuestion?->question_no ?? $item->question_position),
                 'correct_option_code' => (string) $item->correct_option_code,
+                'page_no' => (int) ($item->templateQuestion?->page_no ?? 1),
                 'region' => [
                     'x' => (float) ($item->templateQuestion?->region_x ?? 0),
                     'y' => (float) ($item->templateQuestion?->region_y ?? 0),
                     'w' => (float) ($item->templateQuestion?->region_w ?? 1),
                     'h' => (float) ($item->templateQuestion?->region_h ?? 1),
                 ],
+                'options' => $item->templateQuestion?->options
+                    ?->sortBy(fn ($option): array => [$option->display_order ?? 0, (string) $option->code])
+                    ?->values()
+                    ?->map(fn ($option): array => [
+                        'code' => (string) $option->code,
+                        'region' => [
+                            'x' => (float) ($option->region_x ?? 0),
+                            'y' => (float) ($option->region_y ?? 0),
+                            'w' => (float) ($option->region_w ?? 1),
+                            'h' => (float) ($option->region_h ?? 1),
+                        ],
+                    ])
+                    ?->all() ?? [],
             ])->values()->all() ?? [];
 
         $roster = GradingRoster::queryFor($gradingSession)
@@ -262,14 +287,23 @@ class GradingController extends Controller
                 ),
             ])->values()->all();
 
+        $providerDriver = (string) config('omr.provider.driver', 'fake');
+        $provider = $providerDriver === 'fake'
+            ? [
+                'name' => config('omr.provider.name', 'nexiam.fake'),
+                'version' => config('omr.provider.version', '1'),
+                'synthetic' => true,
+            ]
+            : [
+                'name' => config('omr.omrchecker.engine_name', 'OMRChecker'),
+                'version' => config('omr.omrchecker.engine_commit', 'unknown'),
+                'synthetic' => false,
+            ];
+
         return Inertia::render('Assessment/Omr/Capture', [
             'page_state' => $batch ? 'ready' : 'empty',
             'camera_enabled' => (bool) config('omr.camera_enabled', true),
-            'provider' => [
-                'name' => config('omr.provider.name', 'nexiam.fake'),
-                'version' => config('omr.provider.version', '1'),
-                'synthetic' => config('omr.provider.driver', 'fake') === 'fake',
-            ],
+            'provider' => $provider,
             'available_pairs' => $pairs,
             'roster' => $roster,
             'session' => [
@@ -287,6 +321,11 @@ class GradingController extends Controller
                     'page_height' => (int) ($template?->page_height ?? 1),
                     'page_count' => (int) ($template?->pageCount() ?? 1),
                     'identity_region' => $identityRegion,
+                    'identity_regions' => $this->identityRegionsByPage(
+                        $identityRegions,
+                        (int) ($template?->pageCount() ?? 1),
+                        $reviewOverlayRegions,
+                    ),
                     'items' => $templateItems,
                 ],
                 'sheets' => $batch->sheets->map(fn (OmrCaptureSheet $sheet): array => [
@@ -373,6 +412,53 @@ class GradingController extends Controller
             'Content-Length' => (string) strlen($bytes),
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Read-only capture preflight (tasks 10.7/10.18). The batch's pinned
+     * template version is the geometry authority; marker batches run the
+     * CropOnMarkers-only worker diagnostic, scan batches answer
+     * `not_applicable`. Never recognizes, scores, or mutates state.
+     */
+    public function preflightCapture(
+        PreflightOmrCaptureRequest $request,
+        GradingSession $gradingSession,
+        PreflightOmrCapture $preflight,
+        int $batch,
+    ): JsonResponse {
+        $batchModel = OmrCaptureBatch::query()
+            ->whereKey($batch)
+            ->where('grading_session_id', $gradingSession->id)
+            ->with('templateVersion')
+            ->firstOrFail();
+
+        try {
+            $result = $preflight->handle(
+                $batchModel,
+                (string) $request->file('image')->get(),
+                (string) $request->file('image')->getMimeType(),
+                $request->user(),
+            );
+        } catch (RuntimeException $exception) {
+            return response()->json(['error' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'mode' => $result->mode,
+            'outcome' => $result->outcome,
+            'code' => $result->code,
+            'detail' => $result->detail,
+            'orientation_hint' => $result->orientationHint,
+            'marker_matches' => $result->markerMatches,
+            'gates' => $result->gates,
+            'normalized_dimensions' => $result->normalizedDimensions,
+            'submit_allowed' => $result->submitAllowed,
+            'calibration_status' => 'unqualified',
+            'timings' => [
+                'preprocess_ms' => $result->preprocessMs,
+                'preflight_ms' => $result->preflightMs,
+            ],
         ]);
     }
 
@@ -569,6 +655,51 @@ class GradingController extends Controller
         }
 
         return back()->with('status', 'Grading session finalized.');
+    }
+
+    /**
+     * Resolve the identity region for page 1, preferring per-page maps over
+     * the legacy flat payload shape (which may hold a label string).
+     *
+     * @param  array<string, mixed>  $identityRegions
+     */
+    private function identityRegionAt(array $identityRegions, int $pageNo = 1): mixed
+    {
+        $byPage = $identityRegions[(string) $pageNo] ?? null;
+
+        if (is_array($byPage)) {
+            return $byPage['applicant_number'] ?? $byPage['name'] ?? null;
+        }
+
+        return $identityRegions['name'] ?? $identityRegions['applicant_number'] ?? null;
+    }
+
+    /**
+     * Project per-page applicant-number and handwritten-name regions so the
+     * review can crop the correct page. Only real region arrays are projected;
+     * label strings and absent geometry stay null.
+     *
+     * @param  array<string, mixed>  $identityRegions
+     * @param  array<int, array{name: array<string, float>|null}>  $overlayRegions
+     * @return array<int, array{applicant_number: array<string, float>|null, name: array<string, float>|null}>
+     */
+    private function identityRegionsByPage(array $identityRegions, int $pageCount, array $overlayRegions = []): array
+    {
+        $pages = [];
+
+        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+            $byPage = $identityRegions[(string) $pageNo] ?? null;
+            $pages[$pageNo] = [
+                'applicant_number' => is_array($byPage) && is_array($byPage['applicant_number'] ?? null)
+                    ? $byPage['applicant_number']
+                    : null,
+                'name' => is_array($byPage) && is_array($byPage['name'] ?? null)
+                    ? $byPage['name']
+                    : ($overlayRegions[$pageNo]['name'] ?? null),
+            ];
+        }
+
+        return $pages;
     }
 
     /**

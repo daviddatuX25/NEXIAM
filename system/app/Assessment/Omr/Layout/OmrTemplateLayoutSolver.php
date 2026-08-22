@@ -2,7 +2,11 @@
 
 namespace App\Assessment\Omr\Layout;
 
+use App\Assessment\Omr\Fiducial\OmrFiducial;
+use App\Assessment\Omr\OmrCapturePolicy;
+
 use function array_key_exists;
+use function chr;
 use function array_map;
 use function array_merge;
 use function array_values;
@@ -39,6 +43,16 @@ final class OmrTemplateLayoutSolver
     public const FLOW_TOP = 900;
     public const COMPACT_FLOW_TOP = 940;
     public const FLOW_BOTTOM_RESERVE = 230;
+    // Marker-bearing frame mode: the identity grid is re-derived inside the
+    // fiducial-center frame (smaller vertical pitch so the 25-row flow still
+    // fits the frame budget), and the bottom reserve shrinks because marker
+    // profiles print no calibration/footer content below the answer frame.
+    public const MARKER_FRAME_FLOW_BOTTOM_RESERVE = 180;
+    public const MARKER_FRAME_ROW_PITCH = 76;
+    public const MARKER_FRAME_IDENTITY_LABELS_GAP = 52;
+    public const MARKER_FRAME_IDENTITY_BUBBLES_GAP = 46;
+    public const MIN_COLUMN_GAP = 16;
+    public const MIN_MARKER_SIZE = 72;
 
     /** @var array<string, array{0: int, 1: int}> */
     private const PAPERS = [
@@ -95,11 +109,18 @@ final class OmrTemplateLayoutSolver
         }
 
         [$width, $height] = self::PAPERS[$normalized['paper']];
-        $columns = self::COLUMN_X[$normalized['columns']];
-        $columnCount = count($columns);
+        $columnCount = (int) $normalized['columns'];
         $geometry = $this->geometryForColumns($columnCount);
-        $flowTop = $columnCount === 6 ? self::COMPACT_FLOW_TOP : self::FLOW_TOP;
-        $flowBottom = $height - self::FLOW_BOTTOM_RESERVE;
+        $markerLayout = $this->markerLayout($normalized, $width, $height, $columnCount, $geometry, $diagnostics);
+        if ($diagnostics !== []) {
+            throw new OmrTemplateLayoutException($diagnostics);
+        }
+        $columns = $markerLayout !== null ? $markerLayout['columns'] : self::COLUMN_X[$columnCount];
+        $flowTop = $markerLayout !== null ? $markerLayout['flow_top'] : ($columnCount === 6 ? self::COMPACT_FLOW_TOP : self::FLOW_TOP);
+        $flowBottom = $markerLayout !== null ? $markerLayout['flow_bottom'] : ($height - self::FLOW_BOTTOM_RESERVE);
+        $rowPitch = $markerLayout !== null ? $markerLayout['row_pitch'] : self::ROW_PITCH;
+        $pageWidth = $markerLayout !== null ? $markerLayout['frame'][0] : $width;
+        $pageHeight = $markerLayout !== null ? $markerLayout['frame'][1] : $height;
         $pageCount = 1;
         $column = 0;
         $y = $flowTop;
@@ -163,13 +184,32 @@ final class OmrTemplateLayoutSolver
                     'area_code' => $section['area_code'],
                     'question_no' => $question,
                 ];
-                $y += self::ROW_PITCH;
+                $y += $rowPitch;
             }
         }
 
-        $pages = $this->buildPages($normalized, $placed, $columns, $width, $height, $geometry);
-        $template = $this->sortRecursive($this->canonicalTemplate($pages, $width, $height, $geometry['bubble']));
+        $pages = $this->buildPages($normalized, $placed, $columns, $pageWidth, $pageHeight, $geometry, $markerLayout);
+
+        // The compact six-column profile is a one-page contract: the solver
+        // must never silently emit a second page (founder decision 2026-08-19).
+        if ($columnCount === 6 && count($pages) !== 1) {
+            throw new OmrTemplateLayoutException([
+                new LayoutDiagnostic('compact_profile_multi_page', sprintf('The compact six-column profile must fit one page; it solved to %d pages.', count($pages))),
+            ]);
+        }
+
+        $template = $this->sortRecursive($this->canonicalTemplate($pages, $pageWidth, $pageHeight, $geometry['bubble']));
         $canonicalJson = $this->encode($template);
+
+        $fiducial = null;
+        if ($markerLayout !== null) {
+            $fiducial = [
+                'name' => OmrFiducial::ASSET_NAME,
+                'mime' => 'image/jpeg',
+                'bytes' => OmrFiducial::assetBytes(),
+                'asset_hash' => OmrFiducial::assetHash(),
+            ];
+        }
 
         return new SolvedOmrTemplateLayout(
             normalizedBlueprint: $normalized,
@@ -178,6 +218,7 @@ final class OmrTemplateLayoutSolver
             canonicalJson: $canonicalJson,
             templateJsonHash: hash('sha256', $canonicalJson),
             pages: $pages,
+            fiducial: $fiducial,
         );
     }
 
@@ -284,6 +325,25 @@ final class OmrTemplateLayoutSolver
             }
         }
 
+        // Marker-bearing frame contract. The alignment fiducial is OMRChecker's
+        // own pinned bullseye asset — it is not a template identifier, so no
+        // version-derived pattern is involved here.
+        $markers = $blueprint['markers'] ?? null;
+        $normalizedMarkers = null;
+        if ($markers !== null) {
+            if (! is_array($markers)) {
+                $diagnostics[] = new LayoutDiagnostic('invalid_markers', 'The markers option must be an object.');
+            } else {
+                $enabled = $markers['enabled'] ?? true;
+                if (! is_bool($enabled)) {
+                    $diagnostics[] = new LayoutDiagnostic('invalid_markers', 'The markers.enabled option must be a boolean.');
+                }
+                if ($enabled) {
+                    $normalizedMarkers = ['enabled' => true];
+                }
+            }
+        }
+
         return [
             'schema' => self::SCHEMA,
             'paper' => (string) $paper,
@@ -293,7 +353,132 @@ final class OmrTemplateLayoutSolver
                 'birthdate' => $birthdate,
                 'repeat_on_every_page' => $repeatEveryPage,
             ],
+            'markers' => $normalizedMarkers,
             'sections' => $normalizedSections,
+        ];
+    }
+
+    /**
+     * Derive the marker-bearing frame layout (invariant #1: frame anchoring).
+     *
+     * The engine warps by the four fiducial CENTERS and then resizes the
+     * result to `pageDimensions`, so pageDimensions MUST equal the
+     * fiducial-center rectangle and every block origin MUST be re-derived
+     * inside that frame. The physical paper is the frame plus an inset ring
+     * carrying the four fiducials. Inter-column gaps shrink before the marker
+     * shrinks below its matchable minimum.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array{bubble: int, mcq_option_gap: int}  $geometry
+     * @param  list<LayoutDiagnostic>  $diagnostics
+     * @return array<string, mixed>|null
+     */
+    private function markerLayout(array $normalized, int $paperW, int $paperH, int $columnCount, array $geometry, array &$diagnostics): ?array
+    {
+        if (($normalized['markers'] ?? null) === null) {
+            return null;
+        }
+
+        $frozen = OmrCapturePolicy::frozen();
+        $anchor = $frozen['frame_anchor'];
+        $marker = (int) $anchor['marker_size'];
+        $quiet = (int) $anchor['marker_quiet_zone'];
+        $unprintable = (int) $anchor['printer_unprintable_margin'];
+        $inset = $unprintable + $marker + $quiet;
+        $frameW = $paperW - 2 * $inset;
+        $frameH = $paperH - 2 * $inset;
+        $band = $geometry['bubble'] + 3 * $geometry['mcq_option_gap'];
+        $gap = intdiv($frameW - 2 * self::MARGIN - $columnCount * $band, max(1, $columnCount - 1));
+
+        // Shrink inter-column gaps first; only below the minimum clearance do
+        // we shrink the marker (never below its matchable floor).
+        while ($gap < self::MIN_COLUMN_GAP && $marker > self::MIN_MARKER_SIZE) {
+            $marker -= 4;
+            $inset = $unprintable + $marker + $quiet;
+            $frameW = $paperW - 2 * $inset;
+            $frameH = $paperH - 2 * $inset;
+            $gap = intdiv($frameW - 2 * self::MARGIN - $columnCount * $band, max(1, $columnCount - 1));
+        }
+        if ($gap < self::MIN_COLUMN_GAP) {
+            $diagnostics[] = new LayoutDiagnostic('marker_frame_does_not_fit', sprintf(
+                'Marker frame %d×%d cannot fit %d columns of %dpx bubbles with %dpx option pitch and an %dpx margin.',
+                $frameW,
+                $frameH,
+                $columnCount,
+                $geometry['bubble'],
+                $geometry['mcq_option_gap'],
+                self::MARGIN,
+            ));
+
+            return null;
+        }
+
+        // Quadrant geometry (invariant #2): the engine splits the processing
+        // frame at w/2 × h/3; corner placement must put two fiducials in the
+        // top third and two in the bottom two-thirds, one per quadrant. With
+        // frame = paper − 2×inset this holds exactly when inset < paper/3.
+        if ($inset * 3 >= min($paperW, $paperH)) {
+            $diagnostics[] = new LayoutDiagnostic('marker_quadrant_invalid', sprintf(
+                'Inset ring %dpx does not satisfy the w/2 × h/3 quadrant contract on %d×%d paper.',
+                $inset,
+                $paperW,
+                $paperH,
+            ));
+
+            return null;
+        }
+        OmrCapturePolicy::assertQuadrantPlacement([$paperW, $paperH], [$frameW, $frameH], $inset);
+
+        $columns = [];
+        for ($index = 0; $index < $columnCount; $index++) {
+            $columns[] = self::MARGIN + $index * ($band + $gap);
+        }
+
+        // Re-derive identity and flow inside the frame: clear the marker's
+        // intrusion + quiet zone, then the compact identity grid, then a
+        // heading band (area codes above the answer columns), then flow.
+        $clearance = intdiv($marker, 2) + $quiet + 10;
+        $identityHeight = 9 * self::MARKER_FRAME_IDENTITY_BUBBLES_GAP + $geometry['bubble'];
+        $flowTop = $clearance + $identityHeight + 100;
+        $flowBottom = $frameH - self::MARKER_FRAME_FLOW_BOTTOM_RESERVE;
+
+        foreach ($normalized['sections'] as $index => $section) {
+            $rows = (int) $section['question_to'] - (int) $section['question_from'] + 1;
+            if (($rows - 1) * self::MARKER_FRAME_ROW_PITCH + $geometry['bubble'] > $flowBottom - $flowTop) {
+                $diagnostics[] = new LayoutDiagnostic('marker_frame_vertical_overflow', sprintf(
+                    'Section %d (%d rows at %dpx pitch) overflows the marker frame flow (%d..%d of %dpx height).',
+                    $index + 1,
+                    $rows,
+                    self::MARKER_FRAME_ROW_PITCH,
+                    $flowTop,
+                    $flowBottom,
+                    $frameH,
+                ));
+
+                return null;
+            }
+        }
+
+        $centers = [
+            [$inset, $inset],
+            [$paperW - $inset, $inset],
+            [$inset, $paperH - $inset],
+            [$paperW - $inset, $paperH - $inset],
+        ];
+
+        return [
+            'inset' => $inset,
+            'marker' => $marker,
+            'quiet' => $quiet,
+            'frame' => [$frameW, $frameH],
+            'paper' => [$paperW, $paperH],
+            'columns' => $columns,
+            'flow_top' => $flowTop,
+            'flow_bottom' => $flowBottom,
+            'row_pitch' => self::MARKER_FRAME_ROW_PITCH,
+            'clearance' => $clearance,
+            'centers' => $centers,
+            'quadrants' => [0, 1, 2, 3],
         ];
     }
 
@@ -302,9 +487,10 @@ final class OmrTemplateLayoutSolver
      * @param  list<array<string, mixed>>  $placed
      * @param  list<int>  $columns
      * @param  array{bubble: int, mcq_option_gap: int}  $geometry
+     * @param  array<string, mixed>|null  $markerLayout
      * @return list<array<string, mixed>>
      */
-    private function buildPages(array $normalized, array $placed, array $columns, int $width, int $height, array $geometry): array
+    private function buildPages(array $normalized, array $placed, array $columns, int $width, int $height, array $geometry, ?array $markerLayout = null): array
     {
         $pageCount = 0;
         foreach ($placed as $row) {
@@ -316,16 +502,37 @@ final class OmrTemplateLayoutSolver
         $pages = [];
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
             $blocks = [];
-            $identityApplicant = $geometry['bubble'] === self::COMPACT_BUBBLE ? self::COMPACT_IDENTITY_APPLICANT : self::IDENTITY_APPLICANT;
-            $identityBirthdate = $geometry['bubble'] === self::COMPACT_BUBBLE ? self::COMPACT_IDENTITY_BIRTHDATE : self::IDENTITY_BIRTHDATE;
+            if ($markerLayout !== null) {
+                // In-frame re-derivation: the compact identity grid moves inside
+                // the fiducial-center frame, clear of the marker ring.
+                $clearance = (int) $markerLayout['clearance'];
+                $identityApplicant = [
+                    'fieldType' => 'QTYPE_INT',
+                    'fieldLabels' => ['APPLICANT_NUMBER_1..10'],
+                    'bubblesGap' => self::MARKER_FRAME_IDENTITY_BUBBLES_GAP,
+                    'labelsGap' => self::MARKER_FRAME_IDENTITY_LABELS_GAP,
+                    'origin' => [$clearance, $clearance],
+                ];
+                $identityBirthdate = [
+                    'fieldType' => 'QTYPE_INT',
+                    'fieldLabels' => ['BIRTHDATE_1..6'],
+                    'bubblesGap' => self::MARKER_FRAME_IDENTITY_BUBBLES_GAP,
+                    'labelsGap' => self::MARKER_FRAME_IDENTITY_LABELS_GAP,
+                    'origin' => [$clearance + 9 * self::MARKER_FRAME_IDENTITY_LABELS_GAP + $geometry['bubble'] + 40, $clearance],
+                ];
+            } else {
+                $identityApplicant = $geometry['bubble'] === self::COMPACT_BUBBLE ? self::COMPACT_IDENTITY_APPLICANT : self::IDENTITY_APPLICANT;
+                $identityBirthdate = $geometry['bubble'] === self::COMPACT_BUBBLE ? self::COMPACT_IDENTITY_BIRTHDATE : self::IDENTITY_BIRTHDATE;
+            }
             if ($normalized['identity']['applicant_number'] && ($repeatIdentity || $pageNo === 1)) {
-                $blocks[] = $identityApplicant;
+                $blocks['ApplicantNumber'] = $identityApplicant;
             }
             if ($normalized['identity']['birthdate'] && ($repeatIdentity || $pageNo === 1)) {
-                $blocks[] = $identityBirthdate;
+                $blocks['Birthdate'] = $identityBirthdate;
             }
 
             $pageRows = array_values(array_filter($placed, static fn (array $row): bool => (int) $row['page'] === $pageNo));
+            $rowPitch = $markerLayout !== null ? self::MARKER_FRAME_ROW_PITCH : self::ROW_PITCH;
             $groups = [];
             foreach ($pageRows as $row) {
                 $group = $groups[count($groups) - 1] ?? null;
@@ -333,7 +540,7 @@ final class OmrTemplateLayoutSolver
                     && $group['column'] === $row['column']
                     && $group['area_code'] === $row['area_code']
                     && $row['question_no'] === $group['question_to'] + 1
-                    && $row['y'] === $group['y'] + ($group['question_to'] - $group['question_from'] + 1) * self::ROW_PITCH;
+                    && $row['y'] === $group['y'] + ($group['question_to'] - $group['question_from'] + 1) * $rowPitch;
                 if ($consecutive) {
                     $group['question_to'] = (int) $row['question_no'];
                     $groups[count($groups) - 1] = $group;
@@ -349,23 +556,49 @@ final class OmrTemplateLayoutSolver
                 }
             }
 
-            foreach ($groups as $group) {
-                $blocks[] = [
+            foreach ($groups as $groupIndex => $group) {
+                $blocks[sprintf('%sPart%s', $group['area_code'], chr(65 + $groupIndex))] = [
                     'fieldType' => 'QTYPE_MCQ4',
                     'direction' => 'horizontal',
                     'fieldLabels' => [sprintf('%s_Q_%03d..%03d', $group['area_code'], $group['question_from'], $group['question_to'])],
                     'bubblesGap' => $geometry['mcq_option_gap'],
-                    'labelsGap' => self::ROW_PITCH,
+                    'labelsGap' => $rowPitch,
                     'origin' => [$group['x'], $group['y']],
                 ];
             }
 
-            $pages[] = [
+            $page = [
                 'page_no' => $pageNo,
                 'pageDimensions' => [$width, $height],
                 'fieldBlocks' => $blocks,
-                'preProcessors' => [['name' => 'CropPage', 'options' => ['morphKernel' => [5, 5]]]],
+                'preProcessors' => $markerLayout !== null
+                    ? [[
+                        'name' => 'CropOnMarkers',
+                        'options' => [
+                            // Mirror the pinned OMRChecker mobile recipe
+                            // (samples/sample5): marker-only chain with the
+                            // official bullseye at the upstream ratio.
+                            'relativePath' => OmrFiducial::ASSET_NAME,
+                            'sheetToMarkerWidthRatio' => OmrFiducial::SHEET_TO_MARKER_WIDTH_RATIO,
+                        ],
+                    ]]
+                    : [['name' => 'CropPage', 'options' => ['morphKernel' => [5, 5]]]],
             ];
+            if ($markerLayout !== null) {
+                $frozen = OmrCapturePolicy::frozen();
+                $page['markers'] = [
+                    'family' => $frozen['fiducial']['family'],
+                    'asset_name' => OmrFiducial::ASSET_NAME,
+                    'size' => $markerLayout['marker'],
+                    'quiet_zone' => $markerLayout['quiet'],
+                    'inset' => $markerLayout['inset'],
+                    'paper' => $markerLayout['paper'],
+                    'centers' => $markerLayout['centers'],
+                    'quadrants' => $markerLayout['quadrants'],
+                ];
+            }
+
+            $pages[] = $page;
         }
 
         return $pages;

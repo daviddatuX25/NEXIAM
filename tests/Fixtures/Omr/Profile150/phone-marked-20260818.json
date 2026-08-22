@@ -1,0 +1,29 @@
+{
+  "fixture": "phone-marked-20260818.jpg",
+  "sha256": "a2cdc31bc5c3ed015ba34ff00da53d9969ae6dc921f10bf7e2aa99fabd1acf5e",
+  "image": {
+    "mime": "image/jpeg",
+    "width": 3000,
+    "height": 4000
+  },
+  "source": "https://ibb.co/bRBWmm1T",
+  "authorized_for_critical_testing_on": "2026-08-18",
+  "expected": {
+    "applicant_number": "2000600002",
+    "answers": {
+      "PROFILE_VERBAL:1": "C",
+      "PROFILE_VERBAL:2": "B",
+      "PROFILE_VERBAL:3": "C",
+      "PROFILE_VERBAL:4": "D",
+      "PROFILE_VERBAL:5": "D"
+    },
+    "blank_positions": {
+      "start": 6,
+      "end": 150
+    },
+    "name_print": {
+      "review_crop_required": true,
+      "ocr_required": false
+    }
+  }
+}

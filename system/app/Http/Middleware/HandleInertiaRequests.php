@@ -39,10 +39,10 @@ class HandleInertiaRequests extends Middleware
                     'is_staff' => $user->staffProfile()->exists(),
                 ],
             ],
+            'csrf_token' => fn () => csrf_token(),
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
             ],
-
             /*
              * Own-data notification bell share (GF-22 §5.5). The client polls
              * with usePoll(30_000, () => ({ only: ['notifications'] })) so the

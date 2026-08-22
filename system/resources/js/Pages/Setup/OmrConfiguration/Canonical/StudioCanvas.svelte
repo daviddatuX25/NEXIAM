@@ -475,8 +475,8 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+: Multi-Section Question Bubble Grids (content-hug, constrained — ZERO wasted bottom space) -->
-      {#if currentStage >= 3}
+      <!-- STAGE 3+ Multi-Section grids; in Sheet Designer (html mode stage 1) blocks render over the live preview -->
+      {#if currentStage >= 3 || (isHtmlMode && currentStage === 1)}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}

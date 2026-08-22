@@ -9,7 +9,9 @@ use JsonException;
 use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 
+use function abs;
 use function array_map;
+use function count;
 use function hash;
 use function hash_equals;
 use function hash_hmac;
@@ -58,9 +60,13 @@ final class OmrCheckerDetection implements OmrDetectionPort
                 ->attach('manifest', $manifestJson, 'manifest.json', ['Content-Type' => 'application/json'])
                 ->attach('image', $request->imageBytes, 'sheet', ['Content-Type' => $request->imageMime])
                 ->post('/v1/detections');
-        } catch (ConnectionException) {
+        } catch (ConnectionException $exception) {
+            logger()->error('OMR detection worker unreachable', ['exception' => $exception]);
+
             return OmrDetectionResult::failed(OmrDetectionOutcome::RetryableFailure, 'worker_unavailable');
-        } catch (JsonException|RuntimeException) {
+        } catch (JsonException|RuntimeException $exception) {
+            logger()->error('OMR detection request could not be built', ['exception' => $exception]);
+
             return OmrDetectionResult::failed(OmrDetectionOutcome::TerminalFailure, 'worker_configuration_invalid');
         }
 
@@ -90,6 +96,7 @@ final class OmrCheckerDetection implements OmrDetectionPort
             'manifest_hash' => $request->manifestHash,
             'config_hash' => $request->configHash,
             'booklet_hash' => $request->bookletHash,
+            'mapping_hash' => $request->nativeBundleMetadata['mapping_hash'] ?? $request->manifestHash,
             'engine' => [
                 'name' => $request->engineName,
                 'commit' => $request->engineCommit,
@@ -112,6 +119,7 @@ final class OmrCheckerDetection implements OmrDetectionPort
                 ], $item->options),
             ], $request->items),
             'identity_fields' => $this->identityFields($request->reviewManifest, $request->pageNo),
+            'native_assets' => array_map(static fn (string $bytes): string => base64_encode($bytes), $request->nativeAssets),
         ];
     }
 
@@ -275,6 +283,7 @@ final class OmrCheckerDetection implements OmrDetectionPort
             manifestHash: isset($payload['manifest_hash']) ? (string) $payload['manifest_hash'] : null,
             patchIdentity: isset($payload['engine']['patch_identity']) ? (string) $payload['engine']['patch_identity'] : null,
             calibrationStatus: (string) ($payload['calibration_status'] ?? ''),
+            providerDiagnostics: (array) ($payload['provider_diagnostics'] ?? []),
             fieldBlockShifts: (array) ($payload['field_block_shifts'] ?? []),
             alignedImage: $aligned,
             imageMime: isset($payload['image']['mime']) ? (string) $payload['image']['mime'] : null,
@@ -305,20 +314,23 @@ final class OmrCheckerDetection implements OmrDetectionPort
         return $body;
     }
 
-    /** @return array<string, array{mime: string, body: string}> */
-    private function parseMultipart(string $contentType, string $body): array
+    /**
+     * @param  list<string>  $expected  ordered part names; the detection contract is result + aligned_image
+     * @return array<string, array{mime: string, body: string}>
+     */
+    private function parseMultipart(string $contentType, string $body, array $expected = ['result', 'aligned_image']): array
     {
         if (preg_match('/^multipart\/form-data;\s*boundary=(?:"([A-Za-z0-9._-]{1,70})"|([A-Za-z0-9._-]{1,70}))$/i', $contentType, $matches) !== 1) {
             throw new RuntimeException('Worker response is not bounded multipart.');
         }
         $boundary = $matches[1] !== '' ? $matches[1] : $matches[2];
         $segments = explode('--'.$boundary, $body);
-        if (count($segments) !== 4 || $segments[0] !== '' || $segments[3] !== "--\r\n") {
+        if (count($segments) !== count($expected) + 2 || $segments[0] !== '' || $segments[count($expected) + 1] !== "--\r\n") {
             throw new RuntimeException('Worker multipart framing is invalid.');
         }
 
         $parts = [];
-        foreach ([$segments[1], $segments[2]] as $segment) {
+        foreach (array_slice($segments, 1, count($expected)) as $segment) {
             if (! str_starts_with($segment, "\r\n") || ! str_ends_with($segment, "\r\n")) {
                 throw new RuntimeException('Worker multipart part framing is invalid.');
             }
@@ -339,17 +351,351 @@ final class OmrCheckerDetection implements OmrDetectionPort
                 }
                 $headers[$name] = trim($value);
             }
-            if (preg_match('/^form-data;\s*name="(result|aligned_image)"(?:;\s*filename="[^"]+")?$/', $headers['content-disposition'] ?? '', $nameMatch) !== 1
+            if (preg_match('/^form-data;\s*name="(result|aligned_image|layout_overlay)"(?:;\s*filename="[^"]+")?$/', $headers['content-disposition'] ?? '', $nameMatch) !== 1
                 || ! isset($headers['content-type']) || isset($parts[$nameMatch[1]])) {
                 throw new RuntimeException('Worker multipart disposition is invalid.');
             }
             $parts[$nameMatch[1]] = ['mime' => $headers['content-type'], 'body' => $partBody];
         }
-        if (array_keys($parts) !== ['result', 'aligned_image']) {
+        if (array_keys($parts) !== $expected) {
             throw new RuntimeException('Worker multipart parts are incomplete or out of order.');
         }
 
         return $parts;
+    }
+
+    /**
+     * Read-only layout verification (builder Test capture, task 10.5).
+     *
+     * Same authenticated envelope as detection, but POSTs to the
+     * /v1/layout-verification endpoint and expects the three-part response
+     * (result + clean aligned + draw_template_layout overlay) whose signature
+     * also covers the overlay hash. Returns a typed result; a worker failure
+     * is never converted into a success.
+     */
+    public function verifyLayout(OmrDetectionRequest $request): OmrLayoutVerificationResult
+    {
+        try {
+            $manifest = $this->manifest($request);
+            $manifestJson = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+            $timestamp = (string) time();
+            $signature = hash_hmac('sha256', implode("\n", [
+                'POST',
+                '/v1/layout-verification',
+                $timestamp,
+                $request->runId,
+                hash('sha256', $manifestJson),
+                $request->inputHash,
+            ]), $this->secret());
+
+            $response = Http::baseUrl($this->endpoint())
+                ->connectTimeout((float) config('omr.omrchecker.connect_timeout_seconds', 2))
+                ->timeout($request->providerDeadline)
+                ->withoutRedirecting()
+                ->withOptions(['stream' => true])
+                ->withHeaders([
+                    'Accept' => 'multipart/form-data',
+                    'X-Nexiam-Contract' => $request->envelopeVersion,
+                    'X-Nexiam-Run-Id' => $request->runId,
+                    'X-Nexiam-Timestamp' => $timestamp,
+                    'X-Nexiam-Signature' => $signature,
+                ])
+                ->attach('manifest', $manifestJson, 'manifest.json', ['Content-Type' => 'application/json'])
+                ->attach('image', $request->imageBytes, 'sheet', ['Content-Type' => $request->imageMime])
+                ->post('/v1/layout-verification');
+        } catch (ConnectionException $exception) {
+            logger()->error('OMR layout-verification worker unreachable', ['exception' => $exception]);
+
+            return OmrLayoutVerificationResult::failed('worker_unavailable', 'The OMR worker is unreachable.');
+        } catch (JsonException|RuntimeException $exception) {
+            logger()->error('OMR layout-verification request could not be built', ['exception' => $exception]);
+
+            return OmrLayoutVerificationResult::failed('worker_configuration_invalid', 'The layout-verification request could not be built.');
+        }
+
+        if ($response->status() !== 200) {
+            return $this->verificationFailure($response);
+        }
+
+        try {
+            return $this->verificationSuccess($request, $response);
+        } catch (JsonException|RuntimeException $exception) {
+            logger()->error('OMR layout-verification output invalid', ['exception' => $exception]);
+
+            return OmrLayoutVerificationResult::failed('worker_output_invalid', $exception->getMessage());
+        }
+    }
+
+    private function verificationFailure(Response $response): OmrLayoutVerificationResult
+    {
+        $code = 'worker_http_'.$response->status();
+        $detail = 'The OMR worker rejected the layout verification.';
+        try {
+            $body = $this->readBounded($response->toPsrResponse()->getBody(), 4096);
+            $decoded = json_decode($body, true, 16, JSON_THROW_ON_ERROR);
+            if (is_array($decoded) && is_string($decoded['code'] ?? null) && preg_match('/^[a-z0-9_]{1,64}$/', $decoded['code']) === 1) {
+                $code = $decoded['code'];
+            }
+            if (is_array($decoded) && is_string($decoded['detail'] ?? null) && $decoded['detail'] !== '') {
+                $detail = $decoded['detail'];
+            }
+        } catch (JsonException|RuntimeException) {
+        }
+
+        return OmrLayoutVerificationResult::failed($code, $detail);
+    }
+
+    private function verificationSuccess(OmrDetectionRequest $request, Response $response): OmrLayoutVerificationResult
+    {
+        $headers = [
+            'contract' => $response->header('X-Nexiam-Contract'),
+            'run_id' => $response->header('X-Nexiam-Run-Id'),
+            'timestamp' => $response->header('X-Nexiam-Timestamp'),
+            'result_hash' => $response->header('X-Nexiam-Result-SHA256'),
+            'aligned_hash' => $response->header('X-Nexiam-Aligned-SHA256'),
+            'overlay_hash' => $response->header('X-Nexiam-Layout-Overlay-SHA256'),
+            'signature' => $response->header('X-Nexiam-Signature'),
+        ];
+        if ($headers['contract'] !== $request->envelopeVersion || $headers['run_id'] !== $request->runId
+            || ! is_string($headers['timestamp']) || ! ctype_digit($headers['timestamp'])
+            || abs(time() - (int) $headers['timestamp']) > (int) config('omr.omrchecker.max_clock_skew_seconds', 30)) {
+            throw new RuntimeException('Worker layout-verification identity is invalid.');
+        }
+
+        $body = $this->readBounded(
+            $response->toPsrResponse()->getBody(),
+            (int) config('omr.omrchecker.max_response_bytes', 18 * 1024 * 1024),
+        );
+        $parts = $this->parseMultipart((string) $response->header('Content-Type'), $body, ['result', 'aligned_image', 'layout_overlay']);
+        $resultBytes = $parts['result']['body'] ?? null;
+        $alignedBytes = $parts['aligned_image']['body'] ?? null;
+        $overlayBytes = $parts['layout_overlay']['body'] ?? null;
+        if (! is_string($resultBytes) || ! is_string($alignedBytes) || ! is_string($overlayBytes)
+            || strlen($resultBytes) > (int) config('omr.omrchecker.max_result_bytes', 2 * 1024 * 1024)
+            || strlen($alignedBytes) > (int) config('omr.omrchecker.max_aligned_bytes', 15 * 1024 * 1024)
+            || strlen($overlayBytes) > (int) config('omr.omrchecker.max_aligned_bytes', 15 * 1024 * 1024)
+            || hash('sha256', $resultBytes) !== $headers['result_hash']
+            || hash('sha256', $alignedBytes) !== $headers['aligned_hash']
+            || hash('sha256', $overlayBytes) !== $headers['overlay_hash']) {
+            throw new RuntimeException('Worker layout-verification response hashes are invalid.');
+        }
+
+        $expectedSignature = hash_hmac('sha256', implode("\n", [
+            $headers['timestamp'],
+            $request->runId,
+            $headers['result_hash'],
+            $headers['aligned_hash'],
+            $headers['overlay_hash'],
+        ]), $this->secret());
+        if (! is_string($headers['signature']) || ! hash_equals($expectedSignature, $headers['signature'])) {
+            throw new RuntimeException('Worker layout-verification response signature is invalid.');
+        }
+
+        $payload = json_decode($resultBytes, true, 512, JSON_THROW_ON_ERROR);
+        if (! is_array($payload) || $this->containsForbiddenKeys($payload)) {
+            throw new RuntimeException('Worker layout-verification output contains forbidden scoring data.');
+        }
+        if (($parts['aligned_image']['mime'] ?? null) !== ($payload['aligned_image']['mime'] ?? null)
+            || ($parts['layout_overlay']['mime'] ?? null) !== ($payload['layout_overlay']['mime'] ?? null)) {
+            throw new RuntimeException('Worker layout-verification raster MIME is inconsistent.');
+        }
+
+        $timings = (array) ($payload['timings'] ?? []);
+
+        return new OmrLayoutVerificationResult(
+            outcome: (string) ($payload['outcome'] ?? OmrLayoutVerificationResult::OUTCOME_SUCCEEDED),
+            alignedBytes: $alignedBytes,
+            alignedImage: (array) ($payload['aligned_image'] ?? []),
+            overlayBytes: $overlayBytes,
+            overlayImage: (array) ($payload['layout_overlay'] ?? []),
+            markerMatches: (array) ($payload['marker_matches'] ?? []),
+            fieldBlockShifts: (array) ($payload['field_block_shifts'] ?? []),
+            bubbleMeans: (array) ($payload['bubble_means'] ?? []),
+            itemEvidence: (array) ($payload['item_evidence'] ?? []),
+            preprocessMs: isset($timings['preprocess_ms']) ? (float) $timings['preprocess_ms'] : null,
+            verificationMs: isset($timings['verification_ms']) ? (float) $timings['verification_ms'] : null,
+        );
+    }
+
+    /**
+     * Registration-only capture preflight (tasks 10.7/10.18).
+     *
+     * POSTs to /v1/preflight with the same authenticated envelope and expects
+     * a single signed JSON response. A worker failure maps to a typed
+     * rejected preflight; success carries marker scores, declared/measured
+     * frame dimensions, and an orientation hint.
+     */
+    public function preflight(OmrDetectionRequest $request): OmrCapturePreflight
+    {
+        try {
+            $manifest = $this->manifest($request);
+            $manifestJson = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+            $timestamp = (string) time();
+            $signature = hash_hmac('sha256', implode("\n", [
+                'POST',
+                '/v1/preflight',
+                $timestamp,
+                $request->runId,
+                hash('sha256', $manifestJson),
+                $request->inputHash,
+            ]), $this->secret());
+
+            $response = Http::baseUrl($this->endpoint())
+                ->connectTimeout((float) config('omr.omrchecker.connect_timeout_seconds', 2))
+                ->timeout($request->providerDeadline)
+                ->withoutRedirecting()
+                ->withOptions(['stream' => true])
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'X-Nexiam-Contract' => $request->envelopeVersion,
+                    'X-Nexiam-Run-Id' => $request->runId,
+                    'X-Nexiam-Timestamp' => $timestamp,
+                    'X-Nexiam-Signature' => $signature,
+                ])
+                ->attach('manifest', $manifestJson, 'manifest.json', ['Content-Type' => 'application/json'])
+                ->attach('image', $request->imageBytes, 'sheet', ['Content-Type' => $request->imageMime])
+                ->post('/v1/preflight');
+        } catch (ConnectionException $exception) {
+            logger()->error('OMR preflight worker unreachable', ['exception' => $exception]);
+
+            return OmrCapturePreflight::rejected('worker_unavailable', 'The OMR worker is unreachable.');
+        } catch (JsonException|RuntimeException $exception) {
+            logger()->error('OMR preflight request could not be built', ['exception' => $exception]);
+
+            return OmrCapturePreflight::rejected('worker_configuration_invalid', 'The preflight request could not be built.');
+        }
+
+        if ($response->status() !== 200) {
+            return $this->preflightFailure($response);
+        }
+
+        try {
+            return $this->preflightSuccess($request, $response);
+        } catch (JsonException|RuntimeException $exception) {
+            return OmrCapturePreflight::rejected('worker_output_invalid', $exception->getMessage());
+        }
+    }
+
+    private function preflightFailure(Response $response): OmrCapturePreflight
+    {
+        $code = 'worker_http_'.$response->status();
+        $detail = 'The OMR worker rejected the capture preflight.';
+        try {
+            $body = $this->readBounded($response->toPsrResponse()->getBody(), 4096);
+            $decoded = json_decode($body, true, 16, JSON_THROW_ON_ERROR);
+            if (is_array($decoded) && is_string($decoded['code'] ?? null) && preg_match('/^[a-z0-9_]{1,64}$/', $decoded['code']) === 1) {
+                $code = $decoded['code'];
+            }
+            if (is_array($decoded) && is_string($decoded['detail'] ?? null) && $decoded['detail'] !== '') {
+                $detail = $decoded['detail'];
+            }
+        } catch (JsonException|RuntimeException) {
+        }
+
+        return OmrCapturePreflight::rejected($code, $detail, $this->orientationHintFrom($detail));
+    }
+
+    private function preflightSuccess(OmrDetectionRequest $request, Response $response): OmrCapturePreflight
+    {
+        $headers = [
+            'contract' => $response->header('X-Nexiam-Contract'),
+            'run_id' => $response->header('X-Nexiam-Run-Id'),
+            'timestamp' => $response->header('X-Nexiam-Timestamp'),
+            'result_hash' => $response->header('X-Nexiam-Result-SHA256'),
+            'signature' => $response->header('X-Nexiam-Signature'),
+        ];
+        if ($headers['contract'] !== $request->envelopeVersion || $headers['run_id'] !== $request->runId
+            || ! is_string($headers['timestamp']) || ! ctype_digit($headers['timestamp'])
+            || abs(time() - (int) $headers['timestamp']) > (int) config('omr.omrchecker.max_clock_skew_seconds', 30)) {
+            throw new RuntimeException('Worker preflight identity is invalid.');
+        }
+
+        $body = $this->readBounded(
+            $response->toPsrResponse()->getBody(),
+            (int) config('omr.omrchecker.max_result_bytes', 2 * 1024 * 1024),
+        );
+        if (strlen($body) > (int) config('omr.omrchecker.max_result_bytes', 2 * 1024 * 1024)
+            || hash('sha256', $body) !== $headers['result_hash']) {
+            throw new RuntimeException('Worker preflight response hash is invalid.');
+        }
+
+        $expectedSignature = hash_hmac('sha256', implode("\n", [
+            $headers['timestamp'],
+            $request->runId,
+            $headers['result_hash'],
+        ]), $this->secret());
+        if (! is_string($headers['signature']) || ! hash_equals($expectedSignature, $headers['signature'])) {
+            throw new RuntimeException('Worker preflight response signature is invalid.');
+        }
+
+        $payload = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        if (! is_array($payload) || $this->containsForbiddenKeys($payload)) {
+            throw new RuntimeException('Worker preflight output contains forbidden scoring data.');
+        }
+
+        $declared = (array) ($payload['declared_dimensions'] ?? []);
+        $measured = (array) ($payload['measured_dimensions'] ?? []);
+        $markerMatches = (array) ($payload['marker_matches'] ?? []);
+        $timings = (array) ($payload['timings'] ?? []);
+
+        $gates = [
+            'marker_count' => count($markerMatches) === 4 ? 'pass' : 'fail',
+            'registration' => 'pass',
+            'dimensions' => $this->dimensionsPass($declared, $measured) ? 'pass' : 'fail',
+            'shifts' => 'not_run',
+        ];
+        $submitAllowed = $gates['marker_count'] === 'pass' && $gates['dimensions'] === 'pass';
+        $outcome = $submitAllowed ? OmrCapturePreflight::OUTCOME_VALIDATED : OmrCapturePreflight::OUTCOME_REJECTED;
+
+        return new OmrCapturePreflight(
+            mode: OmrCapturePreflight::MODE_MARKER,
+            outcome: $outcome,
+            code: $submitAllowed ? null : 'geometry_rejected',
+            detail: $submitAllowed ? null : 'Registration completed but the normalized dimensions are outside tolerance.',
+            orientationHint: 'upright',
+            markerMatches: $markerMatches,
+            gates: $gates,
+            normalizedDimensions: [
+                'width' => (int) ($declared['width'] ?? 0),
+                'height' => (int) ($declared['height'] ?? 0),
+            ],
+            submitAllowed: $submitAllowed,
+            preprocessMs: isset($timings['preprocess_ms']) ? (float) $timings['preprocess_ms'] : null,
+            preflightMs: isset($timings['preflight_ms']) ? (float) $timings['preflight_ms'] : null,
+        );
+    }
+
+    /**
+     * The engine warps to the marker-center rectangle; recognition resizes to
+     * the declared frame, so the gate tolerates modest registration geometry
+     * deviation (5% per axis; calibration data, tightened by the physical
+     * matrix). Out-of-tolerance results stay rejected (fail-closed).
+     *
+     * @param  array<string, mixed>  $declared
+     * @param  array<string, mixed>  $measured
+     */
+    private function dimensionsPass(array $declared, array $measured): bool
+    {
+        $declaredWidth = (int) ($declared['width'] ?? 0);
+        $declaredHeight = (int) ($declared['height'] ?? 0);
+        $measuredWidth = (int) ($measured['width'] ?? 0);
+        $measuredHeight = (int) ($measured['height'] ?? 0);
+        if ($declaredWidth <= 0 || $declaredHeight <= 0 || $measuredWidth <= 0 || $measuredHeight <= 0) {
+            return false;
+        }
+
+        return abs($measuredWidth - $declaredWidth) / $declaredWidth <= 0.05
+            && abs($measuredHeight - $declaredHeight) / $declaredHeight <= 0.05;
+    }
+
+    /** @return ?string */
+    private function orientationHintFrom(string $detail): ?string
+    {
+        if (preg_match('/orientation_hint=([a-z0-9_]+)/', $detail, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     private function containsForbiddenKeys(array $payload): bool

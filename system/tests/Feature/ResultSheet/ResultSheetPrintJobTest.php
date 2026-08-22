@@ -122,15 +122,17 @@ test('duplicate requests return the existing job', function (): void {
     Queue::assertPushed(RenderPrintJob::class, 1);
 });
 
-test('online releases refuse printing', function (): void {
+test('online releases can be printed', function (): void {
     $fixture = releasedScoredAttempt($this);
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
 
     $release->update(['mode' => 'online']);
 
-    expect(fn () => app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1))
-        ->toThrow(RuntimeException::class, 'online');
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+
+    expect($job)->toBeInstanceOf(\App\Models\Printing\PrintJob::class)
+        ->and($job->status)->toBe('queued');
 });
 
 test('no active template refuses printing', function (): void {

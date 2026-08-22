@@ -12,6 +12,7 @@ final readonly class SolvedOmrTemplateLayout
      * @param  array<string, mixed>  $normalizedBlueprint
      * @param  array<string, mixed>  $template
      * @param  list<array<string, mixed>>  $pages
+     * @param  array{name: string, mime: string, bytes: string, asset_hash: string}|null  $fiducial
      */
     public function __construct(
         public array $normalizedBlueprint,
@@ -20,6 +21,7 @@ final readonly class SolvedOmrTemplateLayout
         public string $canonicalJson,
         public string $templateJsonHash,
         public array $pages,
+        public ?array $fiducial = null,
     ) {
     }
 }

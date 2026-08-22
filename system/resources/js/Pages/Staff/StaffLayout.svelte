@@ -28,6 +28,7 @@
     Send,
     BookOpen,
     Settings,
+    Printer,
   } from 'lucide-svelte';
   import { isStaffNavActive } from '@/Pages/Staff/staff-nav.js';
   import ToastManager from '@/Components/kit/ToastManager.svelte';
@@ -79,6 +80,7 @@
     Send,
     BookOpen,
     Settings,
+    Printer,
   };
 
   const navSections = $derived(

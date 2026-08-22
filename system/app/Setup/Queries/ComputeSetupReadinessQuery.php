@@ -30,6 +30,7 @@ final class ComputeSetupReadinessQuery
             $this->aptitude(),
             $this->quotas(),
             $this->omr(),
+            $this->resultTemplates(),
         ];
 
         $all = collect($categories)->pluck('checks')->flatten(1);
@@ -351,6 +352,37 @@ final class ComputeSetupReadinessQuery
                     in_array($paper, ['long', 'legal'], true),
                     'warning',
                     "Printing paper is set to {$paper}.",
+                ),
+            ],
+        );
+    }
+    /**
+     * @return array<string, mixed>
+     */
+    private function resultTemplates(): array
+    {
+        $total = \App\Models\ResultSheet\ResultSheetTemplate::query()->count();
+        $active = \App\Models\ResultSheet\ResultSheetTemplate::query()->where('is_active', true)->first();
+
+        return $this->category(
+            key: 'result_templates',
+            label: 'Result sheet templates',
+            href: '/setup/result-templates',
+            capability: 'assessment',
+            checks: [
+                $this->check(
+                    'At least one result-sheet template created',
+                    $total > 0,
+                    'critical',
+                    $total > 0 ? "{$total} template(s) configured." : 'Create a result sheet template for exam results.',
+                ),
+                $this->check(
+                    'An active result-sheet template exists',
+                    $active !== null,
+                    'critical',
+                    $active !== null
+                        ? "Active: {$active->name} ({$active->mode})."
+                        : 'Activate one template so results can be printed.',
                 ),
             ],
         );

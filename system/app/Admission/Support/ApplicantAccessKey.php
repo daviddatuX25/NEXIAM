@@ -12,8 +12,8 @@ final class ApplicantAccessKey
 
     public const RAW_LENGTH = 8;
 
-    /** Crockford-like alphabet: no 0/O/1/I/L. */
-    private const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    /** Crockford-like alphabet: no 0/O/1/I/L (32 unambiguous characters). */
+    public const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
     public static function mint(): string
     {
@@ -28,9 +28,15 @@ final class ApplicantAccessKey
 
     public static function normalize(string $key): string
     {
-        $normalized = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $key) ?? '');
+        $cleaned = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $key) ?? '');
 
-        return $normalized;
+        // Disambiguate commonly confused lookalike characters:
+        // 0 (zero) -> O (letter O)
+        // 1 (one) -> I (letter I)
+        return strtr($cleaned, [
+            '0' => 'O',
+            '1' => 'I',
+        ]);
     }
 
     public static function format(string $rawOrDisplay): string
@@ -48,6 +54,9 @@ final class ApplicantAccessKey
         return hash('sha256', self::normalize($key));
     }
 
+    /**
+     * Validates whether the normalized key is an 8-character uppercase alphanumeric string.
+     */
     public static function isValidShape(string $key): bool
     {
         $normalized = self::normalize($key);
@@ -56,6 +65,6 @@ final class ApplicantAccessKey
             return false;
         }
 
-        return (bool) preg_match('/^[A-Z2-9]+$/', $normalized);
+        return (bool) preg_match('/^[A-Z2-9]{8}$/', $normalized);
     }
 }

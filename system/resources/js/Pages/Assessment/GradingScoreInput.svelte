@@ -5,6 +5,7 @@
   import { Input } from '@/Components/ui/input';
   import * as Dialog from '@/Components/ui/dialog';
   import { router, usePage } from '@inertiajs/svelte';
+  import { newIdempotencyKey } from '@/lib/utils';
   import { Lock, PenLine, Save, Trash2, User } from 'lucide-svelte';
 
   let {
@@ -21,9 +22,7 @@
   const page = usePage();
   const saveError = $derived(page.props.errors?.scores ?? '');
 
-  const idempotencyKey = $state(
-    typeof crypto !== 'undefined' ? crypto.randomUUID() : String(Date.now()),
-  );
+  const idempotencyKey = $state(newIdempotencyKey());
   let scores = $state(Object.fromEntries(domains.map((d) => [String(d.id), d.score ?? ''])));
 
   let saving = $state(false);

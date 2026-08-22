@@ -62,6 +62,13 @@ final class SaveAuthoredTemplateDraft
             throw new RuntimeException('A template name is required.');
         }
 
+        $template = OmrAnswerSheetTemplate::query()->firstOrCreate(
+            ['code' => $templateCode],
+            ['name' => $templateName, 'is_synthetic' => true],
+        );
+
+        $nextVersion = ((int) $template->versions()->max('version')) + 1;
+
         $solvedLayout = null;
         if ($layoutBlueprint !== null) {
             $solvedLayout = $this->solveLayout->handle($layoutBlueprint);
@@ -92,12 +99,6 @@ final class SaveAuthoredTemplateDraft
             }
         }
 
-        $template = OmrAnswerSheetTemplate::query()->firstOrCreate(
-            ['code' => $templateCode],
-            ['name' => $templateName, 'is_synthetic' => true],
-        );
-
-        $nextVersion = ((int) $template->versions()->max('version')) + 1;
         $relativeDir = 'omr-bundles/'.$templateCode.'/v'.$nextVersion;
         $disk = Storage::disk('local');
 
@@ -123,6 +124,14 @@ final class SaveAuthoredTemplateDraft
                 $width,
                 $height,
             );
+        }
+
+        // Marker-bearing versions carry the version-unique fiducial asset in
+        // the bundle (content-addressed, hash-covered by the manifest). The
+        // worker materializes it next to template.json; a bundle missing it is
+        // rejected at load — the engine's exit(31) path can never trigger.
+        if ($solvedLayout?->fiducial !== null) {
+            $files[$solvedLayout->fiducial['name']] = $solvedLayout->fiducial['bytes'];
         }
 
         $fileHashes = [];
