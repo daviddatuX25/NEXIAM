@@ -8,7 +8,7 @@
  * are HTML-only.
  */
 
-import { contentBlockSizeMm } from './omrStudioGeometry';
+import { contentBlockSizeMm, OMR_BUBBLE_DIAMETER_MM } from './omrStudioGeometry';
 
 export interface OmrTypography {
   fontSizePt: number;
@@ -149,6 +149,7 @@ export const DEFAULT_A4_SETTINGS: SheetSettings = {
 };
 
 export const CANVAS_PX_PER_MM = 2.476; // 520px sheet width ÷ 210mm — canvas scale authority
+export const CANVAS_BUBBLE_DIAMETER_PX = OMR_BUBBLE_DIAMETER_MM * CANVAS_PX_PER_MM;
 
 /** Option labels for a question grid component. */
 export function gridOptionLabels(g: QuestionGridComponent): string[] {
@@ -176,18 +177,28 @@ export function gridBlockHeightMm(g: QuestionGridComponent): number {
 /** Content-derived block width in mm for an examinee ID matrix. */
 export function rollBlockWidthMm(r: ExamineeIdMatrixComponent): number {
   const digits = Number(r.digitsCount) || 7;
-  return Number((4.5 + (digits - 1) * (Number(r.bubblePitchMm) || 5.5) + 1.5).toFixed(1));
+  return Number((OMR_BUBBLE_DIAMETER_MM + (digits - 1) * (Number(r.bubblePitchMm) || 5.5) + 1.5).toFixed(1));
 }
 
 /** Content-derived block height in mm for an examinee ID matrix (10 digit rows). */
 export function rollBlockHeightMm(r: ExamineeIdMatrixComponent): number {
-  return Number((4.5 + 9 * (Number(r.rowPitchMm) || 4.8) + 1.5).toFixed(1));
+  return Number((OMR_BUBBLE_DIAMETER_MM + 9 * (Number(r.rowPitchMm) || 4.8) + 1.5).toFixed(1));
 }
 
-/** Canvas block size for any component: stored size for text, content-derived for roll/grids. */
+/** Visual bounds for the canvas; text uses its editable size, geometric blocks retain their stored print width. */
 export function componentBlockSizeMm(c: OmrComponent): { w_mm: number; h_mm: number } {
-  if (c.type === 'roll') return { w_mm: rollBlockWidthMm(c), h_mm: rollBlockHeightMm(c) };
-  if (isQuestionGridComponent(c)) return { w_mm: gridBlockWidthMm(c), h_mm: gridBlockHeightMm(c) };
+  if (c.type === 'roll') {
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, rollBlockWidthMm(c)),
+      h_mm: Math.max(Number(c.h_mm) || 0, rollBlockHeightMm(c)),
+    };
+  }
+  if (isQuestionGridComponent(c)) {
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, gridBlockWidthMm(c)),
+      h_mm: Math.max(Number(c.h_mm) || 0, gridBlockHeightMm(c)),
+    };
+  }
   return { w_mm: Number(c.w_mm) || 40, h_mm: Number(c.h_mm) || 12 };
 }
 
@@ -271,17 +282,6 @@ const SHEET_CSS = `
       border-radius: 1mm;
       padding: 1.5mm 2mm;
       background: #fafafa;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-    .omr-id-title {
-      font-weight: 900;
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 1mm;
-    }
     .omr-id-boxes {
       display: flex;
       justify-content: flex-end;
@@ -296,18 +296,19 @@ const SHEET_CSS = `
       background: #ffffff;
     }
     .omr-id-matrix { display: flex; flex-direction: column; gap: 0.6mm; }
-    .omr-id-row { display: flex; align-items: center; justify-content: space-between; }
+    .omr-id-row { display: flex; align-items: center; justify-content: flex-start; gap: 1.5mm; }
     .omr-id-num {
       font-weight: 800;
       font-family: monospace;
       color: #334155;
-      width: 3mm;
-      text-align: center;
+      width: 3.5mm;
+      flex: 0 0 3.5mm;
+      text-align: right;
     }
     .omr-id-bubs { display: flex; gap: 1mm; }
     .omr-id-bub {
-      width: 3.6mm;
-      height: 2.8mm;
+      width: ${OMR_BUBBLE_DIAMETER_MM}mm;
+      height: ${OMR_BUBBLE_DIAMETER_MM}mm;
       border: 0.35mm solid #1e293b;
       border-radius: 50%;
       background: #ffffff;
@@ -327,35 +328,39 @@ const SHEET_CSS = `
     }
     .omr-option-header {
       display: flex;
-      justify-content: flex-end;
-      gap: 1.2mm;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1.5mm;
       font-weight: 900;
       margin-bottom: 0.8mm;
-      padding-right: 0.4mm;
     }
-    .omr-opt-label { width: 3mm; text-align: center; }
+    .omr-q-num-spacer { width: 3.5mm; flex: 0 0 3.5mm; }
+    .omr-opt-label { width: ${OMR_BUBBLE_DIAMETER_MM}mm; flex: 0 0 ${OMR_BUBBLE_DIAMETER_MM}mm; text-align: center; font-size: 5.5pt; font-family: monospace; color: #0f172a; }
     .omr-q-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
+      gap: 1.5mm;
+      margin-bottom: 0.5mm;
     }
     .omr-q-num {
       font-weight: 700;
       font-family: monospace;
       color: #334155;
-      width: 4.2mm;
+      width: 3.5mm;
+      flex: 0 0 3.5mm;
       text-align: right;
-      padding-right: 0.8mm;
+      padding-right: 0.5mm;
+      font-size: 6pt;
     }
-    .omr-bubs { display: flex; gap: 1.2mm; }
+    .omr-bubs { display: flex; gap: 1.5mm; }
     .omr-bub {
-      width: 3mm;
-      height: 2.8mm;
+      width: ${OMR_BUBBLE_DIAMETER_MM}mm;
+      height: ${OMR_BUBBLE_DIAMETER_MM}mm;
       border: 0.35mm solid #1e293b;
       border-radius: 50%;
       background: #ffffff;
     }
-
     .omr-signature {
       width: 100%;
       height: 100%;
@@ -425,7 +430,7 @@ function renderComponentHtml(c: OmrComponent): string {
     }).join('');
     return `<div class="omr-comp omr-grid-block" style="${style}">
       <div class="omr-subject-header" style="font-size: 6pt;">${esc(c.subjectName || c.name)}</div>
-      <div class="omr-option-header" style="font-size: 5.5pt;">${labels.map((l) => `<span class="omr-opt-label">${esc(l)}</span>`).join('')}</div>
+      <div class="omr-option-header" style="font-size: 5.5pt;"><span class="omr-q-num-spacer"></span><div class="omr-bubs">${labels.map((l) => `<span class="omr-opt-label">${esc(l)}</span>`).join('')}</div></div>
       <div style="font-size: 6pt; line-height: 1;">${rows}</div>
     </div>`;
   }
@@ -745,8 +750,6 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
   componentSeq += 1;
   const seq = componentSeq;
   const p = position ?? {};
-  const posX = p.posX ?? 10;
-  const posY = p.posY ?? 10;
 
   switch (kind) {
     case 'header':
@@ -757,8 +760,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         subtitle: 'Automated OMR Evaluation Form',
         formCode: 'FORM 1-A',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 13, fontWeight: 900, textAlign: 'left' },
-        posX, posY,
-        w_mm: 160, h_mm: 18,
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 10,
+        w_mm: 180,
+        h_mm: 14,
         isLocked: false,
       };
     case 'candidate_name':
@@ -767,8 +772,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'candidate_name',
         label: 'Candidate Name (Print: Surname, First Name, Middle Initial)',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
-        posX, posY,
-        w_mm: 90, h_mm: 12,
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 28,
+        w_mm: 88,
+        h_mm: 10,
         isLocked: false,
       };
     case 'birthdate':
@@ -777,8 +784,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'birthdate',
         label: 'Birthdate (MM / DD / YYYY)',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
-        posX, posY,
-        w_mm: 55, h_mm: 12,
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 42,
+        w_mm: 52,
+        h_mm: 10,
         isLocked: false,
       };
     case 'room_seat':
@@ -787,8 +796,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'room_seat',
         label: 'Room / Seat / Group No.',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
-        posX, posY,
-        w_mm: 40, h_mm: 12,
+        posX: p.posX ?? 70,
+        posY: p.posY ?? 42,
+        w_mm: 33,
+        h_mm: 10,
         isLocked: false,
       };
     case 'instructions':
@@ -799,8 +810,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 600, textColor: '#334155', lineHeight: 1.3 },
         borderColor: '#cbd5e1',
         backgroundColor: '#ffffff',
-        posX, posY,
-        w_mm: 170, h_mm: 16,
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 56,
+        w_mm: 88,
+        h_mm: 24,
         isLocked: false,
       };
     case 'roll':
@@ -811,8 +824,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         digitsCount: 7,
         bubblePitchMm: 5.5,
         rowPitchMm: 4.8,
-        posX, posY,
-        w_mm: 58, h_mm: 54,
+        posX: p.posX ?? 110,
+        posY: p.posY ?? 28,
+        w_mm: 58,
+        h_mm: 52,
         isLocked: false,
       };
     case 'question_grid':
@@ -829,8 +844,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         bubblePitchMm: 6.0,
         rowPitchMm: 6.8,
         labelStyle: 'column_header',
-        posX, posY,
-        w_mm: 28, h_mm: 175,
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 84,
+        w_mm: 28,
+        h_mm: 175,
         isLocked: false,
       };
     case 'custom_text':
@@ -839,8 +856,10 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'custom_text',
         text: 'Custom note / label',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 9, fontWeight: 600 },
-        posX, posY,
-        w_mm: 80, h_mm: 10,
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 265,
+        w_mm: 80,
+        h_mm: 10,
         isLocked: false,
       };
     case 'signature':
@@ -849,9 +868,11 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'signature',
         title: 'EXAMINEE SIGNATURE',
         certificationText: 'I certify that all answers marked on this sheet are my own.',
-        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 8.5, fontWeight: 700, textColor: '#475569' },
-        posX, posY,
-        w_mm: 80, h_mm: 18,
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7.5, fontWeight: 700, textColor: '#475569' },
+        posX: p.posX ?? 115,
+        posY: p.posY ?? 265,
+        w_mm: 80,
+        h_mm: 18,
         isLocked: false,
       };
   }
@@ -873,14 +894,19 @@ body { width: 210mm; height: 297mm; position: relative; overflow: hidden; font-f
 .omr-id-container { border: 0.5mm solid #0f172a; border-radius: 1mm; padding: 1.5mm 2mm; background: #fafafa; width: 100%; height: 100%; overflow: hidden; }
 .omr-id-title { font-weight: 900; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1mm; }
 .omr-id-box { width: 3.6mm; height: 4.2mm; border: 0.4mm solid #0f172a; border-radius: 0.6mm; background: #fff; }
-.omr-id-bub { width: 3.6mm; height: 2.8mm; border: 0.35mm solid #1e293b; border-radius: 50%; background: #fff; }
+.omr-id-row { display: flex; align-items: center; justify-content: flex-start; gap: 1.5mm; }
+.omr-id-num { width: 3.5mm; flex: 0 0 3.5mm; text-align: right; font-family: monospace; }
+.omr-id-bubs { display: flex; gap: 1mm; }
+.omr-id-bub { width: ${OMR_BUBBLE_DIAMETER_MM}mm; height: ${OMR_BUBBLE_DIAMETER_MM}mm; border: 0.35mm solid #1e293b; border-radius: 50%; background: #fff; }
 .omr-grid-block { background: #fff; }
 .omr-subject-header { font-weight: 900; background: #0f172a; color: #fff; padding: 0.8mm 1mm; border-radius: 0.6mm; text-align: center; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 0.8mm; }
-.omr-option-header { display: flex; justify-content: flex-end; gap: 1.2mm; font-weight: 900; margin-bottom: 0.8mm; padding-right: 0.4mm; }
-.omr-q-row { display: flex; align-items: center; justify-content: space-between; }
-.omr-q-num { font-weight: 700; font-family: monospace; color: #334155; width: 4.2mm; text-align: right; padding-right: 0.8mm; }
-.omr-bubs { display: flex; gap: 1.2mm; }
-.omr-bub { width: 3mm; height: 2.8mm; border: 0.35mm solid #1e293b; border-radius: 50%; background: #fff; }
+.omr-option-header { display: flex; align-items: center; justify-content: flex-start; gap: 1.5mm; font-weight: 900; margin-bottom: 0.8mm; }
+.omr-q-num-spacer { width: 3.5mm; flex: 0 0 3.5mm; }
+.omr-opt-label { width: ${OMR_BUBBLE_DIAMETER_MM}mm; flex: 0 0 ${OMR_BUBBLE_DIAMETER_MM}mm; text-align: center; font-size: 5.5pt; font-family: monospace; }
+.omr-q-row { display: flex; align-items: center; justify-content: flex-start; gap: 1.5mm; margin-bottom: 0.5mm; }
+.omr-q-num { font-weight: 700; font-family: monospace; color: #334155; width: 3.5mm; flex: 0 0 3.5mm; text-align: right; padding-right: 0.5mm; }
+.omr-bubs { display: flex; gap: 1.5mm; }
+.omr-bub { width: ${OMR_BUBBLE_DIAMETER_MM}mm; height: ${OMR_BUBBLE_DIAMETER_MM}mm; border: 0.35mm solid #1e293b; border-radius: 50%; background: #fff; }
 .omr-signature { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
 .omr-sign-label { font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
 .omr-sign-line { border-bottom: 0.35mm solid #334155; flex: 1; margin: 0.6mm 0; }

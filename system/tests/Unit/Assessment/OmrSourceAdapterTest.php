@@ -3,7 +3,6 @@
 use App\Assessment\Omr\Canonical\OmrSourceAdapterRegistry;
 use App\Assessment\Omr\Canonical\OmrSourcePreflight;
 use App\Assessment\Omr\Canonical\OmrSourcePreflightException;
-use ZipArchive;
 
 function omrTempSource(string $extension, string $contents): string
 {

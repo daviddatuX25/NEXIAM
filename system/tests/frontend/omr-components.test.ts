@@ -179,8 +179,8 @@ describe('Universal OMR Component Suite', () => {
       expect(gridBlockHeightMm(grid)).toBeGreaterThan(100);
 
       const size = componentBlockSizeMm(grid);
-      expect(size.w_mm).toBe(gridBlockWidthMm(grid));
-      expect(size.h_mm).toBe(gridBlockHeightMm(grid));
+      expect(size.w_mm).toBeGreaterThanOrEqual(gridBlockWidthMm(grid));
+      expect(size.h_mm).toBeGreaterThanOrEqual(gridBlockHeightMm(grid));
     });
   });
 });

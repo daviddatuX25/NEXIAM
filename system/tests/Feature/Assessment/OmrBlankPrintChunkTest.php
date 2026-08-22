@@ -10,11 +10,9 @@ use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\Printing\PrintJob;
 use App\Models\User;
-use FPDF;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
-use ZipArchive;
 
 uses(RefreshDatabase::class);
 

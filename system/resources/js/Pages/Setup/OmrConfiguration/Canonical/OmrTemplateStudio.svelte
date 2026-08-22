@@ -106,11 +106,21 @@
       comp.posX = Math.max(MIN_INSET, Math.min(PAGE_W - MIN_INSET - Number(comp.w_mm), point.posX));
       comp.posY = Math.max(MIN_INSET, Math.min(PAGE_H - MIN_INSET - Number(comp.h_mm), point.posY));
     } else {
-      // Stagger repeated adds of the same kind so they never stack exactly.
-      const sameKindCount = components.filter((c) => c.type === comp.type).length;
-      if (sameKindCount > 0) {
-        comp.posX += sameKindCount * 8;
-        comp.posY += sameKindCount * 8;
+      if (kind === 'question_grid') {
+        const existingGrids = components.filter((c) => c.type === 'mcq' || c.type === 'tf' || c.type === 'likert' || c.type === 'custom');
+        if (existingGrids.length > 0) {
+          comp.posX = Math.min(PAGE_W - 15 - 28, 15 + existingGrids.length * 31);
+          const nextStartQ = existingGrids.reduce((max, g) => Math.max(max, (Number(g.startQ) || 1) + (Number(g.questionsCount) || 25)), 1);
+          comp.startQ = nextStartQ;
+          comp.name = `Part ${existingGrids.length + 1}: Subject`;
+          comp.subjectName = `${existingGrids.length + 1}. Subject`;
+        }
+      } else {
+        const sameKindCount = components.filter((c) => c.type === comp.type).length;
+        if (sameKindCount > 0) {
+          comp.posX = Math.min(PAGE_W - 15 - Number(comp.w_mm || 40), comp.posX + ((sameKindCount * 8) % 40));
+          comp.posY = Math.min(PAGE_H - 15 - Number(comp.h_mm || 12), comp.posY + ((sameKindCount * 8) % 40));
+        }
       }
     }
     components = [...components, comp];
@@ -641,8 +651,8 @@
         return {
           id: s.id,
           type: 'roll',
-          x_mm: Number(s.posX) || 125,
-          y_mm: Number(s.posY) || 22,
+          x_mm: Number(s.posX) || 110,
+          y_mm: Number(s.posY) || 28,
           w_mm: Number((4.5 + (digits - 1) * bPitch + 1.5).toFixed(1)),
           h_mm: Number((4.5 + (10 - 1) * rPitch + 1.5).toFixed(1)),
           digits,
@@ -656,29 +666,31 @@
       if (s.type === 'likert') opts = 5;
       if (s.type === 'custom') opts = (s.customValuesStr || '').split(',').length;
 
-      // Section bounds are content-derived (no manual resize in the builder),
-      // so the native mapping always matches the minimized canvas rectangle.
+      const bPitch = Number(s.bubblePitchMm) || 6.0;
+      const rPitch = Number(s.rowPitchMm) || 6.8;
+
+      // Section bounds are content-derived, matching minimized canvas rectangle.
       const { w_mm, h_mm } = contentBlockSizeMm(
         opts,
-        Number(s.questionsCount) || 10,
-        Number(s.bubblePitchMm) || 12.0,
-        Number(s.rowPitchMm) || 6.5
+        Number(s.questionsCount) || 25,
+        bPitch,
+        rPitch
       );
 
       return {
         id: s.id,
         type: s.type,
-        x_mm: Number(s.posX) || 25,
-        y_mm: Number(s.posY) || 72,
+        x_mm: Number(s.posX) || 15,
+        y_mm: Number(s.posY) || 84,
         w_mm,
         h_mm,
-        questions: Number(s.questionsCount) || 10,
+        questions: Number(s.questionsCount) || 25,
         cols: Number(s.cols) || 1,
         options: opts,
         start_q: Number(s.startQ) || 1,
         custom_values: s.type === 'custom' ? (s.customValuesStr || '').split(',').map((v) => v.trim()) : undefined,
-        bubble_pitch_mm: Number(s.bubblePitchMm) || 12.0,
-        row_pitch_mm: Number(s.rowPitchMm) || 6.5,
+        bubble_pitch_mm: bPitch,
+        row_pitch_mm: rPitch,
       };
     });
 

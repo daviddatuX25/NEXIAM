@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 test('profile pair persists one bounded page and a matching 150-question key', function (): void {
     $fixture = buildOmrGradingFixture($this);

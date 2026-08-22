@@ -11,6 +11,7 @@ export const MM_PER_INCH = 25.4;
 export const PX_PER_MM = TARGET_PPI / MM_PER_INCH; // ~11.8110236
 
 export const MIN_BUBBLE_MM = 4.2;
+export const OMR_BUBBLE_DIAMETER_MM = 4.5;
 export const MIN_OPTION_GAP_MM = 1.26;
 export const ALLOWED_INSET_RANGE_MM: [number, number] = [3.0, 40.0];
 
@@ -55,12 +56,11 @@ export function contentBlockSizeMm(
   const qs = Math.min(Math.max(1, questions || 1), 50);
   const bPitch = Math.max(Number(bubblePitchMm) || 6.0, 4.5);
   const rPitch = Math.max(Number(rowPitchMm) || 3.8, 3.0);
-
-  // Physical bounds: bubble diameter (4.5mm) + pitch spans + 1.5mm padding
+  // Physical bounds: shared bubble diameter + option pitch span + 1.5mm padding.
   // Satisfies OmrMappingValidator requiredWidth (bubbleWidth + (options - 1) * optionPitch)
   // with zero inter-block overlap.
-  const w_mm = Number((4.5 + (opts - 1) * bPitch + 1.5).toFixed(1));
-  const h_mm = Number((4.5 + (qs - 1) * rPitch + 1.5).toFixed(1));
+  const w_mm = Number((OMR_BUBBLE_DIAMETER_MM + (opts - 1) * bPitch + 1.5).toFixed(1));
+  const h_mm = Number((OMR_BUBBLE_DIAMETER_MM + (qs - 1) * rPitch + 1.5).toFixed(1));
 
   return { w_mm, h_mm };
 }
