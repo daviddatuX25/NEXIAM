@@ -136,6 +136,13 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Evidence**: the supplied reproduction measured the old border bottom at `366.6 px` while row 9 ended at `398.4 px`; after the fix the compact border bottom is `402.0 px` and the last row ends at `398.4 px`. At Row Pitch `12 mm`, the border grows to `553.3 px` while the last row ends at `549.7 px`.
 - **Verification**: frontend suite passed; production build exited `0`; browser reload returned zero page errors and zero HTTP responses ≥400.
 
+## Matrix pitch and printable-page constraints (2026-08-22)
+
+- **Content-hug width**: Stage-1 canvas width now follows the actual label/bubble footprint instead of the legacy stored 58 mm width, removing right-side dead space and allowing the matrix to move closer to the page edge.
+- **Pitch floor**: matrix and question-grid pitch values normalize to a rendered minimum of **5.2 mm**; the UI exposes that minimum and valid maxima. Values below the floor no longer appear editable while producing unchanged bubble positions.
+- **Page constraints**: oversized question grids normalize pitch, row count, and X/Y placement against the printable A4 area; a 50-row/25 mm test normalized to 11 rows and stayed inside the sheet instead of overflowing.
+- **Browser evidence**: default matrix width measured `112.2 px` at the canvas scale, Row Pitch displayed `5.2 mm`, lower input attempts stayed at `5.2 mm`, and current runtime/HTTP checks were clean.
+
 
 
 

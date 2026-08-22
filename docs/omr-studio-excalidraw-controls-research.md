@@ -108,3 +108,9 @@ Route selection-changing durable commands through the existing snapshot history,
 
 - The Stage-1 matrix border previously used a bubble-only height formula while its DOM added title/write-in rows and a fixed CSS gap; row 8/9 overflow was therefore deterministic.
 - The corrected contract shares the full title/write-in/padding/ten-row footprint and uses the configured Row Pitch for both row spacing and bounds.
+
+## Matrix width and pitch constraints
+
+- Stage-1 matrix canvas width now uses the measured label/bubble footprint rather than the persisted legacy width, so movement bounds do not reserve dead space.
+- The rendered pitch floor is 5.2 mm (bubble diameter plus the 1.75 px canvas gap); inputs normalize below-floor values and expose explicit maxima.
+- Question-grid normalization reduces pitch/row count and clamps placement when a requested geometry cannot fit the printable page.

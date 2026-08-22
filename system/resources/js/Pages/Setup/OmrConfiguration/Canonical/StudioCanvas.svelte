@@ -9,6 +9,8 @@
   import {
     CANVAS_BUBBLE_DIAMETER_PX,
     CANVAS_RENDER_BUBBLE_PX,
+    CANVAS_ROLL_MIN_BUBBLE_GAP_PX,
+    canvasRollBubbleGapPx,
     canvasRollRowGapPx,
     gridOptionLabels,
     isQuestionGridComponent,
@@ -830,8 +832,8 @@
           {@const bubblePitchMm = isRoll ? (Number(comp.bubblePitchMm) || 5.5) : (isGrid ? (Number(comp.bubblePitchMm) || 6.0) : 6.0)}
           {@const bubbleDiameterPx = isRoll ? (Math.max(4.2, Number(comp.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_BUBBLE_DIAMETER_PX}
           {@const rowPitchMm = isRoll ? (Number(comp.rowPitchMm) || 4.8) : (isGrid ? (Number(comp.rowPitchMm) || 6.8) : 6.0)}
-          {@const rowGapPx = isRoll ? canvasRollRowGapPx(rowPitchMm, bubbleDiameterPx) : Math.max(1.75, rowPitchMm * 2.476 - bubbleDiameterPx)}
-          {@const bubbleGapPx = Math.max(1, bubblePitchMm * 2.476 - bubbleDiameterPx)}
+          {@const rowGapPx = isRoll ? canvasRollRowGapPx(rowPitchMm, bubbleDiameterPx) : Math.max(CANVAS_ROLL_MIN_BUBBLE_GAP_PX, rowPitchMm * 2.476 - bubbleDiameterPx)}
+          {@const bubbleGapPx = isRoll ? canvasRollBubbleGapPx(bubblePitchMm, bubbleDiameterPx) : Math.max(CANVAS_ROLL_MIN_BUBBLE_GAP_PX, bubblePitchMm * 2.476 - bubbleDiameterPx)}
           {@const labelWidthPx = 3.5 * 2.476}
           {@const labelGapPx = 1.5 * 2.476}
           {@const bubbleStyle = `width: ${bubbleDiameterPx}px; height: ${bubbleDiameterPx}px;`}

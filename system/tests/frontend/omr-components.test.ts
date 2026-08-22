@@ -12,6 +12,8 @@ import {
   rollBlockWidthMm,
   rollBlockHeightMm,
   canvasRollBlockHeightMm,
+  canvasRollBlockWidthMm,
+  minimumCanvasPitchMm,
   resetComponentSeq,
   COMPONENT_PALETTE,
   paletteForPath,
@@ -256,7 +258,13 @@ describe('Universal OMR Component Suite', () => {
       if (roll.type !== 'roll') throw new Error('Expected roll component');
 
       const compactBounds = canvasComponentBlockSizeMm(roll);
+      expect(minimumCanvasPitchMm()).toBe(5.2);
+      expect(compactBounds.w_mm).toBe(canvasRollBlockWidthMm(roll));
+      expect(compactBounds.w_mm).toBeLessThan(roll.w_mm);
       expect(compactBounds.h_mm).toBeGreaterThanOrEqual(canvasRollBlockHeightMm(roll));
+
+      roll.rowPitchMm = 4;
+      expect(canvasComponentBlockSizeMm(roll).h_mm).toBe(compactBounds.h_mm);
 
       roll.rowPitchMm = 12;
       const spaciousBounds = canvasComponentBlockSizeMm(roll);

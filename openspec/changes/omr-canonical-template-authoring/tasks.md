@@ -208,3 +208,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 24.2 Replace the fixed Stage-1 matrix row gap with the configured Row Pitch-derived gap used by the bounds helper.
 - [x] 24.3 Add frontend regression coverage proving the matrix border height tracks the full footprint and expands with Row Pitch.
 - [x] 24.4 Verify the supplied overflow reproduction: last row remains inside the border at compact and spacious Row Pitch values, with zero runtime/HTTP errors.
+
+## 25. Matrix pitch and printable-page constraints
+
+- [x] 25.1 Use the content-hug Stage-1 matrix width for canvas placement instead of the legacy stored 58 mm width.
+- [x] 25.2 Normalize matrix and grid pitch inputs to the rendered 5.2 mm minimum with explicit UI min/max attributes.
+- [x] 25.3 Normalize oversized question grids to printable-page bounds by constraining pitch, row count, and X/Y placement.
+- [x] 25.4 Verify: default Examinee ID Matrix reports Row Pitch 5.2 mm, lowering below the floor does not change bubbles, width has no right-side dead area, and oversized grids remain inside the sheet.

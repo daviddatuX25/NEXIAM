@@ -15,6 +15,8 @@
     componentToSectionData,
     createComponent,
     componentBlockSizeMm,
+    canvasComponentBlockSizeMm,
+    minimumCanvasPitchMm,
     COMPONENT_PATH_FILTERS,
     paletteForPath,
     overlayPaletteForPath,
@@ -140,6 +142,7 @@
   }
 
   function syncComponentsToSections(label = 'Edit component', options = {}) {
+    normalizeComponentsForCanvas();
     htmlCode = components.length > 0 ? renderCurrentHtml() : '';
     sections = components
       .map((c) => componentToSectionData(c))
@@ -157,6 +160,40 @@
 
   const PAGE_W = 210;
   const PAGE_H = 297;
+  function normalizeComponentsForCanvas() {
+    const printableWidth = PAGE_W - marginMm * 2;
+    const printableHeight = PAGE_H - marginMm * 2;
+    const clamp = (value, min, max, fallback) => Math.min(max, Math.max(min, Number.isFinite(Number(value)) ? Number(value) : fallback));
+
+    for (const component of components) {
+      if (component.type === 'roll') {
+        component.digitsCount = clamp(component.digitsCount, 2, 10, 7);
+        component.bubbleDiameterMm = clamp(component.bubbleDiameterMm, 4.2, 8, 4.5);
+        const minimumPitch = minimumCanvasPitchMm(component.bubbleDiameterMm);
+        component.bubblePitchMm = clamp(component.bubblePitchMm, minimumPitch, 15, minimumPitch);
+        component.rowPitchMm = clamp(component.rowPitchMm, minimumPitch, 15, minimumPitch);
+      } else if (['mcq', 'tf', 'likert', 'custom'].includes(component.type)) {
+        const minimumPitch = minimumCanvasPitchMm(4.5);
+        component.questionsCount = clamp(component.questionsCount, 1, 50, 25);
+        component.bubblePitchMm = clamp(component.bubblePitchMm, minimumPitch, 25, 6);
+        component.rowPitchMm = clamp(component.rowPitchMm, minimumPitch, 25, 6.8);
+        while (component.questionsCount > 1 && canvasComponentBlockSizeMm(component).h_mm > printableHeight) {
+          component.questionsCount -= 1;
+        }
+      }
+      if (component.type === 'roll' || ['mcq', 'tf', 'likert', 'custom'].includes(component.type)) {
+        const minimumPitch = minimumCanvasPitchMm(component.type === 'roll' ? component.bubbleDiameterMm : 4.5);
+        while (component.bubblePitchMm > minimumPitch && canvasComponentBlockSizeMm(component).w_mm > printableWidth) {
+          component.bubblePitchMm = Math.max(minimumPitch, Number((Number(component.bubblePitchMm) - 0.1).toFixed(2)));
+        }
+      }
+      const size = canvasComponentBlockSizeMm(component);
+      const maxX = Math.max(marginMm, PAGE_W - marginMm - size.w_mm);
+      const maxY = Math.max(marginMm, PAGE_H - marginMm - size.h_mm);
+      component.posX = clamp(component.posX, marginMm, maxX, marginMm);
+      component.posY = clamp(component.posY, marginMm, maxY, marginMm);
+    }
+  }
   const MIN_INSET = 6;
 
   function addComponent(kind, point = null) {
@@ -1060,7 +1097,10 @@
       if (studio.htmlCode && components.length === 0) htmlCode = studio.htmlCode;
     }
 
-    if (components.length > 0) htmlCode = renderCurrentHtml();
+    if (components.length > 0) {
+      normalizeComponentsForCanvas();
+      htmlCode = renderCurrentHtml();
+    }
 
     if (draft.lock_version !== undefined) {
       currentLockVersion = draft.lock_version;
@@ -2071,7 +2111,7 @@
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Pitch (mm)</label>
               <input
                 type="number"
-                min="4.5"
+                min={minimumCanvasPitchMm(selectedComponent.bubbleDiameterMm)}
                 max="15"
                 step="0.1"
                 bind:value={selectedComponent.bubblePitchMm}
@@ -2083,7 +2123,7 @@
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Row Pitch (mm)</label>
               <input
                 type="number"
-                min="3"
+                min={minimumCanvasPitchMm(selectedComponent.bubbleDiameterMm)}
                 max="15"
                 step="0.1"
                 bind:value={selectedComponent.rowPitchMm}
@@ -2113,7 +2153,7 @@
               <input
                 type="number"
                 min="1"
-                max="60"
+                max="50"
                 bind:value={selectedComponent.questionsCount}
                 oninput={syncComponentsToSections}
                 class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
@@ -2123,7 +2163,7 @@
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Pitch (mm)</label>
               <input
                 type="number"
-                min="4.5"
+                min={minimumCanvasPitchMm(4.5)}
                 max="25"
                 step="0.1"
                 bind:value={selectedComponent.bubblePitchMm}
@@ -2156,8 +2196,8 @@
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Row Pitch (mm)</label>
               <input
                 type="number"
-                min="3"
-                step="0.1"
+                min={minimumCanvasPitchMm(4.5)}
+                max="25"
                 bind:value={selectedComponent.rowPitchMm}
                 oninput={syncComponentsToSections}
                 class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"

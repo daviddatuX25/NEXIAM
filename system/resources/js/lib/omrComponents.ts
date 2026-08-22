@@ -244,10 +244,35 @@ export function rollBlockHeightMm(r: ExamineeIdMatrixComponent): number {
 export const CANVAS_ROLL_PADDING_PX = 3.5;
 export const CANVAS_ROLL_MARGIN_PX = 3.5;
 export const CANVAS_ROLL_MIN_ROW_GAP_PX = 1.75;
+export const CANVAS_ROLL_MIN_BUBBLE_GAP_PX = 1.75;
+
+export function minimumCanvasPitchMm(bubbleDiameterMm = OMR_BUBBLE_DIAMETER_MM): number {
+  return Number((Math.max(4.2, Number(bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM) + (CANVAS_ROLL_MIN_ROW_GAP_PX / CANVAS_PX_PER_MM)).toFixed(1));
+}
 
 /** Row gap used by the Stage-1 matrix renderer and its visual bounds. */
 export function canvasRollRowGapPx(rowPitchMm: number, bubbleDiameterPx: number): number {
   return Math.max(CANVAS_ROLL_MIN_ROW_GAP_PX, (Number(rowPitchMm) || 4.8) * CANVAS_PX_PER_MM - bubbleDiameterPx);
+}
+
+/** Column gap used by the Stage-1 matrix renderer and its visual bounds. */
+export function canvasRollBubbleGapPx(bubblePitchMm: number, bubbleDiameterPx: number): number {
+  return Math.max(CANVAS_ROLL_MIN_BUBBLE_GAP_PX, (Number(bubblePitchMm) || 5.5) * CANVAS_PX_PER_MM - bubbleDiameterPx);
+}
+
+/** Full Stage-1 matrix width, including label column and padding. */
+export function canvasRollBlockWidthMm(r: ExamineeIdMatrixComponent): number {
+  const bubbleDiameterPx = Math.max(4.2, Number(r.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM) * CANVAS_PX_PER_MM;
+  const labelWidthPx = 3.5 * CANVAS_PX_PER_MM;
+  const labelGapPx = 1.5 * CANVAS_PX_PER_MM;
+  const bubbleGapPx = canvasRollBubbleGapPx(Number(r.bubblePitchMm) || 5.5, bubbleDiameterPx);
+  const digits = Number(r.digitsCount) || 7;
+  const widthPx = (CANVAS_ROLL_PADDING_PX * 2)
+    + labelWidthPx
+    + labelGapPx
+    + (digits * bubbleDiameterPx)
+    + (Math.max(0, digits - 1) * bubbleGapPx);
+  return Number((widthPx / CANVAS_PX_PER_MM).toFixed(1));
 }
 
 /** Full Stage-1 matrix footprint, including title, write-in row, padding, and rows. */
@@ -296,13 +321,15 @@ export function canvasSectionBoundsMm(
 ): { w_mm: number; h_mm: number } {
   const optionCount = Math.max(2, Number(options) || 4);
   const rowCount = Math.min(50, Math.max(1, Number(questions) || 1));
-  const bPitch = Math.max(Number(bubblePitchMm) || 6, 4.5);
-  const rPitch = Math.max(Number(rowPitchMm) || 6.8, 3);
   const renderBubblePxForMode = isRoll
     ? Math.max(4.2, Number(bubbleDiameterMm) || 4.5) * CANVAS_PX_PER_MM
     : renderBubblePx;
-  const bubbleGapPx = Math.max(1.5, bPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
-  const rowGapPx = Math.max(0.5, rPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
+  const minimumPitchMm = minimumCanvasPitchMm(isRoll ? Number(bubbleDiameterMm) || 4.5 : 4.5);
+  const bPitch = Math.max(Number(bubblePitchMm) || 6, minimumPitchMm);
+  const rPitch = Math.max(Number(rowPitchMm) || 6.8, minimumPitchMm);
+  const minimumGapPx = CANVAS_ROLL_MIN_ROW_GAP_PX;
+  const bubbleGapPx = Math.max(minimumGapPx, bPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
+  const rowGapPx = Math.max(minimumGapPx, rPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
   const labelWidthPx = isRoll ? 16 : 18;
   const widthPx = 8 + labelWidthPx + optionCount * renderBubblePxForMode + Math.max(0, optionCount - 1) * bubbleGapPx;
   const heightPx = 8 + rowCount * renderBubblePxForMode + Math.max(0, rowCount - 1) * rowGapPx;
@@ -318,7 +345,7 @@ export function canvasComponentBlockSizeMm(c: OmrComponent): { w_mm: number; h_m
   if (c.type === 'roll') {
     const size = canvasSectionBoundsMm(c.digitsCount, 10, c.bubblePitchMm, c.rowPitchMm, true, c.bubbleDiameterMm);
     return {
-      w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm),
+      w_mm: canvasRollBlockWidthMm(c),
       h_mm: Math.max(Number(c.h_mm) || 0, canvasRollBlockHeightMm(c)),
     };
   }
