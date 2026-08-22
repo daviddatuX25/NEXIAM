@@ -31,7 +31,7 @@ describe('Universal OMR Component Suite', () => {
 
   describe('createComponent', () => {
     it('creates every palette component kind with atomic defaults and geometry', () => {
-      expect(COMPONENT_PALETTE).toHaveLength(9);
+      expect(COMPONENT_PALETTE).toHaveLength(10);
 
       const kinds = COMPONENT_PALETTE.map((p) => p.kind);
       for (const kind of kinds) {
@@ -53,6 +53,14 @@ describe('Universal OMR Component Suite', () => {
       expect(comp.type).toBe('candidate_name');
       expect('label' in comp ? comp.label : '').toContain('Candidate Name');
     });
+    it('creates a labeled custom input with a separate response area contract', () => {
+      const input = createComponent('custom_input');
+      expect(input.type).toBe('custom_input');
+      expect(input.label).toBe('Custom Response');
+      expect(input.inputStyle).toBe('box');
+      expect(input.inputKind).toBe('text');
+      expect(input.h_mm).toBeGreaterThan(12);
+    });
   });
 
   describe('path-filtered shared palette', () => {
@@ -62,8 +70,10 @@ describe('Universal OMR Component Suite', () => {
 
       expect(uploadKinds).not.toContain('roll');
       expect(uploadKinds).not.toContain('question_grid');
+      expect(uploadKinds).not.toContain('custom_input');
       expect(sheetKinds).toContain('roll');
       expect(sheetKinds).toContain('question_grid');
+      expect(sheetKinds).toContain('custom_input');
       expect(COMPONENT_PATH_FILTERS.upload_document.includeQuestionComponents).toBe(false);
       expect(overlayPaletteForPath('upload_document').map((item) => item.kind)).toEqual(['qr_code', 'margins', 'markers']);
     });
@@ -92,6 +102,23 @@ describe('Universal OMR Component Suite', () => {
       expect(body).toContain('data-omr-qr-size-mm="34"');
       expect(body).toContain('width: 34mm');
       expect(body).toContain('height: 34mm');
+    });
+    it('renders field labels and configurable input regions separately', () => {
+      const field = createComponent('candidate_name');
+      if (field.type !== 'candidate_name') throw new Error('Expected candidate field');
+      field.label = 'Name';
+      field.inputStyle = 'box';
+      field.inputKind = 'text';
+      field.backgroundColor = '#000000';
+      const custom = createComponent('custom_input');
+      const html = renderFullSheetHtml([field, custom]);
+      const body = getBodyContent(html);
+
+      expect(body).toContain('Name');
+      expect(body).toContain('omr-field-input-box');
+      expect(body).not.toContain('omr-field-line');
+      expect(body).toContain('data-input-kind="text"');
+      expect(body).toContain('background-color: #000000');
     });
 
     it('renders ONLY the header when only a Document Header component is added', () => {

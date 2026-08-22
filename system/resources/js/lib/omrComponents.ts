@@ -30,13 +30,18 @@ export const DEFAULT_TYPOGRAPHY: OmrTypography = {
   letterSpacingPx: 0,
 };
 
-/** Geometry shared by every component: mm position/size from the sheet top-left edge. */
+export type InputBoxStyle = 'dotted_line' | 'underline' | 'box';
+export type InputValueKind = 'text' | 'number' | 'date' | 'multiline';
+
+/** Geometry and appearance shared by every component. */
 export interface ComponentGeometry {
   posX: number;
   posY: number;
   w_mm: number;
   h_mm: number;
   isLocked: boolean;
+  backgroundColor?: string;
+  zIndex?: number;
 }
 
 export interface HeaderComponent extends ComponentGeometry {
@@ -52,6 +57,19 @@ export interface TextFieldComponent extends ComponentGeometry {
   id: string;
   type: 'candidate_name' | 'birthdate' | 'room_seat';
   label: string;
+  inputStyle: InputBoxStyle;
+  inputKind: InputValueKind;
+  inputBackgroundColor: string;
+  typography: OmrTypography;
+}
+
+export interface CustomInputComponent extends ComponentGeometry {
+  id: string;
+  type: 'custom_input';
+  label: string;
+  inputKind: InputValueKind;
+  inputStyle: InputBoxStyle;
+  inputBackgroundColor: string;
   typography: OmrTypography;
 }
 
@@ -88,24 +106,10 @@ export interface QuestionGridComponent extends ComponentGeometry {
   labelStyle: 'column_header' | 'inline_circle';
 }
 
-export interface SignatureBoxComponent extends ComponentGeometry {
-  id: string;
-  type: 'signature';
-  title: string;
-  certificationText: string;
-  typography: OmrTypography;
-}
-
-export interface CustomTextComponent extends ComponentGeometry {
-  id: string;
-  type: 'custom_text';
-  text: string;
-  typography: OmrTypography;
-}
-
 export type OmrComponent =
   | HeaderComponent
   | TextFieldComponent
+  | CustomInputComponent
   | InstructionsComponent
   | ExamineeIdMatrixComponent
   | QuestionGridComponent
@@ -121,6 +125,7 @@ export type ComponentKind =
   | 'roll'
   | 'question_grid'
   | 'custom_text'
+  | 'custom_input'
   | 'signature';
 
 /** Supported authoring paths for the shared component palette. */
@@ -148,7 +153,7 @@ export const COMPONENT_PATH_FILTERS: Record<ComponentPath, ComponentPaletteFilte
   },
 };
 
-export type TextComponentType = 'header' | 'candidate_name' | 'birthdate' | 'room_seat' | 'instructions' | 'custom_text' | 'signature';
+export type TextComponentType = 'header' | 'candidate_name' | 'birthdate' | 'room_seat' | 'instructions' | 'custom_text' | 'custom_input' | 'signature';
 export type GeometricComponentType = 'roll' | 'mcq' | 'tf' | 'likert' | 'custom';
 
 export function isGeometricComponent(c: OmrComponent): boolean {
@@ -258,6 +263,26 @@ function esc(value: string | number | undefined | null): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+export function safeComponentColor(value: unknown, fallback = 'transparent'): string {
+  const color = String(value ?? '').trim();
+  if (color === 'transparent' || /^#[0-9a-f]{3,8}$/i.test(color)) return color;
+  return fallback;
+}
+
+export function componentBackgroundColor(component: OmrComponent): string {
+  return safeComponentColor(component.backgroundColor);
+}
+
+export function componentInputBackgroundColor(component: OmrComponent): string {
+  if ('inputBackgroundColor' in component) return safeComponentColor(component.inputBackgroundColor, '#ffffff');
+  return '#ffffff';
+}
+
+function fieldInputStyleClass(style: InputBoxStyle): string {
+  if (style === 'box') return 'omr-field-input-box';
+  if (style === 'underline') return 'omr-field-input-underline';
+  return 'omr-field-input-dotted';
+}
 
 /** Inline CSS style string for a typography object. */
 export function typographyToStyleString(t?: OmrTypography): string {
@@ -355,6 +380,9 @@ const SHEET_CSS = `
     }
 
     .omr-field-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1mm;
       border: 0.4mm solid #334155;
       border-radius: 1mm;
       padding: 1.2mm 2mm;
@@ -363,14 +391,21 @@ const SHEET_CSS = `
       height: 100%;
     }
     .omr-field-label {
+      flex: 0 0 auto;
       font-weight: 800;
       text-transform: uppercase;
-      margin-bottom: 0.5mm;
+      line-height: 1.15;
     }
-    .omr-field-line {
-      border-bottom: 0.35mm dashed #94a3b8;
-      height: 4mm;
+    .omr-field-input {
+      flex: 1 1 auto;
+      min-height: 4mm;
+      width: 100%;
+      background: #ffffff;
     }
+    .omr-field-input-dotted { border-bottom: 0.35mm dashed #94a3b8; }
+    .omr-field-input-underline { border-bottom: 0.35mm solid #334155; }
+    .omr-field-input-box { border: 0.35mm solid #334155; border-radius: 0.7mm; }
+    .omr-field-input-multiline { min-height: 9mm; border: 0.35mm solid #334155; border-radius: 0.7mm; }
 
     .omr-instructions {
       border: 0.35mm solid #cbd5e1;
@@ -507,8 +542,27 @@ function renderHtmlDecorations(settings: SheetSettings, decorations: SheetHtmlDe
   return decorationMarkup.join('\n  ');
 }
 
+function renderFieldHtml(
+  label: string,
+  typography: OmrTypography,
+  inputStyle: InputBoxStyle,
+  inputBackgroundColor: string,
+  outerStyle: string,
+  inputKind: InputValueKind = 'text',
+  backgroundColor = 'transparent',
+): string {
+  const inputClass = inputKind === 'multiline'
+    ? 'omr-field-input omr-field-input-multiline'
+    : `omr-field-input ${fieldInputStyleClass(inputStyle)}`;
+  return `<div class="omr-comp" style="${outerStyle}">
+    <div class="omr-field-box" style="background-color: ${safeComponentColor(backgroundColor, 'transparent')};">
+      <div class="omr-field-label" style="${typographyToStyleString(typography)}">${esc(label)}</div>
+      <div class="${inputClass}" data-input-kind="${esc(inputKind)}" style="background-color: ${safeComponentColor(inputBackgroundColor, '#ffffff')};"></div>
+    </div>
+  </div>`;
+}
 function renderComponentHtml(c: OmrComponent): string {
-  const style = `left: ${c.posX}mm; top: ${c.posY}mm; width: ${c.w_mm}mm;`;
+  const style = `left: ${c.posX}mm; top: ${c.posY}mm; width: ${c.w_mm}mm; background-color: ${safeComponentColor(c.backgroundColor)}; z-index: ${Number(c.zIndex) || 1};`;
 
   if (c.type === 'header') {
     const titleStyle = typographyToStyleString(c.typography);
@@ -522,17 +576,16 @@ function renderComponentHtml(c: OmrComponent): string {
   }
 
   if (c.type === 'candidate_name' || c.type === 'birthdate' || c.type === 'room_seat') {
-    return `<div class="omr-comp" style="${style}">
-      <div class="omr-field-box">
-        <div class="omr-field-label" style="${typographyToStyleString(c.typography)}">${esc(c.label)}</div>
-        <div class="omr-field-line"></div>
-      </div>
-    </div>`;
+    return renderFieldHtml(c.label, c.typography, c.inputStyle || 'box', c.inputBackgroundColor || '#ffffff', style, c.inputKind || 'text', c.backgroundColor);
+  }
+
+  if (c.type === 'custom_input') {
+    return renderFieldHtml(c.label, c.typography, c.inputStyle || 'box', c.inputBackgroundColor || '#ffffff', style, c.inputKind || 'text', c.backgroundColor);
   }
 
   if (c.type === 'instructions') {
     return `<div class="omr-comp" style="${style}">
-      <div class="omr-instructions" style="border-color: ${esc(c.borderColor)}; background: ${esc(c.backgroundColor)}; ${typographyToStyleString(c.typography)}">
+      <div class="omr-instructions" style="border-color: ${safeComponentColor(c.borderColor, '#cbd5e1')}; background: ${safeComponentColor(c.backgroundColor, '#ffffff')}; ${typographyToStyleString(c.typography)}">
         <strong style="text-transform: uppercase;">Instructions:</strong> ${esc(c.content)}
       </div>
     </div>`;
@@ -547,7 +600,7 @@ function renderComponentHtml(c: OmrComponent): string {
         <div class="omr-id-bubs">${Array.from({ length: digits }).map(() => '<div class="omr-id-bub"></div>').join('')}</div>
       </div>`).join('');
     return `<div class="omr-comp" style="${style}">
-      <div class="omr-id-container">
+      <div class="omr-id-container" style="background-color: ${safeComponentColor(c.backgroundColor, '#fafafa')};">
         <div class="omr-id-title" style="font-size: 6.5pt;">${esc(c.title)}</div>
         <div class="omr-id-boxes">${boxes}</div>
         <div class="omr-id-matrix" style="font-size: 6pt;">${rows}</div>
@@ -702,8 +755,11 @@ export const PRESET_150Q_COMPONENTS: OmrComponent[] = [
     type: 'candidate_name',
     label: 'Candidate Name (Print: Surname, First Name, Middle Initial)',
     typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6, fontWeight: 800, textColor: '#475569' },
+    inputStyle: 'box',
+    inputKind: 'text',
+    inputBackgroundColor: '#ffffff',
     posX: 15, posY: 24,
-    w_mm: 88, h_mm: 10,
+    w_mm: 88, h_mm: 14,
     isLocked: false,
   },
   {
@@ -711,8 +767,11 @@ export const PRESET_150Q_COMPONENTS: OmrComponent[] = [
     type: 'birthdate',
     label: 'Birthdate (MM / DD / YYYY)',
     typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6, fontWeight: 800, textColor: '#475569' },
+    inputStyle: 'box',
+    inputKind: 'date',
+    inputBackgroundColor: '#ffffff',
     posX: 15, posY: 36,
-    w_mm: 52, h_mm: 10,
+    w_mm: 52, h_mm: 14,
     isLocked: false,
   },
   {
@@ -720,8 +779,11 @@ export const PRESET_150Q_COMPONENTS: OmrComponent[] = [
     type: 'room_seat',
     label: 'Room / Seat / Group No.',
     typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6, fontWeight: 800, textColor: '#475569' },
+    inputStyle: 'box',
+    inputKind: 'text',
+    inputBackgroundColor: '#ffffff',
     posX: 70, posY: 36,
-    w_mm: 33, h_mm: 10,
+    w_mm: 33, h_mm: 14,
     isLocked: false,
   },
   {
@@ -866,6 +928,7 @@ export const COMPONENT_PALETTE: ComponentPaletteItem[] = [
   { kind: 'roll', label: 'Examinee ID Matrix', description: 'Write-in boxes + 0–9 vertical bubble columns', paths: ['sheet_designer'] },
   { kind: 'question_grid', label: 'Question Grid', description: 'Numbered question rows with option bubbles', paths: ['sheet_designer'] },
   { kind: 'custom_text', label: 'Custom Text', description: 'Free-positioned text label', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'custom_input', label: 'Custom Input Box', description: 'Labeled response field with configurable input shape', paths: ['sheet_designer'] },
   { kind: 'signature', label: 'Signature Box', description: 'Signature line with certification text', paths: ['sheet_designer', 'upload_document'] },
 ];
 
@@ -948,10 +1011,13 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'candidate_name',
         label: 'Candidate Name (Print: Surname, First Name, Middle Initial)',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
+        inputStyle: 'box',
+        inputKind: 'text',
+        inputBackgroundColor: '#ffffff',
         posX: p.posX ?? 15,
         posY: p.posY ?? 28,
         w_mm: 88,
-        h_mm: 10,
+        h_mm: 14,
         isLocked: false,
       };
     case 'birthdate':
@@ -960,10 +1026,13 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'birthdate',
         label: 'Birthdate (MM / DD / YYYY)',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
+        inputStyle: 'box',
+        inputKind: 'date',
+        inputBackgroundColor: '#ffffff',
         posX: p.posX ?? 15,
         posY: p.posY ?? 42,
         w_mm: 52,
-        h_mm: 10,
+        h_mm: 14,
         isLocked: false,
       };
     case 'room_seat':
@@ -972,10 +1041,28 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         type: 'room_seat',
         label: 'Room / Seat / Group No.',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
+        inputStyle: 'box',
+        inputKind: 'text',
+        inputBackgroundColor: '#ffffff',
         posX: p.posX ?? 70,
         posY: p.posY ?? 42,
         w_mm: 33,
-        h_mm: 10,
+        h_mm: 14,
+        isLocked: false,
+      };
+    case 'custom_input':
+      return {
+        id: `CustomInput_${seq}`,
+        type: 'custom_input',
+        label: 'Custom Response',
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7, fontWeight: 700, textColor: '#475569' },
+        inputKind: 'text',
+        inputStyle: 'box',
+        inputBackgroundColor: '#ffffff',
+        posX: p.posX ?? 15,
+        posY: p.posY ?? 180,
+        w_mm: 80,
+        h_mm: 16,
         isLocked: false,
       };
     case 'instructions':
@@ -1070,9 +1157,13 @@ body { width: 210mm; height: 297mm; position: relative; overflow: hidden; font-f
 .omr-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; border-bottom: 0.6mm solid #0f172a; padding-bottom: 1mm; }
 .omr-header .omr-title { text-transform: uppercase; line-height: 1.15; }
 .omr-header .omr-sheet-code { font-family: monospace; font-weight: 800; border: 0.35mm solid #0f172a; padding: 0.8mm 1.6mm; border-radius: 0.6mm; white-space: nowrap; }
-.omr-field-box { border: 0.4mm solid #334155; border-radius: 1mm; padding: 1.2mm 2mm; background: #f8fafc; width: 100%; height: 100%; }
-.omr-field-label { font-weight: 800; text-transform: uppercase; margin-bottom: 0.5mm; }
-.omr-field-line { border-bottom: 0.35mm dashed #94a3b8; height: 4mm; }
+.omr-field-box { display: flex; flex-direction: column; gap: 1mm; border: 0.4mm solid #334155; border-radius: 1mm; padding: 1.2mm 2mm; background: #f8fafc; width: 100%; height: 100%; }
+.omr-field-label { flex: 0 0 auto; font-weight: 800; text-transform: uppercase; line-height: 1.15; }
+.omr-field-input { flex: 1 1 auto; min-height: 4mm; width: 100%; background: #fff; }
+.omr-field-input-dotted { border-bottom: 0.35mm dashed #94a3b8; }
+.omr-field-input-underline { border-bottom: 0.35mm solid #334155; }
+.omr-field-input-box { border: 0.35mm solid #334155; border-radius: 0.7mm; }
+.omr-field-input-multiline { min-height: 9mm; border: 0.35mm solid #334155; border-radius: 0.7mm; }
 .omr-instructions { border: 0.35mm solid #cbd5e1; border-radius: 1mm; padding: 1.5mm 2mm; width: 100%; height: 100%; }
 .omr-id-container { border: 0.5mm solid #0f172a; border-radius: 1mm; padding: 1.5mm 2mm; background: #fafafa; width: 100%; height: 100%; overflow: hidden; }
 .omr-id-title { font-weight: 900; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1mm; }
@@ -1099,7 +1190,7 @@ export const COMPONENT_SUITE_PROMPT = `You are reproducing a NEXIAM OMR answer s
 Rules:
 1. Every component is an absolutely positioned .omr-comp block with left/top/width in mm from the sheet top-left edge.
 2. Render ONLY the components the user asks for — there is no implicit scaffold. Adding a Document Header must not add candidate fields, instructions, or grids.
-3. Components are independent: Document Header (title/subtitle/form code), Candidate Name, Birthdate, Room/Seat, Instructions, Examinee ID Matrix, Question Grid, Custom Text, Signature Box.
+3. Components are independent: Document Header, Candidate Name, Birthdate, Room/Seat, Instructions, Examinee ID Matrix, Question Grid, Custom Text, Custom Input Box, Signature Box.
 4. Question Grids render subject header + option header + numbered rows of bubbles (A–E / T–F / Likert 1–5 / custom values).
 5. Fiducials are four absolutely positioned .omr-fiducial elements using the selected marker pattern and margin inset.
 6. QR is a reserved data-omr-overlay="blank_instance_qr" block; the signed instance QR is inserted by the print compositor, not fabricated in static HTML.

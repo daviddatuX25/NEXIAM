@@ -12,6 +12,8 @@
     gridOptionLabels,
     isQuestionGridComponent,
     componentBlockSizeMm,
+    componentBackgroundColor,
+    componentInputBackgroundColor,
   } from '@/lib/omrComponents';
 
   let {
@@ -302,6 +304,7 @@
       case 'likert':
       case 'custom': return c.subjectName || c.name || 'Question Grid';
       case 'custom_text': return 'Custom Text';
+      case 'custom_input': return 'Custom Input Box';
       case 'signature': return 'Signature Box';
       default: return c.type || 'Component';
     }
@@ -583,12 +586,20 @@
 
       <!-- STAGE 1: Sheet Designer Universal Component Blocks (Single-source interactive document) -->
       {#if isHtmlMode && currentStage === 1}
-        {#each components as comp (comp.id)}
+        {#each components as comp, compIndex (comp.id)}
           {@const isSelected = activeComponentId === comp.id}
           {@const isDragging = isComponentDragging && dragCompId === comp.id}
           {@const isRoll = comp.type === 'roll'}
           {@const isGrid = isQuestionGridComponent(comp)}
           {@const isText = !isRoll && !isGrid}
+          {@const isInputField = comp.type === 'candidate_name' || comp.type === 'birthdate' || comp.type === 'room_seat' || comp.type === 'custom_input'}
+          {@const fieldInputClass = comp.inputKind === 'multiline'
+            ? 'border border-slate-700 rounded-xs'
+            : comp.inputStyle === 'underline'
+              ? 'border-b border-slate-700'
+              : comp.inputStyle === 'dotted_line'
+                ? 'border-b border-dashed border-slate-400'
+                : 'border border-slate-700 rounded-xs'}
           {@const { w_mm: bw, h_mm: bh } = componentBlockSizeMm(comp)}
           {@const digitsCount = isRoll ? (Number(comp.digitsCount) || 7) : 0}
           {@const gridLabels = isGrid ? gridOptionLabels(comp) : []}
@@ -609,14 +620,14 @@
             } ${comp.isLocked ? 'cursor-default' : 'cursor-grab'}`}
             data-omr-component-id={comp.id}
             data-omr-component-type={comp.type}
-            style={`top: ${comp.posY * 2.476}px; left: ${comp.posX * 2.476}px; width: ${bw * 2.476}px; height: ${bh * 2.476}px;`}
+            style={`top: ${comp.posY * 2.476}px; left: ${comp.posX * 2.476}px; width: ${bw * 2.476}px; height: ${bh * 2.476}px; z-index: ${isDragging ? 40 : isSelected ? 30 : (Number(comp.zIndex) || compIndex + 1)}; background-color: ${componentBackgroundColor(comp)};`}
             onmousedown={(e) => handleComponentMouseDown(e, comp.id)}
             role="button"
             tabindex="0"
           >
             {#if isRoll}
               <!-- Roll / Examinee ID 0-9 Bubble Matrix (print-matched spacing) -->
-              <div class="p-1.5 w-full h-full flex flex-col justify-start bg-slate-50/60 border border-slate-900 rounded-xs pointer-events-none">
+              <div class="p-1.5 w-full h-full flex flex-col justify-start bg-slate-50/60 border border-slate-900 rounded-xs pointer-events-none" style={`background-color: ${componentBackgroundColor(comp)};`}>
                 <div class="text-[7.5px] font-black text-center text-slate-900 uppercase tracking-wider mb-1">
                   {comp.title || 'EXAMINEE NUMBER'}
                 </div>
@@ -645,7 +656,7 @@
 
             {:else if isGrid}
               <!-- Question Grid (compact rows matching the print renderer) -->
-              <div class="w-full h-full flex flex-col justify-start bg-white pointer-events-none">
+              <div class="w-full h-full flex flex-col justify-start bg-white pointer-events-none" style={`background-color: ${componentBackgroundColor(comp)};`}>
                 <div class="bg-slate-900 text-white font-black text-[7px] text-center uppercase tracking-wide rounded-xs py-0.5 mb-1 truncate px-1">
                   {comp.subjectName || comp.name || 'Subject'}
                 </div>
@@ -698,16 +709,19 @@
                 </div>
               </div>
 
-            {:else if comp.type === 'candidate_name' || comp.type === 'birthdate' || comp.type === 'room_seat'}
-              <!-- Candidate Text Fields -->
-              <div class="p-1.5 w-full h-full flex flex-col justify-between bg-slate-50/80 border border-slate-700/80 rounded-xs pointer-events-none">
+            {:else if isInputField}
+              <!-- Candidate/custom input fields keep the label and writing area separate. -->
+              <div class="p-1.5 w-full h-full flex flex-col gap-1 bg-slate-50/80 border border-slate-700/80 rounded-xs pointer-events-none" style={`background-color: ${componentBackgroundColor(comp)};`}>
                 <span
-                  class="font-extrabold uppercase tracking-tight truncate"
+                  class="font-extrabold uppercase tracking-tight truncate shrink-0"
                   style={`font-size: ${(comp.typography?.fontSizePt ?? 6.5) * 0.9}px; font-family: ${comp.typography?.fontFamily ?? 'Inter, sans-serif'}; color: ${comp.typography?.textColor ?? '#334155'};`}
                 >
                   {comp.label}
                 </span>
-                <div class="border-b border-dashed border-slate-400 w-full mb-0.5"></div>
+                <div
+                  class={`flex-1 min-h-1 w-full ${fieldInputClass}`}
+                  style={`background-color: ${componentInputBackgroundColor(comp)};`}
+                ></div>
               </div>
 
             {:else if comp.type === 'instructions'}
@@ -731,7 +745,7 @@
 
             {:else if comp.type === 'signature'}
               <!-- Signature Box -->
-              <div class="p-1.5 w-full h-full flex flex-col justify-between border border-slate-400 bg-white rounded-xs pointer-events-none">
+              <div class="p-1.5 w-full h-full flex flex-col justify-between border border-slate-400 bg-white rounded-xs pointer-events-none" style={`background-color: ${componentBackgroundColor(comp)};`}>
                 <span
                   class="font-bold uppercase tracking-wide truncate"
                   style={`font-size: ${(comp.typography?.fontSizePt ?? 7.5) * 0.9}px; font-family: ${comp.typography?.fontFamily ?? 'Inter, sans-serif'}; color: ${comp.typography?.textColor ?? '#1e293b'};`}

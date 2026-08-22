@@ -10,6 +10,7 @@
   } from '@/lib/omrStudioGeometry';
   import {
     renderFullSheetHtml,
+    DEFAULT_TYPOGRAPHY,
     PRESET_150Q_COMPONENTS,
     componentToSectionData,
     createComponent,
@@ -25,6 +26,8 @@
     Loader2,
     Sparkles,
     ChevronRight,
+    ChevronUp,
+    ChevronDown,
     Upload,
     Maximize2,
     Lock,
@@ -50,6 +53,7 @@
   import StudioExportVerifyPanel from './StudioExportVerifyPanel.svelte';
   import StudioTypographyControls from './StudioTypographyControls.svelte';
   import StudioQrReservationControls from './StudioQrReservationControls.svelte';
+  import StudioComponentAppearanceControls from './StudioComponentAppearanceControls.svelte';
 
   let {
     draft = {},
@@ -79,6 +83,8 @@
   let designerSubTab = $state('designer'); // 'designer' | 'raw_html'
   let components = $state([]);
   let selectedComponentId = $state(null);
+  let layerDragId = $state(null);
+  let showLayersPanel = $state(true);
 
   let selectedComponent = $derived(components.find((c) => c.id === selectedComponentId) ?? null);
 
@@ -123,6 +129,7 @@
       case 'roll': return 'Examinee ID Matrix';
       case 'mcq': case 'tf': case 'likert': case 'custom': return c.subjectName || c.name || 'Question Grid';
       case 'custom_text': return 'Custom Text';
+      case 'custom_input': return 'Custom Input Box';
       case 'signature': return 'Signature Box';
       default: return c.type;
     }
@@ -169,7 +176,7 @@
         }
       }
     }
-    components = [...components, comp];
+    components = normalizeLayerOrder([...components, comp]);
     selectedComponentId = comp.id;
     syncComponentsToSections(`Add ${componentLabel(comp)}`);
   }
@@ -243,6 +250,63 @@
     components = components.map((c) => (c.id === selectedComponentId ? { ...c, ...patch } : c));
     syncComponentsToSections('Update component');
   }
+  function normalizeLayerOrder(nextComponents) {
+    return nextComponents.map((component, index) => ({ ...component, zIndex: index + 1 }));
+  }
+  function normalizeLoadedComponent(component) {
+    if (component.type === 'candidate_name' || component.type === 'birthdate' || component.type === 'room_seat') {
+      return {
+        ...component,
+        inputStyle: component.inputStyle ?? 'box',
+        inputKind: component.inputKind ?? (component.type === 'birthdate' ? 'date' : 'text'),
+        inputBackgroundColor: component.inputBackgroundColor ?? '#ffffff',
+        typography: component.typography ?? { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 800, textColor: '#475569' },
+      };
+    }
+    if (component.type === 'custom_input') {
+      return {
+        ...component,
+        inputStyle: component.inputStyle ?? 'box',
+        inputKind: component.inputKind ?? 'text',
+        inputBackgroundColor: component.inputBackgroundColor ?? '#ffffff',
+        typography: component.typography ?? { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7, fontWeight: 700, textColor: '#475569' },
+      };
+    }
+    return component;
+  }
+
+  function reorderComponentLayers(fromId, toId) {
+    const fromIndex = components.findIndex((component) => component.id === fromId);
+    const toIndex = components.findIndex((component) => component.id === toId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+    const next = [...components];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    components = normalizeLayerOrder(next);
+    syncComponentsToSections('Reorder layers');
+  }
+
+  function moveComponentLayer(id, direction) {
+    const index = components.findIndex((component) => component.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= components.length) return;
+    reorderComponentLayers(id, components[target].id);
+  }
+
+  function handleLayerDragStart(event, id) {
+    layerDragId = id;
+    try {
+      event.dataTransfer?.setData('application/x-omr-layer', id);
+      event.dataTransfer.effectAllowed = 'move';
+    } catch {}
+  }
+
+  function handleLayerDrop(event, targetId) {
+    event.preventDefault();
+    const sourceId = layerDragId || event.dataTransfer?.getData('application/x-omr-layer');
+    if (sourceId) reorderComponentLayers(sourceId, targetId);
+    layerDragId = null;
+  }
 
   function handlePaletteDrop(e) {
     e.preventDefault();
@@ -288,6 +352,7 @@
       copy[0].formCode = 'FORM 50-C';
       components = copy.filter((c) => !['Part_3', 'Part_4', 'Part_5', 'Part_6'].includes(c.id));
     }
+    components = normalizeLayerOrder(components);
     selectedComponentId = null;
     syncComponentsToSections(`Apply ${presetName} preset`);
   }
@@ -322,7 +387,7 @@
     });
 
     const otherComps = components.filter((c) => c.type !== 'mcq' && c.type !== 'tf' && c.type !== 'likert' && c.type !== 'custom');
-    components = [...otherComps, ...newGrids];
+    components = normalizeLayerOrder([...otherComps, ...newGrids]);
     syncComponentsToSections('Scaffold aptitude areas');
   }
 
@@ -802,7 +867,7 @@
       if (studio.baseType) baseType = studio.baseType;
 
       if (Array.isArray(studio.components) && studio.components.length > 0) {
-        components = JSON.parse(JSON.stringify(studio.components));
+        components = normalizeLayerOrder(JSON.parse(JSON.stringify(studio.components)).map(normalizeLoadedComponent));
         htmlCode = components.length > 0 ? renderFullSheetHtml(components) : '';
       } else if (Array.isArray(studio.sections) && studio.sections.length > 0) {
         sections = studio.sections;
@@ -1614,6 +1679,11 @@
         </div>
       </div>
 
+      <StudioComponentAppearanceControls
+        backgroundColor={selectedComponent.backgroundColor ?? 'transparent'}
+        onChanged={(backgroundColor) => updateSelectedComponent({ backgroundColor })}
+      />
+
       <!-- Type-specific fields -->
       {#if selectedComponent.type === 'header'}
         <div class="space-y-2">
@@ -1662,6 +1732,95 @@
               oninput={syncComponentsToSections}
               placeholder="Label text"
               class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Input Type</label>
+              <select
+                value={selectedComponent.inputKind ?? (selectedComponent.type === 'birthdate' ? 'date' : 'text')}
+                onchange={(e) => updateSelectedComponent({ inputKind: e.currentTarget.value })}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+              >
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="multiline">Multiline</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Input Shape</label>
+              <select
+                value={selectedComponent.inputStyle ?? 'box'}
+                onchange={(e) => updateSelectedComponent({ inputStyle: e.currentTarget.value })}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+              >
+                <option value="box">Box</option>
+                <option value="dotted_line">Dotted line</option>
+                <option value="underline">Underline</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-[10px] font-semibold text-slate-600">Input Fill</label>
+            <input
+              type="color"
+              value={selectedComponent.inputBackgroundColor ?? '#ffffff'}
+              oninput={(e) => updateSelectedComponent({ inputBackgroundColor: e.currentTarget.value })}
+              class="w-16 h-7 p-0.5 bg-white border border-slate-200 rounded cursor-pointer"
+              aria-label="Input fill color"
+            />
+          </div>
+          <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
+        </div>
+
+      {:else if selectedComponent.type === 'custom_input'}
+        <div class="space-y-2">
+          <div>
+            <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Input Label</label>
+            <input
+              type="text"
+              bind:value={selectedComponent.label}
+              oninput={syncComponentsToSections}
+              placeholder="Custom response label"
+              class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Input Type</label>
+              <select
+                bind:value={selectedComponent.inputKind}
+                onchange={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+              >
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="multiline">Multiline</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Input Shape</label>
+              <select
+                bind:value={selectedComponent.inputStyle}
+                onchange={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px]"
+              >
+                <option value="box">Box</option>
+                <option value="dotted_line">Dotted line</option>
+                <option value="underline">Underline</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-[10px] font-semibold text-slate-600">Input Fill</label>
+            <input
+              type="color"
+              bind:value={selectedComponent.inputBackgroundColor}
+              oninput={syncComponentsToSections}
+              class="w-16 h-7 p-0.5 bg-white border border-slate-200 rounded cursor-pointer"
+              aria-label="Input fill color"
             />
           </div>
           <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
@@ -1953,8 +2112,10 @@
         <div class="size-5 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-[10px]">
           N
         </div>
-        <span class="text-xs font-bold text-slate-900 truncate max-w-[160px]">{draft.name || 'Template Studio'}</span>
-        <span class="px-1.5 py-0.5 bg-slate-100 text-[9.5px] font-mono text-slate-600 rounded border border-slate-200">
+        <span
+          class="text-xs font-bold text-slate-900 truncate max-w-[180px]"
+          title={draft.name || 'Template Studio'}
+        >
           {draft.code || 'OMR-DRAFT'}
         </span>
       </div>
@@ -1971,13 +2132,13 @@
           <!-- Creation Mode Indicator (deliberate change only, not an easy switch) -->
           <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
             <div class="flex items-center gap-2">
-              <span class={`px-2 py-1 rounded-lg text-[10.5px] font-bold ${
-                stage1Mode === 'html' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-              }`}>
+              <span
+                class={`px-2 py-1 rounded-lg text-[10.5px] font-bold ${
+                  stage1Mode === 'html' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                }`}
+                title={stage1Mode === 'html' ? 'Build a sheet from independent components' : 'Place overlays on an uploaded document'}
+              >
                 {stage1Mode === 'html' ? 'Sheet Designer' : 'Substrate Ingest'}
-              </span>
-              <span class="text-[10px] text-slate-500">
-                {stage1Mode === 'html' ? 'Build from scratch with components' : 'Overlay on an uploaded document'}
               </span>
             </div>
             <button
@@ -2156,51 +2317,95 @@
                   {/if}
                 </div>
 
-                <!-- 3. Placed Components List -->
+                <!-- 3. Component Layers -->
                 <div>
-                  <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-xs font-bold text-slate-900">Sheet Components ({components.length})</span>
-                  </div>
-                  {#if components.length === 0}
-                    <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center text-[11px] text-slate-400 leading-relaxed">
-                      No components yet.<br />
-                      Drag items from the palette onto the canvas — or click one to add it.
-                    </div>
-                  {:else}
-                    <div class="space-y-1">
-                      {#each components as c}
-                        <div
-                          class={`p-2 rounded-lg border flex items-center justify-between cursor-pointer text-[11px] transition ${
-                            selectedComponentId === c.id
-                              ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
-                          onclick={() => selectComponent(c.id)}
-                          role="button"
-                          tabindex="0"
-                        >
-                          <span class="font-bold text-slate-800">{componentLabel(c)}</span>
-                          <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onclick={() => { showLayersPanel = !showLayersPanel; }}
+                    class="w-full flex items-center justify-between mb-1.5 text-left"
+                    aria-expanded={showLayersPanel}
+                  >
+                    <span class="text-xs font-bold text-slate-900">Layers ({components.length})</span>
+                    <span class="flex items-center gap-1 text-[9.5px] text-slate-400">
+                      <span>Back to front</span>
+                      <ChevronDown class={`size-3 transition ${showLayersPanel ? 'rotate-180' : ''}`} />
+                    </span>
+                  </button>
+                  {#if showLayersPanel}
+                    {#if components.length === 0}
+                      <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center text-[11px] text-slate-400 leading-relaxed">
+                        No components yet.<br />
+                        Drag items from the palette onto the canvas — or click one to add it.
+                      </div>
+                    {:else}
+                      <div class="space-y-1">
+                        {#each components as c, layerIndex (c.id)}
+                          <div
+                            draggable="true"
+                            ondragstart={(e) => handleLayerDragStart(e, c.id)}
+                            ondragover={(e) => { e.preventDefault(); }}
+                            ondrop={(e) => handleLayerDrop(e, c.id)}
+                            class={`p-1.5 rounded-lg border flex items-center gap-1.5 text-[11px] transition ${
+                              selectedComponentId === c.id
+                                ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                            title="Drag to reorder this component layer"
+                          >
                             <button
                               type="button"
-                              onclick={(e) => { e.stopPropagation(); c.isLocked = !c.isLocked; syncComponentsToSections(); }}
-                              class={`p-1 rounded transition ${c.isLocked ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-slate-600'}`}
-                              title={c.isLocked ? 'Unlock position' : 'Lock position'}
+                              onclick={() => selectComponent(c.id)}
+                              class="min-w-0 flex-1 flex items-center gap-1.5 text-left"
                             >
-                              {#if c.isLocked}<Lock class="size-3" />{:else}<Unlock class="size-3" />{/if}
+                              <span class="size-4 rounded bg-slate-100 text-[9px] font-mono text-slate-500 flex items-center justify-center shrink-0">
+                                {layerIndex + 1}
+                              </span>
+                              <span class="font-bold text-slate-800 truncate">{componentLabel(c)}</span>
                             </button>
-                            <button
-                              type="button"
-                              onclick={(e) => { e.stopPropagation(); removeComponent(c.id); }}
-                              class="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                              title="Remove component"
-                            >
-                              <Trash2 class="size-3" />
-                            </button>
+                            <div class="flex items-center gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); moveComponentLayer(c.id, 1); }}
+                                disabled={layerIndex === components.length - 1}
+                                class="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed transition"
+                                title="Raise layer"
+                                aria-label={`Raise ${componentLabel(c)} layer`}
+                              >
+                                <ChevronUp class="size-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); moveComponentLayer(c.id, -1); }}
+                                disabled={layerIndex === 0}
+                                class="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed transition"
+                                title="Lower layer"
+                                aria-label={`Lower ${componentLabel(c)} layer`}
+                              >
+                                <ChevronDown class="size-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); c.isLocked = !c.isLocked; syncComponentsToSections('Toggle component lock'); }}
+                                class={`p-1 rounded transition ${c.isLocked ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-slate-600'}`}
+                                title={c.isLocked ? 'Unlock position' : 'Lock position'}
+                                aria-label={c.isLocked ? `Unlock ${componentLabel(c)}` : `Lock ${componentLabel(c)}`}
+                              >
+                                {#if c.isLocked}<Lock class="size-3" />{:else}<Unlock class="size-3" />{/if}
+                              </button>
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); removeComponent(c.id); }}
+                                class="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                title="Remove component"
+                                aria-label={`Remove ${componentLabel(c)}`}
+                              >
+                                <Trash2 class="size-3" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      {/each}
-                    </div>
+                        {/each}
+                      </div>
+                    {/if}
                   {/if}
                 </div>
 

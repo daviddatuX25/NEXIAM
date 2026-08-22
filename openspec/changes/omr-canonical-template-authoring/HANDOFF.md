@@ -88,9 +88,18 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Shared QR controls**: Sheet Designer and Stage 2 use `StudioQrReservationControls.svelte` with lock, X/Y, and a 20–50 mm square size slider mapped to persisted `qrW`/`qrH`.
 - **Local editor history**: `studioHistory.ts` provides a bounded 100-entry snapshot ring with branch invalidation, coalesced edits, undo/redo, and snapshot isolation. Durable authoring state is history-tracked; view/transport state is excluded. Undo/redo autosaves through the existing atomic endpoint and mode/source resets clear history.
 - **History UX**: Toolbar Undo/Redo buttons expose disabled/ARIA state; `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, and `Ctrl/Cmd+Y` work outside native text controls; drag and input edits commit as coalesced transactions.
+## Functional inputs, appearance, and layers (2026-08-22)
+
+- **Field components**: Candidate Name, Birthdate, and Room / Seat now render a separate label and response region. Input kind supports text/number/date/multiline; input shape supports box/dotted-line/underline. A Custom Input Box is available in the Sheet Designer palette.
+- **Appearance**: Component background is independent from typography color and supports transparent, white, black, or custom hex colors. Input fill is separately configurable.
+- **Layers**: Sheet Components is now a compact Back-to-front layer list with drag reorder, raise/lower buttons, lock, remove, persisted `zIndex`, and collapsible visibility.
+- **Sidebar chrome**: Draft code remains visible; draft name is available as a tooltip. The mode description is a tooltip instead of persistent copy.
+
 
 
 ## Verification evidence
+- Functional browser proof: Candidate Name and Custom Input Box expose separate input regions, Input Type/Shape controls, Component Background control, compact `Layers (2)` list, custom layer selection, and zero page/request errors.
+- Frontend suite: **7 files passed, 37 tests passed**.
 
 - Focused Sheet Designer browser proof (Draft 2, `CANONICAL-HTML`):
   - Compiled HTML textarea contains four `omr-fiducial-square` elements and `data-omr-overlay="blank_instance_qr"` with the selected QR size.
