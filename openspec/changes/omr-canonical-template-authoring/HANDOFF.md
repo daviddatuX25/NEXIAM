@@ -99,7 +99,7 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 
 ## Verification evidence
 - Functional browser proof: Candidate Name and Custom Input Box expose separate input regions, Input Type/Shape controls, Component Background control, compact `Layers (2)` list, custom layer selection, and zero page/request errors.
-- Frontend suite: **7 files passed, 37 tests passed**.
+- Frontend suite: **7 files passed, 36 tests passed**.
 
 - Focused Sheet Designer browser proof (Draft 2, `CANONICAL-HTML`):
   - Compiled HTML textarea contains four `omr-fiducial-square` elements and `data-omr-overlay="blank_instance_qr"` with the selected QR size.

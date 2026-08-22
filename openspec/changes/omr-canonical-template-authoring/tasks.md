@@ -169,4 +169,4 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 19.3 Add component background controls independent from typography color, with transparent/solid/custom values and legacy-state normalization.
 - [x] 19.4 Add a compact draggable layer list with raise/lower controls, persisted ordering, and collapsible visibility.
 - [x] 19.5 Minimize redundant sidebar copy into a draft-code header and mode tooltip.
-- [x] 19.6 Verify: 37 frontend tests, production build, and browser proof for separate input areas, Custom Input Box selection, background controls, compact layers, and zero runtime/request errors.
+- [x] 19.6 Verify: 36 frontend tests, production build, and browser proof for separate input areas, Custom Input Box selection, background controls, compact layers, and zero runtime/request errors.
