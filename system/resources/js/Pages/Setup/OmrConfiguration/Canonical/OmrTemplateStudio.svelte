@@ -83,6 +83,8 @@
   let designerSubTab = $state('designer'); // 'designer' | 'raw_html'
   let components = $state([]);
   let selectedComponentId = $state(null);
+  let selectedComponentIds = $state([]);
+  let componentCopySeq = 0;
   let layerDragId = $state(null);
   let showLayersPanel = $state(true);
 
@@ -140,13 +142,15 @@
     sections = components
       .map((c) => componentToSectionData(c))
       .filter((s) => s !== null);
-    const historyOptions = options.coalesceKey
-      ? options
-      : (label === 'Edit component' && selectedComponentId
-        ? { coalesceKey: `component:${selectedComponentId}` }
-        : {});
-    recordHistory(label, historyOptions);
-    triggerAutosave();
+    if (options.recordHistory !== false) {
+      const historyOptions = options.coalesceKey
+        ? options
+        : (label === 'Edit component' && selectedComponentId
+          ? { coalesceKey: `component:${selectedComponentId}` }
+          : {});
+      recordHistory(label, historyOptions);
+    }
+    if (options.autosave !== false) triggerAutosave();
   }
 
   const PAGE_W = 210;
@@ -177,6 +181,7 @@
       }
     }
     components = normalizeLayerOrder([...components, comp]);
+    selectedComponentIds = [comp.id];
     selectedComponentId = comp.id;
     syncComponentsToSections(`Add ${componentLabel(comp)}`);
   }
@@ -233,22 +238,85 @@
     handleHtmlDecorationChanged();
   }
 
-  function selectComponent(id) {
-    selectedComponentId = id;
+  function selectComponent(id, additive = false) {
+    if (additive) {
+      selectedComponentIds = selectedComponentIds.includes(id)
+        ? selectedComponentIds.filter((selectedId) => selectedId !== id)
+        : [...selectedComponentIds, id];
+    } else {
+      selectedComponentIds = [id];
+    }
+    selectedComponentId = selectedComponentIds.at(-1) ?? null;
     const idx = sections.findIndex((s) => s.id === id);
     if (idx >= 0) activeSectionIndex = idx;
   }
 
+  function clearComponentSelection() {
+    selectedComponentIds = [];
+    selectedComponentId = null;
+  }
+
+  function handleCanvasComponentSelected(id, additive = false) {
+    selectComponent(id, additive);
+    return selectedComponentIds;
+  }
+
   function removeComponent(id) {
     components = components.filter((c) => c.id !== id);
-    if (selectedComponentId === id) selectedComponentId = null;
+    selectedComponentIds = selectedComponentIds.filter((selectedId) => selectedId !== id);
+    if (selectedComponentId === id) selectedComponentId = selectedComponentIds.at(-1) ?? null;
     syncComponentsToSections('Remove component');
   }
 
-  function updateSelectedComponent(patch) {
-    if (!selectedComponentId) return;
-    components = components.map((c) => (c.id === selectedComponentId ? { ...c, ...patch } : c));
-    syncComponentsToSections('Update component');
+  function removeSelectedComponents() {
+    const ids = selectedComponentIds.length > 0
+      ? selectedComponentIds
+      : selectedComponentId
+        ? [selectedComponentId]
+        : [];
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    components = components.filter((component) => !idSet.has(component.id));
+    clearComponentSelection();
+    syncComponentsToSections('Delete selected components');
+  }
+
+  function duplicateSelectedComponents(fallbackId = null, options = {}) {
+    const currentSelection = selectedComponentIds.length > 0
+      ? selectedComponentIds
+      : selectedComponentId
+        ? [selectedComponentId]
+        : [];
+    const ids = fallbackId && !currentSelection.includes(fallbackId)
+      ? [fallbackId]
+      : currentSelection;
+    const sourceComponents = components.filter((component) => ids.includes(component.id) && !component.isLocked);
+    if (sourceComponents.length === 0) return [];
+
+    const usedIds = new Set(components.map((component) => component.id));
+    const copies = sourceComponents.map((component) => {
+      const copy = structuredClone($state.snapshot(component));
+      let nextId = '';
+      do {
+        componentCopySeq += 1;
+        nextId = `${component.id}_copy_${componentCopySeq}`;
+      } while (usedIds.has(nextId));
+      usedIds.add(nextId);
+      copy.id = nextId;
+      copy.posX = Math.min(PAGE_W - MIN_INSET - (Number(copy.w_mm) || 40), (Number(copy.posX) || 10) + 8);
+      copy.posY = Math.min(PAGE_H - MIN_INSET - (Number(copy.h_mm) || 12), (Number(copy.posY) || 10) + 8);
+      copy.isLocked = false;
+      return copy;
+    });
+
+    components = normalizeLayerOrder([...components, ...copies]);
+    selectedComponentIds = copies.map((copy) => copy.id);
+    selectedComponentId = selectedComponentIds.at(-1) ?? null;
+    syncComponentsToSections(
+      `Duplicate ${copies.length} component${copies.length === 1 ? '' : 's'}`,
+      options.deferHistory ? { recordHistory: false, autosave: false } : {},
+    );
+    return copies;
   }
   function normalizeLayerOrder(nextComponents) {
     return nextComponents.map((component, index) => ({ ...component, zIndex: index + 1 }));
@@ -304,6 +372,14 @@
     const target = index + direction;
     if (index < 0 || target < 0 || target >= components.length) return;
     reorderComponentLayers(id, components[target].id);
+  }
+  function moveSelectedLayerToEdge(toFront) {
+    const ids = new Set(selectedComponentIds.length > 0 ? selectedComponentIds : selectedComponentId ? [selectedComponentId] : []);
+    if (ids.size === 0) return;
+    const selected = components.filter((component) => ids.has(component.id));
+    const remaining = components.filter((component) => !ids.has(component.id));
+    components = normalizeLayerOrder(toFront ? [...remaining, ...selected] : [...selected, ...remaining]);
+    syncComponentsToSections(toFront ? 'Bring to front' : 'Send to back');
   }
 
   function handleLayerDragStart(event, id) {
@@ -367,6 +443,7 @@
     }
     components = normalizeLayerOrder(components);
     selectedComponentId = null;
+    selectedComponentIds = [];
     syncComponentsToSections(`Apply ${presetName} preset`);
   }
 
@@ -414,8 +491,8 @@
     draft.raster_url = null;
     components = [];
     sections = [];
-    htmlCode = '';
     selectedComponentId = null;
+    selectedComponentIds = [];
     activeSectionIndex = 0;
     currentStage = 1;
     scale = 0.78;
@@ -825,7 +902,8 @@
     rollDigits = layout.rollDigits;
     customTextItems = layout.customTextItems;
     htmlCode = components.length > 0 ? renderCurrentHtml() : '';
-    if (!components.some((component) => component.id === selectedComponentId)) selectedComponentId = null;
+    selectedComponentIds = selectedComponentIds.filter((id) => components.some((component) => component.id === id));
+    if (!components.some((component) => component.id === selectedComponentId)) selectedComponentId = selectedComponentIds.at(-1) ?? null;
     activeSectionIndex = Math.min(activeSectionIndex, Math.max(0, sections.length - 1));
     historyRevision += 1;
     historyNotice = notice;
@@ -858,18 +936,40 @@
     triggerAutosave();
   }
   function handleStudioKeydown(event) {
-    if (event.repeat) return;
-    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
+    if (event.repeat || event.isComposing) return;
     const tagName = event.target?.tagName?.toLowerCase?.() ?? '';
     if (['input', 'textarea', 'select'].includes(tagName) || event.target?.isContentEditable) return;
 
     const key = event.key.toLowerCase();
-    if (key === 'z' && !event.shiftKey) {
+    const modifier = event.ctrlKey || event.metaKey;
+    const isSheetDesigner = currentStage === 1 && stage1Mode === 'html' && designerSubTab === 'designer';
+    if ((key === 'delete' || key === 'backspace') && isSheetDesigner) {
+      event.preventDefault();
+      removeSelectedComponents();
+      return;
+    }
+    if (!modifier || event.altKey) return;
+    if (key === 'd' && !event.shiftKey && isSheetDesigner) {
+      event.preventDefault();
+      duplicateSelectedComponents();
+    } else if (key === 'z' && !event.shiftKey) {
       event.preventDefault();
       undoEditor();
     } else if ((key === 'z' && event.shiftKey) || (key === 'y' && !event.shiftKey)) {
       event.preventDefault();
       redoEditor();
+    } else if (key === ']' && event.shiftKey && isSheetDesigner) {
+      event.preventDefault();
+      moveSelectedLayerToEdge(true);
+    } else if (key === '[' && event.shiftKey && isSheetDesigner) {
+      event.preventDefault();
+      moveSelectedLayerToEdge(false);
+    } else if (key === ']' && isSheetDesigner) {
+      event.preventDefault();
+      moveComponentLayer(selectedComponentId, 1);
+    } else if (key === '[' && isSheetDesigner) {
+      event.preventDefault();
+      moveComponentLayer(selectedComponentId, -1);
     }
   }
 
@@ -1512,6 +1612,10 @@
         {currentStage}
         bind:components
         bind:activeComponentId={selectedComponentId}
+        bind:activeComponentIds={selectedComponentIds}
+        onComponentSelected={handleCanvasComponentSelected}
+        onCanvasSelectionClear={clearComponentSelection}
+        onDuplicateComponents={duplicateSelectedComponents}
         onGeometryChanged={handleGeometryChanged}
         onComponentGeometryChanged={syncComponentsToSections}
       />
@@ -2372,12 +2476,17 @@
                     class="w-full flex items-center justify-between mb-1.5 text-left"
                     aria-expanded={showLayersPanel}
                   >
-                    <span class="text-xs font-bold text-slate-900">Layers ({components.length})</span>
+                    <span class="text-xs font-bold text-slate-900">
+                      Layers ({components.length}){selectedComponentIds.length > 1 ? ` · ${selectedComponentIds.length} selected` : ''}
+                    </span>
                     <span class="flex items-center gap-1 text-[9.5px] text-slate-400">
                       <span>Back to front</span>
                       <ChevronDown class={`size-3 transition ${showLayersPanel ? 'rotate-180' : ''}`} />
                     </span>
                   </button>
+                  <p class="mb-1.5 text-[9.5px] leading-snug text-slate-500">
+                    Shift-click to select multiple · Alt-drag to duplicate · Delete to remove
+                  </p>
                   {#if showLayersPanel}
                     {#if components.length === 0}
                       <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center text-[11px] text-slate-400 leading-relaxed">
@@ -2393,7 +2502,7 @@
                             ondragover={(e) => { e.preventDefault(); }}
                             ondrop={(e) => handleLayerDrop(e, c.id)}
                             class={`p-1.5 rounded-lg border flex items-center gap-1.5 text-[11px] transition ${
-                              selectedComponentId === c.id
+                              selectedComponentIds.includes(c.id) || selectedComponentId === c.id
                                 ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
@@ -2401,7 +2510,7 @@
                           >
                             <button
                               type="button"
-                              onclick={() => selectComponent(c.id)}
+                              onclick={(e) => { e.stopPropagation(); selectComponent(c.id, e.shiftKey); }}
                               class="min-w-0 flex-1 flex items-center gap-1.5 text-left"
                             >
                               <span class="size-4 rounded bg-slate-100 text-[9px] font-mono text-slate-500 flex items-center justify-center shrink-0">

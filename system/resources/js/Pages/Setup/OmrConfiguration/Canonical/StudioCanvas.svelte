@@ -68,12 +68,15 @@
     isHtmlMode = true,
     isComposing = false,
     sections = $bindable([]),
-    activeSectionIndex = $bindable(0),
     components = $bindable([]),
     activeComponentId = $bindable(null),
+    activeComponentIds = $bindable([]),
     currentStage = 1,
     onGeometryChanged = null,
     onComponentGeometryChanged = null,
+    onComponentSelected = null,
+    onCanvasSelectionClear = null,
+    onDuplicateComponents = null,
   } = $props();
 
   let isPanning = $state(false);
@@ -93,6 +96,9 @@
   let isComponentDragging = $state(false);
   let isComponentResizing = $state(false);
   let dragCompId = $state(null);
+  let dragComponentIds = $state([]);
+  let componentStartPositions = {};
+  let isDuplicateDragging = $state(false);
 
   // Sanitize HTML preview content by stripping scripts and executable handlers
   let safeHtmlContent = $derived.by(() => {
@@ -101,6 +107,22 @@
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '');
   });
+  function setCanvasSelection(componentId, additive = false) {
+    const currentSelection = Array.isArray(activeComponentIds) ? activeComponentIds : [];
+    const fallbackSelection = additive
+      ? currentSelection.includes(componentId)
+        ? currentSelection.filter((id) => id !== componentId)
+        : [...currentSelection, componentId]
+      : [componentId];
+    const callbackSelection = onComponentSelected
+      ? onComponentSelected(componentId, additive)
+      : null;
+    const nextSelection = Array.isArray(callbackSelection) ? callbackSelection : fallbackSelection;
+    activeComponentIds = nextSelection;
+    activeComponentId = nextSelection.at(-1) ?? null;
+    return nextSelection;
+  }
+
 
   function handleWheel(e) {
     if (canvasLocked) return;
@@ -112,7 +134,11 @@
   function handleCanvasMouseDown(e) {
     if (canvasLocked) return;
     if (e.target.closest('button, input, select, textarea')) return;
-    if (!e.target?.closest?.('[data-omr-component-id]')) activeComponentId = null;
+    if (!e.target?.closest?.('[data-omr-component-id]')) {
+      activeComponentId = null;
+      activeComponentIds = [];
+      if (onCanvasSelectionClear) onCanvasSelectionClear();
+    }
     if (isBlockDragging || isHandleDragging || isComponentDragging || isComponentResizing) return;
     isPanning = true;
     panStartX = e.clientX - panX;
@@ -131,18 +157,25 @@
 
     // STAGE 1 (HTML Mode): Universal Component Dragging & Resizing
     if (isHtmlMode && currentStage === 1 && dragCompId) {
-      const comp = components.find((c) => c.id === dragCompId);
-      if (!comp || comp.isLocked) return;
+      const primary = components.find((c) => c.id === dragCompId);
+      if (!primary) return;
 
       if (isComponentResizing) {
-        comp.w_mm = Math.max(20, Math.min(210 - marginMm - comp.posX, Math.round(blockStartGeometry.w + dXmm)));
-        comp.h_mm = Math.max(8, Math.min(297 - marginMm - comp.posY, Math.round(blockStartGeometry.h + dYmm)));
+        if (primary.isLocked) return;
+        primary.w_mm = Math.max(20, Math.min(210 - marginMm - primary.posX, Math.round(blockStartGeometry.w + dXmm)));
+        primary.h_mm = Math.max(8, Math.min(297 - marginMm - primary.posY, Math.round(blockStartGeometry.h + dYmm)));
       } else if (isComponentDragging) {
-        const { w_mm: bw, h_mm: bh } = canvasComponentBlockSizeMm(comp);
-        let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
-        let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
-        comp.posX = Math.max(marginMm, Math.min(210 - marginMm - bw, nx));
-        comp.posY = Math.max(marginMm, Math.min(297 - marginMm - bh, ny));
+        const ids = dragComponentIds.length > 0 ? dragComponentIds : [dragCompId];
+        for (const id of ids) {
+          const comp = components.find((candidate) => candidate.id === id);
+          const start = componentStartPositions[id];
+          if (!comp || !start || comp.isLocked) continue;
+          const { w_mm: bw, h_mm: bh } = canvasComponentBlockSizeMm(comp);
+          const nx = Math.round((start.x + dXmm) / 2) * 2;
+          const ny = Math.round((start.y + dYmm) / 2) * 2;
+          comp.posX = Math.max(marginMm, Math.min(210 - marginMm - bw, nx));
+          comp.posY = Math.max(marginMm, Math.min(297 - marginMm - bh, ny));
+        }
       }
       return;
     }
@@ -217,6 +250,9 @@
       isComponentDragging = false;
       isComponentResizing = false;
       dragCompId = null;
+      dragComponentIds = [];
+      componentStartPositions = {};
+      isDuplicateDragging = false;
       if (onComponentGeometryChanged) onComponentGeometryChanged();
     }
   }
@@ -225,31 +261,88 @@
   function handleComponentMouseDown(e, compId) {
     if (currentStage !== 1 || !isHtmlMode) return;
     e.stopPropagation();
-    activeComponentId = compId;
-    const comp = components.find((c) => c.id === compId);
-    if (!comp || comp.isLocked) return;
+    const source = components.find((component) => component.id === compId);
+    if (!source) return;
 
+    if (e.altKey && !source.isLocked && onDuplicateComponents) {
+      const duplicatedComponents = onDuplicateComponents(compId, { deferHistory: true });
+      const copies = Array.isArray(duplicatedComponents) ? duplicatedComponents : [];
+      if (copies.length > 0) {
+        activeComponentIds = copies.map((copy) => copy.id);
+        activeComponentId = activeComponentIds.at(-1) ?? null;
+        dragComponentIds = [...activeComponentIds];
+        componentStartPositions = Object.fromEntries(
+          copies.map((copy) => [
+            copy.id,
+            {
+              x: Number(copy.posX) || 10,
+              y: Number(copy.posY) || 10,
+              w: Number(copy.w_mm) || 40,
+              h: Number(copy.h_mm) || 12,
+            },
+          ]),
+        );
+        isDuplicateDragging = true;
+        isComponentDragging = true;
+        dragCompId = activeComponentId;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        const primary = copies.at(-1);
+        blockStartGeometry = {
+          x: Number(primary.posX) || 10,
+          y: Number(primary.posY) || 10,
+          w: Number(primary.w_mm) || 40,
+          h: Number(primary.h_mm) || 12,
+        };
+        return;
+      }
+    }
+
+    const currentSelection = Array.isArray(activeComponentIds) ? activeComponentIds : [];
+    const nextSelection = !e.shiftKey && currentSelection.length > 1 && currentSelection.includes(compId)
+      ? currentSelection
+      : setCanvasSelection(compId, e.shiftKey);
+    if (!nextSelection.includes(compId) || source.isLocked) return;
+
+    isDuplicateDragging = false;
     isComponentDragging = true;
     dragCompId = compId;
+    dragComponentIds = [...nextSelection];
+    const selectedComponents = nextSelection
+      .map((id) => components.find((component) => component.id === id))
+      .filter(Boolean);
+    componentStartPositions = Object.fromEntries(
+      selectedComponents.map((component) => [
+        component.id,
+        {
+          x: Number(component.posX) || 10,
+          y: Number(component.posY) || 10,
+          w: Number(component.w_mm) || 40,
+          h: Number(component.h_mm) || 12,
+        },
+      ]),
+    );
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = {
-      x: Number(comp.posX) || 10,
-      y: Number(comp.posY) || 10,
-      w: Number(comp.w_mm) || 40,
-      h: Number(comp.h_mm) || 12,
+      x: Number(source.posX) || 10,
+      y: Number(source.posY) || 10,
+      w: Number(source.w_mm) || 40,
+      h: Number(source.h_mm) || 12,
     };
   }
 
   function handleComponentResizeMouseDown(e, compId) {
     if (currentStage !== 1 || !isHtmlMode) return;
     e.stopPropagation();
-    activeComponentId = compId;
+    setCanvasSelection(compId);
     const comp = components.find((c) => c.id === compId);
     if (!comp || comp.isLocked) return;
 
+    isDuplicateDragging = false;
     isComponentResizing = true;
     dragCompId = compId;
+    dragComponentIds = [compId];
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = {
@@ -333,7 +426,7 @@
 <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100 select-none">
   <!-- Canvas Viewport with Absolute Centering (ZERO scrollHeight inflation) -->
   <div
-    class="w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing canvas-grid"
+    class={`w-full h-full overflow-hidden relative ${isDuplicateDragging ? 'cursor-copy' : 'cursor-grab active:cursor-grabbing'} canvas-grid`}
     onwheel={handleWheel}
     onmousedown={handleCanvasMouseDown}
     onmousemove={handleCanvasMouseMove}
@@ -341,6 +434,7 @@
     onmouseleave={handleCanvasMouseUp}
     role="region"
     aria-label="OMR sheet design viewport"
+    aria-keyshortcuts="Delete Backspace Control+D Meta+D"
   >
     <!-- Centering Absolute Wrapper: Zero layout height inflation -->
     <div class="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
@@ -596,8 +690,9 @@
       <!-- STAGE 1: Sheet Designer Universal Component Blocks (Single-source interactive document) -->
       {#if isHtmlMode && currentStage === 1}
         {#each components as comp, compIndex (comp.id)}
-          {@const isSelected = activeComponentId === comp.id}
-          {@const isDragging = isComponentDragging && dragCompId === comp.id}
+          {@const isSelected = (activeComponentIds ?? []).includes(comp.id) || activeComponentId === comp.id}
+          {@const isPrimarySelected = activeComponentId === comp.id}
+          {@const isDragging = isComponentDragging && dragComponentIds.includes(comp.id)}
           {@const isRoll = comp.type === 'roll'}
           {@const isGrid = isQuestionGridComponent(comp)}
           {@const isText = !isRoll && !isGrid}
@@ -622,12 +717,14 @@
 
           <div
             class={`absolute rounded-sm transition-all select-none overflow-visible ${
-              isDragging
-                ? 'ring-2 ring-emerald-500 shadow-2xl z-40 bg-white/95 cursor-grabbing scale-[1.005]'
-                : isSelected
-                  ? 'ring-2 ring-emerald-500 shadow-sm z-30 bg-white'
-                  : 'hover:ring-1 hover:ring-slate-400/80 z-10 bg-white'
-            } ${comp.isLocked ? 'cursor-default' : 'cursor-grab'}`}
+              isDragging && isDuplicateDragging
+                ? 'ring-2 ring-sky-500 shadow-2xl z-40 bg-white/95 scale-[1.005]'
+                : isDragging
+                  ? 'ring-2 ring-emerald-500 shadow-2xl z-40 bg-white/95 scale-[1.005]'
+                  : isSelected
+                    ? 'ring-2 ring-emerald-500 shadow-sm z-30 bg-white'
+                    : 'hover:ring-1 hover:ring-slate-400/80 z-10 bg-white'
+            } ${comp.isLocked ? 'cursor-default' : isDuplicateDragging && isDragging ? 'cursor-copy' : isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             data-omr-component-id={comp.id}
             data-omr-component-type={comp.type}
             style={`top: ${comp.posY * 2.476}px; left: ${comp.posX * 2.476}px; width: ${bw * 2.476}px; height: ${bh * 2.476}px; z-index: ${isDragging ? 40 : isSelected ? 30 : (Number(comp.zIndex) || compIndex + 1)}; background-color: ${componentBackgroundColor(comp)};`}
@@ -777,7 +874,7 @@
             {/if}
 
             <!-- Selection Chip on top-right -->
-            {#if isSelected}
+            {#if isPrimarySelected}
               <div class="absolute -top-3.5 right-1 px-1.5 py-px rounded bg-slate-900 text-[7px] font-mono font-bold text-emerald-400 shadow-sm pointer-events-none flex items-center gap-1 z-40">
                 <span>{componentLabel(comp)}</span>
                 {#if comp.isLocked}
@@ -794,7 +891,7 @@
             {/if}
 
             <!-- Resize Handle for Text Components -->
-            {#if isText && isSelected && !comp.isLocked}
+            {#if isText && isPrimarySelected && !comp.isLocked}
               <div
                 class="absolute -bottom-1.5 -right-1.5 size-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md pointer-events-auto z-40"
                 onmousedown={(e) => handleComponentResizeMouseDown(e, comp.id)}

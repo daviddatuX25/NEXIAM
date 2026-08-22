@@ -186,3 +186,11 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 21.2 Verify the latest persisted components hydrate after a hard refresh.
 - [x] 21.3 Remove the typography control runtime failure path and preserve truthful save status when a request fails.
 - [x] 21.4 Verify: refresh regression retains components, captured studio requests return 200, and frontend suite remains green.
+
+## 22. Excalidraw-style Sheet Designer controls
+
+- [x] 22.1 Add a selection set with plain click, Shift-click toggle, blank-canvas clear, and Shift-click layer-list selection while preserving a single inspector target.
+- [x] 22.2 Add Delete/Backspace selection removal and Ctrl/Cmd+D duplication with collision-safe IDs, offset geometry, history, and autosave.
+- [x] 22.3 Add Alt/Option-drag duplication for one component or a selected group, preserve group movement, and keep locked components selectable but immobile/non-duplicable.
+- [x] 22.4 Add copy-drag pointer feedback, keyboard shortcut guards for native text controls, layer bracket shortcuts, and visible interaction guidance.
+- [x] 22.5 Verify: 38 frontend tests, production build, strict OpenSpec validation, browser proof for Shift selection, group drag, Delete/Backspace, Ctrl/Cmd+D, Alt-drag, text-control guards, refresh persistence, and zero runtime/failed-request errors.

@@ -106,6 +106,21 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Refresh persistence**: browser proof added Document Header + Question Grid, waited for one `200` studio save, refreshed the draft, and recovered both components (`Layers (2)`, two canvas blocks).
 - **Runtime path**: restored the `FONT_FAMILY_OPTIONS` import in `StudioTypographyControls.svelte`; final browser proof returned zero page errors and zero failed requests.
 
+## Excalidraw-style Sheet Designer controls (2026-08-22)
+
+- **Selection set**: `selectedComponentIds` supports plain single selection, Shift-click toggle on canvas and layer rows, blank-canvas clear, and group movement while `selectedComponentId` remains the inspector primary target.
+- **Deletion**: Delete and Backspace remove the complete selection through the existing history/autosave transaction; the inspector and layer-row Remove controls remain available.
+- **Duplication**: Ctrl/Cmd+D duplicates unlocked selected components with collision-safe IDs and an 8 mm offset. Alt/Option-drag duplicates the clicked unlocked component or selected group, then moves the copies with blue copy-drag feedback.
+- **Lock semantics**: locked components remain selectable for inspection/unlock, but do not move and are excluded from duplication.
+- **Layer and guidance**: Ctrl/Cmd bracket shortcuts retain raise/lower/front/back actions; the Layers panel visibly documents Shift-click, Alt-drag, and Delete. Grouping, lasso, frames, and deep selection remain deferred.
+
+### Controls verification
+
+- Browser proof on Draft 2: Shift-click selected two components, group drag moved both, Delete/Backspace removed the complete selection, Ctrl/Cmd+D created a new selected copy, and Alt-drag created and moved a second selected copy.
+- Shortcut guards: Ctrl/Cmd+D did not duplicate while a numeric inspector input was focused; locked-component Ctrl/Cmd+D did not create a copy.
+- Refresh proof: the final two-component demo state rehydrated with `Layers (2)`; page-error and failed-request listeners returned empty arrays, and the refresh response sweep found no HTTP status ≥400.
+- Frontend suite: **7 files passed, 38 tests passed**; production build exited `0`; `openspec validate omr-canonical-template-authoring --strict` exited `0`.
+
 
 
 
