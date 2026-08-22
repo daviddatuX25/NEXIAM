@@ -201,3 +201,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 23.2 Add Shift-drag axis locking across Sheet Designer, QR overlays, and bubble sections; choose the dominant axis after the pointer crosses the drag threshold.
 - [x] 23.3 Make Alt+Shift-drag duplicate the selected duplicateable components while preserving the unique QR-reservation constraint.
 - [x] 23.4 Verify: 38 frontend tests, production build, QR/component multi-selection, axis-locked QR/group drag, Alt+Shift duplication, QR lock/remove controls, refresh persistence, and zero current runtime/HTTP errors.
+
+## 24. Examinee ID Matrix footprint parity
+
+- [x] 24.1 Make Stage-1 matrix bounds include title, write-in row, padding, bubble diameter, row gaps, and all ten digit rows.
+- [x] 24.2 Replace the fixed Stage-1 matrix row gap with the configured Row Pitch-derived gap used by the bounds helper.
+- [x] 24.3 Add frontend regression coverage proving the matrix border height tracks the full footprint and expands with Row Pitch.
+- [x] 24.4 Verify the supplied overflow reproduction: last row remains inside the border at compact and spacious Row Pitch values, with zero runtime/HTTP errors.

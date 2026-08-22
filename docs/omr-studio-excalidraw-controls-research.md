@@ -103,3 +103,8 @@ Route selection-changing durable commands through the existing snapshot history,
 
 - The single QR reservation now participates in the shared canvas selection and layer list; it can be selected, locked, moved with a group, and deleted, but duplicate commands skip it because the server contract has one `blank_instance_qr` reservation.
 - Shift-drag locks movement to the dominant axis after a small pointer threshold; Alt+Shift-drag duplicates selected components and applies the same axis lock to the copy drag.
+
+## Examinee matrix footprint parity
+
+- The Stage-1 matrix border previously used a bubble-only height formula while its DOM added title/write-in rows and a fixed CSS gap; row 8/9 overflow was therefore deterministic.
+- The corrected contract shares the full title/write-in/padding/ten-row footprint and uses the configured Row Pitch for both row spacing and bounds.

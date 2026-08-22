@@ -11,6 +11,7 @@ import {
   gridBlockHeightMm,
   rollBlockWidthMm,
   rollBlockHeightMm,
+  canvasRollBlockHeightMm,
   resetComponentSeq,
   COMPONENT_PALETTE,
   paletteForPath,
@@ -249,6 +250,18 @@ describe('Universal OMR Component Suite', () => {
       const size = componentBlockSizeMm(grid);
       expect(size.w_mm).toBeGreaterThanOrEqual(gridBlockWidthMm(grid));
       expect(size.h_mm).toBeGreaterThanOrEqual(gridBlockHeightMm(grid));
+    });
+    it('keeps the Stage-1 examinee matrix border around all ten rows', () => {
+      const roll = createComponent('roll');
+      if (roll.type !== 'roll') throw new Error('Expected roll component');
+
+      const compactBounds = canvasComponentBlockSizeMm(roll);
+      expect(compactBounds.h_mm).toBeGreaterThanOrEqual(canvasRollBlockHeightMm(roll));
+
+      roll.rowPitchMm = 12;
+      const spaciousBounds = canvasComponentBlockSizeMm(roll);
+      expect(spaciousBounds.h_mm).toBeGreaterThan(compactBounds.h_mm);
+      expect(spaciousBounds.h_mm).toBeGreaterThanOrEqual(canvasRollBlockHeightMm(roll));
     });
     it('keeps visual bounds aligned with labels and expands with row pitch', () => {
       const compact = canvasSectionBoundsMm(4, 25, 6, 6.8);

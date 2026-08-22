@@ -241,12 +241,37 @@ export function rollBlockHeightMm(r: ExamineeIdMatrixComponent): number {
   return Number((bubbleDiameter + 9 * (Number(r.rowPitchMm) || 4.8) + 1.5).toFixed(1));
 }
 
+export const CANVAS_ROLL_PADDING_PX = 3.5;
+export const CANVAS_ROLL_MARGIN_PX = 3.5;
+export const CANVAS_ROLL_MIN_ROW_GAP_PX = 1.75;
+
+/** Row gap used by the Stage-1 matrix renderer and its visual bounds. */
+export function canvasRollRowGapPx(rowPitchMm: number, bubbleDiameterPx: number): number {
+  return Math.max(CANVAS_ROLL_MIN_ROW_GAP_PX, (Number(rowPitchMm) || 4.8) * CANVAS_PX_PER_MM - bubbleDiameterPx);
+}
+
+/** Full Stage-1 matrix footprint, including title, write-in row, padding, and rows. */
+export function canvasRollBlockHeightMm(r: ExamineeIdMatrixComponent): number {
+  const bubbleDiameterPx = Math.max(4.2, Number(r.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM) * CANVAS_PX_PER_MM;
+  const titleLinePx = Math.max(8, (Number(r.typography?.fontSizePt) || 7.5) * 0.9 * 1.5);
+  const writeRowPx = bubbleDiameterPx * 1.15;
+  const rowGapPx = canvasRollRowGapPx(Number(r.rowPitchMm) || 4.8, bubbleDiameterPx);
+  const heightPx = (CANVAS_ROLL_PADDING_PX * 2)
+    + titleLinePx
+    + CANVAS_ROLL_MARGIN_PX
+    + writeRowPx
+    + CANVAS_ROLL_MARGIN_PX
+    + (10 * bubbleDiameterPx)
+    + (9 * rowGapPx);
+  return Number((heightPx / CANVAS_PX_PER_MM).toFixed(1));
+}
+
 /** Visual bounds for the canvas; text uses its editable size, geometric blocks retain their stored print width. */
 export function componentBlockSizeMm(c: OmrComponent): { w_mm: number; h_mm: number } {
   if (c.type === 'roll') {
     return {
       w_mm: Math.max(Number(c.w_mm) || 0, rollBlockWidthMm(c)),
-      h_mm: Math.max(Number(c.h_mm) || 0, rollBlockHeightMm(c)),
+      h_mm: Math.max(Number(c.h_mm) || 0, canvasRollBlockHeightMm(c)),
     };
   }
   if (isQuestionGridComponent(c)) {
@@ -292,7 +317,10 @@ export function canvasSectionBoundsMm(
 export function canvasComponentBlockSizeMm(c: OmrComponent): { w_mm: number; h_mm: number } {
   if (c.type === 'roll') {
     const size = canvasSectionBoundsMm(c.digitsCount, 10, c.bubblePitchMm, c.rowPitchMm, true, c.bubbleDiameterMm);
-    return { w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm), h_mm: Math.max(Number(c.h_mm) || 0, size.h_mm) };
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm),
+      h_mm: Math.max(Number(c.h_mm) || 0, canvasRollBlockHeightMm(c)),
+    };
   }
   if (isQuestionGridComponent(c)) {
     const size = canvasSectionBoundsMm(gridOptionLabels(c).length, c.questionsCount, c.bubblePitchMm, c.rowPitchMm, false, 4.5, CANVAS_BUBBLE_DIAMETER_PX);

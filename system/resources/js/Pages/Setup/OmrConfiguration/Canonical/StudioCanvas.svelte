@@ -9,6 +9,7 @@
   import {
     CANVAS_BUBBLE_DIAMETER_PX,
     CANVAS_RENDER_BUBBLE_PX,
+    canvasRollRowGapPx,
     gridOptionLabels,
     isQuestionGridComponent,
     canvasComponentBlockSizeMm,
@@ -265,9 +266,10 @@
 
     const rawDXmm = (e.clientX - dragStartX) / (2.476 * scale);
     const rawDYmm = (e.clientY - dragStartY) / (2.476 * scale);
-    const { dXmm, dYmm } = isComponentResizing
-      ? { dXmm: rawDXmm, dYmm: rawDYmm }
-      : constrainedDragDelta(e);
+    const isDraggingCanvasItem = isBlockDragging || isHandleDragging || isComponentDragging || isComponentResizing || dragItemIds.length > 0;
+    const { dXmm, dYmm } = isDraggingCanvasItem && !isComponentResizing
+      ? constrainedDragDelta(e)
+      : { dXmm: rawDXmm, dYmm: rawDYmm };
 
     if (isHtmlMode && currentStage === 1 && dragItemIds.length > 0 && !isComponentResizing && (isComponentDragging || isBlockDragging)) {
       moveCanvasItems(dXmm, dYmm);
@@ -827,6 +829,8 @@
           {@const qEnd = isGrid ? ((Number(comp.startQ) || 1) + (Number(comp.questionsCount) || 1) - 1) : 0}
           {@const bubblePitchMm = isRoll ? (Number(comp.bubblePitchMm) || 5.5) : (isGrid ? (Number(comp.bubblePitchMm) || 6.0) : 6.0)}
           {@const bubbleDiameterPx = isRoll ? (Math.max(4.2, Number(comp.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_BUBBLE_DIAMETER_PX}
+          {@const rowPitchMm = isRoll ? (Number(comp.rowPitchMm) || 4.8) : (isGrid ? (Number(comp.rowPitchMm) || 6.8) : 6.0)}
+          {@const rowGapPx = isRoll ? canvasRollRowGapPx(rowPitchMm, bubbleDiameterPx) : Math.max(1.75, rowPitchMm * 2.476 - bubbleDiameterPx)}
           {@const bubbleGapPx = Math.max(1, bubblePitchMm * 2.476 - bubbleDiameterPx)}
           {@const labelWidthPx = 3.5 * 2.476}
           {@const labelGapPx = 1.5 * 2.476}
@@ -865,7 +869,7 @@
                   {/each}
                 </div>
                 <!-- 0-9 Matrix rows: number and bubbles share one compact row rhythm -->
-                <div class="flex flex-col gap-0.5">
+                <div class="flex flex-col" style={`gap: ${rowGapPx}px;`}>
                   {#each Array.from({ length: 10 }) as _, digit}
                     <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${bubbleDiameterPx}px;`}>
                       <span
@@ -900,7 +904,7 @@
                   </div>
                 </div>
                 <!-- Question Rows: number immediately precedes the bubble group -->
-                <div class="flex flex-col gap-0.5">
+                <div class="flex flex-col" style={`gap: ${rowGapPx}px;`}>
                   {#each Array.from({ length: Math.min(Number(comp.questionsCount) || 1, 50) }) as _, r}
                     <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${bubbleDiameterPx}px;`}>
                       <span class="text-[6.5px] font-mono font-bold text-slate-600 text-right shrink-0" style={`width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px;`}>

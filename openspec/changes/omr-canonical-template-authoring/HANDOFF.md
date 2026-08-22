@@ -129,6 +129,13 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Browser proof**: QR + component multi-selection, Shift-locked QR/group movement, Alt+Shift copy drag, QR lock/remove controls, clean runtime reload, and no failed HTTP responses were verified on Draft 2.
 - **Verification**: frontend suite **38 tests passed**; production build exited `0`; existing detector warnings remain limited to contrast suggestions and the intentional canvas grid background.
 
+## Examinee ID Matrix footprint parity (2026-08-22)
+
+- **Root cause**: Stage 1 `canvasComponentBlockSizeMm()` sized the selected border from a bubble-only section formula, while the renderer added a title, write-in row, padding, and a fixed `gap-0.5`; the last two digit rows therefore overflowed the border.
+- **Fix**: added a shared Stage-1 matrix footprint helper covering the title/write-in/padding/ten-row structure, and replaced the fixed row gap with the configured Row Pitch-derived value.
+- **Evidence**: the supplied reproduction measured the old border bottom at `366.6 px` while row 9 ended at `398.4 px`; after the fix the compact border bottom is `402.0 px` and the last row ends at `398.4 px`. At Row Pitch `12 mm`, the border grows to `553.3 px` while the last row ends at `549.7 px`.
+- **Verification**: frontend suite passed; production build exited `0`; browser reload returned zero page errors and zero HTTP responses ≥400.
+
 
 
 
