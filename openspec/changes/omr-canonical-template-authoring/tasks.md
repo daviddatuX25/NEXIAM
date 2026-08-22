@@ -179,3 +179,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 20.4 Clear Sheet Designer selection when clicking the canvas background.
 - [x] 20.5 Add editable instruction label, ID matrix typography/bubble diameter controls, and Justify alignment.
 - [x] 20.6 Verify: 38 frontend tests, production build, Stage 3 row-spacing proof, all-corner marker proof, selection clearing, and zero runtime/request errors.
+
+## 21. Studio autosave serialization and refresh recovery
+
+- [x] 21.1 Serialize all studio PUT saves through one promise queue so autosaves cannot reuse a stale `lock_version` concurrently.
+- [x] 21.2 Verify the latest persisted components hydrate after a hard refresh.
+- [x] 21.3 Remove the typography control runtime failure path and preserve truthful save status when a request fails.
+- [x] 21.4 Verify: refresh regression retains components, captured studio requests return 200, and frontend suite remains green.

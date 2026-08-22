@@ -659,6 +659,7 @@
   let saveStatus = $state('saved'); // 'saved' | 'saving' | 'error'
   let errorMessage = $state('');
   let autosaveTimer = null;
+  let studioSaveQueue = Promise.resolve(true);
 
   let totalQuestionsCount = $derived(
     sections.reduce((sum, s) => sum + (Number(s.questionsCount) || 0), 0)
@@ -1155,7 +1156,17 @@
     return { blocks, overlayBlocks };
   }
 
-  async function performSave(sourceKindOverride = null) {
+  function performSave(sourceKindOverride = null) {
+    saveStatus = 'saving';
+    const queuedSave = studioSaveQueue.then(
+      () => saveStudioState(sourceKindOverride),
+      () => saveStudioState(sourceKindOverride),
+    );
+    studioSaveQueue = queuedSave.catch(() => false);
+    return queuedSave;
+  }
+
+  async function saveStudioState(sourceKindOverride = null) {
     const saveUrl = urls.studio || `/setup/omr/studio/${draft.id}`;
     const persistedSourceKind = sourceKindOverride ?? baseType;
 

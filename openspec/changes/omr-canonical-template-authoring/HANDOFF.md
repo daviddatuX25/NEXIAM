@@ -100,6 +100,12 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Row Pitch**: the rendered row height and CSS gap now use the same 10.5 px bubble footprint, so increasing Row Pitch moves rows and expands the green wrapper together.
 - **Fiducials**: target markers are absolutely positioned at all four corners; ArUco has a distinct grid pattern instead of the square fallback.
 - **Customization**: instructions expose an editable label; Examinee ID Matrix exposes typography and bubble diameter; typography alignment includes Justify; clicking canvas background clears component selection.
+## Autosave serialization and refresh recovery (2026-08-22)
+
+- **Save queue**: `performSave()` now serializes all atomic studio PUT requests through one promise queue, preventing same-lock concurrent autosaves and repeated conflict failures.
+- **Refresh persistence**: browser proof added Document Header + Question Grid, waited for one `200` studio save, refreshed the draft, and recovered both components (`Layers (2)`, two canvas blocks).
+- **Runtime path**: restored the `FONT_FAMILY_OPTIONS` import in `StudioTypographyControls.svelte`; final browser proof returned zero page errors and zero failed requests.
+
 
 
 
