@@ -4,6 +4,8 @@ import {
   renderFullSheetHtml,
   componentToSectionData,
   componentBlockSizeMm,
+  canvasSectionBoundsMm,
+  canvasComponentBlockSizeMm,
   gridOptionLabels,
   gridBlockWidthMm,
   gridBlockHeightMm,
@@ -247,6 +249,15 @@ describe('Universal OMR Component Suite', () => {
       const size = componentBlockSizeMm(grid);
       expect(size.w_mm).toBeGreaterThanOrEqual(gridBlockWidthMm(grid));
       expect(size.h_mm).toBeGreaterThanOrEqual(gridBlockHeightMm(grid));
+    });
+    it('keeps visual bounds aligned with labels and expands with row pitch', () => {
+      const compact = canvasSectionBoundsMm(4, 25, 6, 6.8);
+      const spacious = canvasSectionBoundsMm(4, 25, 6, 12);
+      const grid = createComponent('question_grid');
+
+      expect(compact.w_mm).toBeGreaterThan(25);
+      expect(spacious.h_mm).toBeGreaterThan(compact.h_mm);
+      expect(canvasComponentBlockSizeMm(grid).w_mm).toBeGreaterThanOrEqual(compact.w_mm);
     });
   });
   describe('Studio history', () => {

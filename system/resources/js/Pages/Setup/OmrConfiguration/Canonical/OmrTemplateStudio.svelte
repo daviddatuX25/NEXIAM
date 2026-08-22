@@ -272,6 +272,19 @@
         typography: component.typography ?? { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7, fontWeight: 700, textColor: '#475569' },
       };
     }
+    if (component.type === 'instructions') {
+      return {
+        ...component,
+        label: component.label ?? 'INSTRUCTIONS',
+      };
+    }
+    if (component.type === 'roll') {
+      return {
+        ...component,
+        bubbleDiameterMm: component.bubbleDiameterMm ?? 4.5,
+        typography: component.typography ?? { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7.5, fontWeight: 700, textColor: '#475569', textAlign: 'center' },
+      };
+    }
     return component;
   }
 
@@ -1829,6 +1842,16 @@
       {:else if selectedComponent.type === 'instructions'}
         <div class="space-y-2">
           <div>
+            <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Notice Label</label>
+            <input
+              type="text"
+              bind:value={selectedComponent.label}
+              oninput={syncComponentsToSections}
+              placeholder="Instructions"
+              class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-semibold"
+            />
+          </div>
+          <div>
             <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Notice Text</label>
             <textarea
               bind:value={selectedComponent.content}
@@ -1885,7 +1908,19 @@
               />
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="grid grid-cols-3 gap-2 pt-1">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Size (mm)</label>
+              <input
+                type="number"
+                min="4.2"
+                max="8"
+                step="0.1"
+                bind:value={selectedComponent.bubbleDiameterMm}
+                oninput={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+              />
+            </div>
             <div>
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Pitch (mm)</label>
               <input
@@ -1913,6 +1948,7 @@
           </div>
         </div>
 
+          <StudioTypographyControls bind:typography={selectedComponent.typography} onChanged={syncComponentsToSections} />
       {:else if selectedComponent.type === 'mcq' || selectedComponent.type === 'tf' || selectedComponent.type === 'likert' || selectedComponent.type === 'custom'}
         <div class="space-y-2">
           <div>

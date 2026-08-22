@@ -15,7 +15,7 @@ export interface OmrTypography {
   fontFamily: string;
   fontWeight: 400 | 600 | 700 | 800 | 900;
   textColor: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: 'left' | 'center' | 'right' | 'justify';
   lineHeight?: number;
   letterSpacingPx?: number;
 }
@@ -76,6 +76,7 @@ export interface CustomInputComponent extends ComponentGeometry {
 export interface InstructionsComponent extends ComponentGeometry {
   id: string;
   type: 'instructions';
+  label: string;
   content: string;
   typography: OmrTypography;
   borderColor: string;
@@ -86,7 +87,9 @@ export interface ExamineeIdMatrixComponent extends ComponentGeometry {
   id: string;
   type: 'roll';
   title: string;
+  typography: OmrTypography;
   digitsCount: number;
+  bubbleDiameterMm: number;
   bubblePitchMm: number;
   rowPitchMm: number;
 }
@@ -226,16 +229,16 @@ export function gridBlockHeightMm(g: QuestionGridComponent): number {
   const rows = Number(g.questionsCount) || 1;
   return contentBlockSizeMm(opts, rows, Number(g.bubblePitchMm) || 6.0, Number(g.rowPitchMm) || 6.8).h_mm;
 }
-
-/** Content-derived block width in mm for an examinee ID matrix. */
 export function rollBlockWidthMm(r: ExamineeIdMatrixComponent): number {
   const digits = Number(r.digitsCount) || 7;
-  return Number((OMR_BUBBLE_DIAMETER_MM + (digits - 1) * (Number(r.bubblePitchMm) || 5.5) + 1.5).toFixed(1));
+  const bubbleDiameter = Number(r.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM;
+  return Number((bubbleDiameter + (digits - 1) * (Number(r.bubblePitchMm) || 5.5) + 1.5).toFixed(1));
 }
 
 /** Content-derived block height in mm for an examinee ID matrix (10 digit rows). */
 export function rollBlockHeightMm(r: ExamineeIdMatrixComponent): number {
-  return Number((OMR_BUBBLE_DIAMETER_MM + 9 * (Number(r.rowPitchMm) || 4.8) + 1.5).toFixed(1));
+  const bubbleDiameter = Number(r.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM;
+  return Number((bubbleDiameter + 9 * (Number(r.rowPitchMm) || 4.8) + 1.5).toFixed(1));
 }
 
 /** Visual bounds for the canvas; text uses its editable size, geometric blocks retain their stored print width. */
@@ -253,6 +256,49 @@ export function componentBlockSizeMm(c: OmrComponent): { w_mm: number; h_mm: num
     };
   }
   return { w_mm: Number(c.w_mm) || 40, h_mm: Number(c.h_mm) || 12 };
+}
+export const CANVAS_RENDER_BUBBLE_PX = 10.5;
+
+/** Bounds of the actual compact Stage 3 canvas rows, including labels and padding. */
+export function canvasSectionBoundsMm(
+  options: number,
+  questions: number,
+  bubblePitchMm: number,
+  rowPitchMm: number,
+  isRoll = false,
+  bubbleDiameterMm = 4.5,
+  renderBubblePx = CANVAS_RENDER_BUBBLE_PX,
+): { w_mm: number; h_mm: number } {
+  const optionCount = Math.max(2, Number(options) || 4);
+  const rowCount = Math.min(50, Math.max(1, Number(questions) || 1));
+  const bPitch = Math.max(Number(bubblePitchMm) || 6, 4.5);
+  const rPitch = Math.max(Number(rowPitchMm) || 6.8, 3);
+  const renderBubblePxForMode = isRoll
+    ? Math.max(4.2, Number(bubbleDiameterMm) || 4.5) * CANVAS_PX_PER_MM
+    : renderBubblePx;
+  const bubbleGapPx = Math.max(1.5, bPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
+  const rowGapPx = Math.max(0.5, rPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
+  const labelWidthPx = isRoll ? 16 : 18;
+  const widthPx = 8 + labelWidthPx + optionCount * renderBubblePxForMode + Math.max(0, optionCount - 1) * bubbleGapPx;
+  const heightPx = 8 + rowCount * renderBubblePxForMode + Math.max(0, rowCount - 1) * rowGapPx;
+
+  return {
+    w_mm: Number((widthPx / CANVAS_PX_PER_MM).toFixed(1)),
+    h_mm: Number((heightPx / CANVAS_PX_PER_MM).toFixed(1)),
+  };
+}
+
+/** Canvas bounds that hug the rendered bubbles, labels, and row gaps. */
+export function canvasComponentBlockSizeMm(c: OmrComponent): { w_mm: number; h_mm: number } {
+  if (c.type === 'roll') {
+    const size = canvasSectionBoundsMm(c.digitsCount, 10, c.bubblePitchMm, c.rowPitchMm, true, c.bubbleDiameterMm);
+    return { w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm), h_mm: Math.max(Number(c.h_mm) || 0, size.h_mm) };
+  }
+  if (isQuestionGridComponent(c)) {
+    const size = canvasSectionBoundsMm(gridOptionLabels(c).length, c.questionsCount, c.bubblePitchMm, c.rowPitchMm, false, 4.5, CANVAS_BUBBLE_DIAMETER_PX);
+    return { w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm), h_mm: Math.max(Number(c.h_mm) || 0, size.h_mm) };
+  }
+  return componentBlockSizeMm(c);
 }
 
 /** Escape text for HTML attribute/innerText interpolation. */
@@ -569,7 +615,7 @@ function renderComponentHtml(c: OmrComponent): string {
     return `<div class="omr-comp omr-header" style="${style}">
       <div class="omr-title">
         <div style="${titleStyle}">${esc(c.title)}</div>
-        <div class="omr-subtitle" style="font-size: 7pt; color: #475569; font-weight: 600;">${esc(c.subtitle)}</div>
+        <div class="omr-subtitle" style="font-size: ${Math.max(5, (c.typography?.fontSizePt ?? 13) * 0.55)}pt; color: ${safeComponentColor(c.typography?.textColor, '#475569')}; font-family: ${esc(c.typography?.fontFamily)}; font-weight: 600; text-align: ${esc(c.typography?.textAlign)};">${esc(c.subtitle)}</div>
       </div>
       <div class="omr-sheet-code" style="font-size: 8pt;">${esc(c.formCode)}</div>
     </div>`;
@@ -586,24 +632,27 @@ function renderComponentHtml(c: OmrComponent): string {
   if (c.type === 'instructions') {
     return `<div class="omr-comp" style="${style}">
       <div class="omr-instructions" style="border-color: ${safeComponentColor(c.borderColor, '#cbd5e1')}; background: ${safeComponentColor(c.backgroundColor, '#ffffff')}; ${typographyToStyleString(c.typography)}">
-        <strong style="text-transform: uppercase;">Instructions:</strong> ${esc(c.content)}
+        <strong style="text-transform: uppercase;">${esc(c.label || 'Instructions')}:</strong> ${esc(c.content)}
       </div>
     </div>`;
   }
 
   if (c.type === 'roll') {
     const digits = Number(c.digitsCount) || 7;
-    const boxes = Array.from({ length: digits }).map(() => '<div class="omr-id-box"></div>').join('');
+    const bubbleDiameter = Number(c.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM;
+    const bubbleStyle = `width: ${bubbleDiameter}mm; height: ${bubbleDiameter}mm;`;
+    const boxStyle = `width: ${bubbleDiameter}mm; height: ${(bubbleDiameter * 1.15).toFixed(1)}mm;`;
+    const boxes = Array.from({ length: digits }).map(() => `<div class="omr-id-box" style="${boxStyle}"></div>`).join('');
     const rows = Array.from({ length: 10 }).map((_, digit) => `
       <div class="omr-id-row">
-        <span class="omr-id-num">${digit}</span>
-        <div class="omr-id-bubs">${Array.from({ length: digits }).map(() => '<div class="omr-id-bub"></div>').join('')}</div>
+        <span class="omr-id-num" style="${typographyToStyleString(c.typography)}">${digit}</span>
+        <div class="omr-id-bubs">${Array.from({ length: digits }).map(() => `<div class="omr-id-bub" style="${bubbleStyle}"></div>`).join('')}</div>
       </div>`).join('');
     return `<div class="omr-comp" style="${style}">
       <div class="omr-id-container" style="background-color: ${safeComponentColor(c.backgroundColor, '#fafafa')};">
-        <div class="omr-id-title" style="font-size: 6.5pt;">${esc(c.title)}</div>
+        <div class="omr-id-title" style="${typographyToStyleString(c.typography)}">${esc(c.title)}</div>
         <div class="omr-id-boxes">${boxes}</div>
-        <div class="omr-id-matrix" style="font-size: 6pt;">${rows}</div>
+        <div class="omr-id-matrix" style="${typographyToStyleString(c.typography)}">${rows}</div>
       </div>
     </div>`;
   }
@@ -685,6 +734,7 @@ export interface SectionData {
   startQ?: number;
   customValuesStr?: string;
   bubblePitchMm: number;
+  bubbleDiameterMm?: number;
   rowPitchMm: number;
   isLocked: boolean;
 }
@@ -709,6 +759,7 @@ export function componentToSectionData(c: OmrComponent): SectionData | null {
       startQ: 1,
       customValuesStr: '0, 1, 2, 3, 4, 5, 6, 7, 8, 9',
       bubblePitchMm: c.bubblePitchMm,
+      bubbleDiameterMm: c.bubbleDiameterMm,
       rowPitchMm: c.rowPitchMm,
       isLocked: c.isLocked,
     };
@@ -788,6 +839,7 @@ export const PRESET_150Q_COMPONENTS: OmrComponent[] = [
   },
   {
     id: 'Instructions',
+    label: 'INSTRUCTIONS',
     type: 'instructions',
     content: 'Use Black Pencil/Pen (#2 or HB). Shade circle completely. Erase cleanly if changing answers. Make no stray marks on this sheet.',
     typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6, fontWeight: 600, textColor: '#334155', lineHeight: 1.3 },
@@ -801,7 +853,9 @@ export const PRESET_150Q_COMPONENTS: OmrComponent[] = [
     id: 'Examinee_ID',
     type: 'roll',
     title: 'Examinee Number',
+    typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7.5, fontWeight: 700, textColor: '#475569', textAlign: 'center' },
     digitsCount: 7,
+    bubbleDiameterMm: 4.5,
     bubblePitchMm: 5.5,
     rowPitchMm: 4.8,
     posX: 110, posY: 24,
@@ -1069,6 +1123,7 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
       return {
         id: `Instructions_${seq}`,
         type: 'instructions',
+        label: 'INSTRUCTIONS',
         content: 'Use Black Pencil/Pen (#2 or HB). Shade circle completely. Erase cleanly if changing answers. Make no stray marks on this sheet.',
         typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 6.5, fontWeight: 600, textColor: '#334155', lineHeight: 1.3 },
         borderColor: '#cbd5e1',
@@ -1084,7 +1139,9 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         id: `Examinee_ID_${seq}`,
         type: 'roll',
         title: 'Examinee Number',
+        typography: { ...DEFAULT_TYPOGRAPHY, fontSizePt: 7.5, fontWeight: 700, textColor: '#475569', textAlign: 'center' },
         digitsCount: 7,
+        bubbleDiameterMm: 4.5,
         bubblePitchMm: 5.5,
         rowPitchMm: 4.8,
         posX: p.posX ?? 110,

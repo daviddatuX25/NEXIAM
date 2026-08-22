@@ -170,3 +170,12 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 19.4 Add a compact draggable layer list with raise/lower controls, persisted ordering, and collapsible visibility.
 - [x] 19.5 Minimize redundant sidebar copy into a draft-code header and mode tooltip.
 - [x] 19.6 Verify: 36 frontend tests, production build, and browser proof for separate input areas, Custom Input Box selection, background controls, compact layers, and zero runtime/request errors.
+
+## 20. Bubble-stage visual bounds and component customization follow-up
+
+- [x] 20.1 Separate Stage 3 bubble-section visual bounds from Sheet Designer component bounds; include labels, rendered bubble diameter, padding, and row gaps in the green wrapper.
+- [x] 20.2 Make Row Pitch use the same rendered row height and gap math as the Stage 3 canvas so spacing and wrapper height change together.
+- [x] 20.3 Fix target fiducials to use absolute positioning at all four corners and render a distinct ArUco-style pattern instead of the square fallback.
+- [x] 20.4 Clear Sheet Designer selection when clicking the canvas background.
+- [x] 20.5 Add editable instruction label, ID matrix typography/bubble diameter controls, and Justify alignment.
+- [x] 20.6 Verify: 38 frontend tests, production build, Stage 3 row-spacing proof, all-corner marker proof, selection clearing, and zero runtime/request errors.

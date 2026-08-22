@@ -6,12 +6,13 @@
     Minus,
     Plus,
   } from 'lucide-svelte';
-  import { contentBlockSizeMm } from '@/lib/omrStudioGeometry';
   import {
     CANVAS_BUBBLE_DIAMETER_PX,
+    CANVAS_RENDER_BUBBLE_PX,
     gridOptionLabels,
     isQuestionGridComponent,
-    componentBlockSizeMm,
+    canvasComponentBlockSizeMm,
+    canvasSectionBoundsMm,
     componentBackgroundColor,
     componentInputBackgroundColor,
   } from '@/lib/omrComponents';
@@ -111,6 +112,7 @@
   function handleCanvasMouseDown(e) {
     if (canvasLocked) return;
     if (e.target.closest('button, input, select, textarea')) return;
+    if (!e.target?.closest?.('[data-omr-component-id]')) activeComponentId = null;
     if (isBlockDragging || isHandleDragging || isComponentDragging || isComponentResizing) return;
     isPanning = true;
     panStartX = e.clientX - panX;
@@ -136,7 +138,7 @@
         comp.w_mm = Math.max(20, Math.min(210 - marginMm - comp.posX, Math.round(blockStartGeometry.w + dXmm)));
         comp.h_mm = Math.max(8, Math.min(297 - marginMm - comp.posY, Math.round(blockStartGeometry.h + dYmm)));
       } else if (isComponentDragging) {
-        const { w_mm: bw, h_mm: bh } = componentBlockSizeMm(comp);
+        const { w_mm: bw, h_mm: bh } = canvasComponentBlockSizeMm(comp);
         let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
         let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
         comp.posX = Math.max(marginMm, Math.min(210 - marginMm - bw, nx));
@@ -187,11 +189,13 @@
       const sec = sections[dragBlockIndex];
       if (!sec || sec.isLocked || !isBlockDragging) return;
 
-      const { w_mm, h_mm } = contentBlockSizeMm(
+      const { w_mm, h_mm } = canvasSectionBoundsMm(
         getOptionLabels(sec).length,
         Number(sec.questionsCount) || 1,
-        Number(sec.bubblePitchMm) || 9.5,
-        Number(sec.rowPitchMm) || 4.2
+        Number(sec.bubblePitchMm) || 6.0,
+        Number(sec.rowPitchMm) || 6.8,
+        sec.type === 'roll',
+        Number(sec.bubbleDiameterMm) || 4.5,
       );
 
       let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
@@ -319,6 +323,11 @@
     const count = Number(s.optionsCount) || 4;
     return ['A', 'B', 'C', 'D', 'E'].slice(0, Math.max(2, Math.min(5, count)));
   }
+  function markerClassName(pattern) {
+    if (pattern === 'target') return 'marker-target';
+    if (pattern === 'aruco') return 'marker-aruco';
+    return 'marker-box';
+  }
 </script>
 
 <div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100 select-none">
@@ -363,19 +372,19 @@
       <!-- STAGE 2+: 4 Corner Registration Fiducial Markers (ALWAYS VISIBLE in Stage 2, 3, 4) -->
       {#if currentStage >= 2 || (isHtmlMode && currentStage === 1)}
         <div
-          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          class={`absolute ${markerClassName(markerPattern)}`}
           style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
         ></div>
         <div
-          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          class={`absolute ${markerClassName(markerPattern)}`}
           style={`top: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
         <div
-          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          class={`absolute ${markerClassName(markerPattern)}`}
           style={`bottom: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
         ></div>
         <div
-          class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
+          class={`absolute ${markerClassName(markerPattern)}`}
           style={`bottom: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
       {/if}
@@ -600,15 +609,16 @@
               : comp.inputStyle === 'dotted_line'
                 ? 'border-b border-dashed border-slate-400'
                 : 'border border-slate-700 rounded-xs'}
-          {@const { w_mm: bw, h_mm: bh } = componentBlockSizeMm(comp)}
+          {@const { w_mm: bw, h_mm: bh } = canvasComponentBlockSizeMm(comp)}
           {@const digitsCount = isRoll ? (Number(comp.digitsCount) || 7) : 0}
           {@const gridLabels = isGrid ? gridOptionLabels(comp) : []}
           {@const qEnd = isGrid ? ((Number(comp.startQ) || 1) + (Number(comp.questionsCount) || 1) - 1) : 0}
           {@const bubblePitchMm = isRoll ? (Number(comp.bubblePitchMm) || 5.5) : (isGrid ? (Number(comp.bubblePitchMm) || 6.0) : 6.0)}
-          {@const bubbleGapPx = Math.max(1, bubblePitchMm * 2.476 - CANVAS_BUBBLE_DIAMETER_PX)}
+          {@const bubbleDiameterPx = isRoll ? (Math.max(4.2, Number(comp.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_BUBBLE_DIAMETER_PX}
+          {@const bubbleGapPx = Math.max(1, bubblePitchMm * 2.476 - bubbleDiameterPx)}
           {@const labelWidthPx = 3.5 * 2.476}
           {@const labelGapPx = 1.5 * 2.476}
-          {@const bubbleStyle = `width: ${CANVAS_BUBBLE_DIAMETER_PX}px; height: ${CANVAS_BUBBLE_DIAMETER_PX}px;`}
+          {@const bubbleStyle = `width: ${bubbleDiameterPx}px; height: ${bubbleDiameterPx}px;`}
 
           <div
             class={`absolute rounded-sm transition-all select-none overflow-visible ${
@@ -627,21 +637,27 @@
           >
             {#if isRoll}
               <!-- Roll / Examinee ID 0-9 Bubble Matrix (print-matched spacing) -->
-              <div class="p-1.5 w-full h-full flex flex-col justify-start bg-slate-50/60 border border-slate-900 rounded-xs pointer-events-none" style={`background-color: ${componentBackgroundColor(comp)};`}>
-                <div class="text-[7.5px] font-black text-center text-slate-900 uppercase tracking-wider mb-1">
+              <div class="p-1 w-full h-full flex flex-col justify-start">
+                <div
+                  class="font-black text-center text-slate-900 uppercase tracking-wider mb-1"
+                  style={`font-size: ${(comp.typography?.fontSizePt ?? 7.5) * 0.9}px; font-family: ${comp.typography?.fontFamily ?? 'Inter, sans-serif'}; color: ${comp.typography?.textColor ?? '#0f172a'}; text-align: ${comp.typography?.textAlign ?? 'center'};`}
+                >
                   {comp.title || 'EXAMINEE NUMBER'}
                 </div>
                 <!-- Write-in boxes row -->
                 <div class="flex justify-start mb-1" style={`gap: ${bubbleGapPx}px; padding-left: ${labelWidthPx + labelGapPx}px;`}>
                   {#each Array.from({ length: digitsCount }) as _}
-                    <div class="border border-slate-900 rounded-xs bg-white" style={`width: ${CANVAS_BUBBLE_DIAMETER_PX}px; height: ${CANVAS_BUBBLE_DIAMETER_PX * 1.15}px;`}></div>
+                    <div class="border border-slate-900 rounded-xs bg-white" style={`width: ${bubbleDiameterPx}px; height: ${bubbleDiameterPx * 1.15}px;`}></div>
                   {/each}
                 </div>
                 <!-- 0-9 Matrix rows: number and bubbles share one compact row rhythm -->
                 <div class="flex flex-col gap-0.5">
                   {#each Array.from({ length: 10 }) as _, digit}
-                    <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${CANVAS_BUBBLE_DIAMETER_PX}px;`}>
-                      <span class="text-[6.5px] font-mono font-bold text-slate-700 text-right" style={`width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px;`}>
+                    <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${bubbleDiameterPx}px;`}>
+                      <span
+                        class="font-mono font-bold text-right"
+                        style={`width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px; font-size: ${(comp.typography?.fontSizePt ?? 6.5) * 0.8}px; font-family: ${comp.typography?.fontFamily ?? 'monospace'}; color: ${comp.typography?.textColor ?? '#334155'};`}
+                      >
                         {digit}
                       </span>
                       <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
@@ -672,7 +688,7 @@
                 <!-- Question Rows: number immediately precedes the bubble group -->
                 <div class="flex flex-col gap-0.5">
                   {#each Array.from({ length: Math.min(Number(comp.questionsCount) || 1, 50) }) as _, r}
-                    <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${CANVAS_BUBBLE_DIAMETER_PX}px;`}>
+                    <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${bubbleDiameterPx}px;`}>
                       <span class="text-[6.5px] font-mono font-bold text-slate-600 text-right shrink-0" style={`width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px;`}>
                         {(Number(comp.startQ) || 1) + r}
                       </span>
@@ -698,7 +714,10 @@
                       {comp.title}
                     </h1>
                     {#if comp.subtitle}
-                      <p class="text-[7.5px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5 truncate">
+                      <p
+                        class="text-slate-500 font-semibold uppercase tracking-wider mt-0.5 truncate"
+                        style={`font-size: ${Math.max(5, (comp.typography?.fontSizePt ?? 13) * 0.55)}px; font-family: ${comp.typography?.fontFamily ?? 'Inter, sans-serif'}; color: ${comp.typography?.textColor ?? '#64748b'}; text-align: ${comp.typography?.textAlign ?? 'left'};`}
+                      >
                         {comp.subtitle}
                       </p>
                     {/if}
@@ -730,7 +749,7 @@
                 class="p-2 w-full h-full flex flex-col rounded-xs border pointer-events-none leading-tight"
                 style={`border-color: ${comp.borderColor || '#cbd5e1'}; background-color: ${comp.backgroundColor || '#ffffff'}; font-size: ${(comp.typography?.fontSizePt ?? 6.5) * 0.9}px; font-family: ${comp.typography?.fontFamily ?? 'Inter, sans-serif'}; color: ${comp.typography?.textColor ?? '#334155'};`}
               >
-                <span class="font-bold text-slate-900 uppercase tracking-wide block mb-0.5 text-[7px]">INSTRUCTIONS:</span>
+                <span class="font-bold text-slate-900 uppercase tracking-wide block mb-0.5 text-[7px]">{comp.label || 'INSTRUCTIONS'}:</span>
                 <span class="line-clamp-3 leading-snug">{comp.content}</span>
               </div>
 
@@ -796,15 +815,13 @@
           {@const isRoll = sec.type === 'roll'}
           {@const bPitchMm = Number(sec.bubblePitchMm) || (isRoll ? 5.5 : 5.2)}
           {@const rPitchMm = Number(sec.rowPitchMm) || (isRoll ? 4.8 : 6.8)}
-          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - 12)}
-          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - 12)}
+          {@const stageBubblePx = isRoll ? ((Number(sec.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_RENDER_BUBBLE_PX}
+          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - stageBubblePx)}
+          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - stageBubblePx)}
           {@const digitsCount = Number(sec.questionsCount) || (isRoll ? 7 : 25)}
-          {@const blockWidthMm = isRoll
-            ? Number((4.5 + (digitsCount - 1) * bPitchMm + 1.5).toFixed(1))
-            : contentBlockSizeMm(labels.length, Number(sec.questionsCount) || 1, bPitchMm, rPitchMm).w_mm}
-          {@const blockHeightMm = isRoll
-            ? Number((4.5 + (10 - 1) * rPitchMm + 1.5).toFixed(1))
-            : contentBlockSizeMm(labels.length, Number(sec.questionsCount) || 1, bPitchMm, rPitchMm).h_mm}
+          {@const visualBounds = canvasSectionBoundsMm(labels.length, Number(sec.questionsCount) || (isRoll ? 10 : 1), bPitchMm, rPitchMm, isRoll, Number(sec.bubbleDiameterMm) || 4.5)}
+          {@const blockWidthMm = visualBounds.w_mm}
+          {@const blockHeightMm = visualBounds.h_mm}
           {@const qEnd = (Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1}
           <div
             class={`absolute rounded-lg border transition-all backdrop-blur-[0.5px] overflow-hidden ${
@@ -821,13 +838,13 @@
               <!-- Roll / Examinee ID 0-9 Bubble Matrix -->
               <div class="p-1 w-full h-full flex flex-col justify-start" style={`gap: ${rowGapPx}px;`}>
                 {#each Array.from({ length: 10 }) as _, digit}
-                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 h-3 leading-none">
-                    <span class="w-3 h-3 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center">
+                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
+                    <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
                       {digit}
                     </span>
                     <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
                       {#each Array.from({ length: digitsCount }) as _}
-                        <div class="w-3 h-3 rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[5.5px] font-bold shadow-xs shrink-0">
+                        <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[5.5px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
                         </div>
                       {/each}
                     </div>
@@ -848,8 +865,8 @@
                 style={`gap: ${rowGapPx}px;`}
               >
                 {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
-                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 h-3 leading-none">
-                    <span class="w-3.5 h-3 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center">
+                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
+                    <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: 14px; height: ${stageBubblePx}px;`}>
                       {(Number(sec?.startQ) || 1) + r}
                     </span>
                     <div
@@ -857,7 +874,7 @@
                       style={`gap: ${bubbleGapPx}px;`}
                     >
                       {#each labels as opt}
-                        <div class="w-3 h-3 rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0">
+                        <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
                           {opt}
                         </div>
                       {/each}
@@ -917,7 +934,8 @@
     height: 24px;
     border-radius: 9999px;
     border: 3px solid #0f172a;
-    position: relative;
+    position: absolute;
+    background: #ffffff;
   }
   .marker-target::after {
     content: '';
@@ -925,5 +943,14 @@
     inset: 4px;
     background-color: #0f172a;
     border-radius: 9999px;
+  }
+  .marker-aruco {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #0f172a;
+    background:
+      linear-gradient(90deg, #0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%),
+      linear-gradient(#0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%);
+    background-size: 8px 8px;
   }
 </style>

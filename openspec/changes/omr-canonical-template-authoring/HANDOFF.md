@@ -94,12 +94,19 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Appearance**: Component background is independent from typography color and supports transparent, white, black, or custom hex colors. Input fill is separately configurable.
 - **Layers**: Sheet Components is now a compact Back-to-front layer list with drag reorder, raise/lower buttons, lock, remove, persisted `zIndex`, and collapsible visibility.
 - **Sidebar chrome**: Draft code remains visible; draft name is available as a tooltip. The mode description is a tooltip instead of persistent copy.
+## Bubble-stage geometry and customization follow-up (2026-08-22)
+
+- **Stage separation**: Stage 3 uses dedicated visual bounds that include the rendered label, bubble diameter, padding, and row gaps; Sheet Designer component bounds remain separate.
+- **Row Pitch**: the rendered row height and CSS gap now use the same 10.5 px bubble footprint, so increasing Row Pitch moves rows and expands the green wrapper together.
+- **Fiducials**: target markers are absolutely positioned at all four corners; ArUco has a distinct grid pattern instead of the square fallback.
+- **Customization**: instructions expose an editable label; Examinee ID Matrix exposes typography and bubble diameter; typography alignment includes Justify; clicking canvas background clears component selection.
+
 
 
 
 ## Verification evidence
 - Functional browser proof: Candidate Name and Custom Input Box expose separate input regions, Input Type/Shape controls, Component Background control, compact `Layers (2)` list, custom layer selection, and zero page/request errors.
-- Frontend suite: **7 files passed, 36 tests passed**.
+- Frontend suite: **7 files passed, 38 tests passed**.
 
 - Focused Sheet Designer browser proof (Draft 2, `CANONICAL-HTML`):
   - Compiled HTML textarea contains four `omr-fiducial-square` elements and `data-omr-overlay="blank_instance_qr"` with the selected QR size.
@@ -107,6 +114,9 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
   - Undo after adding a component returns `Sheet Components (0)`; redo restores `Sheet Components (1)`.
   - Keyboard undo works after the toolbar path and emits the live “Undid …” status.
   - Upload Document Stage 2 exposes the same QR size control.
+- Stage 3 geometry proof: green wrapper height grows from **422.6 px** at Row Pitch 6.8 mm to **731.7 px** at Row Pitch 12 mm; last bubble remains inside the wrapper.
+- Marker proof: target and ArUco classes render at all four corner coordinates.
+- Selection proof: clicking blank canvas clears the floating inspector.
 - Focused OMR PHP suites: **47 passed, 229 assertions**.
 - Canonical focused Laravel suite before this hardening: **56 passed, 1 skipped, 261 assertions**.
 - Parity command: `php artisan omr:canonical-parity` → **PASSED for all 7 seeded versions**.

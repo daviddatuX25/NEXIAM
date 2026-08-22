@@ -1,5 +1,5 @@
 <script>
-  import { Bold, AlignLeft, AlignCenter, AlignRight } from 'lucide-svelte';
+  import { Bold, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-svelte';
   import { FONT_FAMILY_OPTIONS } from '@/lib/omrComponents';
 
   let {
@@ -92,6 +92,14 @@
           title="Align right"
         >
           <AlignRight class="size-3" />
+        </button>
+        <button
+          type="button"
+          onclick={() => setAlign('justify')}
+          class={`p-1 rounded-md transition ${typography.textAlign === 'justify' ? 'bg-white shadow-xs' : 'text-slate-500'}`}
+          title="Justify text"
+        >
+          <AlignJustify class="size-3" />
         </button>
       </div>
       <div class="flex items-center gap-1 ml-auto">
