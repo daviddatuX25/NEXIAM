@@ -142,7 +142,7 @@
       }
       return;
     }
-    if (currentStage === 2) {
+    if (currentStage === 2 || (isHtmlMode && currentStage === 1)) {
       if (isBlockDragging) {
         if (selectedOverlay === 'header' && !headerLocked) {
           headerX = Math.max(marginMm, Math.min(210 - marginMm - headerW, Math.round(blockStartGeometry.x + dXmm)));
@@ -256,7 +256,7 @@
 
   // Overlay Drag & Resize Triggers (Stage 2)
   function handleOverlayMouseDown(e, target, geometry, isLocked = false) {
-    if (currentStage !== 2 || isLocked) return;
+    if (!(currentStage === 2 || (isHtmlMode && currentStage === 1)) || isLocked) return;
     e.stopPropagation();
     selectedOverlay = target;
     isBlockDragging = true;
@@ -266,7 +266,7 @@
   }
 
   function handleOverlayResizeMouseDown(e, target, geometry, isLocked = false) {
-    if (currentStage !== 2 || isLocked) return;
+    if (!(currentStage === 2 || (isHtmlMode && currentStage === 1)) || isLocked) return;
     e.stopPropagation();
     selectedOverlay = target;
     isHandleDragging = true;
@@ -358,7 +358,7 @@
       {/if}
 
       <!-- STAGE 2+: 4 Corner Registration Fiducial Markers (ALWAYS VISIBLE in Stage 2, 3, 4) -->
-      {#if currentStage >= 2}
+      {#if currentStage >= 2 || (isHtmlMode && currentStage === 1)}
         <div
           class={`absolute ${markerPattern === 'target' ? 'marker-target' : 'marker-box'}`}
           style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
@@ -376,9 +376,16 @@
           style={`bottom: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
       {/if}
+      {#if isHtmlMode && currentStage === 1}
+        <div
+          class="absolute border border-dashed border-emerald-300/70 pointer-events-none z-0"
+          style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px; bottom: ${marginMm * 2.476}px;`}
+          aria-label={`Printable margin inset ${marginMm} millimeters`}
+        ></div>
+      {/if}
 
-      <!-- STAGE 2: Overlays (Header, Signature, Instructions, Custom text, Simulated QR) with Typography Controls -->
-      {#if currentStage === 2}
+      <!-- Shared overlay layer (Stage 2 and Sheet Designer Stage 1) -->
+      {#if currentStage === 2 || (isHtmlMode && currentStage === 1)}
         <!-- Document Header Overlay -->
         {#if showHeaderOverlay}
           <div

@@ -4,7 +4,9 @@ namespace App\Http\Requests\Omr\Canonical;
 
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
+use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SaveOmrStudioStateRequest extends FormRequest
 {
@@ -36,6 +38,7 @@ class SaveOmrStudioStateRequest extends FormRequest
             'mapping.blocks' => ['nullable', 'array', 'max:100'],
             'studio' => ['nullable', 'array'],
             'lock_version' => ['required', 'integer', 'min:0'],
+            'source_kind' => ['nullable', 'string', Rule::in(OmrTemplateAuthoringDraft::SOURCE_KINDS)],
             'idempotency_key' => ['required', 'string', 'max:190'],
         ];
     }

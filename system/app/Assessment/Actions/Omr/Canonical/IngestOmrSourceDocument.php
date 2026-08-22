@@ -72,6 +72,7 @@ final class IngestOmrSourceDocument
             $authoring = (array) $reset->authoring_json;
             $authoring['source_run'] = [
                 'operation_id' => $operation->id,
+                'source_asset_id' => $asset->id,
                 'status' => 'queued',
                 'progress_done' => 0,
                 'progress_total' => 1,

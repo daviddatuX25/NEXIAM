@@ -51,6 +51,9 @@ final class RenderOmrSourcePagesJob implements ShouldQueue
     ): void {
         $draft = OmrTemplateAuthoringDraft::query()->findOrFail($this->draftId);
         $runState = (array) ($draft->authoring_json['source_run'] ?? []);
+        if ((int) ($runState['source_asset_id'] ?? 0) !== $this->sourceAssetId) {
+            return;
+        }
         if (($runState['cancel_requested'] ?? false) === true) {
             $authoring = (array) $draft->authoring_json;
             $authoring['source_run'] = [...$runState, 'status' => 'cancelled'];
@@ -119,9 +122,13 @@ final class RenderOmrSourcePagesJob implements ShouldQueue
             ]);
         }
 
-        DB::transaction(function () use ($draft, $result, $pageManifest): void {
+        $sourceAssetId = $this->sourceAssetId;
+        DB::transaction(function () use ($draft, $result, $pageManifest, $sourceAssetId): void {
             $locked = OmrTemplateAuthoringDraft::query()->lockForUpdate()->findOrFail($draft->id);
             $authoring = (array) $locked->authoring_json;
+            if ((int) ($authoring['source_run']['source_asset_id'] ?? 0) !== $sourceAssetId) {
+                return;
+            }
             $authoring['source'] = [
                 'sha256' => $result->sourceSha256,
                 'converter_version' => $result->converterVersion,
@@ -158,6 +165,9 @@ final class RenderOmrSourcePagesJob implements ShouldQueue
         $draft = OmrTemplateAuthoringDraft::query()->find($this->draftId);
         if ($draft !== null) {
             $authoring = (array) $draft->authoring_json;
+            if ((int) ($authoring['source_run']['source_asset_id'] ?? 0) !== $this->sourceAssetId) {
+                return;
+            }
             $authoring['source_run'] = [
                 ...(array) ($authoring['source_run'] ?? []),
                 'status' => 'failed',

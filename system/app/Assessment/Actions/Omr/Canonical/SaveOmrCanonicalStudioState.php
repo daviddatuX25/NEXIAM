@@ -41,8 +41,12 @@ final class SaveOmrCanonicalStudioState
         ?array $mapping,
         ?array $studio,
         int $expectedLockVersion,
+        ?string $sourceKind = null,
     ): OmrTemplateAuthoringDraft {
         $this->drafts->assertOwner($draft, $actor);
+        if ($sourceKind !== null && ! in_array($sourceKind, OmrTemplateAuthoringDraft::SOURCE_KINDS, true)) {
+            throw new OmrAuthoringDraftException('unsupported_source', 'Source kind is not supported.');
+        }
 
         if (! in_array($draft->stage, [
             OmrTemplateAuthoringDraft::STAGE_DRAFT,
@@ -104,6 +108,7 @@ final class SaveOmrCanonicalStudioState
             $fieldBlocks,
             $warnings,
             $expectedLockVersion,
+            $sourceKind,
         ): OmrTemplateAuthoringDraft {
             $locked = OmrTemplateAuthoringDraft::query()->lockForUpdate()->findOrFail($draft->id);
 
@@ -145,6 +150,7 @@ final class SaveOmrCanonicalStudioState
                 'authoring_json' => $authoring,
                 'lock_version' => $expectedLockVersion + 1,
                 'stage' => $nextStage,
+                'source_kind' => $sourceKind ?? $locked->source_kind,
             ])->save();
 
             $saved = $locked->fresh();

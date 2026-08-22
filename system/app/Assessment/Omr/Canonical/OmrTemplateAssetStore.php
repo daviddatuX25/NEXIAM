@@ -5,6 +5,7 @@ namespace App\Assessment\Omr\Canonical;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -44,7 +45,7 @@ final class OmrTemplateAssetStore
             }
 
             try {
-                return OmrTemplateAsset::query()->create([
+                return DB::transaction(fn (): OmrTemplateAsset => OmrTemplateAsset::query()->create([
                     'authoring_draft_id' => $draft->id,
                     'kind' => $kind,
                     'page_no' => $pageNo,
@@ -54,7 +55,17 @@ final class OmrTemplateAssetStore
                     'bytes' => strlen($bytes),
                     'sha256' => $sha256,
                     'metadata' => $metadata,
-                ]);
+                ]));
+            } catch (QueryException $exception) {
+                $existing = OmrTemplateAsset::query()
+                    ->where('disk', $disk)
+                    ->where('path', $path)
+                    ->first();
+                if ($existing !== null) {
+                    return $existing;
+                }
+                Storage::disk($disk)->delete($path);
+                throw $exception;
             } catch (RuntimeException $exception) {
                 Storage::disk($disk)->delete($path);
                 throw $exception;

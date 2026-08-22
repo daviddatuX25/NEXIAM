@@ -11,6 +11,9 @@ import {
   rollBlockHeightMm,
   resetComponentSeq,
   COMPONENT_PALETTE,
+  paletteForPath,
+  overlayPaletteForPath,
+  COMPONENT_PATH_FILTERS,
   PRESET_150Q_COMPONENTS,
 } from '../../resources/js/lib/omrComponents';
 
@@ -46,7 +49,21 @@ describe('Universal OMR Component Suite', () => {
       expect(comp.posX).toBe(25);
       expect(comp.posY).toBe(45);
       expect(comp.type).toBe('candidate_name');
-      expect((comp as any).label).toContain('Candidate Name');
+      expect('label' in comp ? comp.label : '').toContain('Candidate Name');
+    });
+  });
+
+  describe('path-filtered shared palette', () => {
+    it('excludes question and bubble components from upload documents', () => {
+      const uploadKinds = paletteForPath('upload_document').map((item) => item.kind);
+      const sheetKinds = paletteForPath('sheet_designer').map((item) => item.kind);
+
+      expect(uploadKinds).not.toContain('roll');
+      expect(uploadKinds).not.toContain('question_grid');
+      expect(sheetKinds).toContain('roll');
+      expect(sheetKinds).toContain('question_grid');
+      expect(COMPONENT_PATH_FILTERS.upload_document.includeQuestionComponents).toBe(false);
+      expect(overlayPaletteForPath('upload_document').map((item) => item.kind)).toEqual(['qr_code', 'margins', 'markers']);
     });
   });
 

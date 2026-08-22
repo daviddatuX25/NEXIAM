@@ -316,6 +316,7 @@ class OmrCanonicalTemplateController extends Controller
             $payload['mapping'] ?? null,
             $payload['studio'] ?? null,
             (int) $payload['lock_version'],
+            $payload['source_kind'] ?? null,
         );
 
         return response()->json([

@@ -123,6 +123,31 @@ export type ComponentKind =
   | 'custom_text'
   | 'signature';
 
+/** Supported authoring paths for the shared component palette. */
+export type ComponentPath = 'sheet_designer' | 'upload_document';
+
+export interface ComponentPaletteFilter {
+  path: ComponentPath;
+  includeTextComponents: boolean;
+  includeQuestionComponents: boolean;
+  includeOverlayControls: boolean;
+}
+
+export const COMPONENT_PATH_FILTERS: Record<ComponentPath, ComponentPaletteFilter> = {
+  sheet_designer: {
+    path: 'sheet_designer',
+    includeTextComponents: true,
+    includeQuestionComponents: true,
+    includeOverlayControls: true,
+  },
+  upload_document: {
+    path: 'upload_document',
+    includeTextComponents: true,
+    includeQuestionComponents: false,
+    includeOverlayControls: true,
+  },
+};
+
 export type TextComponentType = 'header' | 'candidate_name' | 'birthdate' | 'room_seat' | 'instructions' | 'custom_text' | 'signature';
 export type GeometricComponentType = 'roll' | 'mcq' | 'tf' | 'likert' | 'custom';
 
@@ -710,17 +735,53 @@ export const PRESET_150Q_COMPONENTS: OmrComponent[] = [
   },
 ];
 
-export const COMPONENT_PALETTE: Array<{ kind: ComponentKind; label: string; description: string }> = [
-  { kind: 'header', label: 'Document Header', description: 'Exam title, subtitle, and form code badge' },
-  { kind: 'candidate_name', label: 'Candidate Name', description: 'Write-in line for the candidate printed name' },
-  { kind: 'birthdate', label: 'Birthdate', description: 'Write-in line for birthdate (MM / DD / YYYY)' },
-  { kind: 'room_seat', label: 'Room / Seat', description: 'Write-in line for room, seat, or group number' },
-  { kind: 'instructions', label: 'Instructions', description: 'Pencil / shading rules notice box' },
-  { kind: 'roll', label: 'Examinee ID Matrix', description: 'Write-in boxes + 0–9 vertical bubble columns' },
-  { kind: 'question_grid', label: 'Question Grid', description: 'Numbered question rows with option bubbles' },
-  { kind: 'custom_text', label: 'Custom Text', description: 'Free-positioned text label' },
-  { kind: 'signature', label: 'Signature Box', description: 'Signature line with certification text' },
+export interface ComponentPaletteItem {
+  kind: ComponentKind;
+  label: string;
+  description: string;
+  paths: ComponentPath[];
+}
+
+export const COMPONENT_PALETTE: ComponentPaletteItem[] = [
+  { kind: 'header', label: 'Document Header', description: 'Exam title, subtitle, and form code badge', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'candidate_name', label: 'Candidate Name', description: 'Write-in line for the candidate printed name', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'birthdate', label: 'Birthdate', description: 'Write-in line for birthdate (MM / DD / YYYY)', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'room_seat', label: 'Room / Seat', description: 'Write-in line for room, seat, or group number', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'instructions', label: 'Instructions', description: 'Pencil / shading rules notice box', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'roll', label: 'Examinee ID Matrix', description: 'Write-in boxes + 0–9 vertical bubble columns', paths: ['sheet_designer'] },
+  { kind: 'question_grid', label: 'Question Grid', description: 'Numbered question rows with option bubbles', paths: ['sheet_designer'] },
+  { kind: 'custom_text', label: 'Custom Text', description: 'Free-positioned text label', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'signature', label: 'Signature Box', description: 'Signature line with certification text', paths: ['sheet_designer', 'upload_document'] },
 ];
+
+export function paletteForPath(path: ComponentPath): ComponentPaletteItem[] {
+  const filter = COMPONENT_PATH_FILTERS[path];
+  return COMPONENT_PALETTE.filter((item) => {
+    const isQuestionComponent = item.kind === 'roll' || item.kind === 'question_grid';
+    return item.paths.includes(path)
+      && (filter.includeQuestionComponents || !isQuestionComponent)
+      && (filter.includeTextComponents || isQuestionComponent);
+  });
+}
+
+export type OverlayPaletteKind = 'qr_code' | 'margins' | 'markers';
+
+export interface OverlayPaletteItem {
+  kind: OverlayPaletteKind;
+  label: string;
+  description: string;
+  paths: ComponentPath[];
+}
+
+export const OVERLAY_PALETTE: OverlayPaletteItem[] = [
+  { kind: 'qr_code', label: 'Blank Instance QR', description: 'Reserved QR block for blank-instance tracking', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'margins', label: 'Margin Insets', description: 'Physical quiet zone around the sheet edge', paths: ['sheet_designer', 'upload_document'] },
+  { kind: 'markers', label: 'Fiducial Markers', description: 'Corner registration marker pattern', paths: ['sheet_designer', 'upload_document'] },
+];
+
+export function overlayPaletteForPath(path: ComponentPath): OverlayPaletteItem[] {
+  return OVERLAY_PALETTE.filter((item) => item.paths.includes(path));
+}
 
 export const FONT_FAMILY_OPTIONS = [
   { value: 'Inter, sans-serif', label: 'Inter' },

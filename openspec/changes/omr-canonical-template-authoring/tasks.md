@@ -144,3 +144,13 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 16.7 CSRF: `validateCsrfTokens(except: ['setup/omr/studio/*', 'setup/omr/templates/canonical/drafts/*'])` + `csrfToken()` helper (meta tag → XSRF cookie → `window._token`) so the studio PUT never 419s.
 - [x] 16.8 Seeds + handoff: `OmrCanonicalDemoSeeder` seeds `CANONICAL-PRESET` (preset) and `CANONICAL-HTML` (html) via `updateOrCreate` with no studio payload so the entry gate shows on a fresh seed; record credentials, recreate steps, and verification evidence in `HANDOFF.md`.
 - [x] 16.9 Verify: rebuild + reseed + browser proof (gate → choose Sheet Designer → click-add + simulated DnD add → inspector typography → remove → Compiled HTML markup/suite reference/copy → change-mode confirm modal); focused PHP suites green (44 passed, 218 assertions).
+
+## 17. Sheet Designer / Upload Document parity hardening
+
+- [x] 17.1 Persist selected `source_kind` through the atomic studio save before file ingestion; accept PDF, DOCX, and image uploads without `source_kind_mismatch`.
+- [x] 17.2 Reset raster, components, compiled HTML, sections, selection, and pending upload state on deliberate mode changes.
+- [x] 17.3 Add typed `ComponentPath` / `ComponentPaletteFilter` contracts, path-filtered component and overlay palettes, and persist `studio.palette_filter`.
+- [x] 17.4 Surface shared margins, marker patterns, QR reservation, and filtered overlay controls in both authoring paths; hide bubble/question cards from Upload Document.
+- [x] 17.5 Add editable Bubble Pitch and Row Pitch controls to Sheet Designer inspectors and carry component spacing into Stage 3 sections.
+- [x] 17.6 Harden source-run polling, stale conversion jobs, and concurrent normalized-page asset deduplication; verify upload → Layout & Overlays.
+- [x] 17.7 Verify: 32 frontend tests, 47 focused OMR PHP tests (229 assertions), and browser proof for mode reset, path filtering, spacing handoff, and PNG upload.

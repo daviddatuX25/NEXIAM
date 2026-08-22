@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { router } from '@inertiajs/svelte';
   import { newIdempotencyKey, csrfToken } from '@/lib/utils';
   import {
     emitNativeMapping,
@@ -12,7 +13,9 @@
     componentToSectionData,
     createComponent,
     componentBlockSizeMm,
-    COMPONENT_PALETTE,
+    COMPONENT_PATH_FILTERS,
+    paletteForPath,
+    overlayPaletteForPath,
     COMPONENT_SUITE_PROMPT,
   } from '@/lib/omrComponents';
   import {
@@ -65,6 +68,8 @@
   let stage1Mode = $state((draft.source_kind === 'image' || draft.source_kind === 'pdf' || draft.source_kind === 'docx') ? 'upload' : 'html');
   let baseType = $state(draft.source_kind ?? 'html');
   let hasChosenMode = $state(Boolean(draft.authoring?.studio?.stage1Mode));
+  let componentPalettePath = $derived(stage1Mode === 'html' ? 'sheet_designer' : 'upload_document');
+  let componentPaletteFilter = $derived(COMPONENT_PATH_FILTERS[componentPalettePath]);
 
   // Stage 1: Sheet Designer Component State — starts BLANK; components come from the palette.
   let designerSubTab = $state('designer'); // 'designer' | 'raw_html'
@@ -127,6 +132,54 @@
     selectedComponentId = comp.id;
     syncComponentsToSections();
   }
+  function addUploadTextOverlay(kind) {
+    const labels = {
+      candidate_name: 'CANDIDATE NAME',
+      birthdate: 'BIRTHDATE (MM / DD / YYYY)',
+      room_seat: 'ROOM / SEAT / GROUP NO.',
+      custom_text: 'Additional Instruction / Note',
+    };
+    const nextId = customTextItems.length + 1;
+    customTextItems = [
+      ...customTextItems,
+      {
+        id: `custom_text_${nextId}`,
+        name: `Text ${nextId}`,
+        content: labels[kind] || labels.custom_text,
+        fontSize: 10,
+        fontFamily: 'Inter, sans-serif',
+        color: '#0f172a',
+        align: 'left',
+        bold: false,
+        italic: false,
+        posX: 25,
+        posY: Math.min(260, 230 + nextId * 10),
+        w_mm: 80,
+        h_mm: 15,
+        isLocked: false,
+      },
+    ];
+    triggerAutosave();
+  }
+
+  function handlePaletteItem(item) {
+    if (componentPalettePath === 'sheet_designer') {
+      addComponent(item.kind);
+      return;
+    }
+
+    if (item.kind === 'header') showHeaderOverlay = true;
+    else if (item.kind === 'instructions') showInstructionsOverlay = true;
+    else if (item.kind === 'signature') showSignatureOverlay = true;
+    else addUploadTextOverlay(item.kind);
+    triggerAutosave();
+  }
+
+  function handleOverlayPaletteItem(kind) {
+    if (kind === 'qr_code') showQrOverlay = true;
+    triggerAutosave();
+  }
+
   function selectComponent(id) {
     selectedComponentId = id;
     const idx = sections.findIndex((s) => s.id === id);
@@ -233,6 +286,23 @@
   let showModeSwitchModal = $state(false);
   let pendingTargetMode = $state(null);
 
+  function resetCanvasForModeSwitch() {
+    draft.raster_url = null;
+    components = [];
+    sections = [];
+    htmlCode = '';
+    selectedComponentId = null;
+    activeSectionIndex = 0;
+    currentStage = 1;
+    scale = 0.78;
+    panX = 0;
+    panY = 0;
+    uploadRunning = false;
+    conversionStatusText = '';
+    conversionError = '';
+    if (uploadFileInput) uploadFileInput.value = '';
+  }
+
   function requestSwitchMode(targetMode) {
     if (targetMode === stage1Mode) return;
     const hasModified = draft.raster_url || components.length > 0 || uploadRunning;
@@ -241,6 +311,7 @@
       showModeSwitchModal = true;
       return;
     }
+    resetCanvasForModeSwitch();
     stage1Mode = targetMode;
     baseType = targetMode === 'html' ? 'html' : 'image';
     triggerAutosave();
@@ -248,9 +319,10 @@
 
   function confirmSwitchMode() {
     if (!pendingTargetMode) return;
-    stage1Mode = pendingTargetMode;
-    baseType = pendingTargetMode === 'html' ? 'html' : 'image';
-    draft.raster_url = null;
+    const nextMode = pendingTargetMode;
+    resetCanvasForModeSwitch();
+    stage1Mode = nextMode;
+    baseType = nextMode === 'html' ? 'html' : 'image';
     showModeSwitchModal = false;
     pendingTargetMode = null;
     triggerAutosave();
@@ -595,6 +667,15 @@
       const blob = await res.blob();
       const file = new File([blob], 'standard-150q-answer-sheet.png', { type: 'image/png' });
 
+      baseType = 'image';
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = null;
+      }
+      if (!await performSave('image')) {
+        throw new Error(errorMessage || 'Could not save the image source type.');
+      }
+
       const form = new FormData();
       form.append('source_kind', 'image');
       form.append('source', file);
@@ -628,7 +709,21 @@
     }
   }
 
+  function syncSectionsFromComponentsForBubbleStage() {
+    const nextSections = components
+      .map((component) => componentToSectionData(component))
+      .filter((section) => section !== null);
+
+    if (nextSections.length > 0) {
+      sections = nextSections;
+      activeSectionIndex = Math.min(activeSectionIndex, nextSections.length - 1);
+    }
+  }
+
   async function executeGoToStage(step) {
+    if (step === 3 && stage1Mode === 'html') {
+      syncSectionsFromComponentsForBubbleStage();
+    }
     currentStage = step;
     await performSave();
   }
@@ -762,8 +857,9 @@
     return { blocks, overlayBlocks };
   }
 
-  async function performSave() {
+  async function performSave(sourceKindOverride = null) {
     const saveUrl = urls.studio || `/setup/omr/studio/${draft.id}`;
+    const persistedSourceKind = sourceKindOverride ?? baseType;
 
     try {
       const { blocks, overlayBlocks } = buildBlockList();
@@ -806,7 +902,8 @@
         customTextItems,
         htmlCode,
         stage1Mode,
-        baseType,
+        baseType: persistedSourceKind,
+        palette_filter: componentPaletteFilter,
       };
 
       const res = await fetch(saveUrl, {
@@ -821,6 +918,7 @@
           mapping: nativeMapping,
           overlay: overlayBoxes,
           studio: studioPayload,
+          source_kind: persistedSourceKind,
           lock_version: currentLockVersion,
           idempotency_key: newIdempotencyKey(),
         }),
@@ -828,17 +926,21 @@
       if (res.ok) {
         const data = await res.json();
         currentLockVersion = data.lock_version ?? currentLockVersion;
+        draft.source_kind = persistedSourceKind;
         saveStatus = 'saved';
         errorMessage = '';
         if (onMappingSaved) onMappingSaved();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        saveStatus = 'error';
-        errorMessage = data.message || 'Atomic studio state save rejected.';
+        return true;
       }
+
+      const data = await res.json().catch(() => ({}));
+      saveStatus = 'error';
+      errorMessage = data.message || 'Atomic studio state save rejected.';
+      return false;
     } catch (err) {
       saveStatus = 'error';
       errorMessage = err?.message || 'Network error while saving studio state.';
+      return false;
     }
   }
 
@@ -851,10 +953,23 @@
     conversionStatusText = `Uploading ${file.name}…`;
     conversionError = '';
 
+    const filename = file.name.toLowerCase();
     let detectedKind = 'image';
-    if (file.name.endsWith('.pdf')) detectedKind = 'pdf';
-    else if (file.name.endsWith('.docx')) detectedKind = 'docx';
-    else if (file.name.endsWith('.html') || file.name.endsWith('.htm')) detectedKind = 'html';
+    if (filename.endsWith('.pdf')) detectedKind = 'pdf';
+    else if (filename.endsWith('.docx')) detectedKind = 'docx';
+    else if (filename.endsWith('.html') || filename.endsWith('.htm')) detectedKind = 'html';
+
+    baseType = detectedKind;
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
+    const saved = await performSave(detectedKind);
+    if (!saved) {
+      uploadRunning = false;
+      conversionError = errorMessage || 'Could not save the selected source type.';
+      return;
+    }
 
     const form = new FormData();
     form.append('source_kind', detectedKind);
@@ -895,7 +1010,7 @@
         if (res.ok) {
           const body = await res.json();
           const run = body.run;
-          if (run?.status === 'completed') {
+          if (run?.status === 'completed' || run?.status === 'succeeded') {
             clearInterval(pollInterval);
             conversionStatusText = 'Conversion completed. Confirming pages…';
             await autoConfirmPages();
@@ -928,14 +1043,15 @@
     }
 
     uploadRunning = false;
+    const continueToLayout = (page = null) => {
+      const nextDraft = page?.props?.draft;
+      currentLockVersion = nextDraft?.lock_version ?? draft.lock_version ?? currentLockVersion;
+      executeGoToStage(2);
+    };
     router.reload({
       only: ['draft'],
-      onSuccess: () => {
-        executeGoToStage(2);
-      },
-      onError: () => {
-        executeGoToStage(2);
-      },
+      onSuccess: continueToLayout,
+      onError: continueToLayout,
     });
   }
 
@@ -1365,9 +1481,31 @@
               />
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-500 pt-1">
-            <span>Bubble pitch: 5.5mm</span>
-            <span>Row pitch: 4.8mm</span>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Pitch (mm)</label>
+              <input
+                type="number"
+                min="4.5"
+                max="15"
+                step="0.1"
+                bind:value={selectedComponent.bubblePitchMm}
+                oninput={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+              />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Row Pitch (mm)</label>
+              <input
+                type="number"
+                min="3"
+                max="15"
+                step="0.1"
+                bind:value={selectedComponent.rowPitchMm}
+                oninput={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+              />
+            </div>
           </div>
         </div>
 
@@ -1391,6 +1529,18 @@
                 min="1"
                 max="60"
                 bind:value={selectedComponent.questionsCount}
+                oninput={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+              />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Pitch (mm)</label>
+              <input
+                type="number"
+                min="4.5"
+                max="25"
+                step="0.1"
+                bind:value={selectedComponent.bubblePitchMm}
                 oninput={syncComponentsToSections}
                 class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
               />
@@ -1626,10 +1776,10 @@
                     <span class="text-[9.5px] text-slate-400">Drag onto canvas or click to add</span>
                   </div>
                   <div class="grid grid-cols-2 gap-1.5">
-                    {#each COMPONENT_PALETTE as item}
+                    {#each paletteForPath(componentPalettePath) as item}
                       <button
                         type="button"
-                        draggable="true"
+                        draggable={componentPaletteFilter.includeQuestionComponents || (item.kind !== 'roll' && item.kind !== 'question_grid')}
                         ondragstart={(e) => {
                           window.__omrDragKind = item.kind;
                           try {
@@ -1637,7 +1787,7 @@
                             e.dataTransfer.effectAllowed = 'copy';
                           } catch {}
                         }}
-                        onclick={() => addComponent(item.kind)}
+                        onclick={() => handlePaletteItem(item)}
                         class="text-left p-2 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-lg transition cursor-grab active:cursor-grabbing"
                         title={item.description}
                       >
@@ -1645,6 +1795,82 @@
                         <span class="block text-[9px] text-slate-400 mt-0.5 leading-snug">{item.description}</span>
                       </button>
                     {/each}
+                  </div>
+                </div>
+
+                <!-- Shared overlay palette: filtered by authoring path -->
+                <div class="border-t border-slate-200/80 pt-3">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-slate-900">Shared Overlay Palette</span>
+                    <span class="text-[9.5px] text-slate-400">Path: {componentPalettePath === 'sheet_designer' ? 'Sheet' : 'Upload'}</span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-1.5">
+                    {#each overlayPaletteForPath(componentPalettePath) as item}
+                      <button
+                        type="button"
+                        onclick={() => handleOverlayPaletteItem(item.kind)}
+                        class="text-left p-2 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 rounded-lg transition"
+                        title={item.description}
+                      >
+                        <span class="block text-[10px] font-bold text-slate-800 leading-tight">{item.label}</span>
+                        <span class="block text-[8.5px] text-slate-400 mt-0.5 leading-snug">{item.description}</span>
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+
+                <!-- Shared layout controls: margins, markers, and QR -->
+                <div class="border-t border-slate-200/80 pt-3 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Sheet Layout</span>
+                    <span class="text-[9.5px] text-slate-400">Saved with this path</span>
+                  </div>
+                  <div class="space-y-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="flex justify-between text-[11px] font-semibold text-slate-700">
+                      <span>Margin Inset</span>
+                      <span class="font-mono bg-white border px-1.5 py-0.5 rounded text-[10px]">{marginMm} mm</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="8"
+                      max="30"
+                      step="1"
+                      bind:value={marginMm}
+                      oninput={triggerAutosave}
+                      class="w-full accent-slate-900"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <span class="text-[11px] font-bold text-slate-700 block">Fiducial Markers</span>
+                    <div class="grid grid-cols-3 gap-1">
+                      {#each ['square', 'target', 'aruco'] as pat}
+                        <button
+                          type="button"
+                          onclick={() => { markerPattern = pat; triggerAutosave(); }}
+                          class={`py-1 rounded-lg border text-center text-[10px] font-semibold capitalize transition ${
+                            markerPattern === pat ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 bg-white hover:border-slate-300'
+                          }`}
+                        >{pat}</button>
+                      {/each}
+                    </div>
+                  </div>
+                  <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                      <input type="checkbox" bind:checked={showQrOverlay} onchange={triggerAutosave} class="rounded text-slate-900" />
+                      <span class="text-[11px] font-bold text-slate-800">Blank Instance QR</span>
+                    </label>
+                    {#if showQrOverlay}
+                      <div class="grid grid-cols-2 gap-2 text-[10px]">
+                        <div>
+                          <label class="font-semibold text-slate-600 block mb-0.5">X (mm)</label>
+                          <input type="number" min="10" max="190" bind:value={qrX} oninput={triggerAutosave} class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs" />
+                        </div>
+                        <div>
+                          <label class="font-semibold text-slate-600 block mb-0.5">Y (mm)</label>
+                          <input type="number" min="10" max="280" bind:value={qrY} oninput={triggerAutosave} class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs" />
+                        </div>
+                      </div>
+                    {/if}
                   </div>
                 </div>
 
@@ -1789,6 +2015,45 @@
           {:else}
             <!-- Option 2: Upload Document File -->
             <div class="space-y-3">
+              <!-- Shared palette filtered for substrate overlays: no bubbles or question grids -->
+              <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-900">Overlay Palette</span>
+                  <span class="text-[9.5px] text-slate-400">Questions are configured later</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  {#each paletteForPath(componentPalettePath) as item}
+                    <button
+                      type="button"
+                      onclick={() => handlePaletteItem(item)}
+                      class="text-left p-2 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 rounded-lg transition"
+                      title={item.description}
+                    >
+                      <span class="block text-[10px] font-bold text-slate-800 leading-tight">{item.label}</span>
+                      <span class="block text-[8.5px] text-slate-400 mt-0.5 leading-snug">{item.description}</span>
+                    </button>
+                  {/each}
+                </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  {#each overlayPaletteForPath(componentPalettePath) as item}
+                    <button
+                      type="button"
+                      onclick={() => handleOverlayPaletteItem(item.kind)}
+                      class="text-left p-2 bg-slate-50 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 rounded-lg transition"
+                      title={item.description}
+                    >
+                      <span class="block text-[9.5px] font-bold text-slate-800 leading-tight">{item.label}</span>
+                    </button>
+                  {/each}
+                </div>
+                <button
+                  type="button"
+                  onclick={() => requestGoToStage(2)}
+                  class="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10.5px] font-semibold transition"
+                >
+                  Open Layout &amp; Overlays
+                </button>
+              </div>
               <!-- 1-Click Sample Sheet Ingestion -->
               <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-800">

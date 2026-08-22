@@ -163,6 +163,39 @@ test('atomic studio endpoint saves mapping, overlays, and studio state without c
     $staleRes->assertStatus(500);
 });
 
+test('studio endpoint persists the selected upload source kind', function (): void {
+    $actor = User::factory()->create();
+    \Spatie\Permission\Models\Permission::findOrCreate(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR, 'web');
+    $actor->givePermissionTo(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR);
+
+    $draft = app(OmrAuthoringDraftService::class)->create($actor, 'STUDIO-SOURCE', 'Upload Source', 'html');
+
+    $response = $this->actingAs($actor)->putJson(
+        route('setup.omr.templates.canonical.drafts.studio', $draft),
+        [
+            'source_kind' => 'pdf',
+            'overlay' => ['boxes' => []],
+            'mapping' => null,
+            'studio' => [
+                'current_stage' => 1,
+                'stage1Mode' => 'upload',
+                'baseType' => 'pdf',
+                'palette_filter' => [
+                    'path' => 'upload_document',
+                    'includeTextComponents' => true,
+                    'includeQuestionComponents' => false,
+                    'includeOverlayControls' => true,
+                ],
+            ],
+            'lock_version' => 0,
+            'idempotency_key' => 'studio-source-kind-1',
+        ],
+    );
+
+    $response->assertOk();
+    expect($draft->fresh()->source_kind)->toBe('pdf');
+});
+
 test('source ingestion endpoint accepts image and html documents with audit and operations', function (): void {
     \Illuminate\Support\Facades\Storage::fake('local');
     \Illuminate\Support\Facades\Queue::fake();

@@ -74,23 +74,27 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Compiled HTML & AI Suite Reference**: Readonly compiled markup (`omr-comp`, `omr-header`, `omr-field-box`, `omr-instructions`, `omr-id-container`, `omr-grid-block`) + copyable `COMPONENT_SUITE_PROMPT` prompt contract with dedicated Copy buttons.
 - **Persistence & Hydration**: Components persist in `authoring_json.studio.components` via single atomic `PUT /setup/omr/templates/canonical/drafts/{draft}/studio` with CSRF protection. Reloading hydrates all placed components and bypasses the entry gate.
 
+## Shared palette, upload source, and spacing hardening (2026-08-22)
+
+- **Source kind persistence**: Sheet Designer saves the selected `source_kind` through `SaveOmrStudioStateRequest` → `SaveOmrCanonicalStudioState`; choosing/uploading PDF, DOCX, or image updates the draft before ingestion, eliminating `source_kind_mismatch`.
+- **Mode reset**: deliberate mode changes clear raster URL, Sheet Designer components, compiled HTML, Stage 3 sections, selection, and pending upload state before the next path renders.
+- **Shared typed palette**: `ComponentPath`, `ComponentPaletteFilter`, `COMPONENT_PATH_FILTERS`, `paletteForPath()`, and `overlayPaletteForPath()` define the path contract; Upload Document filters roll/question components while retaining text and shared QR/margin/marker controls. The filter config is persisted under `authoring_json.studio.palette_filter`.
+- **Sheet layout parity**: Sheet Designer now exposes margin inset, square/target/aruco marker pattern, QR reservation coordinates, printable overlay palette, and visible Stage-1 margin/marker/QR canvas layers.
+- **Bubble geometry parity**: Sheet Designer grid and roll inspectors expose editable bubble/row pitch; entering Stage 3 derives sections from the component geometry so configured spacing carries forward.
+- **Upload completion hardening**: successful source-run status accepts both `completed` and queue-native `succeeded`; Inertia reload refreshes the draft lock version before the automatic Stage-2 save. Source render jobs ignore stale source assets and concurrent normalized-page asset writes deduplicate safely.
+
 ## Verification evidence
 
 - OpenSpec: `openspec validate omr-canonical-template-authoring --strict` → **Valid**.
-- Vitest Component Suite: `tests/frontend/omr-components.test.ts` → **12 passed (12)** covering creation, atomic rendering (blank on empty, header-only, instructions-only, name-only, grid-only), section data conversion, and sizing geometry.
-- Full Vitest Suite: `tests/frontend/` → **7 test files passed, 31 passed (31)**.
+- Vitest Component Suite: `tests/frontend/omr-components.test.ts` → **13 passed (13)** covering creation, atomic rendering, path-filtered shared palette, section data conversion, and sizing geometry.
+- Full Vitest Suite: `tests/frontend/` → **7 test files passed, 32 passed (32)**.
 - Sheet Designer Browser Proof (Draft 2, `CANONICAL-HTML`):
-  - Entry gate renders on fresh draft; Sheet Designer chosen.
-  - Click-adding Document Header adds ONLY the header.
-  - Floating Inspector opens at top-right with `GEOMETRY (MM)`, Form Code, Title, Subtitle, and Typography controls.
-  - Compiled HTML verified to contain ONLY `omr-header` (NO candidate field, NO birthdate, NO room/seat, NO instructions, NO roll, NO grids).
-  - Click-adding Instructions adds ONLY instructions.
-  - Geometry inputs in Floating Inspector update component position in real-time.
-  - Locking component shows lock icon and prevents dragging.
-  - Quick Scaffold 150-Q Preset creates full sheet layout with 6 question grids and saves cleanly (`saveBadge: "Saved"`, `isError: false`).
-  - Reloading the page hydrates all 12 components, retains `Saved` state, and bypasses entry gate.
-- Focused OMR suites re-run green: unit 26 passed (103 assertions) + feature 18 passed (115 assertions) — 44 passed, 218 assertions total.
-- Canonical focused Laravel suite: **56 passed, 1 skipped, 261 assertions (100% green)**.
+  - Fresh entry gate renders; Sheet Designer path exposes the shared overlay palette, Sheet Layout controls, QR reservation coordinates, marker pattern picker, and margin inset.
+  - Question Grid inspector exposes editable Bubble Pitch and Row Pitch values; Stage 1 → Question Bubbles carries those values into Stage 3.
+  - Deliberate mode switch clears Sheet Components/compiled HTML and exposes the Upload Document path with no Question Grid or Examinee ID cards.
+  - PNG upload persists `source_kind=image`, avoids `source_kind_mismatch`, completes the source run, and advances to Layout & Overlays without a lock conflict.
+- Focused OMR PHP suites: **47 passed, 229 assertions**.
+- Canonical focused Laravel suite before this hardening: **56 passed, 1 skipped, 261 assertions**.
 - Parity command: `php artisan omr:canonical-parity` → **PASSED for all 7 seeded versions**.
 
 ## Qualification truth
