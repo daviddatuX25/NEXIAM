@@ -49,23 +49,41 @@ docker compose -f system/compose.yaml exec app php artisan migrate:fresh --seed 
 
 - Staff Login: `guidance.counselor@nexiam.test` / `password`
 - Canonical Templates Index: `http://localhost:18000/setup/omr/templates/canonical`
-- Seeded Drafts:
-  - Draft 1 (`CANONICAL-HTML`): HTML source adapter
-  - Draft 2 (`CANONICAL-DOCX`): Word DOCX source adapter
-  - Draft 3 (`CANONICAL-PDF`): PDF document adapter
-  - Draft 4 (`CANONICAL-IMAGE`): Image / photo scan adapter (Pathway A overlay)
-  - Draft 5 (`CANONICAL-PRESET`): Synthetic preset (Pathway B parametric studio)
-- Active Draft Studio URL: `http://localhost:18000/setup/omr/templates/canonical/drafts/5`
+- Seeded Drafts (idempotent `OmrCanonicalDemoSeeder` via `updateOrCreate`; `source_kind` values are the NOT NULL `varchar(16)` column):
+  - Draft 2 (`CANONICAL-HTML`, `source_kind=html`): Sheet Designer entry — seeded with NO studio payload so the entry gate shows on a fresh seed.
+  - Draft 5 (`CANONICAL-PRESET`, `source_kind=preset`): parametric preset pathway.
+- Sheet Designer studio URL: `http://localhost:18000/setup/omr/templates/canonical/drafts/2` (also reachable from the draft list).
+
+Reseed after frontend changes:
+
+```bash
+cd system && docker compose exec -T app php artisan db:seed --class=OmrCanonicalDemoSeeder
+```
 
 Expected initial state: Every canonical draft is uncompiled; physical qualification and activation remain blocked until genuine marker/template evidence is recorded.
+
+## Sheet Designer (Stage-1 rework, 2026-08-22)
+
+Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" term removed). Single source of truth is the persisted `components` array (`authoring_json.studio.components`); `sections` (OMR geometry) and compiled `htmlCode` are derived via `syncComponentsToSections()`.
+
+- **Entry gate**: before any canvas renders, staff choose Sheet Designer or Upload Document once (`stage1Mode`); switching later is a deliberate "Change mode" action with a confirm modal (`Change creation mode?`) when content exists.
+- **Palette**: 7 draggable + click-to-add cards (`COMPONENT_PALETTE`: Document Header, Candidate Info, Instructions, Examinee ID Matrix, Question Grid, Custom Text, Signature Box). Drag carries `application/x-omr-component` plus a `window.__omrDragKind` fallback; the canvas wrapper handles `ondragover`/`ondrop`.
+- **Canvas blocks**: roll + question-grid components render as interactive blocks in stage 1 (`StudioCanvas` html-mode condition); text components are HTML-only and selected via sidebar cards.
+- **Inspector**: per-selected-component config — full typography controls (`StudioTypographyControls`: Font Size (pt), family, bold, alignment, color) for text components; geometry/binding fields for roll/grid components; per-grid subject binding select fed by system `aptitude_areas`.
+- **Quick Scaffolds**: 150-Q / 100-Q / 50-Q presets and an aptitude-area scaffold derived from active `AptitudeArea` rows.
+- **Compiled HTML tab**: readonly compiled markup + the copyable suite reference (`COMPONENT_SUITE_CSS` + `COMPONENT_SUITE_PROMPT`) for reproducing the sheet in other interfaces / AI tools; Copy buttons on both.
+- **Persistence**: `components` rides the studio PUT (`X-CSRF-TOKEN` via the `csrfToken()` helper); route is CSRF-excepted (`setup/omr/studio/*`, `setup/omr/templates/canonical/drafts/*`). Hydration prefers `studio.components`, falls back to legacy `studio.sections`.
+- **Blank start**: no default template; compiled HTML is empty until a component exists.
 
 ## Verification evidence
 
 - OpenSpec: `openspec validate omr-canonical-template-authoring --strict` → **Valid**.
-- Canonical focused Laravel suite: **56 passed, 1 skipped, 261 assertions (100% green)**.
+- Sheet Designer browser proof (Draft 2, `CANONICAL-HTML`, fresh reseed): entry gate renders; Sheet Designer chosen; simulated drag-and-drop of Question Grid adds a component (window fallback path); click-add of Document Header opens `Inspector — Document Header` with Font Size (pt) controls; Remove drops the count and clears the inspector; Compiled HTML tab shows markup (`omr-sheet`/`omr-exam-grid` classes), suite reference, and 2 Copy buttons; Change mode opens the confirm modal; zero console/page errors, zero failed requests.
+- Focused OMR suites re-run green: unit 26 passed (103 assertions) + feature 18 passed (115 assertions) — 44 passed, 218 assertions total.
+- Canonical focused Laravel suite: **56 passed, 1 skipped, 261 assertions (100% green)** (last full run).
 - Parity command: `php artisan omr:canonical-parity` → **PASSED for all 7 seeded versions**.
 - Worker scenarios: Rectification and layout verification passing in the pinned inference worker image.
-- Headless Browser: Confirmed live 3-pane `OmrTemplateStudio` workspace on Draft 5 with interactive toolbox, SVG canvas, property inspector, and live geometry validation.
+- Headless Browser: Confirmed live `OmrTemplateStudio` workspace with interactive toolbox, SVG canvas, property inspector, and live geometry validation.
 
 ## Qualification truth
 
