@@ -215,3 +215,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 25.2 Normalize matrix and grid pitch inputs to the rendered 5.2 mm minimum with explicit UI min/max attributes.
 - [x] 25.3 Normalize oversized question grids to printable-page bounds by constraining pitch, row count, and X/Y placement.
 - [x] 25.4 Verify: default Examinee ID Matrix reports Row Pitch 5.2 mm, lowering below the floor does not change bubbles, width has no right-side dead area, and oversized grids remain inside the sheet.
+
+## 26. Canonical aptitude-area scaffold
+
+- [x] 26.1 Seed the six Sheet Designer labels: General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude, Perceptual Aptitude, and Manual Dexterity.
+- [x] 26.2 Project only those six canonical areas into the canonical workflow in the declared order.
+- [x] 26.3 Make the scaffold create exactly 25 MCQ items per area with contiguous question ranges.
+- [x] 26.4 Verify: seeded projection exposes six areas, browser scaffold renders six 25-row grids, focused PHP tests and frontend build pass.

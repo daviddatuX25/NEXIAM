@@ -8,6 +8,7 @@ use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\Foundation\AptitudeArea;
 use App\Models\User;
+use function array_flip;
 use function count;
 use function in_array;
 use function route;
@@ -15,6 +16,14 @@ use function sprintf;
 
 final class OmrCanonicalWorkflowProjection
 {
+    private const STUDIO_APTITUDE_CODES = [
+        'LOGIC',
+        'VERBAL',
+        'QUANT',
+        'SPATIAL',
+        'MEMORY',
+        'LANGUAGE',
+    ];
     /**
      * @return array<string, mixed>
      */
@@ -54,6 +63,20 @@ final class OmrCanonicalWorkflowProjection
         $compiledVersion = $draft->compiled_version_id !== null
             ? OmrAnswerSheetTemplateVersion::query()->find($draft->compiled_version_id)
             : null;
+        $studioAreaOrder = array_flip(self::STUDIO_APTITUDE_CODES);
+        $studioAptitudeAreas = AptitudeArea::query()
+            ->active()
+            ->whereIn('code', self::STUDIO_APTITUDE_CODES)
+            ->get(['id', 'code', 'name', 'max_items'])
+            ->sortBy(fn (AptitudeArea $area): int => $studioAreaOrder[$area->code] ?? PHP_INT_MAX)
+            ->values()
+            ->map(fn (AptitudeArea $area): array => [
+                'id' => $area->id,
+                'code' => $area->code,
+                'name' => $area->name,
+                'max_items' => $area->max_items,
+            ])
+            ->all();
 
         return [
             'page_state' => 'ready',
@@ -81,18 +104,7 @@ final class OmrCanonicalWorkflowProjection
                 ->get(['id', 'code', 'version', 'family', 'status', 'size_mm', 'quiet_zone_mm', 'asset_sha256'])
                 ->values()
                 ->all(),
-            'aptitude_areas' => AptitudeArea::query()
-                ->active()
-                ->orderBy('id')
-                ->get(['id', 'code', 'name', 'max_items'])
-                ->map(fn (AptitudeArea $area): array => [
-                    'id' => $area->id,
-                    'code' => $area->code,
-                    'name' => $area->name,
-                    'max_items' => $area->max_items,
-                ])
-                ->values()
-                ->all(),
+            'aptitude_areas' => $studioAptitudeAreas,
             'stages' => [
                 'draft',
                 'convert_inspect',

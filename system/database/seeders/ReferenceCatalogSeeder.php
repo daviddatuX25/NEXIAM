@@ -51,14 +51,14 @@ class ReferenceCatalogSeeder extends Seeder
         }
 
         foreach ([
-            ['code' => 'VERBAL', 'name' => 'Verbal Reasoning', 'version' => 1, 'max_items' => 100],
-            ['code' => 'QUANT', 'name' => 'Quantitative Reasoning', 'version' => 1, 'max_items' => 100],
+            ['code' => 'VERBAL', 'name' => 'Verbal Aptitude', 'version' => 1, 'max_items' => 100],
+            ['code' => 'QUANT', 'name' => 'Numerical Aptitude', 'version' => 1, 'max_items' => 100],
             ['code' => 'PROFILE_VERBAL', 'name' => 'Profile Verbal Reasoning', 'version' => 1, 'max_items' => 25],
             ['code' => 'PROFILE_QUANT', 'name' => 'Profile Quantitative Reasoning', 'version' => 1, 'max_items' => 25],
-            ['code' => 'LOGIC', 'name' => 'Logical Reasoning', 'version' => 1, 'max_items' => 25],
-            ['code' => 'SPATIAL', 'name' => 'Spatial Reasoning', 'version' => 1, 'max_items' => 25],
-            ['code' => 'MEMORY', 'name' => 'Memory Recall', 'version' => 1, 'max_items' => 25],
-            ['code' => 'LANGUAGE', 'name' => 'Language Usage', 'version' => 1, 'max_items' => 25],
+            ['code' => 'LOGIC', 'name' => 'General Ability', 'version' => 1, 'max_items' => 25],
+            ['code' => 'SPATIAL', 'name' => 'Spatial Aptitude', 'version' => 1, 'max_items' => 25],
+            ['code' => 'MEMORY', 'name' => 'Perceptual Aptitude', 'version' => 1, 'max_items' => 25],
+            ['code' => 'LANGUAGE', 'name' => 'Manual Dexterity', 'version' => 1, 'max_items' => 25],
         ] as $area) {
             $aptitude = AptitudeArea::query()->updateOrCreate(
                 [

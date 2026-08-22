@@ -13,5 +13,14 @@ test('reference catalogs seed programs rooms aptitude areas and windows', functi
     expect(AptitudeArea::query()->active()->pluck('code')->all())->toEqualCanonicalizing([
         'VERBAL', 'QUANT', 'PROFILE_VERBAL', 'PROFILE_QUANT', 'LOGIC', 'SPATIAL', 'MEMORY', 'LANGUAGE',
     ]);
+    expect(AptitudeArea::query()->whereIn('code', ['LOGIC', 'VERBAL', 'QUANT', 'SPATIAL', 'MEMORY', 'LANGUAGE'])->pluck('name', 'code')->all())
+        ->toMatchArray([
+            'LOGIC' => 'General Ability',
+            'VERBAL' => 'Verbal Aptitude',
+            'QUANT' => 'Numerical Aptitude',
+            'SPATIAL' => 'Spatial Aptitude',
+            'MEMORY' => 'Perceptual Aptitude',
+            'LANGUAGE' => 'Manual Dexterity',
+        ]);
     expect(ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->value('status'))->toBe('published');
 });

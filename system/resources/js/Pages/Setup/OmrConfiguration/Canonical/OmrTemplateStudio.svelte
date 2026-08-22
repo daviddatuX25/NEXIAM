@@ -512,26 +512,31 @@
   }
 
   function scaffoldFromAptitudeAreas() {
-    if (!aptitude_areas || aptitude_areas.length === 0) return;
-    const areas = aptitude_areas.slice(0, 6);
+    const canonicalAreaCodes = ['LOGIC', 'VERBAL', 'QUANT', 'SPATIAL', 'MEMORY', 'LANGUAGE'];
+    const areas = canonicalAreaCodes
+      .map((code) => aptitude_areas?.find((area) => area.code === code))
+      .filter(Boolean)
+      .slice(0, 6);
+    if (areas.length === 0) return;
+
     let startQ = 1;
     const newGrids = areas.map((area, idx) => {
-      const qCount = Math.min(50, Math.max(5, Number(area.max_items) || 25));
+      const qCount = 25;
       const grid = {
         id: `Part_${idx + 1}`,
         name: `Part ${idx + 1}: ${area.name} (Q${startQ}–${startQ + qCount - 1})`,
         type: 'mcq',
-        subjectName: `${idx + 1}. ${area.name}`,
+        subjectName: area.name,
         questionsCount: qCount,
         cols: 1,
         optionsCount: 4,
-        startQ: startQ,
+        startQ,
         customValuesStr: 'A, B, C, D',
         bubblePitchMm: 6.0,
         rowPitchMm: 6.8,
         labelStyle: 'column_header',
         posX: 10 + idx * 31,
-        posY: 140,
+        posY: 84,
         w_mm: 28,
         h_mm: 175,
         isLocked: false,

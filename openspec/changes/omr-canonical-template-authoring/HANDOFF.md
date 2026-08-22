@@ -143,6 +143,13 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Page constraints**: oversized question grids normalize pitch, row count, and X/Y placement against the printable A4 area; a 50-row/25 mm test normalized to 11 rows and stayed inside the sheet instead of overflowing.
 - **Browser evidence**: default matrix width measured `112.2 px` at the canvas scale, Row Pitch displayed `5.2 mm`, lower input attempts stayed at `5.2 mm`, and current runtime/HTTP checks were clean.
 
+## Canonical aptitude-area scaffold (2026-08-22)
+
+- **Canonical labels**: General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude, Perceptual Aptitude, and Manual Dexterity.
+- **Projection**: the canonical workflow now filters to those six compatibility codes and orders them in that exact sequence, excluding legacy profile-only areas from this scaffold.
+- **Scaffold output**: each area creates exactly 25 MCQ items with contiguous ranges Q1–25 through Q126–150.
+- **Verification**: seeded projection showed `Scaffold from System Aptitude Areas (6)`; browser proof produced six grids with 25 rows each. Focused PHP tests passed (3 tests / 48 assertions); frontend suite and production build passed.
+
 
 
 

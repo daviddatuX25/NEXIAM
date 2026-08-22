@@ -114,3 +114,8 @@ Route selection-changing durable commands through the existing snapshot history,
 - Stage-1 matrix canvas width now uses the measured label/bubble footprint rather than the persisted legacy width, so movement bounds do not reserve dead space.
 - The rendered pitch floor is 5.2 mm (bubble diameter plus the 1.75 px canvas gap); inputs normalize below-floor values and expose explicit maxima.
 - Question-grid normalization reduces pitch/row count and clamps placement when a requested geometry cannot fit the printable page.
+
+## Canonical aptitude scaffold
+
+- The canonical workflow filters the backend catalog to six compatibility codes and orders them as General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude, Perceptual Aptitude, Manual Dexterity.
+- The Sheet Designer scaffold deliberately creates 25 questions per area, yielding contiguous Q1–Q150 regardless of catalog `max_items` values used by legacy scoring fixtures.
