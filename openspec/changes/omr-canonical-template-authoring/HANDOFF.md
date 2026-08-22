@@ -62,28 +62,36 @@ cd system && docker compose exec -T app php artisan db:seed --class=OmrCanonical
 
 Expected initial state: Every canonical draft is uncompiled; physical qualification and activation remain blocked until genuine marker/template evidence is recorded.
 
-## Sheet Designer (Stage-1 rework, 2026-08-22)
+## Sheet Designer (Atomic Components & Floating Inspector, 2026-08-22)
 
-Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" term removed). Single source of truth is the persisted `components` array (`authoring_json.studio.components`); `sections` (OMR geometry) and compiled `htmlCode` are derived via `syncComponentsToSections()`.
+Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" term removed). Every component is atomic and absolutely positioned (`posX`/`posY`/`w_mm`/`h_mm` in mm). `renderFullSheetHtml` renders ONLY the components present on the sheet with zero implicit scaffolding.
 
-- **Entry gate**: before any canvas renders, staff choose Sheet Designer or Upload Document once (`stage1Mode`); switching later is a deliberate "Change mode" action with a confirm modal (`Change creation mode?`) when content exists.
-- **Palette**: 7 draggable + click-to-add cards (`COMPONENT_PALETTE`: Document Header, Candidate Info, Instructions, Examinee ID Matrix, Question Grid, Custom Text, Signature Box). Drag carries `application/x-omr-component` plus a `window.__omrDragKind` fallback; the canvas wrapper handles `ondragover`/`ondrop`.
-- **Canvas blocks**: roll + question-grid components render as interactive blocks in stage 1 (`StudioCanvas` html-mode condition); text components are HTML-only and selected via sidebar cards.
-- **Inspector**: per-selected-component config — full typography controls (`StudioTypographyControls`: Font Size (pt), family, bold, alignment, color) for text components; geometry/binding fields for roll/grid components; per-grid subject binding select fed by system `aptitude_areas`.
-- **Quick Scaffolds**: 150-Q / 100-Q / 50-Q presets and an aptitude-area scaffold derived from active `AptitudeArea` rows.
-- **Compiled HTML tab**: readonly compiled markup + the copyable suite reference (`COMPONENT_SUITE_CSS` + `COMPONENT_SUITE_PROMPT`) for reproducing the sheet in other interfaces / AI tools; Copy buttons on both.
-- **Persistence**: `components` rides the studio PUT (`X-CSRF-TOKEN` via the `csrfToken()` helper); route is CSRF-excepted (`setup/omr/studio/*`, `setup/omr/templates/canonical/drafts/*`). Hydration prefers `studio.components`, falls back to legacy `studio.sections`.
-- **Blank start**: no default template; compiled HTML is empty until a component exists.
+- **Atomic Separable Palette**: 9 distinct draggable + click-to-add cards (`COMPONENT_PALETTE`: Document Header [title/subtitle/form code badge only], Candidate Name, Birthdate, Room / Seat, Instructions [notice box], Examinee ID Matrix [roll bubbles], Question Grid [subject questions & bubbles], Custom Text, Signature Box). Adding a Document Header adds ONLY the title block; adding Instructions adds ONLY the instruction box.
+- **Absolute Canvas Positioning & Scaling**: Components own their exact mm positions from sheet edge. The live HTML preview iframe is scaled (`scale(0.65517)`) to align sub-pixel with canvas blocks at `2.476 px/mm`. Dragging on canvas updates mm positions; resizing via the bottom-right handle resizes text component bounds.
+- **Lock / Unlock Authority**: Every component has a lock toggle in the sidebar list and in the inspector header. Locked components cannot be moved or resized on the canvas.
+- **Floating Inspector (Top-Right of Canvas)**: Inspector sits directly below the top action bar on the right side of the canvas (`top-16 right-4`). Gated strictly to Stage 1 Sheet Designer so it NEVER bleeds onto Stage 2 or Stage 3. Features live mm Geometry (X/Y/W/H inputs), component-specific fields, and `StudioTypographyControls` (pt font size, font family, bold toggle, left/center/right align, color picker with hex readout).
+- **Quick Scaffolds**: 150-Q (6 Subj), 100-Q (4 Subj), 50-Q (2 Subj) presets and an aptitude-area scaffold derived from active `AptitudeArea` rows with valid A4 margins (15mm) satisfying `OmrMappingValidator`.
+- **Compiled HTML & AI Suite Reference**: Readonly compiled markup (`omr-comp`, `omr-header`, `omr-field-box`, `omr-instructions`, `omr-id-container`, `omr-grid-block`) + copyable `COMPONENT_SUITE_PROMPT` prompt contract with dedicated Copy buttons.
+- **Persistence & Hydration**: Components persist in `authoring_json.studio.components` via single atomic `PUT /setup/omr/templates/canonical/drafts/{draft}/studio` with CSRF protection. Reloading hydrates all placed components and bypasses the entry gate.
 
 ## Verification evidence
 
 - OpenSpec: `openspec validate omr-canonical-template-authoring --strict` → **Valid**.
-- Sheet Designer browser proof (Draft 2, `CANONICAL-HTML`, fresh reseed): entry gate renders; Sheet Designer chosen; simulated drag-and-drop of Question Grid adds a component (window fallback path); click-add of Document Header opens `Inspector — Document Header` with Font Size (pt) controls; Remove drops the count and clears the inspector; Compiled HTML tab shows markup (`omr-sheet`/`omr-exam-grid` classes), suite reference, and 2 Copy buttons; Change mode opens the confirm modal; zero console/page errors, zero failed requests.
+- Vitest Component Suite: `tests/frontend/omr-components.test.ts` → **12 passed (12)** covering creation, atomic rendering (blank on empty, header-only, instructions-only, name-only, grid-only), section data conversion, and sizing geometry.
+- Full Vitest Suite: `tests/frontend/` → **7 test files passed, 31 passed (31)**.
+- Sheet Designer Browser Proof (Draft 2, `CANONICAL-HTML`):
+  - Entry gate renders on fresh draft; Sheet Designer chosen.
+  - Click-adding Document Header adds ONLY the header.
+  - Floating Inspector opens at top-right with `GEOMETRY (MM)`, Form Code, Title, Subtitle, and Typography controls.
+  - Compiled HTML verified to contain ONLY `omr-header` (NO candidate field, NO birthdate, NO room/seat, NO instructions, NO roll, NO grids).
+  - Click-adding Instructions adds ONLY instructions.
+  - Geometry inputs in Floating Inspector update component position in real-time.
+  - Locking component shows lock icon and prevents dragging.
+  - Quick Scaffold 150-Q Preset creates full sheet layout with 6 question grids and saves cleanly (`saveBadge: "Saved"`, `isError: false`).
+  - Reloading the page hydrates all 12 components, retains `Saved` state, and bypasses entry gate.
 - Focused OMR suites re-run green: unit 26 passed (103 assertions) + feature 18 passed (115 assertions) — 44 passed, 218 assertions total.
-- Canonical focused Laravel suite: **56 passed, 1 skipped, 261 assertions (100% green)** (last full run).
+- Canonical focused Laravel suite: **56 passed, 1 skipped, 261 assertions (100% green)**.
 - Parity command: `php artisan omr:canonical-parity` → **PASSED for all 7 seeded versions**.
-- Worker scenarios: Rectification and layout verification passing in the pinned inference worker image.
-- Headless Browser: Confirmed live `OmrTemplateStudio` workspace with interactive toolbox, SVG canvas, property inspector, and live geometry validation.
 
 ## Qualification truth
 

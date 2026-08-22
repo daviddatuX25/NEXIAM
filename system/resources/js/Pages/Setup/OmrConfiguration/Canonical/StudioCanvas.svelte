@@ -1,11 +1,21 @@
 <script>
   import {
     Lock,
+    Unlock,
     Loader2,
     Minus,
     Plus,
   } from 'lucide-svelte';
   import { contentBlockSizeMm } from '@/lib/omrStudioGeometry';
+  import {
+    gridOptionLabels,
+    gridBlockWidthMm,
+    gridBlockHeightMm,
+    rollBlockWidthMm,
+    rollBlockHeightMm,
+    isQuestionGridComponent,
+    componentBlockSizeMm,
+  } from '@/lib/omrComponents';
 
   let {
     scale = $bindable(1.0),
@@ -59,22 +69,30 @@
     isComposing = false,
     sections = $bindable([]),
     activeSectionIndex = $bindable(0),
+    components = $bindable([]),
+    activeComponentId = $bindable(null),
     currentStage = 1,
     onGeometryChanged = null,
+    onComponentGeometryChanged = null,
   } = $props();
 
   let isPanning = $state(false);
   let panStartX = 0;
   let panStartY = 0;
 
-  // Dragging State
+  // Dragging State (Stage 2/3)
   let isBlockDragging = $state(false);
   let isHandleDragging = $state(false);
   let dragBlockIndex = $state(null);
-  let selectedOverlay = $state('header'); // 'header' | 'qr' | 'signature' | 'instructions' | number
+  let selectedOverlay = $state('header');
   let dragStartX = 0;
   let dragStartY = 0;
   let blockStartGeometry = { x: 0, y: 0, w: 0, h: 0 };
+
+  // Dragging & Resizing State (Stage 1 HTML Mode Universal Components)
+  let isComponentDragging = $state(false);
+  let isComponentResizing = $state(false);
+  let dragCompId = $state(null);
 
   // Sanitize HTML preview content by stripping scripts and executable handlers
   let safeHtmlContent = $derived.by(() => {
@@ -85,16 +103,16 @@
   });
 
   function handleWheel(e) {
-    if (canvasLocked) return; // Prevent zooming if canvas is locked
+    if (canvasLocked) return;
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     scale = Math.min(Math.max(0.35, scale * zoomFactor), 2.5);
   }
 
   function handleCanvasMouseDown(e) {
-    if (canvasLocked) return; // Prevent background pan if canvas is locked
+    if (canvasLocked) return;
     if (e.target.closest('button, input, select, textarea')) return;
-    if (isBlockDragging || isHandleDragging) return;
+    if (isBlockDragging || isHandleDragging || isComponentDragging || isComponentResizing) return;
     isPanning = true;
     panStartX = e.clientX - panX;
     panStartY = e.clientY - panY;
@@ -110,7 +128,23 @@
     const dXmm = (e.clientX - dragStartX) / (2.476 * scale);
     const dYmm = (e.clientY - dragStartY) / (2.476 * scale);
 
-    // STAGE 2: Overlay Elements Dragging & Resizing (respects per-element locks)
+    // STAGE 1 (HTML Mode): Universal Component Dragging & Resizing
+    if (isHtmlMode && currentStage === 1 && dragCompId) {
+      const comp = components.find((c) => c.id === dragCompId);
+      if (!comp || comp.isLocked) return;
+
+      if (isComponentResizing) {
+        comp.w_mm = Math.max(20, Math.min(210 - marginMm - comp.posX, Math.round(blockStartGeometry.w + dXmm)));
+        comp.h_mm = Math.max(8, Math.min(297 - marginMm - comp.posY, Math.round(blockStartGeometry.h + dYmm)));
+      } else if (isComponentDragging) {
+        const { w_mm: bw, h_mm: bh } = componentBlockSizeMm(comp);
+        let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
+        let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
+        comp.posX = Math.max(marginMm, Math.min(210 - marginMm - bw, nx));
+        comp.posY = Math.max(marginMm, Math.min(297 - marginMm - bh, ny));
+      }
+      return;
+    }
     if (currentStage === 2) {
       if (isBlockDragging) {
         if (selectedOverlay === 'header' && !headerLocked) {
@@ -176,6 +210,51 @@
       dragBlockIndex = null;
       if (onGeometryChanged) onGeometryChanged();
     }
+    if (isComponentDragging || isComponentResizing) {
+      isComponentDragging = false;
+      isComponentResizing = false;
+      dragCompId = null;
+      if (onComponentGeometryChanged) onComponentGeometryChanged();
+    }
+  }
+
+  // Universal Component Drag & Resize Triggers (Stage 1 HTML Mode)
+  function handleComponentMouseDown(e, compId) {
+    if (currentStage !== 1 || !isHtmlMode) return;
+    e.stopPropagation();
+    activeComponentId = compId;
+    const comp = components.find((c) => c.id === compId);
+    if (!comp || comp.isLocked) return;
+
+    isComponentDragging = true;
+    dragCompId = compId;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    blockStartGeometry = {
+      x: Number(comp.posX) || 10,
+      y: Number(comp.posY) || 10,
+      w: Number(comp.w_mm) || 40,
+      h: Number(comp.h_mm) || 12,
+    };
+  }
+
+  function handleComponentResizeMouseDown(e, compId) {
+    if (currentStage !== 1 || !isHtmlMode) return;
+    e.stopPropagation();
+    activeComponentId = compId;
+    const comp = components.find((c) => c.id === compId);
+    if (!comp || comp.isLocked) return;
+
+    isComponentResizing = true;
+    dragCompId = compId;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    blockStartGeometry = {
+      x: Number(comp.posX) || 10,
+      y: Number(comp.posY) || 10,
+      w: Number(comp.w_mm) || 40,
+      h: Number(comp.h_mm) || 12,
+    };
   }
 
   // Overlay Drag & Resize Triggers (Stage 2)
@@ -239,17 +318,21 @@
     <div class="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
       <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm) -->
       <div
+        data-omr-sheet="true"
         class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative pointer-events-auto shrink-0 overflow-hidden"
         style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
       >
-      <!-- Continuous Background Layer (HTML source preview strictly contained without iframe scrollbars) -->
+      <!-- Continuous Background Layer (HTML source preview scaled strictly to match 520x735 canvas) -->
       {#if safeHtmlContent}
-        <iframe
-          srcdoc={safeHtmlContent}
-          title="HTML Source Preview"
-          class="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs bg-white overflow-hidden"
-          scrolling="no"
-        ></iframe>
+        <div class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none rounded-xs bg-white">
+          <iframe
+            srcdoc={safeHtmlContent}
+            title="HTML Source Preview"
+            class="border-none pointer-events-none bg-white overflow-hidden"
+            style="width: 793.7px; height: 1122.5px; transform: scale(0.65517); transform-origin: top left;"
+            scrolling="no"
+          ></iframe>
+        </div>
       {:else if rasterUrl}
         <img
           src={rasterUrl}
@@ -475,8 +558,141 @@
         {/each}
       {/if}
 
-      <!-- STAGE 3+ Multi-Section grids; in Sheet Designer (html mode stage 1) blocks render over the live preview -->
-      {#if currentStage >= 3 || (isHtmlMode && currentStage === 1)}
+      <!-- STAGE 1: Sheet Designer Universal Component Blocks (All components draggable & selectable) -->
+      {#if isHtmlMode && currentStage === 1}
+        {#each components as comp (comp.id)}
+          {@const isSelected = activeComponentId === comp.id}
+          {@const isRoll = comp.type === 'roll'}
+          {@const isGrid = isQuestionGridComponent(comp)}
+          {@const isText = !isRoll && !isGrid}
+          {@const { w_mm: bw, h_mm: bh } = componentBlockSizeMm(comp)}
+          {@const digitsCount = isRoll ? (Number(comp.digitsCount) || 7) : 0}
+          {@const bPitchMm = isRoll ? (Number(comp.bubblePitchMm) || 5.5) : (isGrid ? (Number(comp.bubblePitchMm) || 6.0) : 0)}
+          {@const rPitchMm = isRoll ? (Number(comp.rowPitchMm) || 4.8) : (isGrid ? (Number(comp.rowPitchMm) || 6.8) : 0)}
+          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - 12)}
+          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - 12)}
+          {@const gridLabels = isGrid ? gridOptionLabels(comp) : []}
+          {@const qEnd = isGrid ? ((Number(comp.startQ) || 1) + (Number(comp.questionsCount) || 1) - 1) : 0}
+
+          <div
+            class={`absolute rounded-lg border transition-all select-none overflow-hidden ${
+              isSelected
+                ? 'border-emerald-600 border-dashed bg-emerald-500/15 ring-2 ring-emerald-400/80 z-30 shadow-md'
+                : 'border-emerald-500/70 border-dashed hover:border-emerald-600 bg-emerald-500/5 hover:bg-emerald-500/10 z-10'
+            } ${comp.isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
+            style={`top: ${comp.posY * 2.476}px; left: ${comp.posX * 2.476}px; width: ${bw * 2.476}px; height: ${bh * 2.476}px;`}
+            onmousedown={(e) => handleComponentMouseDown(e, comp.id)}
+            role="button"
+            tabindex="0"
+          >
+            {#if isRoll}
+              <!-- Roll / Examinee ID 0-9 Bubble Matrix -->
+              <div class="p-1 w-full h-full flex flex-col justify-start" style={`gap: ${rowGapPx}px;`}>
+                {#each Array.from({ length: 10 }) as _, digit}
+                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 h-3 leading-none">
+                    <span class="w-3 h-3 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center">
+                      {digit}
+                    </span>
+                    <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
+                      {#each Array.from({ length: digitsCount }) as _}
+                        <div class="w-3 h-3 rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[5.5px] font-bold shadow-xs shrink-0">
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+              <div
+                class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
+                  isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
+                }`}
+              >
+                ID ({digitsCount} Digits)
+              </div>
+
+            {:else if isGrid}
+              <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing -->
+              <div class="p-1 w-full h-full flex flex-col justify-start" style={`gap: ${rowGapPx}px;`}>
+                {#each Array.from({ length: Math.min(Number(comp.questionsCount) || 1, 50) }) as _, r}
+                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 h-3 leading-none">
+                    <span class="w-3.5 h-3 text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center">
+                      {(Number(comp.startQ) || 1) + r}
+                    </span>
+                    <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
+                      {#each gridLabels as opt}
+                        <div class="w-3 h-3 rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0">
+                          {opt}
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+              <div
+                class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
+                  isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
+                }`}
+              >
+                {comp.subjectName || comp.name || 'Grid'} Q{Number(comp.startQ) || 1}{qEnd > (Number(comp.startQ) || 1) ? `–${qEnd}` : ''}
+              </div>
+
+            {:else if comp.type === 'header'}
+              <div class="p-1.5 w-full h-full flex flex-col justify-between pointer-events-none">
+                <div class="text-[9px] font-bold text-slate-800 uppercase truncate leading-tight">{comp.title}</div>
+                <div class="flex items-center justify-between text-[7px] text-slate-500 pt-0.5">
+                  <span class="truncate">{comp.subtitle}</span>
+                  <span class="font-mono font-bold bg-slate-100 px-1 rounded">{comp.formCode}</span>
+                </div>
+              </div>
+
+            {:else if comp.type === 'candidate_name' || comp.type === 'birthdate' || comp.type === 'room_seat'}
+              <div class="p-1 w-full h-full flex flex-col justify-between pointer-events-none">
+                <span class="text-[7.5px] font-bold text-slate-700 uppercase truncate">{comp.label}</span>
+                <div class="border-b border-dashed border-slate-400 w-full mb-0.5"></div>
+              </div>
+
+            {:else if comp.type === 'instructions'}
+              <div class="p-1.5 w-full h-full flex flex-col pointer-events-none">
+                <span class="text-[7px] font-bold text-slate-800 uppercase">Instructions:</span>
+                <span class="text-[6.5px] text-slate-600 line-clamp-2 leading-tight mt-0.5">{comp.content}</span>
+              </div>
+
+            {:else if comp.type === 'custom_text'}
+              <div class="p-1 w-full h-full flex items-center pointer-events-none">
+                <span class="text-[8px] font-medium text-slate-800 truncate">{comp.text}</span>
+              </div>
+
+            {:else if comp.type === 'signature'}
+              <div class="p-1 w-full h-full flex flex-col justify-between pointer-events-none">
+                <span class="text-[7.5px] font-bold text-slate-700 uppercase truncate">{comp.title}</span>
+                <div class="border-b border-slate-400 w-full mb-0.5"></div>
+                <span class="text-[6px] text-slate-500 truncate">{comp.certificationText}</span>
+              </div>
+            {/if}
+
+            <!-- Lock Indicator -->
+            {#if comp.isLocked}
+              <div class="absolute top-0.5 left-0.5 text-amber-600 pointer-events-none select-none">
+                <Lock class="size-2.5" />
+              </div>
+            {/if}
+
+            <!-- Resize Handle for Text Components -->
+            {#if isText && isSelected && !comp.isLocked}
+              <div
+                class="absolute -bottom-1 -right-1 size-3 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md pointer-events-auto"
+                onmousedown={(e) => handleComponentResizeMouseDown(e, comp.id)}
+                role="button"
+                tabindex="0"
+                title="Resize block"
+              ></div>
+            {/if}
+          </div>
+        {/each}
+      {/if}
+
+      <!-- STAGE 3+ Multi-Section grids (for Section Bubbles stage) -->
+      {#if currentStage >= 3}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
           {@const labels = getOptionLabels(sec)}
