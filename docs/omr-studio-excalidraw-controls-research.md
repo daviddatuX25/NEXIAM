@@ -100,3 +100,6 @@ Route selection-changing durable commands through the existing snapshot history,
 - Alt/Option-drag duplicates the clicked unlocked component or selected group, then moves the copies with a copy cursor and blue drag ring.
 - Dragging a selected component preserves the group selection; locked components remain selectable but do not move or duplicate.
 - Ctrl/Cmd bracket shortcuts retain the existing four layer actions; grouping, lasso, frames, and deep selection remain deferred.
+
+- The single QR reservation now participates in the shared canvas selection and layer list; it can be selected, locked, moved with a group, and deleted, but duplicate commands skip it because the server contract has one `blank_instance_qr` reservation.
+- Shift-drag locks movement to the dominant axis after a small pointer threshold; Alt+Shift-drag duplicates selected components and applies the same axis lock to the copy drag.

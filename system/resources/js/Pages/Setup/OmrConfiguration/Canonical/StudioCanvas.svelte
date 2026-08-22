@@ -71,13 +71,16 @@
     components = $bindable([]),
     activeComponentId = $bindable(null),
     activeComponentIds = $bindable([]),
+    activeItemIds = $bindable([]),
     currentStage = 1,
     onGeometryChanged = null,
     onComponentGeometryChanged = null,
     onComponentSelected = null,
+    onCanvasItemSelected = null,
     onCanvasSelectionClear = null,
     onDuplicateComponents = null,
   } = $props();
+  const QR_CANVAS_ITEM_ID = 'qr';
 
   let isPanning = $state(false);
   let panStartX = 0;
@@ -97,7 +100,11 @@
   let isComponentResizing = $state(false);
   let dragCompId = $state(null);
   let dragComponentIds = $state([]);
+  let dragItemIds = $state([]);
   let componentStartPositions = {};
+  let dragAxis = $state(null);
+  let pendingShiftToggleId = $state(null);
+  let dragMoved = $state(false);
   let isDuplicateDragging = $state(false);
 
   // Sanitize HTML preview content by stripping scripts and executable handlers
@@ -107,20 +114,123 @@
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '');
   });
-  function setCanvasSelection(componentId, additive = false) {
-    const currentSelection = Array.isArray(activeComponentIds) ? activeComponentIds : [];
+  function setCanvasSelection(itemId, additive = false) {
+    const currentSelection = Array.isArray(activeItemIds) ? activeItemIds : [];
     const fallbackSelection = additive
-      ? currentSelection.includes(componentId)
-        ? currentSelection.filter((id) => id !== componentId)
-        : [...currentSelection, componentId]
-      : [componentId];
-    const callbackSelection = onComponentSelected
-      ? onComponentSelected(componentId, additive)
-      : null;
+      ? currentSelection.includes(itemId)
+        ? currentSelection.filter((id) => id !== itemId)
+        : [...currentSelection, itemId]
+      : [itemId];
+    const callback = itemId === QR_CANVAS_ITEM_ID ? onCanvasItemSelected : onComponentSelected;
+    const callbackSelection = callback ? callback(itemId, additive) : null;
     const nextSelection = Array.isArray(callbackSelection) ? callbackSelection : fallbackSelection;
-    activeComponentIds = nextSelection;
-    activeComponentId = nextSelection.at(-1) ?? null;
+    activeItemIds = nextSelection;
+    activeComponentIds = nextSelection.filter((id) => id !== QR_CANVAS_ITEM_ID);
+    activeComponentId = activeComponentIds.at(-1) ?? null;
     return nextSelection;
+  }
+
+  function captureCanvasItemPositions(ids) {
+    return Object.fromEntries(
+      ids
+        .map((id) => {
+          if (id === QR_CANVAS_ITEM_ID) {
+            return [id, {
+              x: Number(qrX) || 10,
+              y: Number(qrY) || 10,
+              w: Number(qrW) || 26,
+              h: Number(qrH) || 26,
+            }];
+          }
+          const component = components.find((candidate) => candidate.id === id);
+          if (!component) return null;
+          return [id, {
+            x: Number(component.posX) || 10,
+            y: Number(component.posY) || 10,
+            w: Number(component.w_mm) || 40,
+            h: Number(component.h_mm) || 12,
+          }];
+        })
+        .filter(Boolean),
+    );
+  }
+
+  function constrainedDragDelta(e) {
+    let dXmm = (e.clientX - dragStartX) / (2.476 * scale);
+    let dYmm = (e.clientY - dragStartY) / (2.476 * scale);
+    if (Math.max(Math.abs(dXmm), Math.abs(dYmm)) >= 2) {
+      dragMoved = true;
+      pendingShiftToggleId = null;
+    }
+    if (!e.shiftKey) {
+      dragAxis = null;
+      return { dXmm, dYmm };
+    }
+    if (!dragAxis && Math.max(Math.abs(dXmm), Math.abs(dYmm)) >= 2) {
+      dragAxis = Math.abs(dXmm) >= Math.abs(dYmm) ? 'x' : 'y';
+    }
+    if (dragAxis === 'x') dYmm = 0;
+    if (dragAxis === 'y') dXmm = 0;
+    return { dXmm, dYmm };
+  }
+
+  function moveCanvasItems(dXmm, dYmm) {
+    for (const id of dragItemIds) {
+      const start = componentStartPositions[id];
+      if (!start) continue;
+      if (id === QR_CANVAS_ITEM_ID) {
+        if (qrLocked) continue;
+        qrX = Math.max(marginMm, Math.min(210 - marginMm - qrW, Math.round(start.x + dXmm)));
+        qrY = Math.max(marginMm, Math.min(297 - marginMm - qrH, Math.round(start.y + dYmm)));
+        continue;
+      }
+      const component = components.find((candidate) => candidate.id === id);
+      if (!component || component.isLocked) continue;
+      const { w_mm: widthMm, h_mm: heightMm } = canvasComponentBlockSizeMm(component);
+      component.posX = Math.max(marginMm, Math.min(210 - marginMm - widthMm, Math.round((start.x + dXmm) / 2) * 2));
+      component.posY = Math.max(marginMm, Math.min(297 - marginMm - heightMm, Math.round((start.y + dYmm) / 2) * 2));
+    }
+  }
+
+  function startDuplicateDrag(e, fallbackId = null) {
+    if (!onDuplicateComponents) return [];
+    const copies = onDuplicateComponents(
+      fallbackId === QR_CANVAS_ITEM_ID ? null : fallbackId,
+      { deferHistory: true },
+    );
+    if (!Array.isArray(copies) || copies.length === 0) return [];
+    activeItemIds = copies.map((copy) => copy.id);
+    activeComponentIds = [...activeItemIds];
+    activeComponentId = activeComponentIds.at(-1) ?? null;
+    dragItemIds = [...activeItemIds];
+    dragComponentIds = [...activeComponentIds];
+    componentStartPositions = Object.fromEntries(
+      copies.map((copy) => [
+        copy.id,
+        {
+          x: Number(copy.posX) || 10,
+          y: Number(copy.posY) || 10,
+          w: Number(copy.w_mm) || 40,
+          h: Number(copy.h_mm) || 12,
+        },
+      ]),
+    );
+    dragAxis = null;
+    pendingShiftToggleId = null;
+    dragMoved = false;
+    isDuplicateDragging = true;
+    isComponentDragging = true;
+    dragCompId = activeComponentId;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    const primary = copies.at(-1);
+    blockStartGeometry = {
+      x: Number(primary.posX) || 10,
+      y: Number(primary.posY) || 10,
+      w: Number(primary.w_mm) || 40,
+      h: Number(primary.h_mm) || 12,
+    };
+    return copies;
   }
 
 
@@ -134,7 +244,8 @@
   function handleCanvasMouseDown(e) {
     if (canvasLocked) return;
     if (e.target.closest('button, input, select, textarea')) return;
-    if (!e.target?.closest?.('[data-omr-component-id]')) {
+    if (!e.target?.closest?.('[data-omr-component-id], [data-omr-canvas-item-id]')) {
+      activeItemIds = [];
       activeComponentId = null;
       activeComponentIds = [];
       if (onCanvasSelectionClear) onCanvasSelectionClear();
@@ -152,33 +263,26 @@
       return;
     }
 
-    const dXmm = (e.clientX - dragStartX) / (2.476 * scale);
-    const dYmm = (e.clientY - dragStartY) / (2.476 * scale);
+    const rawDXmm = (e.clientX - dragStartX) / (2.476 * scale);
+    const rawDYmm = (e.clientY - dragStartY) / (2.476 * scale);
+    const { dXmm, dYmm } = isComponentResizing
+      ? { dXmm: rawDXmm, dYmm: rawDYmm }
+      : constrainedDragDelta(e);
 
-    // STAGE 1 (HTML Mode): Universal Component Dragging & Resizing
-    if (isHtmlMode && currentStage === 1 && dragCompId) {
-      const primary = components.find((c) => c.id === dragCompId);
-      if (!primary) return;
-
-      if (isComponentResizing) {
-        if (primary.isLocked) return;
-        primary.w_mm = Math.max(20, Math.min(210 - marginMm - primary.posX, Math.round(blockStartGeometry.w + dXmm)));
-        primary.h_mm = Math.max(8, Math.min(297 - marginMm - primary.posY, Math.round(blockStartGeometry.h + dYmm)));
-      } else if (isComponentDragging) {
-        const ids = dragComponentIds.length > 0 ? dragComponentIds : [dragCompId];
-        for (const id of ids) {
-          const comp = components.find((candidate) => candidate.id === id);
-          const start = componentStartPositions[id];
-          if (!comp || !start || comp.isLocked) continue;
-          const { w_mm: bw, h_mm: bh } = canvasComponentBlockSizeMm(comp);
-          const nx = Math.round((start.x + dXmm) / 2) * 2;
-          const ny = Math.round((start.y + dYmm) / 2) * 2;
-          comp.posX = Math.max(marginMm, Math.min(210 - marginMm - bw, nx));
-          comp.posY = Math.max(marginMm, Math.min(297 - marginMm - bh, ny));
-        }
-      }
+    if (isHtmlMode && currentStage === 1 && dragItemIds.length > 0 && !isComponentResizing && (isComponentDragging || isBlockDragging)) {
+      moveCanvasItems(dXmm, dYmm);
       return;
     }
+
+    // STAGE 1 (HTML Mode): Text Component Resize
+    if (isHtmlMode && currentStage === 1 && isComponentResizing && dragCompId) {
+      const primary = components.find((component) => component.id === dragCompId);
+      if (!primary || primary.isLocked) return;
+      primary.w_mm = Math.max(20, Math.min(210 - marginMm - primary.posX, Math.round(blockStartGeometry.w + dXmm)));
+      primary.h_mm = Math.max(8, Math.min(297 - marginMm - primary.posY, Math.round(blockStartGeometry.h + dYmm)));
+      return;
+    }
+
     if (currentStage === 2 || (isHtmlMode && currentStage === 1)) {
       if (isBlockDragging) {
         if (selectedOverlay === 'header' && !headerLocked) {
@@ -200,18 +304,18 @@
         }
       } else if (isHandleDragging) {
         if (selectedOverlay === 'header' && !headerLocked) {
-          headerW = Math.max(40, Math.min(210 - headerX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
-          headerH = Math.max(12, Math.min(297 - headerY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
+          headerW = Math.max(40, Math.min(210 - headerX - marginMm, Math.round(blockStartGeometry.w + rawDXmm)));
+          headerH = Math.max(12, Math.min(297 - headerY - marginMm, Math.round(blockStartGeometry.h + rawDYmm)));
         } else if (selectedOverlay === 'qr' && !qrLocked) {
-          const newSize = Math.max(20, Math.min(50, Math.round(blockStartGeometry.w + dXmm)));
+          const newSize = Math.max(20, Math.min(50, Math.round(blockStartGeometry.w + rawDXmm)));
           qrW = newSize;
           qrH = newSize;
         } else if (selectedOverlay === 'signature' && !sigLocked) {
-          sigW = Math.max(30, Math.min(210 - sigX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
-          sigH = Math.max(15, Math.min(297 - sigY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
+          sigW = Math.max(30, Math.min(210 - sigX - marginMm, Math.round(blockStartGeometry.w + rawDXmm)));
+          sigH = Math.max(15, Math.min(297 - sigY - marginMm, Math.round(blockStartGeometry.h + rawDYmm)));
         } else if (selectedOverlay === 'instructions' && !instLocked) {
-          instW = Math.max(40, Math.min(210 - instX - marginMm, Math.round(blockStartGeometry.w + dXmm)));
-          instH = Math.max(15, Math.min(297 - instY - marginMm, Math.round(blockStartGeometry.h + dYmm)));
+          instW = Math.max(40, Math.min(210 - instX - marginMm, Math.round(blockStartGeometry.w + rawDXmm)));
+          instH = Math.max(15, Math.min(297 - instY - marginMm, Math.round(blockStartGeometry.h + rawDYmm)));
         }
       }
       return;
@@ -231,8 +335,8 @@
         Number(sec.bubbleDiameterMm) || 4.5,
       );
 
-      let nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
-      let ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
+      const nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
+      const ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
       sec.posX = Math.max(marginMm, Math.min(210 - marginMm - w_mm, nx));
       sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - h_mm, ny));
     }
@@ -240,21 +344,36 @@
 
   function handleCanvasMouseUp() {
     if (isPanning) isPanning = false;
-    if (isBlockDragging || isHandleDragging) {
+    const hadBlockDrag = isBlockDragging || isHandleDragging;
+    const hadComponentDrag = isComponentDragging || isComponentResizing;
+    const shouldSyncStage1Items = isHtmlMode && currentStage === 1 && dragItemIds.length > 0;
+    const pendingToggle = pendingShiftToggleId;
+    const shouldToggleSelection = pendingToggle !== null && !dragMoved;
+    if (hadBlockDrag) {
       isBlockDragging = false;
       isHandleDragging = false;
-      dragBlockIndex = null;
-      if (onGeometryChanged) onGeometryChanged();
+      dragItemIds = [];
+      dragComponentIds = [];
+      componentStartPositions = {};
+      dragAxis = null;
+      isDuplicateDragging = false;
+      if (shouldSyncStage1Items && onComponentGeometryChanged) onComponentGeometryChanged();
+      else if (onGeometryChanged) onGeometryChanged();
     }
-    if (isComponentDragging || isComponentResizing) {
+    if (hadComponentDrag) {
       isComponentDragging = false;
       isComponentResizing = false;
       dragCompId = null;
       dragComponentIds = [];
+      dragItemIds = [];
       componentStartPositions = {};
+      dragAxis = null;
       isDuplicateDragging = false;
       if (onComponentGeometryChanged) onComponentGeometryChanged();
     }
+    if (shouldToggleSelection) setCanvasSelection(pendingToggle, true);
+    pendingShiftToggleId = null;
+    dragMoved = false;
   }
 
   // Universal Component Drag & Resize Triggers (Stage 1 HTML Mode)
@@ -264,64 +383,27 @@
     const source = components.find((component) => component.id === compId);
     if (!source) return;
 
-    if (e.altKey && !source.isLocked && onDuplicateComponents) {
-      const duplicatedComponents = onDuplicateComponents(compId, { deferHistory: true });
-      const copies = Array.isArray(duplicatedComponents) ? duplicatedComponents : [];
-      if (copies.length > 0) {
-        activeComponentIds = copies.map((copy) => copy.id);
-        activeComponentId = activeComponentIds.at(-1) ?? null;
-        dragComponentIds = [...activeComponentIds];
-        componentStartPositions = Object.fromEntries(
-          copies.map((copy) => [
-            copy.id,
-            {
-              x: Number(copy.posX) || 10,
-              y: Number(copy.posY) || 10,
-              w: Number(copy.w_mm) || 40,
-              h: Number(copy.h_mm) || 12,
-            },
-          ]),
-        );
-        isDuplicateDragging = true;
-        isComponentDragging = true;
-        dragCompId = activeComponentId;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        const primary = copies.at(-1);
-        blockStartGeometry = {
-          x: Number(primary.posX) || 10,
-          y: Number(primary.posY) || 10,
-          w: Number(primary.w_mm) || 40,
-          h: Number(primary.h_mm) || 12,
-        };
-        return;
-      }
+    if (e.altKey && !source.isLocked) {
+      const copies = startDuplicateDrag(e, compId);
+      if (copies.length > 0) return;
     }
 
-    const currentSelection = Array.isArray(activeComponentIds) ? activeComponentIds : [];
-    const nextSelection = !e.shiftKey && currentSelection.length > 1 && currentSelection.includes(compId)
+    const currentSelection = Array.isArray(activeItemIds) ? activeItemIds : [];
+    const preserveSelection = currentSelection.includes(compId) && (e.shiftKey || currentSelection.length > 1);
+    const nextSelection = preserveSelection
       ? currentSelection
       : setCanvasSelection(compId, e.shiftKey);
+    pendingShiftToggleId = e.shiftKey && currentSelection.includes(compId) ? compId : null;
+    dragMoved = false;
     if (!nextSelection.includes(compId) || source.isLocked) return;
 
     isDuplicateDragging = false;
     isComponentDragging = true;
     dragCompId = compId;
-    dragComponentIds = [...nextSelection];
-    const selectedComponents = nextSelection
-      .map((id) => components.find((component) => component.id === id))
-      .filter(Boolean);
-    componentStartPositions = Object.fromEntries(
-      selectedComponents.map((component) => [
-        component.id,
-        {
-          x: Number(component.posX) || 10,
-          y: Number(component.posY) || 10,
-          w: Number(component.w_mm) || 40,
-          h: Number(component.h_mm) || 12,
-        },
-      ]),
-    );
+    dragItemIds = [...nextSelection];
+    dragComponentIds = nextSelection.filter((id) => id !== QR_CANVAS_ITEM_ID);
+    componentStartPositions = captureCanvasItemPositions(nextSelection);
+    dragAxis = null;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = {
@@ -331,7 +413,6 @@
       h: Number(source.h_mm) || 12,
     };
   }
-
   function handleComponentResizeMouseDown(e, compId) {
     if (currentStage !== 1 || !isHtmlMode) return;
     e.stopPropagation();
@@ -342,7 +423,11 @@
     isDuplicateDragging = false;
     isComponentResizing = true;
     dragCompId = compId;
+    dragItemIds = [compId];
     dragComponentIds = [compId];
+    dragAxis = null;
+    pendingShiftToggleId = null;
+    dragMoved = false;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = {
@@ -353,12 +438,36 @@
     };
   }
 
+
   // Overlay Drag & Resize Triggers (Stage 2)
   function handleOverlayMouseDown(e, target, geometry, isLocked = false) {
-    if (!(currentStage === 2 || (isHtmlMode && currentStage === 1)) || isLocked) return;
+    if (!(currentStage === 2 || (isHtmlMode && currentStage === 1))) return;
     e.stopPropagation();
+    const itemId = target === 'qr' ? QR_CANVAS_ITEM_ID : null;
+    const currentSelection = Array.isArray(activeItemIds) ? activeItemIds : [];
+    const preserveSelection = itemId && currentSelection.includes(itemId) && (
+      e.shiftKey || e.altKey || currentSelection.length > 1
+    );
+    const nextSelection = itemId
+      ? (preserveSelection ? currentSelection : setCanvasSelection(itemId, e.shiftKey))
+      : null;
     selectedOverlay = target;
+
+    pendingShiftToggleId = e.shiftKey && currentSelection.includes(itemId) ? itemId : null;
+    dragMoved = false;
+    if (itemId && e.altKey && !isLocked && currentStage === 1) {
+      const copies = startDuplicateDrag(e, itemId);
+      if (copies.length > 0) return;
+    }
+    if (itemId && (!nextSelection.includes(itemId) || isLocked)) return;
+
     isBlockDragging = true;
+    dragItemIds = itemId
+      ? (isHtmlMode && currentStage === 1 ? [...nextSelection] : [itemId])
+      : [];
+    dragComponentIds = dragItemIds.filter((id) => id !== QR_CANVAS_ITEM_ID);
+    componentStartPositions = captureCanvasItemPositions(dragItemIds);
+    dragAxis = null;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = { ...geometry };
@@ -367,8 +476,11 @@
   function handleOverlayResizeMouseDown(e, target, geometry, isLocked = false) {
     if (!(currentStage === 2 || (isHtmlMode && currentStage === 1)) || isLocked) return;
     e.stopPropagation();
+    if (target === 'qr') setCanvasSelection(QR_CANVAS_ITEM_ID);
     selectedOverlay = target;
     isHandleDragging = true;
+    dragItemIds = [];
+    dragAxis = null;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = { ...geometry };
@@ -382,6 +494,10 @@
     activeSectionIndex = index;
     isBlockDragging = true;
     dragBlockIndex = index;
+    dragItemIds = [];
+    dragAxis = null;
+    pendingShiftToggleId = null;
+    dragMoved = false;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
@@ -559,10 +675,11 @@
         {#if showQrOverlay}
           <div
             class={`absolute border rounded bg-white p-1 flex flex-col items-center justify-between transition-all ${
-              selectedOverlay === 'qr' && !qrLocked
+              activeItemIds.includes(QR_CANVAS_ITEM_ID)
                 ? 'border-emerald-500 ring-2 ring-emerald-400/80 z-30 shadow-md'
                 : 'border-slate-300 shadow-xs z-10'
             }`}
+            data-omr-canvas-item-id={QR_CANVAS_ITEM_ID}
             style={`top: ${qrY * 2.476}px; left: ${qrX * 2.476}px; width: ${qrW * 2.476}px; height: ${qrH * 2.476}px;`}
             onmousedown={(e) => handleOverlayMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH }, qrLocked)}
             role="button"
@@ -602,7 +719,7 @@
             </svg>
             <span class="text-[6.5px] font-mono font-bold text-slate-600 uppercase tracking-tighter text-center leading-none">INSTANCE QR</span>
 
-            {#if selectedOverlay === 'qr' && !qrLocked}
+            {#if activeItemIds.includes(QR_CANVAS_ITEM_ID) && !qrLocked}
               <div
                 class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md"
                 onmousedown={(e) => handleOverlayResizeMouseDown(e, 'qr', { x: qrX, y: qrY, w: qrW, h: qrH }, qrLocked)}

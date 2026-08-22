@@ -194,3 +194,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 22.3 Add Alt/Option-drag duplication for one component or a selected group, preserve group movement, and keep locked components selectable but immobile/non-duplicable.
 - [x] 22.4 Add copy-drag pointer feedback, keyboard shortcut guards for native text controls, layer bracket shortcuts, and visible interaction guidance.
 - [x] 22.5 Verify: 38 frontend tests, production build, strict OpenSpec validation, browser proof for Shift selection, group drag, Delete/Backspace, Ctrl/Cmd+D, Alt-drag, text-control guards, refresh persistence, and zero runtime/failed-request errors.
+
+## 23. Unified QR canvas-item and modifier drag controls
+
+- [x] 23.1 Treat the unique QR reservation as a canvas item in the shared selection set and Layers list; support Shift selection, Delete removal, lock/unlock, and group movement.
+- [x] 23.2 Add Shift-drag axis locking across Sheet Designer, QR overlays, and bubble sections; choose the dominant axis after the pointer crosses the drag threshold.
+- [x] 23.3 Make Alt+Shift-drag duplicate the selected duplicateable components while preserving the unique QR-reservation constraint.
+- [x] 23.4 Verify: 38 frontend tests, production build, QR/component multi-selection, axis-locked QR/group drag, Alt+Shift duplication, QR lock/remove controls, refresh persistence, and zero current runtime/HTTP errors.

@@ -121,6 +121,14 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - Refresh proof: the final two-component demo state rehydrated with `Layers (2)`; page-error and failed-request listeners returned empty arrays, and the refresh response sweep found no HTTP status ≥400.
 - Frontend suite: **7 files passed, 38 tests passed**; production build exited `0`; `openspec validate omr-canonical-template-authoring --strict` exited `0`.
 
+## Unified QR canvas-item and modifier drag controls (2026-08-22)
+
+- **Shared selection**: the unique QR reservation uses the `qr` canvas-item ID, appears as `QR Reservation` in Layers, participates in Shift selection, Delete, lock/unlock, and group movement.
+- **Axis lock**: holding Shift during a drag locks movement to the dominant horizontal or vertical axis after the pointer crosses the threshold; this applies to components, QR group drags, overlays, and Stage 3 blocks.
+- **Alt+Shift**: selected duplicateable components are copied and dragged with the axis lock; the unique QR reservation is intentionally not cloned because the server contract has one `blank_instance_qr` slot.
+- **Browser proof**: QR + component multi-selection, Shift-locked QR/group movement, Alt+Shift copy drag, QR lock/remove controls, clean runtime reload, and no failed HTTP responses were verified on Draft 2.
+- **Verification**: frontend suite **38 tests passed**; production build exited `0`; existing detector warnings remain limited to contrast suggestions and the intentional canvas grid background.
+
 
 
 

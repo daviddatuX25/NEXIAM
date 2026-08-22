@@ -84,6 +84,8 @@
   let components = $state([]);
   let selectedComponentId = $state(null);
   let selectedComponentIds = $state([]);
+  let selectedCanvasIds = $state([]);
+  const QR_CANVAS_ITEM_ID = 'qr';
   let componentCopySeq = 0;
   let layerDragId = $state(null);
   let showLayersPanel = $state(true);
@@ -181,6 +183,7 @@
       }
     }
     components = normalizeLayerOrder([...components, comp]);
+    selectedCanvasIds = [comp.id];
     selectedComponentIds = [comp.id];
     selectedComponentId = comp.id;
     syncComponentsToSections(`Add ${componentLabel(comp)}`);
@@ -234,51 +237,73 @@
   }
 
   function handleOverlayPaletteItem(kind) {
-    if (kind === 'qr_code') showQrOverlay = true;
+    if (kind === 'qr_code') {
+      showQrOverlay = true;
+      selectCanvasItem(QR_CANVAS_ITEM_ID);
+    }
     handleHtmlDecorationChanged();
   }
 
-  function selectComponent(id, additive = false) {
-    if (additive) {
-      selectedComponentIds = selectedComponentIds.includes(id)
-        ? selectedComponentIds.filter((selectedId) => selectedId !== id)
-        : [...selectedComponentIds, id];
-    } else {
-      selectedComponentIds = [id];
+  function syncCanvasSelection(nextIds, primaryId = null) {
+    selectedCanvasIds = [...new Set(nextIds)];
+    selectedComponentIds = selectedCanvasIds.filter((id) => id !== QR_CANVAS_ITEM_ID);
+    selectedComponentId = selectedComponentIds.includes(primaryId)
+      ? primaryId
+      : selectedComponentIds.at(-1) ?? null;
+    return selectedCanvasIds;
+  }
+
+  function selectCanvasItem(id, additive = false) {
+    const currentSelection = selectedCanvasIds;
+    const nextSelection = additive
+      ? currentSelection.includes(id)
+        ? currentSelection.filter((selectedId) => selectedId !== id)
+        : [...currentSelection, id]
+      : [id];
+    const selection = syncCanvasSelection(nextSelection, id);
+    if (id !== QR_CANVAS_ITEM_ID) {
+      const idx = sections.findIndex((s) => s.id === id);
+      if (idx >= 0) activeSectionIndex = idx;
     }
-    selectedComponentId = selectedComponentIds.at(-1) ?? null;
-    const idx = sections.findIndex((s) => s.id === id);
-    if (idx >= 0) activeSectionIndex = idx;
+    return selection;
+  }
+
+  function selectComponent(id, additive = false) {
+    return selectCanvasItem(id, additive);
   }
 
   function clearComponentSelection() {
-    selectedComponentIds = [];
-    selectedComponentId = null;
+    return syncCanvasSelection([]);
   }
 
   function handleCanvasComponentSelected(id, additive = false) {
-    selectComponent(id, additive);
-    return selectedComponentIds;
+    return selectCanvasItem(id, additive);
+  }
+
+  function handleCanvasItemSelected(id, additive = false) {
+    return selectCanvasItem(id, additive);
   }
 
   function removeComponent(id) {
     components = components.filter((c) => c.id !== id);
-    selectedComponentIds = selectedComponentIds.filter((selectedId) => selectedId !== id);
+    selectedCanvasIds = selectedCanvasIds.filter((selectedId) => selectedId !== id);
+    selectedComponentIds = selectedCanvasIds.filter((selectedId) => selectedId !== QR_CANVAS_ITEM_ID);
     if (selectedComponentId === id) selectedComponentId = selectedComponentIds.at(-1) ?? null;
     syncComponentsToSections('Remove component');
   }
 
   function removeSelectedComponents() {
-    const ids = selectedComponentIds.length > 0
-      ? selectedComponentIds
+    const ids = selectedCanvasIds.length > 0
+      ? selectedCanvasIds
       : selectedComponentId
         ? [selectedComponentId]
         : [];
     if (ids.length === 0) return;
     const idSet = new Set(ids);
     components = components.filter((component) => !idSet.has(component.id));
+    if (idSet.has(QR_CANVAS_ITEM_ID)) showQrOverlay = false;
     clearComponentSelection();
-    syncComponentsToSections('Delete selected components');
+    syncComponentsToSections('Delete selected items');
   }
 
   function duplicateSelectedComponents(fallbackId = null, options = {}) {
@@ -310,7 +335,8 @@
     });
 
     components = normalizeLayerOrder([...components, ...copies]);
-    selectedComponentIds = copies.map((copy) => copy.id);
+    selectedCanvasIds = copies.map((copy) => copy.id);
+    selectedComponentIds = [...selectedCanvasIds];
     selectedComponentId = selectedComponentIds.at(-1) ?? null;
     syncComponentsToSections(
       `Duplicate ${copies.length} component${copies.length === 1 ? '' : 's'}`,
@@ -444,6 +470,7 @@
     components = normalizeLayerOrder(components);
     selectedComponentId = null;
     selectedComponentIds = [];
+    selectedCanvasIds = [];
     syncComponentsToSections(`Apply ${presetName} preset`);
   }
 
@@ -493,6 +520,7 @@
     sections = [];
     selectedComponentId = null;
     selectedComponentIds = [];
+    selectedCanvasIds = [];
     activeSectionIndex = 0;
     currentStage = 1;
     scale = 0.78;
@@ -902,7 +930,8 @@
     rollDigits = layout.rollDigits;
     customTextItems = layout.customTextItems;
     htmlCode = components.length > 0 ? renderCurrentHtml() : '';
-    selectedComponentIds = selectedComponentIds.filter((id) => components.some((component) => component.id === id));
+    selectedCanvasIds = selectedCanvasIds.filter((id) => (id === QR_CANVAS_ITEM_ID && showQrOverlay) || components.some((component) => component.id === id));
+    selectedComponentIds = selectedCanvasIds.filter((id) => id !== QR_CANVAS_ITEM_ID);
     if (!components.some((component) => component.id === selectedComponentId)) selectedComponentId = selectedComponentIds.at(-1) ?? null;
     activeSectionIndex = Math.min(activeSectionIndex, Math.max(0, sections.length - 1));
     historyRevision += 1;
@@ -1613,7 +1642,9 @@
         bind:components
         bind:activeComponentId={selectedComponentId}
         bind:activeComponentIds={selectedComponentIds}
+        bind:activeItemIds={selectedCanvasIds}
         onComponentSelected={handleCanvasComponentSelected}
+        onCanvasItemSelected={handleCanvasItemSelected}
         onCanvasSelectionClear={clearComponentSelection}
         onDuplicateComponents={duplicateSelectedComponents}
         onGeometryChanged={handleGeometryChanged}
@@ -2477,7 +2508,7 @@
                     aria-expanded={showLayersPanel}
                   >
                     <span class="text-xs font-bold text-slate-900">
-                      Layers ({components.length}){selectedComponentIds.length > 1 ? ` · ${selectedComponentIds.length} selected` : ''}
+                      Layers ({components.length + (showQrOverlay ? 1 : 0)}){selectedCanvasIds.length > 1 ? ` · ${selectedCanvasIds.length} selected` : ''}
                     </span>
                     <span class="flex items-center gap-1 text-[9.5px] text-slate-400">
                       <span>Back to front</span>
@@ -2485,24 +2516,64 @@
                     </span>
                   </button>
                   <p class="mb-1.5 text-[9.5px] leading-snug text-slate-500">
-                    Shift-click to select multiple · Alt-drag to duplicate · Delete to remove
+                    Shift-click to select multiple · Shift-drag locks an axis · Alt+Shift-drag duplicates selection
                   </p>
                   {#if showLayersPanel}
-                    {#if components.length === 0}
+                    {#if components.length === 0 && !showQrOverlay}
                       <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center text-[11px] text-slate-400 leading-relaxed">
                         No components yet.<br />
                         Drag items from the palette onto the canvas — or click one to add it.
                       </div>
                     {:else}
                       <div class="space-y-1">
+                        {#if showQrOverlay}
+                          <div
+                            class={`p-1.5 rounded-lg border flex items-center gap-1.5 text-[11px] transition ${
+                              selectedCanvasIds.includes(QR_CANVAS_ITEM_ID)
+                                ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                            title="Reserved instance QR overlay"
+                          >
+                            <button
+                              type="button"
+                              onclick={(e) => { e.stopPropagation(); selectCanvasItem(QR_CANVAS_ITEM_ID, e.shiftKey); }}
+                              class="min-w-0 flex-1 flex items-center gap-1.5 text-left"
+                            >
+                              <span class="size-4 rounded bg-slate-100 text-[9px] font-mono text-slate-500 flex items-center justify-center shrink-0">1</span>
+                              <span class="font-bold text-slate-800 truncate">QR Reservation</span>
+                            </button>
+                            <div class="flex items-center gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); qrLocked = !qrLocked; handleHtmlDecorationChanged(); }}
+                                class={`p-1 rounded transition ${qrLocked ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-slate-600'}`}
+                                title={qrLocked ? 'Unlock position' : 'Lock position'}
+                                aria-label={qrLocked ? 'Unlock QR Reservation' : 'Lock QR Reservation'}
+                              >
+                                {#if qrLocked}<Lock class="size-3" />{:else}<Unlock class="size-3" />{/if}
+                              </button>
+                              <button
+                                type="button"
+                                onclick={(e) => { e.stopPropagation(); showQrOverlay = false; clearComponentSelection(); handleHtmlDecorationChanged(); }}
+                                class="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                title="Remove QR reservation"
+                                aria-label="Remove QR Reservation"
+                              >
+                                <Trash2 class="size-3" />
+                              </button>
+                            </div>
+                          </div>
+                        {/if}
                         {#each components as c, layerIndex (c.id)}
+                          {@const layerNumber = layerIndex + (showQrOverlay ? 2 : 1)}
                           <div
                             draggable="true"
                             ondragstart={(e) => handleLayerDragStart(e, c.id)}
                             ondragover={(e) => { e.preventDefault(); }}
                             ondrop={(e) => handleLayerDrop(e, c.id)}
                             class={`p-1.5 rounded-lg border flex items-center gap-1.5 text-[11px] transition ${
-                              selectedComponentIds.includes(c.id) || selectedComponentId === c.id
+                              selectedCanvasIds.includes(c.id)
                                 ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
@@ -2514,7 +2585,7 @@
                               class="min-w-0 flex-1 flex items-center gap-1.5 text-left"
                             >
                               <span class="size-4 rounded bg-slate-100 text-[9px] font-mono text-slate-500 flex items-center justify-center shrink-0">
-                                {layerIndex + 1}
+                                {layerNumber}
                               </span>
                               <span class="font-bold text-slate-800 truncate">{componentLabel(c)}</span>
                             </button>
