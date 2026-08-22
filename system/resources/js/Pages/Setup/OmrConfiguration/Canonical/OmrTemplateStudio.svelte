@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { router } from '@inertiajs/svelte';
   import { newIdempotencyKey, csrfToken } from '@/lib/utils';
+  import { createStudioHistory } from '@/lib/studioHistory';
   import {
     emitNativeMapping,
     emitOverlayBoxes,
@@ -33,6 +34,8 @@
     Check,
     AlertTriangle,
     RotateCcw,
+    Undo2,
+    Redo2,
     FileText,
     Sliders,
     Type,
@@ -46,6 +49,7 @@
   import StudioBubblePanel from './StudioBubblePanel.svelte';
   import StudioExportVerifyPanel from './StudioExportVerifyPanel.svelte';
   import StudioTypographyControls from './StudioTypographyControls.svelte';
+  import StudioQrReservationControls from './StudioQrReservationControls.svelte';
 
   let {
     draft = {},
@@ -78,6 +82,37 @@
 
   let selectedComponent = $derived(components.find((c) => c.id === selectedComponentId) ?? null);
 
+  function htmlSheetSettings() {
+    return {
+      paperWidthMm: 210,
+      paperHeightMm: 297,
+      marginMm,
+      markerPattern,
+    };
+  }
+
+  function htmlDecorations() {
+    return {
+      showFiducials: true,
+      qr: {
+        visible: showQrOverlay,
+        xMm: qrX,
+        yMm: qrY,
+        sizeMm: Math.min(Number(qrW) || 26, Number(qrH) || 26),
+        overlayTag: 'blank_instance_qr',
+      },
+    };
+  }
+
+  function renderCurrentHtml() {
+    return renderFullSheetHtml(components, htmlSheetSettings(), htmlDecorations());
+  }
+  function handleHtmlDecorationChanged() {
+    if (components.length > 0) htmlCode = renderCurrentHtml();
+    recordHistory('Edit layout', { coalesceKey: 'layout' });
+    triggerAutosave();
+  }
+
   function componentLabel(c) {
     switch (c.type) {
       case 'header': return 'Document Header';
@@ -93,11 +128,17 @@
     }
   }
 
-  function syncComponentsToSections() {
-    htmlCode = components.length > 0 ? renderFullSheetHtml(components) : '';
+  function syncComponentsToSections(label = 'Edit component', options = {}) {
+    htmlCode = components.length > 0 ? renderCurrentHtml() : '';
     sections = components
       .map((c) => componentToSectionData(c))
       .filter((s) => s !== null);
+    const historyOptions = options.coalesceKey
+      ? options
+      : (label === 'Edit component' && selectedComponentId
+        ? { coalesceKey: `component:${selectedComponentId}` }
+        : {});
+    recordHistory(label, historyOptions);
     triggerAutosave();
   }
 
@@ -130,7 +171,7 @@
     }
     components = [...components, comp];
     selectedComponentId = comp.id;
-    syncComponentsToSections();
+    syncComponentsToSections(`Add ${componentLabel(comp)}`);
   }
   function addUploadTextOverlay(kind) {
     const labels = {
@@ -159,6 +200,7 @@
         isLocked: false,
       },
     ];
+    recordHistory('Add overlay text');
     triggerAutosave();
   }
 
@@ -171,13 +213,17 @@
     if (item.kind === 'header') showHeaderOverlay = true;
     else if (item.kind === 'instructions') showInstructionsOverlay = true;
     else if (item.kind === 'signature') showSignatureOverlay = true;
-    else addUploadTextOverlay(item.kind);
+    else {
+      addUploadTextOverlay(item.kind);
+      return;
+    }
+    recordHistory(`Enable ${item.label}`);
     triggerAutosave();
   }
 
   function handleOverlayPaletteItem(kind) {
     if (kind === 'qr_code') showQrOverlay = true;
-    triggerAutosave();
+    handleHtmlDecorationChanged();
   }
 
   function selectComponent(id) {
@@ -189,13 +235,13 @@
   function removeComponent(id) {
     components = components.filter((c) => c.id !== id);
     if (selectedComponentId === id) selectedComponentId = null;
-    syncComponentsToSections();
+    syncComponentsToSections('Remove component');
   }
 
   function updateSelectedComponent(patch) {
     if (!selectedComponentId) return;
     components = components.map((c) => (c.id === selectedComponentId ? { ...c, ...patch } : c));
-    syncComponentsToSections();
+    syncComponentsToSections('Update component');
   }
 
   function handlePaletteDrop(e) {
@@ -243,7 +289,7 @@
       components = copy.filter((c) => !['Part_3', 'Part_4', 'Part_5', 'Part_6'].includes(c.id));
     }
     selectedComponentId = null;
-    syncComponentsToSections();
+    syncComponentsToSections(`Apply ${presetName} preset`);
   }
 
   function scaffoldFromAptitudeAreas() {
@@ -277,7 +323,7 @@
 
     const otherComps = components.filter((c) => c.type !== 'mcq' && c.type !== 'tf' && c.type !== 'likert' && c.type !== 'custom');
     components = [...otherComps, ...newGrids];
-    syncComponentsToSections();
+    syncComponentsToSections('Scaffold aptitude areas');
   }
 
   // HTML Code Editor State (blank until components are placed)
@@ -301,6 +347,7 @@
     conversionStatusText = '';
     conversionError = '';
     if (uploadFileInput) uploadFileInput.value = '';
+    resetHistory();
   }
 
   function requestSwitchMode(targetMode) {
@@ -579,6 +626,174 @@
     };
   });
 
+  function readEditorState() {
+    return {
+      components: $state.snapshot(components),
+      sections: $state.snapshot(sections),
+      layout: {
+        marginMm,
+        markerPattern,
+        showHeaderOverlay,
+        headerTitle,
+        headerSubtitle,
+        headerFontSize,
+        headerFontFamily,
+        headerColor,
+        headerAlign,
+        headerX,
+        headerY,
+        headerW,
+        headerH,
+        headerLocked,
+        showQrOverlay,
+        qrX,
+        qrY,
+        qrW,
+        qrH,
+        qrLocked,
+        showInstructionsOverlay,
+        instructionsContent,
+        instructionsFontSize,
+        instructionsFontFamily,
+        instructionsColor,
+        instX,
+        instY,
+        instW,
+        instH,
+        instLocked,
+        showSignatureOverlay,
+        signatureContent,
+        signatureFontSize,
+        signatureFontFamily,
+        signatureColor,
+        sigX,
+        sigY,
+        sigW,
+        sigH,
+        sigLocked,
+        metadataContent,
+        metadataFontSize,
+        showMetadataOverlay,
+        showRollOverlay,
+        rollDigits,
+        customTextItems: $state.snapshot(customTextItems),
+      },
+    };
+  }
+
+  let historyRevision = $state(0);
+  let historyNotice = $state('');
+  const studioHistory = createStudioHistory(readEditorState(), 100);
+  let historyStatus = $derived.by(() => {
+    historyRevision;
+    return studioHistory.status();
+  });
+
+  function recordHistory(label, options = {}) {
+    if (studioHistory.record(readEditorState(), label, options)) {
+      historyRevision += 1;
+    }
+  }
+
+  function applyEditorState(nextState, notice = '') {
+    components = nextState.components;
+    sections = nextState.sections;
+    const layout = nextState.layout;
+    marginMm = layout.marginMm;
+    markerPattern = layout.markerPattern;
+    showHeaderOverlay = layout.showHeaderOverlay;
+    headerTitle = layout.headerTitle;
+    headerSubtitle = layout.headerSubtitle;
+    headerFontSize = layout.headerFontSize;
+    headerFontFamily = layout.headerFontFamily;
+    headerColor = layout.headerColor;
+    headerAlign = layout.headerAlign;
+    headerX = layout.headerX;
+    headerY = layout.headerY;
+    headerW = layout.headerW;
+    headerH = layout.headerH;
+    headerLocked = layout.headerLocked;
+    showQrOverlay = layout.showQrOverlay;
+    qrX = layout.qrX;
+    qrY = layout.qrY;
+    qrW = layout.qrW;
+    qrH = layout.qrH;
+    qrLocked = layout.qrLocked;
+    showInstructionsOverlay = layout.showInstructionsOverlay;
+    instructionsContent = layout.instructionsContent;
+    instructionsFontSize = layout.instructionsFontSize;
+    instructionsFontFamily = layout.instructionsFontFamily;
+    instructionsColor = layout.instructionsColor;
+    instX = layout.instX;
+    instY = layout.instY;
+    instW = layout.instW;
+    instH = layout.instH;
+    instLocked = layout.instLocked;
+    showSignatureOverlay = layout.showSignatureOverlay;
+    signatureContent = layout.signatureContent;
+    signatureFontSize = layout.signatureFontSize;
+    signatureFontFamily = layout.signatureFontFamily;
+    signatureColor = layout.signatureColor;
+    sigX = layout.sigX;
+    sigY = layout.sigY;
+    sigW = layout.sigW;
+    sigH = layout.sigH;
+    sigLocked = layout.sigLocked;
+    metadataContent = layout.metadataContent;
+    metadataFontSize = layout.metadataFontSize;
+    showMetadataOverlay = layout.showMetadataOverlay;
+    showRollOverlay = layout.showRollOverlay;
+    rollDigits = layout.rollDigits;
+    customTextItems = layout.customTextItems;
+    htmlCode = components.length > 0 ? renderCurrentHtml() : '';
+    if (!components.some((component) => component.id === selectedComponentId)) selectedComponentId = null;
+    activeSectionIndex = Math.min(activeSectionIndex, Math.max(0, sections.length - 1));
+    historyRevision += 1;
+    historyNotice = notice;
+    triggerAutosave();
+  }
+
+  function undoEditor() {
+    const state = studioHistory.undo();
+    if (state) applyEditorState(state, `Undid ${studioHistory.status().redoLabel ?? 'edit'}`);
+  }
+
+  function redoEditor() {
+    const state = studioHistory.redo();
+    if (state) applyEditorState(state, `Redid ${studioHistory.status().undoLabel ?? 'edit'}`);
+  }
+
+  function resetHistory() {
+    studioHistory.reset(readEditorState());
+    historyRevision += 1;
+    historyNotice = '';
+  }
+
+  function handleGeometryChanged() {
+    recordHistory('Move or resize overlay', { coalesceKey: 'geometry' });
+    triggerAutosave();
+  }
+
+  function recordBubbleEdit() {
+    recordHistory('Edit question bubbles', { coalesceKey: `section:${activeSectionIndex}` });
+    triggerAutosave();
+  }
+  function handleStudioKeydown(event) {
+    if (event.repeat) return;
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
+    const tagName = event.target?.tagName?.toLowerCase?.() ?? '';
+    if (['input', 'textarea', 'select'].includes(tagName) || event.target?.isContentEditable) return;
+
+    const key = event.key.toLowerCase();
+    if (key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      undoEditor();
+    } else if ((key === 'z' && event.shiftKey) || (key === 'y' && !event.shiftKey)) {
+      event.preventDefault();
+      redoEditor();
+    }
+  }
+
   onMount(() => {
     const studio = draft.authoring?.studio;
     if (studio) {
@@ -634,17 +849,22 @@
       if (typeof studio.showMetadataOverlay === 'boolean') showMetadataOverlay = studio.showMetadataOverlay;
       if (studio.metadataContent) metadataContent = studio.metadataContent;
 
-      if (Array.isArray(studio.customTextItems)) customTextItems = studio.customTextItems;
-      if (studio.htmlCode) htmlCode = studio.htmlCode;
+      if (studio.htmlCode && components.length === 0) htmlCode = studio.htmlCode;
     }
+
+    if (components.length > 0) htmlCode = renderCurrentHtml();
 
     if (draft.lock_version !== undefined) {
       currentLockVersion = draft.lock_version;
     }
+    resetHistory();
+    window.addEventListener('keydown', handleStudioKeydown);
+
   });
 
   onDestroy(() => {
     if (autosaveTimer) clearTimeout(autosaveTimer);
+    window.removeEventListener('keydown', handleStudioKeydown);
   });
 
   function requestGoToStage(step) {
@@ -1203,7 +1423,7 @@
         {currentStage}
         bind:components
         bind:activeComponentId={selectedComponentId}
-        onGeometryChanged={triggerAutosave}
+        onGeometryChanged={handleGeometryChanged}
         onComponentGeometryChanged={syncComponentsToSections}
       />
   </div>
@@ -1251,6 +1471,28 @@
             <span>Re-edit Design</span>
           </button>
         {/if}
+        <div class="flex items-center gap-0.5 border-r border-slate-200 pr-2">
+          <button
+            type="button"
+            onclick={undoEditor}
+            disabled={!historyStatus.canUndo}
+            class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            title={historyStatus.undoLabel ? `Undo: ${historyStatus.undoLabel}` : 'Undo'}
+            aria-label={historyStatus.undoLabel ? `Undo: ${historyStatus.undoLabel}` : 'Undo'}
+          >
+            <Undo2 class="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onclick={redoEditor}
+            disabled={!historyStatus.canRedo}
+            class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            title={historyStatus.redoLabel ? `Redo: ${historyStatus.redoLabel}` : 'Redo'}
+            aria-label={historyStatus.redoLabel ? `Redo: ${historyStatus.redoLabel}` : 'Redo'}
+          >
+            <Redo2 class="size-3.5" />
+          </button>
+        </div>
 
         <div class="flex items-center space-x-1.5 text-xs px-2">
           {#if saveStatus === 'saving'}
@@ -1264,6 +1506,9 @@
             <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
               {errorMessage || 'Error'}
             </span>
+          {/if}
+          {#if historyNotice}
+            <span class="sr-only" aria-live="polite">{historyNotice}</span>
           {/if}
         </div>
 
@@ -1836,7 +2081,7 @@
                       max="30"
                       step="1"
                       bind:value={marginMm}
-                      oninput={triggerAutosave}
+                      oninput={handleHtmlDecorationChanged}
                       class="w-full accent-slate-900"
                     />
                   </div>
@@ -1846,7 +2091,7 @@
                       {#each ['square', 'target', 'aruco'] as pat}
                         <button
                           type="button"
-                          onclick={() => { markerPattern = pat; triggerAutosave(); }}
+                          onclick={() => { markerPattern = pat; handleHtmlDecorationChanged(); }}
                           class={`py-1 rounded-lg border text-center text-[10px] font-semibold capitalize transition ${
                             markerPattern === pat ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 bg-white hover:border-slate-300'
                           }`}
@@ -1854,23 +2099,16 @@
                       {/each}
                     </div>
                   </div>
-                  <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                      <input type="checkbox" bind:checked={showQrOverlay} onchange={triggerAutosave} class="rounded text-slate-900" />
-                      <span class="text-[11px] font-bold text-slate-800">Blank Instance QR</span>
-                    </label>
-                    {#if showQrOverlay}
-                      <div class="grid grid-cols-2 gap-2 text-[10px]">
-                        <div>
-                          <label class="font-semibold text-slate-600 block mb-0.5">X (mm)</label>
-                          <input type="number" min="10" max="190" bind:value={qrX} oninput={triggerAutosave} class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs" />
-                        </div>
-                        <div>
-                          <label class="font-semibold text-slate-600 block mb-0.5">Y (mm)</label>
-                          <input type="number" min="10" max="280" bind:value={qrY} oninput={triggerAutosave} class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs" />
-                        </div>
-                      </div>
-                    {/if}
+                  <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <StudioQrReservationControls
+                      bind:showQrOverlay
+                      bind:qrX
+                      bind:qrY
+                      bind:qrW
+                      bind:qrH
+                      bind:qrLocked
+                      onChanged={handleHtmlDecorationChanged}
+                    />
                   </div>
                 </div>
 
@@ -2144,6 +2382,10 @@
           bind:headerAlign
           bind:headerLocked
           bind:showQrOverlay
+          bind:qrX
+          bind:qrY
+          bind:qrW
+          bind:qrH
           bind:qrLocked
           bind:showInstructionsOverlay
           bind:instructionsContent
@@ -2157,7 +2399,7 @@
           bind:signatureFontFamily
           bind:signatureColor
           bind:sigLocked
-          onChanged={triggerAutosave}
+          onChanged={handleHtmlDecorationChanged}
           onBack={() => requestGoToStage(1)}
           onNext={() => requestGoToStage(3)}
         />
@@ -2166,7 +2408,7 @@
         <StudioBubblePanel
           bind:sections
           bind:activeSectionIndex
-          onChanged={triggerAutosave}
+          onChanged={recordBubbleEdit}
           onBack={() => requestGoToStage(2)}
           onNext={() => requestGoToStage(4)}
         />

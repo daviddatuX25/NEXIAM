@@ -14,8 +14,10 @@ import {
   paletteForPath,
   overlayPaletteForPath,
   COMPONENT_PATH_FILTERS,
+  isQuestionGridComponent,
   PRESET_150Q_COMPONENTS,
 } from '../../resources/js/lib/omrComponents';
+import { createStudioHistory } from '../../resources/js/lib/studioHistory';
 
 function getBodyContent(html: string): string {
   const match = html.match(/<body>([\s\S]*?)<\/body>/);
@@ -72,6 +74,24 @@ describe('Universal OMR Component Suite', () => {
       const html = renderFullSheetHtml([]);
       expect(html).toContain('<!DOCTYPE html>');
       expect(getBodyContent(html)).toBe('');
+    });
+    it('renders enabled fiducials and QR reservation in compiled HTML', () => {
+      const header = createComponent('header');
+      const html = renderFullSheetHtml(
+        [header],
+        { paperWidthMm: 210, paperHeightMm: 297, marginMm: 15, markerPattern: 'target' },
+        {
+          showFiducials: true,
+          qr: { visible: true, xMm: 162, yMm: 18, sizeMm: 34, overlayTag: 'blank_instance_qr' },
+        },
+      );
+      const body = getBodyContent(html);
+
+      expect(body.match(/omr-fiducial-target/g)).toHaveLength(4);
+      expect(body).toContain('data-omr-overlay="blank_instance_qr"');
+      expect(body).toContain('data-omr-qr-size-mm="34"');
+      expect(body).toContain('width: 34mm');
+      expect(body).toContain('height: 34mm');
     });
 
     it('renders ONLY the header when only a Document Header component is added', () => {
@@ -186,11 +206,13 @@ describe('Universal OMR Component Suite', () => {
 
   describe('Component Sizing & Geometry', () => {
     it('computes content-derived dimensions for roll and grids', () => {
-      const roll = createComponent('roll') as any;
+      const roll = createComponent('roll');
+      if (roll.type !== 'roll') throw new Error('Expected roll component');
       expect(rollBlockWidthMm(roll)).toBeGreaterThan(30);
       expect(rollBlockHeightMm(roll)).toBeGreaterThan(40);
 
-      const grid = createComponent('question_grid') as any;
+      const grid = createComponent('question_grid');
+      if (!isQuestionGridComponent(grid)) throw new Error('Expected question grid component');
       expect(gridOptionLabels(grid)).toEqual(['A', 'B', 'C', 'D']);
       expect(gridBlockWidthMm(grid)).toBeGreaterThan(20);
       expect(gridBlockHeightMm(grid)).toBeGreaterThan(100);
@@ -198,6 +220,34 @@ describe('Universal OMR Component Suite', () => {
       const size = componentBlockSizeMm(grid);
       expect(size.w_mm).toBeGreaterThanOrEqual(gridBlockWidthMm(grid));
       expect(size.h_mm).toBeGreaterThanOrEqual(gridBlockHeightMm(grid));
+    });
+  });
+  describe('Studio history', () => {
+    it('supports undo, redo, branch invalidation, and bounded snapshots', () => {
+      const history = createStudioHistory({ count: 0 }, 2);
+      history.record({ count: 1 }, 'Add component');
+      history.record({ count: 2 }, 'Move component');
+
+      expect(history.undo()).toEqual({ count: 1 });
+      expect(history.redo()).toEqual({ count: 2 });
+
+      history.undo();
+      history.record({ count: 9 }, 'New branch');
+      expect(history.status().canRedo).toBe(false);
+
+      history.record({ count: 10 }, 'Second branch');
+      history.record({ count: 11 }, 'Third branch');
+      expect(history.status().canUndo).toBe(true);
+      expect(history.undo()).toEqual({ count: 10 });
+    });
+
+    it('coalesces rapid field edits into one undo step', () => {
+      const history = createStudioHistory({ value: 0 });
+      history.record({ value: 1 }, 'Edit QR size', { coalesceKey: 'qr-size' });
+      history.record({ value: 2 }, 'Edit QR size', { coalesceKey: 'qr-size' });
+
+      expect(history.undo()).toEqual({ value: 0 });
+      expect(history.status().canRedo).toBe(true);
     });
   });
 });

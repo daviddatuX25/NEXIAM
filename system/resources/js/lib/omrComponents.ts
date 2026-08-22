@@ -165,6 +165,29 @@ export interface SheetSettings {
   marginMm: number;
   markerPattern: 'square' | 'target' | 'aruco';
 }
+export interface SheetHtmlQrReservation {
+  visible: boolean;
+  xMm: number;
+  yMm: number;
+  sizeMm: number;
+  overlayTag: 'blank_instance_qr';
+}
+
+export interface SheetHtmlDecorations {
+  showFiducials: boolean;
+  qr: SheetHtmlQrReservation;
+}
+
+export const DEFAULT_SHEET_HTML_DECORATIONS: SheetHtmlDecorations = {
+  showFiducials: false,
+  qr: {
+    visible: false,
+    xMm: 162,
+    yMm: 18,
+    sizeMm: 26,
+    overlayTag: 'blank_instance_qr',
+  },
+};
 
 export const DEFAULT_A4_SETTINGS: SheetSettings = {
   paperWidthMm: 210,
@@ -255,6 +278,61 @@ const SHEET_CSS = `
       position: relative;
     }
     .omr-comp { position: absolute; }
+    .omr-fiducial {
+      position: absolute;
+      width: 6mm;
+      height: 6mm;
+      z-index: 1;
+      background: #ffffff;
+    }
+    .omr-fiducial-square {
+      border: 1mm solid #0f172a;
+    }
+    .omr-fiducial-target {
+      border: 0.7mm solid #0f172a;
+      border-radius: 50%;
+      background: radial-gradient(circle, #0f172a 0 18%, #ffffff 19% 42%, #0f172a 43% 58%, #ffffff 59%);
+    }
+    .omr-fiducial-aruco {
+      border: 0.6mm solid #0f172a;
+      background:
+        linear-gradient(90deg, #0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%),
+        linear-gradient(#0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%);
+      background-size: 2mm 2mm;
+    }
+    .omr-qr-reservation {
+      position: absolute;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1mm;
+      padding: 1.5mm;
+      border: 0.35mm dashed #64748b;
+      border-radius: 1mm;
+      background: #ffffff;
+      color: #334155;
+      text-align: center;
+    }
+    .omr-qr-placeholder {
+      display: grid;
+      place-items: center;
+      width: 70%;
+      aspect-ratio: 1;
+      border: 0.5mm solid #0f172a;
+      background:
+        linear-gradient(90deg, #0f172a 12%, transparent 12% 24%, #0f172a 24% 36%, transparent 36% 48%, #0f172a 48% 60%, transparent 60% 72%, #0f172a 72% 84%, transparent 84%),
+        linear-gradient(#0f172a 12%, transparent 12% 24%, #0f172a 24% 36%, transparent 36% 48%, #0f172a 48% 60%, transparent 60% 72%, #0f172a 72% 84%, transparent 84%);
+      background-size: 100% 100%;
+      color: #ffffff;
+      font: 700 5pt/1 monospace;
+    }
+    .omr-qr-label {
+      font: 700 5.5pt/1 monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
 
     .omr-header {
       display: flex;
@@ -307,6 +385,7 @@ const SHEET_CSS = `
       border-radius: 1mm;
       padding: 1.5mm 2mm;
       background: #fafafa;
+    }
     .omr-id-boxes {
       display: flex;
       justify-content: flex-end;
@@ -399,6 +478,35 @@ const SHEET_CSS = `
 `;
 
 /** Render one component's HTML block (absolute positioned inside the sheet body). */
+function renderHtmlDecorations(settings: SheetSettings, decorations: SheetHtmlDecorations): string {
+  const decorationMarkup: string[] = [];
+  const margin = Math.max(0, Number(settings.marginMm) || 0);
+  const markerClass = `omr-fiducial omr-fiducial-${settings.markerPattern}`;
+
+  if (decorations.showFiducials) {
+    decorationMarkup.push(
+      `<div class="${markerClass}" style="top: ${margin}mm; left: ${margin}mm;" aria-label="Top left fiducial marker"></div>`,
+      `<div class="${markerClass}" style="top: ${margin}mm; right: ${margin}mm;" aria-label="Top right fiducial marker"></div>`,
+      `<div class="${markerClass}" style="bottom: ${margin}mm; left: ${margin}mm;" aria-label="Bottom left fiducial marker"></div>`,
+      `<div class="${markerClass}" style="bottom: ${margin}mm; right: ${margin}mm;" aria-label="Bottom right fiducial marker"></div>`,
+    );
+  }
+
+  if (decorations.qr.visible) {
+    const sizeMm = Math.max(20, Math.min(50, Number(decorations.qr.sizeMm) || 26));
+    const xMm = Math.max(0, Math.min(210 - sizeMm, Number(decorations.qr.xMm) || 0));
+    const yMm = Math.max(0, Math.min(297 - sizeMm, Number(decorations.qr.yMm) || 0));
+    decorationMarkup.push(
+      `<div class="omr-qr-reservation" data-omr-overlay="${esc(decorations.qr.overlayTag)}" data-omr-qr-size-mm="${sizeMm}" style="left: ${xMm}mm; top: ${yMm}mm; width: ${sizeMm}mm; height: ${sizeMm}mm;">` +
+      '<div class="omr-qr-placeholder" aria-hidden="true">QR</div>' +
+      '<span class="omr-qr-label">INSTANCE QR</span>' +
+      '</div>',
+    );
+  }
+
+  return decorationMarkup.join('\n  ');
+}
+
 function renderComponentHtml(c: OmrComponent): string {
   const style = `left: ${c.posX}mm; top: ${c.posY}mm; width: ${c.w_mm}mm;`;
 
@@ -482,7 +590,11 @@ function renderComponentHtml(c: OmrComponent): string {
  * Empty component list renders a blank sheet. Each component is absolutely
  * positioned in mm from the sheet edge.
  */
-export function renderFullSheetHtml(components: OmrComponent[], settings: SheetSettings = DEFAULT_A4_SETTINGS): string {
+export function renderFullSheetHtml(
+  components: OmrComponent[],
+  settings: SheetSettings = DEFAULT_A4_SETTINGS,
+  decorations: SheetHtmlDecorations = DEFAULT_SHEET_HTML_DECORATIONS,
+): string {
   if (!components || components.length === 0) {
     return `<!DOCTYPE html>
 <html>
@@ -491,6 +603,8 @@ export function renderFullSheetHtml(components: OmrComponent[], settings: SheetS
 </html>`;
   }
 
+  const decorationMarkup = renderHtmlDecorations(settings, decorations);
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -498,6 +612,7 @@ export function renderFullSheetHtml(components: OmrComponent[], settings: SheetS
   <style>${SHEET_CSS}</style>
 </head>
 <body>
+  ${decorationMarkup}
   ${components.map(renderComponentHtml).join('\n  ')}
 </body>
 </html>`;
@@ -945,6 +1060,13 @@ export const COMPONENT_SUITE_CSS = `/* NEXIAM OMR Component Suite — atomic abs
 @page { size: 210mm 297mm; margin: 0; }
 body { width: 210mm; height: 297mm; position: relative; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; background: #fff; }
 .omr-comp { position: absolute; }
+.omr-fiducial { position: absolute; width: 6mm; height: 6mm; z-index: 1; background: #fff; }
+.omr-fiducial-square { border: 1mm solid #0f172a; }
+.omr-fiducial-target { border: 0.7mm solid #0f172a; border-radius: 50%; background: radial-gradient(circle, #0f172a 0 18%, #fff 19% 42%, #0f172a 43% 58%, #fff 59%); }
+.omr-fiducial-aruco { border: 0.6mm solid #0f172a; background: linear-gradient(90deg, #0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%), linear-gradient(#0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%); background-size: 2mm 2mm; }
+.omr-qr-reservation { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; padding: 1.5mm; border: 0.35mm dashed #64748b; border-radius: 1mm; background: #fff; color: #334155; text-align: center; }
+.omr-qr-placeholder { display: grid; place-items: center; width: 70%; aspect-ratio: 1; border: 0.5mm solid #0f172a; background: #334155; color: #fff; font: 700 5pt/1 monospace; }
+.omr-qr-label { font: 700 5.5pt/1 monospace; text-transform: uppercase; letter-spacing: 0.2px; }
 .omr-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; border-bottom: 0.6mm solid #0f172a; padding-bottom: 1mm; }
 .omr-header .omr-title { text-transform: uppercase; line-height: 1.15; }
 .omr-header .omr-sheet-code { font-family: monospace; font-weight: 800; border: 0.35mm solid #0f172a; padding: 0.8mm 1.6mm; border-radius: 0.6mm; white-space: nowrap; }
@@ -979,7 +1101,9 @@ Rules:
 2. Render ONLY the components the user asks for — there is no implicit scaffold. Adding a Document Header must not add candidate fields, instructions, or grids.
 3. Components are independent: Document Header (title/subtitle/form code), Candidate Name, Birthdate, Room/Seat, Instructions, Examinee ID Matrix, Question Grid, Custom Text, Signature Box.
 4. Question Grids render subject header + option header + numbered rows of bubbles (A–E / T–F / Likert 1–5 / custom values).
-5. The sheet is a single A4 page: body { width: 210mm; height: 297mm; position: relative; overflow: hidden; }.
+5. Fiducials are four absolutely positioned .omr-fiducial elements using the selected marker pattern and margin inset.
+6. QR is a reserved data-omr-overlay="blank_instance_qr" block; the signed instance QR is inserted by the print compositor, not fabricated in static HTML.
+7. The sheet is a single A4 page: body { width: 210mm; height: 297mm; position: relative; overflow: hidden; }.
 
 CSS contract:
 ${COMPONENT_SUITE_CSS}`;

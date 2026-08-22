@@ -1,6 +1,7 @@
 <script>
   import StudioTip from './StudioTip.svelte';
   import StudioFontPicker from './StudioFontPicker.svelte';
+  import StudioQrReservationControls from './StudioQrReservationControls.svelte';
   import {
     Plus,
     Trash2,
@@ -39,6 +40,10 @@
     instructionsColor = $bindable('#334155'),
     instLocked = $bindable(false),
     showQrOverlay = $bindable(true),
+    qrX = $bindable(162),
+    qrY = $bindable(18),
+    qrW = $bindable(26),
+    qrH = $bindable(26),
     qrLocked = $bindable(false),
     customTextItems = $bindable([]),
     onChanged = null,
@@ -389,33 +394,16 @@
     </div>
 
     <!-- 4. Blank Instance QR Box -->
-    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-      <div class="flex items-center justify-between">
-        <label class="flex items-center space-x-2 cursor-pointer">
-          <input type="checkbox" bind:checked={showQrOverlay} onchange={handleInput} class="rounded text-slate-900" />
-          <span class="text-xs font-bold text-slate-900">Blank Instance QR Reservation</span>
-        </label>
-        {#if showQrOverlay}
-          <button
-            type="button"
-            onclick={() => { qrLocked = !qrLocked; handleInput(); }}
-            class={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition ${
-              qrLocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-700 border-slate-200'
-            }`}
-          >
-            {#if qrLocked}
-              <Lock class="size-2.5 text-amber-700" />
-              <span>Locked</span>
-            {:else}
-              <Unlock class="size-2.5 text-slate-500" />
-              <span>Unlocked</span>
-            {/if}
-          </button>
-        {/if}
-      </div>
-      <div class="flex items-center gap-1">
-        <StudioTip text="Reserves a 28–35mm zone. Real signed cryptographic QR codes are composed at physical print time." />
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      <StudioQrReservationControls
+        bind:showQrOverlay
+        bind:qrX
+        bind:qrY
+        bind:qrW
+        bind:qrH
+        bind:qrLocked
+        onChanged={handleInput}
+      />
     </div>
 
     <!-- 5. Custom Text Elements -->

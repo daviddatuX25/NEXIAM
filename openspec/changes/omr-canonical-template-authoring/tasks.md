@@ -154,3 +154,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 17.5 Add editable Bubble Pitch and Row Pitch controls to Sheet Designer inspectors and carry component spacing into Stage 3 sections.
 - [x] 17.6 Harden source-run polling, stale conversion jobs, and concurrent normalized-page asset deduplication; verify upload → Layout & Overlays.
 - [x] 17.7 Verify: 32 frontend tests, 47 focused OMR PHP tests (229 assertions), and browser proof for mode reset, path filtering, spacing handoff, and PNG upload.
+
+## 18. Compiled decorations, QR controls, and editor history
+
+- [x] 18.1 Extend the compiled HTML renderer with optional fiducial marker markup and a `data-omr-overlay="blank_instance_qr"` reservation while keeping signed QR composition server-authoritative.
+- [x] 18.2 Add shared QR reservation controls with X/Y fields, lock state, and a 20–50 mm square size slider in Sheet Designer and Stage 2 overlays.
+- [x] 18.3 Add bounded snapshot undo/redo for durable studio state, coalesce input/drag edits, reset history on mode/source changes, preserve autosave and lock conflict handling, and add keyboard shortcuts plus toolbar actions.
+- [x] 18.4 Verify: 35 frontend tests, build success, compiled decoration browser proof, QR control proof, and toolbar/keyboard undo proof.

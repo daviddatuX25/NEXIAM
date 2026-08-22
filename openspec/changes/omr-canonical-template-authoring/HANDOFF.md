@@ -82,17 +82,22 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Sheet layout parity**: Sheet Designer now exposes margin inset, square/target/aruco marker pattern, QR reservation coordinates, printable overlay palette, and visible Stage-1 margin/marker/QR canvas layers.
 - **Bubble geometry parity**: Sheet Designer grid and roll inspectors expose editable bubble/row pitch; entering Stage 3 derives sections from the component geometry so configured spacing carries forward.
 - **Upload completion hardening**: successful source-run status accepts both `completed` and queue-native `succeeded`; Inertia reload refreshes the draft lock version before the automatic Stage-2 save. Source render jobs ignore stale source assets and concurrent normalized-page asset writes deduplicate safely.
+## Compiled decorations, QR controls, and editor history (2026-08-22)
+
+- **Decorated compiled HTML**: `renderFullSheetHtml()` now accepts explicit sheet decorations and emits four selected-pattern fiducials plus a `data-omr-overlay="blank_instance_qr"` reservation. Static HTML contains only a QR placeholder; signed instance QR generation remains server/print authoritative.
+- **Shared QR controls**: Sheet Designer and Stage 2 use `StudioQrReservationControls.svelte` with lock, X/Y, and a 20–50 mm square size slider mapped to persisted `qrW`/`qrH`.
+- **Local editor history**: `studioHistory.ts` provides a bounded 100-entry snapshot ring with branch invalidation, coalesced edits, undo/redo, and snapshot isolation. Durable authoring state is history-tracked; view/transport state is excluded. Undo/redo autosaves through the existing atomic endpoint and mode/source resets clear history.
+- **History UX**: Toolbar Undo/Redo buttons expose disabled/ARIA state; `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, and `Ctrl/Cmd+Y` work outside native text controls; drag and input edits commit as coalesced transactions.
+
 
 ## Verification evidence
 
-- OpenSpec: `openspec validate omr-canonical-template-authoring --strict` → **Valid**.
-- Vitest Component Suite: `tests/frontend/omr-components.test.ts` → **13 passed (13)** covering creation, atomic rendering, path-filtered shared palette, section data conversion, and sizing geometry.
-- Full Vitest Suite: `tests/frontend/` → **7 test files passed, 32 passed (32)**.
-- Sheet Designer Browser Proof (Draft 2, `CANONICAL-HTML`):
-  - Fresh entry gate renders; Sheet Designer path exposes the shared overlay palette, Sheet Layout controls, QR reservation coordinates, marker pattern picker, and margin inset.
-  - Question Grid inspector exposes editable Bubble Pitch and Row Pitch values; Stage 1 → Question Bubbles carries those values into Stage 3.
-  - Deliberate mode switch clears Sheet Components/compiled HTML and exposes the Upload Document path with no Question Grid or Examinee ID cards.
-  - PNG upload persists `source_kind=image`, avoids `source_kind_mismatch`, completes the source run, and advances to Layout & Overlays without a lock conflict.
+- Focused Sheet Designer browser proof (Draft 2, `CANONICAL-HTML`):
+  - Compiled HTML textarea contains four `omr-fiducial-square` elements and `data-omr-overlay="blank_instance_qr"` with the selected QR size.
+  - QR size slider updates the compiled reservation to 34 mm.
+  - Undo after adding a component returns `Sheet Components (0)`; redo restores `Sheet Components (1)`.
+  - Keyboard undo works after the toolbar path and emits the live “Undid …” status.
+  - Upload Document Stage 2 exposes the same QR size control.
 - Focused OMR PHP suites: **47 passed, 229 assertions**.
 - Canonical focused Laravel suite before this hardening: **56 passed, 1 skipped, 261 assertions**.
 - Parity command: `php artisan omr:canonical-parity` → **PASSED for all 7 seeded versions**.
