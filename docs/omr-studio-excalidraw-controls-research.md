@@ -119,3 +119,8 @@ Route selection-changing durable commands through the existing snapshot history,
 
 - The canonical workflow filters the backend catalog to six compatibility codes and orders them as General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude, Perceptual Aptitude, Manual Dexterity.
 - The Sheet Designer scaffold deliberately creates 25 questions per area, yielding contiguous Q1–Q150 regardless of catalog `max_items` values used by legacy scoring fixtures.
+
+## Scaffold inspector binding
+
+- The grid model now keeps `aptitudeAreaCode`, so a scaffolded area is selected in the inspector rather than falling back to the placeholder option.
+- Question grids expose bounded bubble-size and question-label-size controls, with the same values carried into canvas and compiled renderers.

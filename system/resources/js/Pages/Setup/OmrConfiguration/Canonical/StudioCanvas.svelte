@@ -830,10 +830,11 @@
           {@const gridLabels = isGrid ? gridOptionLabels(comp) : []}
           {@const qEnd = isGrid ? ((Number(comp.startQ) || 1) + (Number(comp.questionsCount) || 1) - 1) : 0}
           {@const bubblePitchMm = isRoll ? (Number(comp.bubblePitchMm) || 5.5) : (isGrid ? (Number(comp.bubblePitchMm) || 6.0) : 6.0)}
-          {@const bubbleDiameterPx = isRoll ? (Math.max(4.2, Number(comp.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_BUBBLE_DIAMETER_PX}
+          {@const bubbleDiameterPx = isRoll ? (Math.max(4.2, Number(comp.bubbleDiameterMm) || 4.5) * 2.476) : (isGrid ? (Math.max(4.2, Number(comp.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_BUBBLE_DIAMETER_PX)}
           {@const rowPitchMm = isRoll ? (Number(comp.rowPitchMm) || 4.8) : (isGrid ? (Number(comp.rowPitchMm) || 6.8) : 6.0)}
           {@const rowGapPx = isRoll ? canvasRollRowGapPx(rowPitchMm, bubbleDiameterPx) : Math.max(CANVAS_ROLL_MIN_BUBBLE_GAP_PX, rowPitchMm * 2.476 - bubbleDiameterPx)}
           {@const bubbleGapPx = isRoll ? canvasRollBubbleGapPx(bubblePitchMm, bubbleDiameterPx) : Math.max(CANVAS_ROLL_MIN_BUBBLE_GAP_PX, bubblePitchMm * 2.476 - bubbleDiameterPx)}
+          {@const labelFontSizePx = isGrid ? Math.max(5, (Number(comp.labelFontSizePt) || 6.5) * 0.9) : null}
           {@const labelWidthPx = 3.5 * 2.476}
           {@const labelGapPx = 1.5 * 2.476}
           {@const bubbleStyle = `width: ${bubbleDiameterPx}px; height: ${bubbleDiameterPx}px;`}
@@ -901,7 +902,7 @@
                   <span aria-hidden="true" style={`width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px;`}></span>
                   <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
                     {#each gridLabels as opt}
-                      <span class="text-center" style={bubbleStyle}>{opt}</span>
+                      <span class="text-center" style={`font-size: ${labelFontSizePx}px; ${bubbleStyle}`}>{opt}</span>
                     {/each}
                   </div>
                 </div>
@@ -909,7 +910,7 @@
                 <div class="flex flex-col" style={`gap: ${rowGapPx}px;`}>
                   {#each Array.from({ length: Math.min(Number(comp.questionsCount) || 1, 50) }) as _, r}
                     <div class="flex items-center justify-start" style={`gap: ${labelGapPx}px; height: ${bubbleDiameterPx}px;`}>
-                      <span class="text-[6.5px] font-mono font-bold text-slate-600 text-right shrink-0" style={`width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px;`}>
+                      <span class="font-mono font-bold text-slate-600 text-right shrink-0" style={`font-size: ${labelFontSizePx}px; width: ${labelWidthPx}px; flex: 0 0 ${labelWidthPx}px;`}>
                         {(Number(comp.startQ) || 1) + r}
                       </span>
                       <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>

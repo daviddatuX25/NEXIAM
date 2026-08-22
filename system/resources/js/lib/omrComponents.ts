@@ -99,13 +99,16 @@ export interface QuestionGridComponent extends ComponentGeometry {
   name: string;
   type: 'mcq' | 'tf' | 'likert' | 'custom';
   subjectName: string;
+  aptitudeAreaCode?: string;
   questionsCount: number;
   cols: number;
   optionsCount: number;
   startQ: number;
   customValuesStr: string;
+  bubbleDiameterMm?: number;
   bubblePitchMm: number;
   rowPitchMm: number;
+  labelFontSizePt?: number;
   labelStyle: 'column_header' | 'inline_circle';
 }
 
@@ -216,18 +219,18 @@ export function gridOptionLabels(g: QuestionGridComponent): string[] {
   return ['A', 'B', 'C', 'D', 'E'].slice(0, Math.max(2, Math.min(5, count)));
 }
 
-/** Content-derived block width in mm for a question grid (matches StudioCanvas section math). */
+/** Content-derived block width for a question grid. */
 export function gridBlockWidthMm(g: QuestionGridComponent): number {
   const opts = gridOptionLabels(g).length;
   const rows = Number(g.questionsCount) || 1;
-  return contentBlockSizeMm(opts, rows, Number(g.bubblePitchMm) || 6.0, Number(g.rowPitchMm) || 6.8).w_mm;
+  return contentBlockSizeMm(opts, rows, Number(g.bubblePitchMm) || 6.0, Number(g.rowPitchMm) || 6.8, Number(g.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM).w_mm;
 }
 
-/** Content-derived block height in mm for a question grid. */
+/** Content-derived block height for a question grid. */
 export function gridBlockHeightMm(g: QuestionGridComponent): number {
   const opts = gridOptionLabels(g).length;
   const rows = Number(g.questionsCount) || 1;
-  return contentBlockSizeMm(opts, rows, Number(g.bubblePitchMm) || 6.0, Number(g.rowPitchMm) || 6.8).h_mm;
+  return contentBlockSizeMm(opts, rows, Number(g.bubblePitchMm) || 6.0, Number(g.rowPitchMm) || 6.8, Number(g.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM).h_mm;
 }
 export function rollBlockWidthMm(r: ExamineeIdMatrixComponent): number {
   const digits = Number(r.digitsCount) || 7;
@@ -343,15 +346,26 @@ export function canvasSectionBoundsMm(
 /** Canvas bounds that hug the rendered bubbles, labels, and row gaps. */
 export function canvasComponentBlockSizeMm(c: OmrComponent): { w_mm: number; h_mm: number } {
   if (c.type === 'roll') {
-    const size = canvasSectionBoundsMm(c.digitsCount, 10, c.bubblePitchMm, c.rowPitchMm, true, c.bubbleDiameterMm);
     return {
       w_mm: canvasRollBlockWidthMm(c),
       h_mm: Math.max(Number(c.h_mm) || 0, canvasRollBlockHeightMm(c)),
     };
   }
   if (isQuestionGridComponent(c)) {
-    const size = canvasSectionBoundsMm(gridOptionLabels(c).length, c.questionsCount, c.bubblePitchMm, c.rowPitchMm, false, 4.5, CANVAS_BUBBLE_DIAMETER_PX);
-    return { w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm), h_mm: Math.max(Number(c.h_mm) || 0, size.h_mm) };
+    const bubbleDiameterMm = Number(c.bubbleDiameterMm) || 4.5;
+    const size = canvasSectionBoundsMm(
+      gridOptionLabels(c).length,
+      c.questionsCount,
+      c.bubblePitchMm,
+      c.rowPitchMm,
+      false,
+      bubbleDiameterMm,
+      bubbleDiameterMm * CANVAS_PX_PER_MM,
+    );
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm),
+      h_mm: Math.max(Number(c.h_mm) || 0, size.h_mm),
+    };
   }
   return componentBlockSizeMm(c);
 }
@@ -714,14 +728,17 @@ function renderComponentHtml(c: OmrComponent): string {
 
   if (isQuestionGridComponent(c)) {
     const labels = gridOptionLabels(c);
-    const rows = Array.from({ length: Math.min(Number(c.questionsCount) || 1, 60) }).map((_, r) => {
+    const bubbleDiameter = Number(c.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM;
+    const bubbleStyle = `width: ${bubbleDiameter}mm; height: ${bubbleDiameter}mm;`;
+    const labelFontSize = Number(c.labelFontSizePt) || 6.5;
+    const rows = Array.from({ length: Math.min(Number(c.questionsCount) || 1, 50) }).map((_, r) => {
       const qNum = (Number(c.startQ) || 1) + r;
-      return `<div class="omr-q-row"><span class="omr-q-num">${qNum}</span><div class="omr-bubs">${labels.map(() => '<div class="omr-bub"></div>').join('')}</div></div>`;
+      return `<div class="omr-q-row"><span class="omr-q-num">${qNum}</span><div class="omr-bubs">${labels.map(() => `<div class="omr-bub" style="${bubbleStyle}"></div>`).join('')}</div></div>`;
     }).join('');
     return `<div class="omr-comp omr-grid-block" style="${style}">
       <div class="omr-subject-header" style="font-size: 6pt;">${esc(c.subjectName || c.name)}</div>
-      <div class="omr-option-header" style="font-size: 5.5pt;"><span class="omr-q-num-spacer"></span><div class="omr-bubs">${labels.map((l) => `<span class="omr-opt-label">${esc(l)}</span>`).join('')}</div></div>
-      <div style="font-size: 6pt; line-height: 1;">${rows}</div>
+      <div class="omr-option-header" style="font-size: ${labelFontSize}pt;"><span class="omr-q-num-spacer"></span><div class="omr-bubs">${labels.map((l) => `<span class="omr-opt-label" style="font-size: ${labelFontSize}pt; width: ${bubbleDiameter}mm;">${esc(l)}</span>`).join('')}</div></div>
+      <div style="font-size: ${labelFontSize}pt; line-height: 1;">${rows}</div>
     </div>`;
   }
 
@@ -1211,13 +1228,16 @@ export function createComponent(kind: ComponentKind, position?: ComponentPositio
         name: 'Subject Section',
         type: 'mcq',
         subjectName: 'Subject',
+        aptitudeAreaCode: undefined,
         questionsCount: 25,
         cols: 1,
         optionsCount: 4,
         startQ: 1,
         customValuesStr: 'A, B, C, D',
+        bubbleDiameterMm: 4.5,
         bubblePitchMm: 6.0,
         rowPitchMm: 6.8,
+        labelFontSizePt: 6.5,
         labelStyle: 'column_header',
         posX: p.posX ?? 15,
         posY: p.posY ?? 84,

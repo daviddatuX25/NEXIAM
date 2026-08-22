@@ -125,6 +125,16 @@ describe('Universal OMR Component Suite', () => {
       expect(body).toContain('data-input-kind="text"');
       expect(body).toContain('background-color: #000000');
     });
+    it('renders configurable question-grid bubble size and label font size', () => {
+      const grid = createComponent('question_grid');
+      if (!isQuestionGridComponent(grid)) throw new Error('Expected question grid component');
+      grid.bubbleDiameterMm = 6;
+      grid.labelFontSizePt = 9;
+      const body = getBodyContent(renderFullSheetHtml([grid]));
+
+      expect(body).toContain('width: 6mm; height: 6mm;');
+      expect(body).toContain('font-size: 9pt;');
+    });
 
     it('renders ONLY the header when only a Document Header component is added', () => {
       const header = createComponent('header');

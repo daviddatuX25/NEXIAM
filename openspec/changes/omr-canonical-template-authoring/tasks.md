@@ -222,3 +222,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 26.2 Project only those six canonical areas into the canonical workflow in the declared order.
 - [x] 26.3 Make the scaffold create exactly 25 MCQ items per area with contiguous question ranges.
 - [x] 26.4 Verify: seeded projection exposes six areas, browser scaffold renders six 25-row grids, focused PHP tests and frontend build pass.
+
+## 27. Scaffold inspector binding and grid controls
+
+- [x] 27.1 Persist the scaffolded aptitude area code and bind the inspector select to it so the selected grid no longer shows “Choose Aptitude”.
+- [x] 27.2 Restore configurable question-grid bubble size with bounded 4.2–8 mm input and matching canvas/compiled output.
+- [x] 27.3 Add configurable question-label font size with bounded 5–12 pt input and matching canvas/compiled output.
+- [x] 27.4 Verify: scaffolded grids show the selected area, 25 rows, bubble-size and label-size controls, 40 frontend tests pass, and the build is green.

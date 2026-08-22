@@ -140,6 +140,11 @@
       default: return c.type;
     }
   }
+  function updateSelectedComponent(patch) {
+    if (!selectedComponent) return;
+    Object.assign(selectedComponent, patch);
+    syncComponentsToSections();
+  }
 
   function syncComponentsToSections(label = 'Edit component', options = {}) {
     normalizeComponentsForCanvas();
@@ -173,7 +178,9 @@
         component.bubblePitchMm = clamp(component.bubblePitchMm, minimumPitch, 15, minimumPitch);
         component.rowPitchMm = clamp(component.rowPitchMm, minimumPitch, 15, minimumPitch);
       } else if (['mcq', 'tf', 'likert', 'custom'].includes(component.type)) {
-        const minimumPitch = minimumCanvasPitchMm(4.5);
+        component.bubbleDiameterMm = clamp(component.bubbleDiameterMm, 4.2, 8, 4.5);
+        component.labelFontSizePt = clamp(component.labelFontSizePt, 5, 12, 6.5);
+        const minimumPitch = minimumCanvasPitchMm(component.bubbleDiameterMm);
         component.questionsCount = clamp(component.questionsCount, 1, 50, 25);
         component.bubblePitchMm = clamp(component.bubblePitchMm, minimumPitch, 25, 6);
         component.rowPitchMm = clamp(component.rowPitchMm, minimumPitch, 25, 6.8);
@@ -527,13 +534,16 @@
         name: `Part ${idx + 1}: ${area.name} (Q${startQ}–${startQ + qCount - 1})`,
         type: 'mcq',
         subjectName: area.name,
+        aptitudeAreaCode: area.code,
         questionsCount: qCount,
         cols: 1,
         optionsCount: 4,
         startQ,
         customValuesStr: 'A, B, C, D',
+        bubbleDiameterMm: 4.5,
         bubblePitchMm: 6.0,
         rowPitchMm: 6.8,
+        labelFontSizePt: 6.5,
         labelStyle: 'column_header',
         posX: 10 + idx * 31,
         posY: 84,
@@ -2154,6 +2164,32 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bubble Size (mm)</label>
+              <input
+                type="number"
+                min="4.2"
+                max="8"
+                step="0.1"
+                bind:value={selectedComponent.bubbleDiameterMm}
+                oninput={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+              />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Question Label Size (pt)</label>
+              <input
+                type="number"
+                min="5"
+                max="12"
+                step="0.1"
+                bind:value={selectedComponent.labelFontSizePt}
+                oninput={syncComponentsToSections}
+                class="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Questions Count</label>
               <input
                 type="number"
@@ -2213,17 +2249,22 @@
             <div>
               <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Bind System Aptitude Area</label>
               <select
+                value={selectedComponent.aptitudeAreaCode ?? ''}
                 class="w-full text-[10.5px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700"
                 onchange={(e) => {
-                  const area = aptitude_areas.find((a) => a.code === e.target.value);
+                  const area = aptitude_areas.find((a) => a.code === e.currentTarget.value);
                   if (area) {
-                    updateSelectedComponent({ subjectName: area.name, questionsCount: Number(area.max_items) || 25 });
+                    updateSelectedComponent({
+                      aptitudeAreaCode: area.code,
+                      subjectName: area.name,
+                      questionsCount: 25,
+                    });
                   }
                 }}
               >
                 <option value="">-- Choose Aptitude Area --</option>
                 {#each aptitude_areas as area}
-                  <option value={area.code}>{area.name} ({area.max_items} Items)</option>
+                  <option value={area.code}>{area.name} (25 Items)</option>
                 {/each}
               </select>
             </div>

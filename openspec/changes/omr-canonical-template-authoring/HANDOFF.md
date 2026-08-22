@@ -150,6 +150,12 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Scaffold output**: each area creates exactly 25 MCQ items with contiguous ranges Q1–25 through Q126–150.
 - **Verification**: seeded projection showed `Scaffold from System Aptitude Areas (6)`; browser proof produced six grids with 25 rows each. Focused PHP tests passed (3 tests / 48 assertions); frontend suite and production build passed.
 
+## Scaffold inspector binding and grid controls (2026-08-22)
+
+- **Aptitude binding**: scaffolded grids persist `aptitudeAreaCode`; the inspector select is now controlled and opens on the selected area instead of `-- Choose Aptitude Area --`.
+- **Grid appearance**: Question Grid now exposes Bubble Size `4.2–8 mm` and Question Label Size `5–12 pt`; canvas and compiled HTML use both values.
+- **Verification**: browser proof showed `LOGIC` selected for General Ability, 25 rendered rows, and both controls present. Frontend suite passed **40 tests** and production build exited `0`.
+
 
 
 
