@@ -300,9 +300,33 @@ The saved mapping SHALL emit `field_blocks` in the OMRChecker shape. The recogni
 - **WHEN** any edit attempts to mutate a compiled or activated version
 - **THEN** the mutation is refused and the version's bundle, PDF, and manifest remain byte-identical
 
-### Requirement: Test capture SHALL provide whole-page and per-item evidence driven by the declared option set
+### Requirement: One server materialization SHALL bind editor intent, print artifacts, native geometry, markers, and engine preview
 
-The Test capture diagnostic SHALL show the whole normalized page with the engine `draw_template_layout` overlay and interactive per-item/row evidence driven by the DECLARED OPTION SET (A–D for MCQ4, A–E for MCQ5, 0–9 for int; A–D is the common example): option circles and rectangles, crops, bubble means, threshold delta and status, field-block shifts, and marker matches. The result SHALL carry source, mapping, and bundle hashes. The diagnostic SHALL be read-only and SHALL provide a `Return to mapping and select row` path that selects the investigated row in the mapping editor. Thresholds SHALL remain `Unqualified` until physical calibration.
+Before Question Bubbles, the system SHALL normalize the editable draft into one server-owned canonical sheet definition and deterministically materialize one candidate artifact set containing the exact 300-PPI page PNG, exact-size PDF, non-blank reference page, qualified marker asset and inset geometry, native `template.json`/`config.json`, and activation-derived review manifest. The browser SHALL NOT be a print or recognition geometry authority. Compile SHALL promote the verified candidate bytes without recalculating geometry; the immutable native bundle SHALL become runtime recognition authority.
+
+#### Scenario: Entering Question Bubbles crosses the accuracy boundary
+- **WHEN** staff continues from Sheet Designer to Question Bubbles
+- **THEN** the server materializes the candidate, loads it through the pinned OMRChecker template path, expands native bubbles, runs the clean page through the existing `/v1/layout-verification` seam, and returns the canonical page plus engine overlay or a typed blocking error
+
+#### Scenario: Stage 3 never redraws the sheet
+- **WHEN** Question Bubbles displays a materialized candidate
+- **THEN** its underlay is the server-rendered canonical page and its only client-drawn elements are selection/mapping guides derived from native expanded regions
+
+#### Scenario: Visual labels cannot appear only after transition
+- **WHEN** a section header or other static label is enabled, disabled, or edited
+- **THEN** that explicit property is consumed by the server print renderer and shown identically in the canonical Stage-3 underlay, PDF, and reference page
+
+#### Scenario: Marker and page coordinates share one frame
+- **WHEN** a qualified marker profile is selected
+- **THEN** the same asset hash, physical size, quiet zone, and insets are rendered into the page, carried in the bundle, and used by `CropOnMarkers`, while native field origins and gaps are expressed in the returned marker-center `pageDimensions` frame
+
+#### Scenario: Compile promotes verified bytes
+- **WHEN** a digitally verified candidate is compiled
+- **THEN** the version-owned PNG/PDF/reference/template/config/marker bytes and hashes equal the verified candidate artifact set, and any changed byte requires re-materialization and re-verification
+
+### Requirement: Test capture SHALL provide the worker-produced aligned page and per-item evidence driven by the declared option set
+
+The Test capture diagnostic SHALL accept an uploaded photo/scan only against a compiled immutable version. It SHALL retain the upload as forensic input, default the proof UI to OMRChecker's returned clean aligned raster, provide the separate engine `draw_template_layout` overlay, and show interactive per-item/row evidence driven by the DECLARED OPTION SET (A–D for MCQ4, A–E for MCQ5, 0–9 for int): option circles and rectangles, crops, bubble means, threshold delta and status, field-block shifts, and marker matches. The result SHALL carry input, mapping, bundle, engine, patch, and aligned-image hashes. The diagnostic SHALL be read-only and SHALL provide a `Return to mapping and select row` path. Thresholds SHALL remain `Unqualified` until physical calibration; the uploaded source image SHALL never be presented as normalized proof.
 
 #### Scenario: Per-item evidence matches the declared option set
 - **WHEN** staff runs Test capture on a photo of the printed sheet and selects a row with four options
@@ -318,7 +342,7 @@ The Test capture diagnostic SHALL show the whole normalized page with the engine
 
 ### Requirement: Activation SHALL require draft-scoped digital proof, a no-go matrix, and version-scoped physical qualification
 
-Digital verification SHALL run on the draft and SHALL be required before compile. The digital proof SHALL start from the draft's final composed exact-size PDF, programmatically shade a deterministic declared answer vector derived from mapped labels (a paired booklet SHALL NOT be required for template proof), add the signed instance QR and display code, and SHALL shade a deterministic identity ONLY when a mapped identity grid exists — no fabricated identity field otherwise. Booklet compatibility with an answer key SHALL be tested separately when a pairing exists. After compile, the digital proof SHALL repeat as a hash-parity smoke against the frozen PDF and bundle. The no-go matrix SHALL run clean, perspective, rotation, light, blur, glare, low-resolution, partial, missing-marker, wrong-marker, wrong-instance, superseded, duplicate, and multipage-order variants, each producing the declared outcome or a typed rejection. Physical qualification SHALL run against the compiled version, bind evidence to the template version, canonical renderer version, and marker profile, and SHALL record printer identity, device, paper, measured output, and per-variant outcomes; it SHALL gate `physical_qualified` without claiming to enforce external printer settings. Activation SHALL NEVER occur without genuine physical evidence.
+Digital verification SHALL run on the draft candidate artifact set and SHALL be required before compile. The digital proof SHALL start from the candidate's final composed exact-size PDF, programmatically shade a deterministic declared answer vector derived from mapped labels (a paired booklet SHALL NOT be required for template proof), add the signed instance QR and display code, and SHALL shade a deterministic identity ONLY when a mapped identity grid exists — no fabricated identity field otherwise. Booklet compatibility with an answer key SHALL be tested separately when a pairing exists. Every clean/perspective/rotation/light/blur/glare/low-resolution/partial/missing-marker/wrong-marker/wrong-instance/superseded/duplicate/multipage-order variant SHALL execute through the real pinned `/v1/layout-verification` worker seam; expected outcomes are assertions and SHALL NOT be copied into actual outcomes without execution. Compile SHALL byte-promote the passing candidate, then repeat a hash-parity smoke against the frozen PDF and bundle. Physical qualification SHALL run against that compiled version, bind evidence to the template version, canonical renderer version, and marker profile, and SHALL record printer identity, device, paper, measured output, and per-variant outcomes; it SHALL gate `physical_qualified` without claiming to enforce external printer settings. Activation SHALL NEVER occur without genuine physical evidence.
 
 #### Scenario: Digital proof is draft-scoped and booklet-independent
 - **WHEN** staff runs digital verification on a draft with no paired booklet

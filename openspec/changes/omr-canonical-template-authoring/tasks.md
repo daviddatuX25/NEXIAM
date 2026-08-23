@@ -248,11 +248,36 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 30.3 Synchronize Stage 3 section edits back into their source components and preserve question-grid bubble diameter through component-to-section conversion.
 - [x] 30.4 Verify Draft 1 keeps all 11 component IDs and styles byte-for-byte identical across Stage 1 → Stage 3, with seven empty-text guides, no preview iframe, and zero runtime/request failures.
 
-## 31. Engine-parity correction — reopened by founder review
+## 31. Engine-parity correction — implementation plan
 
-- [ ] 31.1 Introduce one server-owned canonical sheet definition consumed by the 300-PPI PNG/PDF renderer, browser preview, marker placement, native `template.json` compiler, and reference-page renderer; client HTML is not a print or detection authority.
-- [ ] 31.2 Render the selected qualified marker-profile asset and exact inset geometry into the canonical print artifact; make the compiled bundle carry that same asset/hash and a non-blank reference page generated from the same definition.
-- [ ] 31.3 Replace `OmrNoGoMatrixRunner`'s expected-equals-actual contract manifest with real `/v1/layout-verification` executions for every declared variant; persist returned aligned/overlay evidence and typed outcomes.
-- [ ] 31.4 Make Stage 3 use the server-rendered canonical raster as its underlay and mapping guides as its only client overlay; prove the Sheet Designer label/header choices are identical in the print artifact rather than hiding compiled-only output.
-- [ ] 31.5 Make Stage 4 lifecycle-aware: run draft digital verification, compile the immutable candidate, enable Test Capture only for that compiled version, default proof to the worker-returned aligned raster, and expose the actual compiled native `template.json` rather than the client mapping preview.
-- [ ] 31.6 Add hash/geometry parity tests proving editor definition → print raster/PDF → native bundle → worker-aligned raster use identical paper, marker centers, bubble origins, diameters, pitches, labels, and page dimensions; browser-prove the real processed image and engine overlay.
+### Cut A — Freeze engine behavior and establish one materializer
+
+- [ ] 31.1 Freeze current pinned behavior with characterization fixtures for native `Template`/`FieldBlock` expansion, `CropOnMarkers`, marker-center `pageDimensions`, bounded field shifts, clean aligned return bytes, and separate `draw_template_layout` output; detection math and the two owned patches remain unchanged.
+- [ ] 31.2 Add a server-validated `CanonicalSheetDefinition` for paper, visual components, explicit section-header visibility/text, OMR block intent, overlay slots, and qualified marker profile/insets; normalize recognition geometry to integer canonical pixels at 300 PPI.
+- [ ] 31.3 Extract reusable bundle assembly from `OmrCanonicalNativeBundleCompiler` and add one `CanonicalArtifactMaterializer` that emits the 300-PPI PNG, exact-size image-backed PDF, non-blank reference page, native `template.json`/`config.json`, exact marker asset, expanded review manifest, and one artifact-set hash.
+- [ ] 31.4 Make compile byte-promote the passing candidate artifact set instead of regenerating it; any definition, renderer, marker, mapping, engine, patch, config, or output-byte change invalidates candidate verification.
+
+### Cut B — Make Question Bubbles the explicit accuracy boundary
+
+- [ ] 31.5 Add a draft candidate-preview action: save definition → materialize artifacts → load with the pinned native template path → derive native expanded bubbles → run the clean page through the existing signed `/v1/layout-verification` seam → return canonical underlay, engine overlay, hashes, and typed failures.
+- [ ] 31.6 Generalize `OmrDiagnosticRequestBuilder` over a pinned diagnostic-geometry value object so draft candidates and compiled versions share the same envelope, marker asset carriage, review-manifest derivation, unsafe-shift gates, and result validation.
+- [ ] 31.7 Replace Stage-3 client bubble rendering with the server canonical page underlay plus native expanded mapping guides only; remove compiled-HTML substitution and client bubble-origin calculations from the accuracy path.
+- [ ] 31.8 Make section headers explicit definition fields and render them through the same server path as the page/PDF/reference artifact; prove a label cannot first appear after Stage-1 transition.
+
+### Cut C — Execute real digital and physical proof
+
+- [ ] 31.9 Replace `OmrNoGoMatrixRunner`'s expected-equals-actual loop with queued real worker executions for clean, perspective, rotation, uneven light, blur, glare, low resolution, partial page, missing/wrong marker, wrong/superseded/duplicate instance, and multipage order; persist input/output hashes, aligned/overlay assets, typed outcomes, and timings.
+- [ ] 31.10 Move a draft to `digital_verified` only when the clean answer vector is recovered exactly and every no-go variant produces its declared real outcome; worker unavailable/timeout/decode/hash mismatch is a failed or retryable variant, never a synthetic pass.
+- [ ] 31.11 Keep physical Test Capture version-scoped after compile; default Stage 4 to the worker-returned clean aligned raster, retain the upload as separate forensic input, expose the engine overlay/evidence tabs, and gate qualification on marker count, dimensions, unsafe shifts, and recorded printer/device/paper measurements.
+
+### Cut D — Honest lifecycle, export, and proof
+
+- [ ] 31.12 Make Stage 4 lifecycle-aware: show candidate materialization/digital verification/compile gates, disable physical Test Capture before `compiled_version_id`, remove the nonexistent uncompiled fallback URL, and surface typed corrective actions.
+- [ ] 31.13 Stream the immutable bundle's actual `template.json` with capability reauthorization and `private, no-store`; relabel client JSON as a non-authoritative mapping preview and remove native-template wording from it.
+- [ ] 31.14 Delete blank reference generation and obsolete duplicate HTML/green-sheet accuracy paths after all callers use the materializer; no compatibility shim or second geometry compiler remains.
+- [ ] 31.15 Add parity coverage: repeated materialization byte/hash stability; definition→PNG/PDF/reference/native bubble coordinate equality; exact marker asset/inset/frame equality; candidate→compiled byte equality; real worker clean/no-go results; aligned-image dimensions/hash; actual native download; and rejection of stale candidates.
+- [ ] 31.16 Browser-prove one canonical draft end to end: Stage 1 header choice → Stage 3 server underlay/native overlay → digital matrix → immutable compile → uploaded printed/photo fixture → worker aligned raster/overlay → actual `template.json`, with zero hidden labels, geometry drift, failed requests, or fabricated qualification.
+
+### Stop gates
+
+- [ ] 31.17 Do not start Cut B until Cut A proves one artifact set; do not mark digital verification passed until Cut C calls the real worker; do not activate until a qualified marker profile and genuine version-bound physical evidence exist. Production enablement remains blocked on the approved sheet/key, representative labeled corpus, and operational qualification.

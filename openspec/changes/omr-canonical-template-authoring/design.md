@@ -301,6 +301,61 @@ flowchart LR
 
 Invalidation rule: changing `SRC`, converter settings, composition settings, or overlays recomputes downstream hashes and clears `mapping`, `verification.digital`, `verification.physical` (typed `stale_mapping`/`verification_invalidated`). Compiled/activated versions never re-hash.
 
+## Engine-parity correction spine (founder decision 2026-08-22)
+
+The editor-stage continuity fix is not sufficient evidence of print or detection parity. The correction uses three authorities at different lifecycle points, never two authorities at the same point:
+
+1. **Editable draft authority — `CanonicalSheetDefinition`**: server-validated paper, visual components, explicit section-header visibility/text, overlay slots, qualified marker-profile identity/insets, and OMR block intent. Geometry is normalized to canonical integer pixels at 300 PPI; millimetres remain presentation metadata.
+2. **Materialized candidate authority — `CanonicalArtifactSet`**: one deterministic server operation consumes the definition and emits the exact unmarked page PNG, image-backed PDF, non-blank reference page, native `template.json`, `config.json`, marker asset, expanded review manifest, and hashes. No browser HTML or green overlay is an artifact authority.
+3. **Runtime authority — immutable `NativeBundle`**: compile promotes the already-verified candidate bytes without regenerating geometry. From that point, OMRChecker native expansion is canonical and NEXIAM projections remain read-only derivatives.
+
+```mermaid
+flowchart LR
+  DEF[CanonicalSheetDefinition] --> MAT[CanonicalArtifactMaterializer]
+  MAT --> PNG[300-PPI page PNG]
+  MAT --> PDF[exact-size PDF]
+  MAT --> REF[non-blank reference page]
+  MAT --> NT[native template/config + marker]
+  NT --> EXP[pinned OMRChecker Template expansion]
+  EXP --> MAN[derived review manifest]
+  PNG --> CLEAN[clean digital proof]
+  NT --> CLEAN
+  CLEAN --> LV[/v1/layout-verification]
+  LV --> AL[worker aligned raster]
+  LV --> OL[draw_template_layout overlay]
+  PNG --> HASH[artifact-set hash]
+  PDF --> HASH
+  REF --> HASH
+  NT --> HASH
+  MAN --> HASH
+  HASH --> COMPILE[atomic immutable compile]
+```
+
+### Pinned OMRChecker use
+
+- Preserve upstream `Template`/`FieldBlock.generate_bubble_grid`, preprocessor order, page/marker alignment, field-block shifting, bubble sampling, thresholding, and classification. NEXIAM MUST NOT recreate native bubble expansion in Svelte or PHP.
+- Use `CropOnMarkers` with the exact bundled qualified marker asset and profile-owned `sheetToMarkerWidthRatio`. Its output marker-center rectangle is resized to native `pageDimensions`; all `origin`, `bubbleDimensions`, `bubblesGap`, and `labelsGap` coordinates live in that frame.
+- Keep upstream generic `auto_align` disabled for canonical marker sheets; upstream documents it as deprecated/low-performance on generic sheets. Retain OMRChecker's bounded per-field shifts, return them, and fail the existing half-pitch unsafe-shift gate.
+- Keep the owned patch that returns the clean, unannotated aligned page from `read_omr_response`; `draw_template_layout` remains a separate diagnostic image. The uploaded photo is forensic input, never the normalized proof image.
+- Keep the one-child-per-sheet supervisor boundary, pinned commit `de3f6982822895491be760325fd43e65e90fa293`, patch identity `nexiam-headless-overlay-v1`, bounded HMAC envelope, null confidence, and mandatory staff review.
+
+### Stage boundary
+
+- **Sheet Designer** may use a responsive client renderer for editing, but its output is only draft intent.
+- **Entering Question Bubbles** is the accuracy boundary: save the definition, materialize the candidate on the server, load the pinned native template, derive expanded bubbles, run the clean candidate through `/v1/layout-verification`, and show the server page/engine overlay. Failure leaves staff in the designer with a typed corrective error.
+- **Question Bubbles** displays the server-rendered canonical page as the underlay and native expanded regions as guides. It does not draw a second bubble sheet or calculate its own bubble origins.
+- **Digital verification** runs the declared synthetic/no-go variants through the same worker endpoint and candidate artifact hash; expected outcomes are assertions, not recorded actuals.
+- **Compile** byte-promotes the passing candidate artifact set into the immutable version. Any byte/hash change forces re-verification.
+- **Physical Test Capture** accepts a photo/scan only for the compiled version and defaults to OMRChecker's returned aligned raster, with the engine overlay as the comparison tab.
+- **Export** streams the immutable bundle's real `template.json`; the client mapping preview is labeled as a draft diagnostic and never exported under that filename.
+
+### Reuse seams
+
+- Extract bundle assembly from `OmrCanonicalNativeBundleCompiler` so draft materialization and atomic compile call the same implementation.
+- Generalize `OmrDiagnosticRequestBuilder` over a pinned diagnostic-geometry value object; compiled versions and draft candidates then share one request/envelope path.
+- Reuse `NativeManifestDeriver`, `OmrCheckerDetection::verifyLayout`, `OmrLayoutVerificationResult`, diagnostic asset streaming, and unsafe-shift gates.
+- Replace `OmrNoGoMatrixRunner`'s contract-only loop; do not add a second detector, threshold algorithm, alignment implementation, or browser geometry compiler.
+
 ## Adapters
 
 | adapter | preflight | conversion | page output | notes |
