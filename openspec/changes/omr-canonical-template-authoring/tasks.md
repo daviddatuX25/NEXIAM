@@ -247,3 +247,12 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 30.2 Make HTML-mode Stage 3 guides outline the existing components without drawing duplicate bubbles or floating Q-range/ID labels.
 - [x] 30.3 Synchronize Stage 3 section edits back into their source components and preserve question-grid bubble diameter through component-to-section conversion.
 - [x] 30.4 Verify Draft 1 keeps all 11 component IDs and styles byte-for-byte identical across Stage 1 → Stage 3, with seven empty-text guides, no preview iframe, and zero runtime/request failures.
+
+## 31. Engine-parity correction — reopened by founder review
+
+- [ ] 31.1 Introduce one server-owned canonical sheet definition consumed by the 300-PPI PNG/PDF renderer, browser preview, marker placement, native `template.json` compiler, and reference-page renderer; client HTML is not a print or detection authority.
+- [ ] 31.2 Render the selected qualified marker-profile asset and exact inset geometry into the canonical print artifact; make the compiled bundle carry that same asset/hash and a non-blank reference page generated from the same definition.
+- [ ] 31.3 Replace `OmrNoGoMatrixRunner`'s expected-equals-actual contract manifest with real `/v1/layout-verification` executions for every declared variant; persist returned aligned/overlay evidence and typed outcomes.
+- [ ] 31.4 Make Stage 3 use the server-rendered canonical raster as its underlay and mapping guides as its only client overlay; prove the Sheet Designer label/header choices are identical in the print artifact rather than hiding compiled-only output.
+- [ ] 31.5 Make Stage 4 lifecycle-aware: run draft digital verification, compile the immutable candidate, enable Test Capture only for that compiled version, default proof to the worker-returned aligned raster, and expose the actual compiled native `template.json` rather than the client mapping preview.
+- [ ] 31.6 Add hash/geometry parity tests proving editor definition → print raster/PDF → native bundle → worker-aligned raster use identical paper, marker centers, bubble origins, diameters, pitches, labels, and page dimensions; browser-prove the real processed image and engine overlay.

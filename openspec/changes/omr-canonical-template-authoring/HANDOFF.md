@@ -169,10 +169,18 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 
 ## Sheet Designer → bubble-stage visual parity (2026-08-22)
 
-- **Root cause**: HTML-mode Stage 1, compiled iframe preview, and Stage 3 each rendered the bubble matrix independently. Stage 3 then placed its second bubble tree at the component origin despite omitting the printed subject/option headers and matrix title/write-in row. Its floating `Q…` / `ID (…)` badge was the label visible only after transition.
-- **Fix**: HTML authoring now keeps the Stage 1 component render tree mounted through Question Bubbles and Verify & Export. Stage 3 adds only selection/mapping outlines, with no duplicate circles or sheet-visible labels, and section edits synchronize back to their source component.
-- **Geometry bridge**: question-grid `bubbleDiameterMm` now survives component → section conversion.
+- **Visual root cause**: HTML-mode Stage 1, compiled HTML, and Stage 3 previously rendered the bubble matrix independently. The non-green label reported by the founder is the compiled renderer's `.omr-subject-header` (`subjectName || name`), not the Stage 3 diagnostic badge. Switching to the compiled iframe exposed that print-only render path and its different header/spacing rules.
+- **Current visual fix**: HTML authoring keeps the Stage 1 component render tree mounted through Question Bubbles and Verify & Export. Stage 3 adds only selection/mapping outlines, and section edits synchronize back to their source component. Question-grid `bubbleDiameterMm` survives component → section conversion.
 - **Browser proof, Draft 1**: Stage 1 and Stage 3 each render the same 11 component IDs with byte-for-byte identical inline geometry; Stage 3 adds seven empty-text outlines, renders no HTML preview iframe, and transitions with zero page/request failures. `Part_2` remains `top: 207.984px; left: 113.896px; width: 81.708px; height: 433.3px` in both stages.
+- **Accuracy limitation**: this proves editor-stage visual continuity only. It does NOT prove that the Sheet Designer, server-composed 300-PPI PDF, compiled native bundle, and OMRChecker-aligned raster share one geometry authority.
+
+## Engine-parity corrective finding (2026-08-22)
+
+- `studio.htmlCode` and `studio.components` are persisted only inside draft authoring JSON; no backend renderer consumes them when composing the canonical PNG/PDF. The existing canonical PDF can therefore differ from the Sheet Designer.
+- `OmrDigitalProofGenerator` shades the previously composed PDF using mapped coordinates, but `OmrNoGoMatrixRunner` currently records declared expected outcomes as actual outcomes without executing the worker variants.
+- `OmrCanonicalNativeBundleCompiler` creates `template.json` from saved `fieldBlocks`, uses the selected backend marker-profile asset, and currently writes blank `reference-page-N.svg` files. Its `config.json` disables engine auto-alignment because `CropOnMarkers` is the registration authority.
+- The real worker-backed `TestCaptureOmrTemplate` path is sound after compile: it sends the uploaded scan plus the immutable native template/config/marker asset to `/v1/layout-verification` and returns the worker-produced aligned raster plus `draw_template_layout` overlay. However, the Studio fallback URL for uncompiled drafts has no route, and the client “Download template.json” currently downloads a client mapping preview rather than the immutable compiled native file.
+- **Decision**: one server-owned canonical sheet definition must produce the print PNG/PDF, browser preview raster, marker placement, native `template.json`, and non-blank reference page. Stage 3 overlays mapping guides on that server render. Stage 4 runs the actual worker and defaults to its returned aligned raster; it never substitutes the uploaded source image as proof.
 
 
 
