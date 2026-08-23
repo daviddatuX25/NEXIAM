@@ -129,3 +129,7 @@ Route selection-changing durable commands through the existing snapshot history,
 
 - Stage 3 selection requires `activeSectionIndex` to be a declared bindable canvas prop; missing it caused the observed runtime crash.
 - Stage changes now persist converted section state before becoming visible and revert the stage when the atomic save rejects or times out.
+
+## Roll mapping parity
+
+- The human-readable schema must keep the Examinee ID Matrix distinct from MCQ grids: `QTYPE_INT`, ten digit options, vertical direction, and the converted roll geometry.

@@ -162,6 +162,11 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Persistence fix**: explicit stage transitions cancel pending autosave timers, save the converted component/section state first, and roll back the visible stage if the save fails instead of leaving an unsaved Stage-3 view.
 - **Verification**: Draft 1 transitioned to Question Bubbles with zero page errors or HTTP failures; reload preserved the active Question Bubbles step and Examinee ID matrix.
 
+## Roll mapping schema parity (2026-08-22)
+
+- **Preview contract**: the exported studio JSON now identifies the Examinee ID Matrix as `QTYPE_INT` and emits options `0`–`9`; it no longer labels the roll section as `QTYPE_MCQ4` with A–D.
+- **Verification**: Stage 3 → Verify & Export showed `examinee_id_5` as `QTYPE_INT` with ten digit options, zero page errors, and no failed responses.
+
 
 
 

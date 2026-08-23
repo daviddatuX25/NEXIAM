@@ -825,15 +825,24 @@
   let jsonSchema = $derived.by(() => {
     const fields = {};
     sections.forEach((s) => {
+      const isRoll = s.type === 'roll';
       fields[s.id.toLowerCase()] = {
-        type: s.type === 'tf' ? 'QTYPE_TF' : s.type === 'likert' ? 'QTYPE_LIKERT5' : s.optionsCount === 5 ? 'QTYPE_MCQ5' : 'QTYPE_MCQ4',
+        type: isRoll ? 'QTYPE_INT' : s.type === 'tf' ? 'QTYPE_TF' : s.type === 'likert' ? 'QTYPE_LIKERT5' : s.optionsCount === 5 ? 'QTYPE_MCQ5' : 'QTYPE_MCQ4',
         origin_mm: [s.posX, s.posY],
         dimensions_mm: [s.w_mm, s.h_mm],
         columns: s.cols,
         questions_range: [s.startQ, s.startQ + (Number(s.questionsCount) || 1) - 1],
         bubbles_pitch_mm: s.bubblePitchMm,
         rows_pitch_mm: s.rowPitchMm,
-        options: s.type === 'tf' ? ['T', 'F'] : s.type === 'likert' ? ['1', '2', '3', '4', '5'] : s.type === 'custom' ? (s.customValuesStr || '').split(',').map((v) => v.trim()) : ['A', 'B', 'C', 'D'].slice(0, s.optionsCount || 4),
+        options: isRoll
+          ? Array.from({ length: 10 }, (_, digit) => String(digit))
+          : s.type === 'tf'
+            ? ['T', 'F']
+            : s.type === 'likert'
+              ? ['1', '2', '3', '4', '5']
+              : s.type === 'custom'
+                ? (s.customValuesStr || '').split(',').map((v) => v.trim())
+                : ['A', 'B', 'C', 'D'].slice(0, s.optionsCount || 4),
       };
     });
 

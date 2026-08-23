@@ -235,3 +235,8 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 28.1 Bind `activeSectionIndex` into `StudioCanvas` so Stage 3 section selection cannot crash on transition.
 - [x] 28.2 Make stage transitions save before committing the new stage and roll back the stage on failed persistence.
 - [x] 28.3 Verify component-to-section conversion, Stage 3 matrix rendering, refresh persistence, and zero transition runtime/HTTP errors.
+
+## 29. Roll mapping schema parity
+
+- [x] 29.1 Emit the Examinee ID Matrix as `QTYPE_INT` with ten digit options in the exported JSON schema instead of treating it as MCQ4.
+- [x] 29.2 Verify Stage-3/Stage-4 conversion retains roll geometry and produces no mapping validation/runtime error.
