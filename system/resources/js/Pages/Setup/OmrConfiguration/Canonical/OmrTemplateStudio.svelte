@@ -1016,12 +1016,39 @@
     historyNotice = '';
   }
 
+  function syncActiveSectionToComponent() {
+    if (stage1Mode !== 'html') return;
+    const section = sections[activeSectionIndex];
+    const component = components.find((candidate) => candidate.id === section?.id);
+    if (!section || !component) return;
+
+    component.posX = section.posX;
+    component.posY = section.posY;
+    component.bubblePitchMm = section.bubblePitchMm;
+    component.rowPitchMm = section.rowPitchMm;
+    component.isLocked = section.isLocked;
+    if (section.bubbleDiameterMm) component.bubbleDiameterMm = section.bubbleDiameterMm;
+
+    if (component.type === 'roll') {
+      component.digitsCount = section.questionsCount;
+    } else if (['mcq', 'tf', 'likert', 'custom'].includes(component.type)) {
+      component.questionsCount = section.questionsCount;
+      component.cols = section.cols;
+      component.optionsCount = section.optionsCount;
+      component.startQ = section.startQ;
+      component.customValuesStr = section.customValuesStr;
+    }
+    htmlCode = renderCurrentHtml();
+  }
+
   function handleGeometryChanged() {
+    if (currentStage >= 3) syncActiveSectionToComponent();
     recordHistory('Move or resize overlay', { coalesceKey: 'geometry' });
     triggerAutosave();
   }
 
   function recordBubbleEdit() {
+    syncActiveSectionToComponent();
     recordHistory('Edit question bubbles', { coalesceKey: `section:${activeSectionIndex}` });
     triggerAutosave();
   }

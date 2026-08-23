@@ -566,7 +566,7 @@
         style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
       >
       <!-- Continuous Background Layer (HTML source preview or composed raster — disabled in Stage 1 Sheet Designer to avoid duplicate rendering) -->
-      {#if safeHtmlContent && !(isHtmlMode && currentStage === 1)}
+      {#if safeHtmlContent && !isHtmlMode}
         <div class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none rounded-xs bg-white">
           <iframe
             srcdoc={safeHtmlContent}
@@ -576,7 +576,7 @@
             scrolling="no"
           ></iframe>
         </div>
-      {:else if rasterUrl && !(isHtmlMode && currentStage === 1)}
+      {:else if rasterUrl && !isHtmlMode}
         <img
           src={rasterUrl}
           alt="Composed Page"
@@ -810,7 +810,7 @@
       {/if}
 
       <!-- STAGE 1: Sheet Designer Universal Component Blocks (Single-source interactive document) -->
-      {#if isHtmlMode && currentStage === 1}
+      {#if isHtmlMode}
         {#each components as comp, compIndex (comp.id)}
           {@const isSelected = (activeComponentIds ?? []).includes(comp.id) || activeComponentId === comp.id}
           {@const isPrimarySelected = activeComponentId === comp.id}
@@ -1042,77 +1042,82 @@
           {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - stageBubblePx)}
           {@const digitsCount = Number(sec.questionsCount) || (isRoll ? 7 : 25)}
           {@const visualBounds = canvasSectionBoundsMm(labels.length, Number(sec.questionsCount) || (isRoll ? 10 : 1), bPitchMm, rPitchMm, isRoll, Number(sec.bubbleDiameterMm) || 4.5)}
-          {@const blockWidthMm = visualBounds.w_mm}
-          {@const blockHeightMm = visualBounds.h_mm}
+          {@const sourceComponent = isHtmlMode ? components.find((component) => component.id === sec.id) : null}
+          {@const sourceBounds = sourceComponent ? canvasComponentBlockSizeMm(sourceComponent) : visualBounds}
+          {@const blockWidthMm = sourceBounds.w_mm}
+          {@const blockHeightMm = sourceBounds.h_mm}
           {@const qEnd = (Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1}
           <div
-            class={`absolute rounded-lg border transition-all backdrop-blur-[0.5px] overflow-hidden ${
+            class={`absolute rounded-lg border transition-all overflow-hidden ${
               isSelected
-                ? 'border-emerald-600 border-dashed bg-emerald-500/15 ring-2 ring-emerald-400/60 z-20 shadow-sm'
-                : 'border-emerald-500/80 border-dashed bg-emerald-500/5 hover:border-emerald-600 z-10'
+                ? `border-emerald-600 border-dashed ring-2 ring-emerald-400/60 z-30 shadow-sm ${isHtmlMode ? 'bg-transparent' : 'bg-emerald-500/15 backdrop-blur-[0.5px]'}`
+                : `border-emerald-500/80 border-dashed hover:border-emerald-600 z-20 ${isHtmlMode ? 'bg-transparent' : 'bg-emerald-500/5 backdrop-blur-[0.5px]'}`
             }`}
             style={`top: ${(Number(sec.posY) || 56) * 2.476}px; left: ${(Number(sec.posX) || 16) * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
+            data-omr-section-id={sec.id}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
             role="button"
             tabindex="0"
           >
-            {#if isRoll}
-              <!-- Roll / Examinee ID 0-9 Bubble Matrix -->
-              <div class="p-1 w-full h-full flex flex-col justify-start" style={`gap: ${rowGapPx}px;`}>
-                {#each Array.from({ length: 10 }) as _, digit}
-                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
-                    <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
-                      {digit}
-                    </span>
-                    <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
-                      {#each Array.from({ length: digitsCount }) as _}
-                        <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[5.5px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
-                        </div>
-                      {/each}
+            {#if !isHtmlMode}
+              {#if isRoll}
+                <!-- Roll / Examinee ID 0-9 Bubble Matrix -->
+                <div class="p-1 w-full h-full flex flex-col justify-start" style={`gap: ${rowGapPx}px;`}>
+                  {#each Array.from({ length: 10 }) as _, digit}
+                    <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
+                      <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
+                        {digit}
+                      </span>
+                      <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
+                        {#each Array.from({ length: digitsCount }) as _}
+                          <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[5.5px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
+                          </div>
+                        {/each}
+                      </div>
                     </div>
-                  </div>
-                {/each}
-              </div>
-              <div
-                class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
-                  isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
-                }`}
-              >
-                ID ({digitsCount} Digits)
-              </div>
-            {:else}
-              <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing (content-hug padding) -->
-              <div
-                class="p-1 w-full h-full flex flex-col justify-start"
-                style={`gap: ${rowGapPx}px;`}
-              >
-                {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
-                  <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
-                    <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: 14px; height: ${stageBubblePx}px;`}>
-                      {(Number(sec?.startQ) || 1) + r}
-                    </span>
-                    <div
-                      class="flex items-center"
-                      style={`gap: ${bubbleGapPx}px;`}
-                    >
-                      {#each labels as opt}
-                        <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
-                          {opt}
-                        </div>
-                      {/each}
+                  {/each}
+                </div>
+                <div
+                  class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
+                    isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
+                  }`}
+                >
+                  ID ({digitsCount} Digits)
+                </div>
+              {:else}
+                <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing (content-hug padding) -->
+                <div
+                  class="p-1 w-full h-full flex flex-col justify-start"
+                  style={`gap: ${rowGapPx}px;`}
+                >
+                  {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
+                    <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
+                      <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: 14px; height: ${stageBubblePx}px;`}>
+                        {(Number(sec?.startQ) || 1) + r}
+                      </span>
+                      <div
+                        class="flex items-center"
+                        style={`gap: ${bubbleGapPx}px;`}
+                      >
+                        {#each labels as opt}
+                          <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
+                            {opt}
+                          </div>
+                        {/each}
+                      </div>
                     </div>
-                  </div>
-                {/each}
-              </div>
+                  {/each}
+                </div>
 
-              <!-- Minimal Floating Q-Range Label (no header bar, no pitch text) -->
-              <div
-                class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
-                  isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
-                }`}
-              >
-                Q{Number(sec.startQ) || 1}{qEnd > (Number(sec.startQ) || 1) ? `–${qEnd}` : ''}
-              </div>
+                <!-- Minimal Floating Q-Range Label (no header bar, no pitch text) -->
+                <div
+                  class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
+                    isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
+                  }`}
+                >
+                  Q{Number(sec.startQ) || 1}{qEnd > (Number(sec.startQ) || 1) ? `–${qEnd}` : ''}
+                </div>
+              {/if}
             {/if}
             {#if sec.isLocked}
               <div class="absolute top-0.5 left-0.5 text-amber-600 pointer-events-none select-none">

@@ -240,3 +240,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 
 - [x] 29.1 Emit the Examinee ID Matrix as `QTYPE_INT` with ten digit options in the exported JSON schema instead of treating it as MCQ4.
 - [x] 29.2 Verify Stage-3/Stage-4 conversion retains roll geometry and produces no mapping validation/runtime error.
+
+## 30. Sheet Designer → bubble-stage visual parity
+
+- [x] 30.1 Keep HTML authoring on the same component render tree across Sheet Designer, Question Bubbles, and Verify & Export instead of replacing it with a second iframe renderer.
+- [x] 30.2 Make HTML-mode Stage 3 guides outline the existing components without drawing duplicate bubbles or floating Q-range/ID labels.
+- [x] 30.3 Synchronize Stage 3 section edits back into their source components and preserve question-grid bubble diameter through component-to-section conversion.
+- [x] 30.4 Verify Draft 1 keeps all 11 component IDs and styles byte-for-byte identical across Stage 1 → Stage 3, with seven empty-text guides, no preview iframe, and zero runtime/request failures.

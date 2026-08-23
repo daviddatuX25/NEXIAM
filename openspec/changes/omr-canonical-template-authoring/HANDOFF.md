@@ -167,6 +167,13 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Preview contract**: the exported studio JSON now identifies the Examinee ID Matrix as `QTYPE_INT` and emits options `0`–`9`; it no longer labels the roll section as `QTYPE_MCQ4` with A–D.
 - **Verification**: Stage 3 → Verify & Export showed `examinee_id_5` as `QTYPE_INT` with ten digit options, zero page errors, and no failed responses.
 
+## Sheet Designer → bubble-stage visual parity (2026-08-22)
+
+- **Root cause**: HTML-mode Stage 1, compiled iframe preview, and Stage 3 each rendered the bubble matrix independently. Stage 3 then placed its second bubble tree at the component origin despite omitting the printed subject/option headers and matrix title/write-in row. Its floating `Q…` / `ID (…)` badge was the label visible only after transition.
+- **Fix**: HTML authoring now keeps the Stage 1 component render tree mounted through Question Bubbles and Verify & Export. Stage 3 adds only selection/mapping outlines, with no duplicate circles or sheet-visible labels, and section edits synchronize back to their source component.
+- **Geometry bridge**: question-grid `bubbleDiameterMm` now survives component → section conversion.
+- **Browser proof, Draft 1**: Stage 1 and Stage 3 each render the same 11 component IDs with byte-for-byte identical inline geometry; Stage 3 adds seven empty-text outlines, renders no HTML preview iframe, and transitions with zero page/request failures. `Part_2` remains `top: 207.984px; left: 113.896px; width: 81.708px; height: 433.3px` in both stages.
+
 
 
 

@@ -851,6 +851,7 @@ export function componentToSectionData(c: OmrComponent): SectionData | null {
       startQ: c.startQ || 1,
       customValuesStr: c.customValuesStr || 'A, B, C, D',
       bubblePitchMm: c.bubblePitchMm,
+      bubbleDiameterMm: c.bubbleDiameterMm,
       rowPitchMm: c.rowPitchMm,
       isLocked: c.isLocked,
     };

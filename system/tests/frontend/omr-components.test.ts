@@ -237,12 +237,15 @@ describe('Universal OMR Component Suite', () => {
 
     it('converts question grid to SectionData', () => {
       const grid = createComponent('question_grid');
+      if (grid.type !== 'mcq') throw new Error('Expected question grid component');
+      grid.bubbleDiameterMm = 6;
       const sec = componentToSectionData(grid);
       expect(sec).not.toBeNull();
       expect(sec?.type).toBe('mcq');
       expect(sec?.questionsCount).toBe(25);
       expect(sec?.optionsCount).toBe(4);
       expect(sec?.startQ).toBe(1);
+      expect(sec?.bubbleDiameterMm).toBe(6);
     });
   });
 
