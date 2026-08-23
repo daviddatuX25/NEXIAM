@@ -1204,11 +1204,20 @@
   }
 
   async function executeGoToStage(step) {
+    const previousStage = currentStage;
     if (step === 3 && stage1Mode === 'html') {
       syncSectionsFromComponentsForBubbleStage();
     }
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
     currentStage = step;
-    await performSave();
+    const saved = await performSave();
+    if (!saved) {
+      currentStage = previousStage;
+      historyNotice = errorMessage || 'Could not save this stage transition. Your layout remains open.';
+    }
   }
   function triggerAutosave() {
     if (!draft.can_edit) return;

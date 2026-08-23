@@ -229,3 +229,9 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 - [x] 27.2 Restore configurable question-grid bubble size with bounded 4.2–8 mm input and matching canvas/compiled output.
 - [x] 27.3 Add configurable question-label font size with bounded 5–12 pt input and matching canvas/compiled output.
 - [x] 27.4 Verify: scaffolded grids show the selected area, 25 rows, bubble-size and label-size controls, 40 frontend tests pass, and the build is green.
+
+## 28. Reliable Sheet Designer → Question Bubbles transition
+
+- [x] 28.1 Bind `activeSectionIndex` into `StudioCanvas` so Stage 3 section selection cannot crash on transition.
+- [x] 28.2 Make stage transitions save before committing the new stage and roll back the stage on failed persistence.
+- [x] 28.3 Verify component-to-section conversion, Stage 3 matrix rendering, refresh persistence, and zero transition runtime/HTTP errors.

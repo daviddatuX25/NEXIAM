@@ -71,6 +71,7 @@
     isHtmlMode = true,
     isComposing = false,
     sections = $bindable([]),
+    activeSectionIndex = $bindable(0),
     components = $bindable([]),
     activeComponentId = $bindable(null),
     activeComponentIds = $bindable([]),

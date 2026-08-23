@@ -124,3 +124,8 @@ Route selection-changing durable commands through the existing snapshot history,
 
 - The grid model now keeps `aptitudeAreaCode`, so a scaffolded area is selected in the inspector rather than falling back to the placeholder option.
 - Question grids expose bounded bubble-size and question-label-size controls, with the same values carried into canvas and compiled renderers.
+
+## Bubble-stage transition reliability
+
+- Stage 3 selection requires `activeSectionIndex` to be a declared bindable canvas prop; missing it caused the observed runtime crash.
+- Stage changes now persist converted section state before becoming visible and revert the stage when the atomic save rejects or times out.

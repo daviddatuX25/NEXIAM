@@ -156,6 +156,12 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - **Grid appearance**: Question Grid now exposes Bubble Size `4.2–8 mm` and Question Label Size `5–12 pt`; canvas and compiled HTML use both values.
 - **Verification**: browser proof showed `LOGIC` selected for General Ability, 25 rendered rows, and both controls present. Frontend suite passed **40 tests** and production build exited `0`.
 
+## Reliable Sheet Designer → Question Bubbles transition (2026-08-22)
+
+- **Runtime fix**: `StudioCanvas` now receives the bindable `activeSectionIndex` prop required by Stage 3 section selection; this removes the `ReferenceError: activeSectionIndex is not defined` crash.
+- **Persistence fix**: explicit stage transitions cancel pending autosave timers, save the converted component/section state first, and roll back the visible stage if the save fails instead of leaving an unsaved Stage-3 view.
+- **Verification**: Draft 1 transitioned to Question Bubbles with zero page errors or HTTP failures; reload preserved the active Question Bubbles step and Examinee ID matrix.
+
 
 
 
