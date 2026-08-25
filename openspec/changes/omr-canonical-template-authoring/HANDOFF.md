@@ -223,11 +223,22 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 - The former blue “OMR Optical Recognition Grid” row is now a semantic muted Recognition guides explanation with an emerald icon in both themes.
 - Error presentation normalized: backend `mapping_invalid` now returns structured `errors[]`; Laravel field-validation maps are flattened; legacy JSON detail is decoded defensively. Recognition Mapping renders one titled bullet list with recovery copy, while the toolbar says only `Save blocked`. The manual Save button now wraps `performSave()` so its MouseEvent cannot become `source_kind`; browser proof shows manual Save `200` with no source-kind error and overlapping input produces no PUT.
 
-## Planned next cut — not implemented
+## Shared verification/scanner repair cut — status (tasks 35.1–35.47)
 
 - OpenSpec tasks 35.1–35.47 define the junior-executable shared verification/scanner repair cut. It introduces one deterministic proof plan, candidate/version diagnostic target adapters, durable verification runs, physical challenge packs, one normalized evidence projection, shared capture/evidence Svelte modules, and scanner signed-QR/pair wiring.
 - Corrective scanner finding: canonical compile currently persists `review_manifest_json` but does not create the version-owned page/area/question/option rows that grading `Capture.svelte` expects through booklet-question `templateQuestion` links. This can produce missing/default per-item regions/options. `OmrTemplateGeometryProjector` + `OmrReviewGeometryQuery` are stop-gate tasks before claiming scanner per-item evidence works.
-- No implementation or qualification claim is made by this planning update. `omr-profile-test-readiness` must be paused/read-only so this change is the sole active OMR implementation owner before task 35.1 begins.
+
+### Ownership — sole active OMR implementation owner (35.1, done 2026-08-26)
+
+- This change (`omr-canonical-template-authoring`) is now the **sole active OMR implementation owner**. `omr-profile-test-readiness` implementation work is **paused/read-only**: its content remains untouched and nothing is copied from it; only the pinned worker/bundle/Test-capture evidence is cross-referenced.
+
+### Scanner per-item geometry characterization (35.2, done 2026-08-26)
+
+- Evidence: `system/tests/Feature/Setup/OmrCanonicalScannerGeometryCharacterizationTest.php` reproduces the gap through the real pipeline — qualified profile → draft → materialize → digital-verified → compile → active template/booklet pair → capture batch → grading `Capture.svelte` props. **2 tests / 34 assertions, green**, pinning current behavior honestly:
+  1. Canonical compile stores `review_manifest_json` with real per-bubble geometry (2 MCQ4 labels × 4 options = 8 fields, every region `w`/`h` > 0) but creates **zero** `omr_template_areas` and `omr_answer_sheet_pages` rows for the compiled version.
+  2. Booklet questions carry no `template_question_id`; `GradingController::omr()` therefore emits the documented fallback per item on the wire: `region [0,0,1,1]`, `options []`, `page_no 1` — the missing per-item regions/options `Capture.svelte` receives.
+- These assertions are deliberate current-behavior pins; they must flip when tasks 35.4–35.10 land `OmrTemplateGeometryProjector` + `OmrReviewGeometryQuery` and replace the booklet-question→template-question projection.
+- No implementation or qualification claim is made beyond tasks 35.1/35.2.
 
 
 

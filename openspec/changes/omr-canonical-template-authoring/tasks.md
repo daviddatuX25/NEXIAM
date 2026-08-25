@@ -326,8 +326,8 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 
 ### Cut A — Freeze behavior and make this the sole implementation owner
 
-- [ ] 35.1 Mark `omr-profile-test-readiness` implementation work paused/read-only and record this change as the sole active OMR implementation owner; copy no tasks blindly—cross-reference only the pinned worker/bundle/Test-capture evidence inherited from it.
-- [ ] 35.2 Add characterization fixtures for `TestCaptureOmrTemplate`, canonical candidate preview, `RunOmrSheetAnalysis`, `ActivateOmrConfiguration` projection rows, `Capture.svelte` template item projection, and `OmrRegionCrop`; record current pass/fail behavior and reproduce the broken/missing canonical per-item options/regions before refactoring.
+- [x] 35.1 Mark `omr-profile-test-readiness` implementation work paused/read-only and record this change as the sole active OMR implementation owner; copy no tasks blindly—cross-reference only the pinned worker/bundle/Test-capture evidence inherited from it.
+- [x] 35.2 Add characterization fixtures for `TestCaptureOmrTemplate`, canonical candidate preview, `RunOmrSheetAnalysis`, `ActivateOmrConfiguration` projection rows, `Capture.svelte` template item projection, and `OmrRegionCrop`; record current pass/fail behavior and reproduce the broken/missing canonical per-item options/regions before refactoring.
 - [ ] 35.3 Define and fixture the no-go policy table for clean, mild perspective/rotation/light/blur/low-resolution expected exact recovery versus severe/partial/missing/wrong marker expected typed rejection. Stop: do not make the matrix green by changing expectations without fixture evidence.
 
 ### Cut B — Extract one template geometry projection and repair scanner inputs
