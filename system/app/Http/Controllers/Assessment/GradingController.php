@@ -11,6 +11,7 @@ use App\Assessment\Actions\Omr\RetryOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ReviewOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ResolveOmrCaptureSheetIssue;
 use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
+use App\Assessment\Omr\Queries\OmrReviewGeometryQuery;
 use App\Http\Requests\Assessment\PreflightOmrCaptureRequest;
 use App\Http\Requests\Assessment\ReviewOmrSheetRequest;
 use App\Http\Requests\Assessment\StoreOmrBatchRequest;
@@ -206,9 +207,6 @@ class GradingController extends Controller
             ->whereIn('status', OmrCaptureBatch::ACTIVE_STATUSES)
             ->with([
                 'templateVersion',
-                'templateVersion.areas.aptitudeArea',
-                'bookletVersion.questions.templateQuestion',
-                'bookletVersion.questions.templateQuestion.options',
                 'bookletVersion.questions.aptitudeArea',
                 'sheets' => fn ($query) => $query->orderByDesc('created_at')->with(['pages', 'issues']),
             ])
@@ -222,36 +220,9 @@ class GradingController extends Controller
             ? []
             : app(BundleRenderer::class)->reviewOverlayRegions($nativeTemplate, (array) $template->print_overlay_json);
         $identityRegion = $this->identityRegionAt($identityRegions);
-        $templateItems = $batch?->bookletVersion?->questions
-            ->sortBy('question_position')
-            ->map(fn ($item): array => [
-                'position' => (int) $item->question_position,
-                'area_id' => (int) $item->aptitude_area_id,
-                'area_code' => $item->aptitudeArea?->code ?? '—',
-                'area_name' => $item->aptitudeArea?->name ?? 'Aptitude area',
-                'question_no' => (int) ($item->templateQuestion?->question_no ?? $item->question_position),
-                'correct_option_code' => (string) $item->correct_option_code,
-                'page_no' => (int) ($item->templateQuestion?->page_no ?? 1),
-                'region' => [
-                    'x' => (float) ($item->templateQuestion?->region_x ?? 0),
-                    'y' => (float) ($item->templateQuestion?->region_y ?? 0),
-                    'w' => (float) ($item->templateQuestion?->region_w ?? 1),
-                    'h' => (float) ($item->templateQuestion?->region_h ?? 1),
-                ],
-                'options' => $item->templateQuestion?->options
-                    ?->sortBy(fn ($option): array => [$option->display_order ?? 0, (string) $option->code])
-                    ?->values()
-                    ?->map(fn ($option): array => [
-                        'code' => (string) $option->code,
-                        'region' => [
-                            'x' => (float) ($option->region_x ?? 0),
-                            'y' => (float) ($option->region_y ?? 0),
-                            'w' => (float) ($option->region_w ?? 1),
-                            'h' => (float) ($option->region_h ?? 1),
-                        ],
-                    ])
-                    ?->all() ?? [],
-            ])->values()->all() ?? [];
+        $templateItems = $batch === null || $batch->bookletVersion === null
+            ? []
+            : app(OmrReviewGeometryQuery::class)->itemsFor($batch->templateVersion, $batch->bookletVersion);
 
         $roster = GradingRoster::queryFor($gradingSession)
             ->with('admissionAttempt.identity')

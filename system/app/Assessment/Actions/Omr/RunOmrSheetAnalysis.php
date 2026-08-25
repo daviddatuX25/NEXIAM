@@ -2,9 +2,9 @@
 
 namespace App\Assessment\Actions\Omr;
 
+use App\Assessment\Omr\OmrDetectionIssue;
 use App\Assessment\Omr\OmrDetectionOutcome;
 use App\Assessment\Omr\OmrDetectionPort;
-use App\Assessment\Omr\OmrDetectionIssue;
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrDetectionResult;
 use App\Assessment\Omr\OmrDetectionResultValidator;
@@ -13,6 +13,7 @@ use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrInvalidDetectionOutput;
 use App\Assessment\Omr\OmrItemGeometry;
 use App\Assessment\Omr\OmrPinnedSnapshot;
+use App\Assessment\Omr\OmrTemplateProjectionException;
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
@@ -69,6 +70,8 @@ final class RunOmrSheetAnalysis
             $this->assertAuthorized($actor, $sheet);
             $request = $this->request($run, $sheet, $page);
             $result = $this->detector->detect($request);
+        } catch (OmrTemplateProjectionException $exception) {
+            return $this->fail($run->id, $claimToken, true, $exception->errorCode);
         } catch (OmrInvalidDetectionOutput) {
             return $this->fail($run->id, $claimToken, false, 'provider_output_invalid');
         } catch (Throwable) {
@@ -84,10 +87,14 @@ final class RunOmrSheetAnalysis
             );
         }
 
-        $snapshot = OmrPinnedSnapshot::pin(
-            $sheet->batch->templateVersion,
-            $sheet->batch->bookletVersion,
-        );
+        try {
+            $snapshot = OmrPinnedSnapshot::pin(
+                $sheet->batch->templateVersion,
+                $sheet->batch->bookletVersion,
+            );
+        } catch (OmrTemplateProjectionException $exception) {
+            return $this->fail($run->id, $claimToken, true, $exception->errorCode);
+        }
 
         try {
             $success = $this->validator->validate($request, $result) ?? $result->success;

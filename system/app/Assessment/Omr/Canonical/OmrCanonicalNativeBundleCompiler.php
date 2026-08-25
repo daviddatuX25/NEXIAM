@@ -4,6 +4,7 @@ namespace App\Assessment\Omr\Canonical;
 
 use App\Assessment\Omr\NativeBundle;
 use App\Assessment\Omr\NativeManifestDeriver;
+use App\Assessment\Omr\OmrTemplateGeometryProjector;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrMarkerProfile;
@@ -40,6 +41,7 @@ final class OmrCanonicalNativeBundleCompiler
     public function __construct(
         private readonly NativeManifestDeriver $manifestDeriver,
         private readonly CanonicalNativePageRenderer $renderer,
+        private readonly OmrTemplateGeometryProjector $geometryProjector,
     ) {
     }
 
@@ -179,7 +181,7 @@ final class OmrCanonicalNativeBundleCompiler
                     throw new OmrCanonicalCompileException('compile_conflict', 'Another version was compiled concurrently.');
                 }
                 [$width, $height] = $bundle->pageDimensions(1);
-                return OmrAnswerSheetTemplateVersion::query()->create([
+                $version = OmrAnswerSheetTemplateVersion::query()->create([
                     'template_id' => $lockedTemplate->id,
                     'version' => $nextVersion,
                     'status' => OmrAnswerSheetTemplateVersion::STATUS_DRAFT,
@@ -199,6 +201,9 @@ final class OmrCanonicalNativeBundleCompiler
                     'review_manifest_hash' => $derived['hash'],
                     'authoring_manifest' => $authoringManifest,
                 ]);
+                $this->geometryProjector->project($version, $derived['manifest']);
+
+                return $version;
             });
         } catch (\Throwable $exception) {
             $disk->deleteDirectory($relativeDir);
@@ -268,7 +273,7 @@ final class OmrCanonicalNativeBundleCompiler
                     throw new OmrCanonicalCompileException('compile_conflict', 'Another version was compiled concurrently.');
                 }
                 [$width, $height] = $bundle->pageDimensions(1);
-                return OmrAnswerSheetTemplateVersion::query()->create([
+                $version = OmrAnswerSheetTemplateVersion::query()->create([
                     'template_id' => $lockedTemplate->id,
                     'version' => $nextVersion,
                     'status' => OmrAnswerSheetTemplateVersion::STATUS_DRAFT,
@@ -294,6 +299,9 @@ final class OmrCanonicalNativeBundleCompiler
                         'pdf_hash' => $artifactSet['pdf_hash'] ?? null,
                     ]],
                 ]);
+                $this->geometryProjector->project($version, $derived['manifest']);
+
+                return $version;
             });
         } catch (\Throwable $exception) {
             $disk->deleteDirectory($relativeDir);

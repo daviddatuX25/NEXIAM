@@ -1,5 +1,6 @@
 <?php
 
+use App\Assessment\Omr\OmrTemplateGeometryProjector;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 
 /**
@@ -91,5 +92,5 @@ test('native projections replace hand-calculated seed geometry', function (): vo
     expect($violations)->toBeEmpty()
         ->and($version->native_bundle_hash)->toMatch('/^[a-f0-9]{64}$/')
         ->and($version->review_manifest_json['manifest_version'])->toBe('nexiam.omr.review-manifest.v1')
-        ->and($version->areas->every(fn ($area): bool => $area->projection_source === 'activation_manifest'))->toBeTrue();
+        ->and($version->areas->every(fn ($area): bool => $area->projection_source === OmrTemplateGeometryProjector::PROJECTION_SOURCE))->toBeTrue();
 });

@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('digital verified draft compiles into marker-bearing immutable version and pins assets', function (): void {
+    seedE2Foundation();
     $actor = User::factory()->create();
     $profile = OmrMarkerProfile::query()->create([
         'code' => 'compile.marker',
@@ -43,7 +44,7 @@ test('digital verified draft compiles into marker-bearing immutable version and 
             'pages' => [['page_no' => 1, 'asset_id' => $raster->id, 'confirmed' => true]],
             'marker' => ['insets_mm' => ['top' => 12, 'right' => 12, 'bottom' => 14, 'left' => 12]],
             'canonical' => ['settings' => ['paper_width_mm' => 210, 'paper_height_mm' => 297], 'composition_hash' => hash('sha256', 'composition'), 'raster_assets' => [['page_no' => 1, 'asset_id' => $raster->id]]],
-            'mapping' => ['mapping_hash' => hash('sha256', 'mapping'), 'field_blocks' => ['Questions' => ['fieldType' => 'QTYPE_MCQ4', 'fieldLabels' => ['Q_001', 'Q_002'], 'bubblesGap' => 80, 'labelsGap' => 80, 'origin' => [200, 300], 'bubbleDimensions' => [50, 50]]]],
+            'mapping' => ['mapping_hash' => hash('sha256', 'mapping'), 'field_blocks' => ['Questions' => ['fieldType' => 'QTYPE_MCQ4', 'fieldLabels' => ['LOGIC_Q_001', 'LOGIC_Q_002'], 'bubblesGap' => 80, 'labelsGap' => 80, 'origin' => [200, 300], 'bubbleDimensions' => [50, 50]]]],
             'verification' => [],
         ],
     ])->save();
@@ -140,6 +141,7 @@ test('candidate profile materialization uses stable provisional geometry', funct
 });
 
 test('compiled version promotes the materialized native artifact bytes', function (): void {
+    seedE2Foundation();
     $actor = User::factory()->create();
     $profile = OmrMarkerProfile::query()->create([
         'code' => 'promote.marker',
@@ -165,7 +167,7 @@ test('compiled version promotes the materialized native artifact bytes', functio
             'canonical' => ['settings' => ['paper_width_mm' => 210, 'paper_height_mm' => 297]],
             'studio' => ['components' => [[
                 'id' => 'Part_1', 'type' => 'mcq', 'name' => 'Part 1', 'subjectName' => 'General Ability',
-                'posX' => 25, 'posY' => 70, 'w_mm' => 40, 'h_mm' => 50, 'questionsCount' => 2,
+                'posX' => 25, 'posY' => 70, 'w_mm' => 40, 'h_mm' => 50, 'aptitudeAreaCode' => 'LOGIC', 'questionsCount' => 2,
                 'startQ' => 1, 'optionsCount' => 4, 'bubbleDiameterMm' => 4.5, 'bubblePitchMm' => 6, 'rowPitchMm' => 6.8,
             ]]],
             'mapping' => [
@@ -215,7 +217,7 @@ test('compile rejects a candidate materialized before marker qualification geome
             'canonical' => ['settings' => ['paper_width_mm' => 210, 'paper_height_mm' => 297]],
             'studio' => ['components' => [[
                 'id' => 'Part_1', 'type' => 'mcq', 'name' => 'Part 1', 'subjectName' => 'General Ability',
-                'posX' => 25, 'posY' => 70, 'w_mm' => 40, 'h_mm' => 50, 'questionsCount' => 2,
+                'posX' => 25, 'posY' => 70, 'w_mm' => 40, 'h_mm' => 50, 'aptitudeAreaCode' => 'LOGIC', 'questionsCount' => 2,
                 'startQ' => 1, 'optionsCount' => 4, 'bubbleDiameterMm' => 4.5, 'bubblePitchMm' => 6, 'rowPitchMm' => 6.8,
             ]]],
             'mapping' => [

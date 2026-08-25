@@ -332,13 +332,13 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 
 ### Cut B — Extract one template geometry projection and repair scanner inputs
 
-- [ ] 35.4 Add `system/app/Assessment/Omr/OmrTemplateGeometryProjector.php` with `project(OmrAnswerSheetTemplateVersion $version, array $reviewManifest): GeometryProjectionResult`; move version-owned page/area/question/option persistence out of `ActivateOmrConfiguration`, including normalized regions, declared option order, semantic area/question identity, projection hash, idempotent identical retry, and stale/different-manifest rejection.
-- [ ] 35.5 Make predecessor `ActivateOmrConfiguration` call `OmrTemplateGeometryProjector`; delete its duplicate projection implementation after all tests use the module.
-- [ ] 35.6 Make both canonical compile paths call the same projector inside the compile transaction after version creation and before draft commit; failure SHALL remove the partial version/assets and leave the draft uncompiled.
-- [ ] 35.7 Add `system/app/Assessment/Omr/Queries/OmrReviewGeometryQuery.php`; return page/question/declared-option normalized regions from template-owned projection and merge correct options from the pinned booklet by validated area code + question number/position coverage.
-- [ ] 35.8 Replace `GradingController::omr()`'s booklet-question→optional-templateQuestion geometry projection with `OmrReviewGeometryQuery`; keep roster, applicant, batch, and score projections unchanged.
-- [ ] 35.9 Add typed `geometry_projection_missing|geometry_projection_stale|pair_geometry_coverage_mismatch|pair_option_set_mismatch` failures and block pair activation/analysis rather than emitting `[0,0,1,1]` fallback regions.
-- [ ] 35.10 Add feature tests proving canonical compile creates one idempotent page/area/question/option projection, MCQ4/MCQ5/int options are complete, compatible booklet merge returns exact correct options, and grading props contain nonzero exact regions without relying on `template_question_id`.
+- [x] 35.4 Add `system/app/Assessment/Omr/OmrTemplateGeometryProjector.php` with `project(OmrAnswerSheetTemplateVersion $version, array $reviewManifest): GeometryProjectionResult`; move version-owned page/area/question/option persistence out of `ActivateOmrConfiguration`, including normalized regions, declared option order, semantic area/question identity, projection hash, idempotent identical retry, and stale/different-manifest rejection.
+- [x] 35.5 Make predecessor `ActivateOmrConfiguration` call `OmrTemplateGeometryProjector`; delete its duplicate projection implementation after all tests use the module.
+- [x] 35.6 Make both canonical compile paths call the same projector inside the compile transaction after version creation and before draft commit; failure SHALL remove the partial version/assets and leave the draft uncompiled.
+- [x] 35.7 Add `system/app/Assessment/Omr/Queries/OmrReviewGeometryQuery.php`; return page/question/declared-option normalized regions from template-owned projection and merge correct options from the pinned booklet by validated area code + question number/position coverage.
+- [x] 35.8 Replace `GradingController::omr()`'s booklet-question→optional-templateQuestion geometry projection with `OmrReviewGeometryQuery`; keep roster, applicant, batch, and score projections unchanged.
+- [x] 35.9 Add typed `geometry_projection_missing|geometry_projection_stale|pair_geometry_coverage_mismatch|pair_option_set_mismatch` failures and block pair activation/analysis rather than emitting `[0,0,1,1]` fallback regions.
+- [x] 35.10 Add feature tests proving canonical compile creates one idempotent page/area/question/option projection, MCQ4/MCQ5/int options are complete, compatible booklet merge returns exact correct options, and grading props contain nonzero exact regions without relying on `template_question_id`.
 
 ### Cut C — Define the deep shared diagnostic interfaces
 

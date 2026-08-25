@@ -87,6 +87,11 @@ final readonly class OmrPinnedSnapshot
             throw new RuntimeException('A pinned OMR template is missing immutable native bundle identity.');
         }
 
+        // The version-owned geometry projection is the sole authority for
+        // per-item regions; analysis blocks with typed failures when it is
+        // missing or stale instead of degrading to placeholder geometry.
+        app(OmrTemplateGeometryProjector::class)->currentFor($templateVersion);
+
         [$expectedFieldLabels, $expectedOptionCodes] = self::manifestExpectations($manifest);
 
         $pages = is_array($nativeBundle['template']['pages'] ?? null)
@@ -136,7 +141,10 @@ final readonly class OmrPinnedSnapshot
             $templateQuestion = $bookletQuestion->templateQuestion;
 
             if ($templateQuestion === null) {
-                throw new RuntimeException('A booklet question is missing its pinned template question.');
+                throw new OmrTemplateProjectionException(
+                    'pair_geometry_coverage_mismatch',
+                    'A booklet question is missing its pinned template question.',
+                );
             }
 
             $code = self::areaCodeFor($bookletQuestion, $templateQuestion, $areaCodeByTemplateAreaId);
