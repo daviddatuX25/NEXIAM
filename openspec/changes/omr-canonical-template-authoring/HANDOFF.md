@@ -232,13 +232,22 @@ Stage 1 of the html-mode studio is now the **Sheet Designer** ("Native Builder" 
 
 - This change (`omr-canonical-template-authoring`) is now the **sole active OMR implementation owner**. `omr-profile-test-readiness` implementation work is **paused/read-only**: its content remains untouched and nothing is copied from it; only the pinned worker/bundle/Test-capture evidence is cross-referenced.
 
-### Scanner per-item geometry characterization (35.2, done 2026-08-26)
+### No-go policy table fixture (35.3, done 2026-08-26)
 
-- Evidence: `system/tests/Feature/Setup/OmrCanonicalScannerGeometryCharacterizationTest.php` reproduces the gap through the real pipeline — qualified profile → draft → materialize → digital-verified → compile → active template/booklet pair → capture batch → grading `Capture.svelte` props. **2 tests / 34 assertions, green**, pinning current behavior honestly:
-  1. Canonical compile stores `review_manifest_json` with real per-bubble geometry (2 MCQ4 labels × 4 options = 8 fields, every region `w`/`h` > 0) but creates **zero** `omr_template_areas` and `omr_answer_sheet_pages` rows for the compiled version.
-  2. Booklet questions carry no `template_question_id`; `GradingController::omr()` therefore emits the documented fallback per item on the wire: `region [0,0,1,1]`, `options []`, `page_no 1` — the missing per-item regions/options `Capture.svelte` receives.
-- These assertions are deliberate current-behavior pins; they must flip when tasks 35.4–35.10 land `OmrTemplateGeometryProjector` + `OmrReviewGeometryQuery` and replace the booklet-question→template-question projection.
-- No implementation or qualification claim is made beyond tasks 35.1/35.2.
+- Added `system/tests/Fixtures/Omr/NoGoPolicyTable.php` — the evidence-backed policy table (one row per `OmrNoGoMatrixRunner::VARIANTS`) with `severity`, `policy_expected`, `currently_enforced`, `evidence`, and `note`; plus `severeParameterizations()` for the six perturbation families at severe level.
+- Added `system/tests/Unit/Assessment/OmrNoGoPolicyTableTest.php` — **7 tests / 113 assertions, green** — pinning: fixture covers the runner variants without drift; clean + mild perspective/rotation/uneven_light/blur/low_resolution → `exact_recovery`; severe/partial_page/missing_marker/wrong_marker → `typed_rejection`; the four lifecycle variants are typed-rejection application gates; current enforcement is clean→`pass`, every other variant→`typed_rejection`; and no mild expectation is marked green with `fixture` evidence while unenforced.
+- **Policy table (35.3):** clean and MILD perspective/rotation/light/blur/low-resolution expect exact answer-vector recovery; SEVERE perturbations, partial page, missing marker, wrong marker expect typed rejection.
+- **Current enforcement is unchanged and honestly red:** `OmrNoGoMatrixRunner` still expects `pass` for clean and `typed_rejection` for every other variant. Digital verification still blocks on the mild variants the real worker accepts. **No recognition math, threshold, or OMRChecker-pinned behavior was touched.**
+- **Evidence status per expectation:**
+  - clean → exact recovery: **fixture-backed** (OmrNoGoMatrixTest; task 31.10 clean exact-recovery gate).
+  - missing/wrong marker → typed rejection: **fixture-backed** (`test_corner_false_positive.py` proves clipped/border-like corner patterns classify as `marker_missing`/`marker_mismatch`, never registration; OmrNoGoMatrixTest asserts typed rejection).
+  - four lifecycle gates → typed rejection: **fixture-backed** (deterministic NEXIAM signed-instance/capture-lifecycle gates).
+  - mild perspective/rotation/uneven_light/blur/low_resolution → exact recovery: **observed only** (2026-08-24 browser proof: real worker accepted the current single-severity variants, so the runner's typed-rejection expectation surfaced `no_go_variant_failed`). **No committed fixture test pins exact recovery for any mild variant.**
+  - glare → exact recovery: **evidence gap** — not named in task 35.3; grouped with accepted mild perturbations only by review decision 33; no fixture evidence.
+  - partial_page → typed rejection: **evidence gap** — policy and enforcement agree, but only fake-port unit coverage exists; no real-worker fixture evidence.
+  - **Severe parameterizations of all six families: evidence gap** — `bin/omr-variant.php` applies ONE fixed perturbation per variant; no mild/severe severity axis exists anywhere, so no severe fixture exists and **no threshold numbers were invented** (explicitly asserted in the test).
+- **Next owner:** tasks 35.24/35.43 must add a real severity parameterization + committed mild/severe fixture images with pinned expected vectors before any `currently_enforced` value may flip. Until then the matrix stays honestly red.
+- Focused run: `php artisan test --filter=OmrNoGoPolicyTableTest` → **7 passed (113 assertions)**.
 
 
 
