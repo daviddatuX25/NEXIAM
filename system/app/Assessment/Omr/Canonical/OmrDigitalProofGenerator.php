@@ -2,9 +2,39 @@
 
 namespace App\Assessment\Omr\Canonical;
 
+use App\Assessment\Omr\Diagnostics\OmrProofPlan;
+use App\Assessment\Omr\NativeBundle;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+
+use function array_key_exists;
+use function array_search;
+use function array_values;
+use function count;
+use function file_get_contents;
+use function file_put_contents;
+use function hash;
+use function imagecolorallocate;
+use function imagecopyresampled;
+use function imagecreatefromstring;
+use function imageellipse;
+use function imagefilledellipse;
+use function imagepng;
+use function imagesavealpha;
+use function imagesx;
+use function imagesy;
+use function imagestring;
+use function is_array;
+use function is_string;
+use function json_encode;
+use function min;
+use function ob_get_clean;
+use function ob_start;
+use function str_starts_with;
+use function sys_get_temp_dir;
+use function tempnam;
+use function unlink;
 
 final class OmrDigitalProofGenerator
 {
@@ -17,9 +47,16 @@ final class OmrDigitalProofGenerator
     }
 
     /**
+     * Machine-fills the draft's final composed exact-size PDF against an
+     * {@see OmrProofPlan} (OpenSpec 35.18): the answer vector and any
+     * calibration digits come from the plan, never from a local modulo
+     * pattern. The signed blank-instance QR and display code keep their
+     * exact machine rendering; the proof hash binds the plan hash so
+     * repeated identical plans produce identical hashes.
+     *
      * @return array{pages:list<array{page_no:int,bytes:string,sha256:string,width:int,height:int}>,answer_vector:array<string,string>,source_pdf_asset_id:int,proof_hash:string,instance_code:string,display_code:string}
      */
-    public function generate(OmrTemplateAuthoringDraft $draft): array
+    public function generate(OmrTemplateAuthoringDraft $draft, OmrProofPlan $plan): array
     {
         $authoring = (array) $draft->authoring_json;
         $mapping = (array) ($authoring['mapping'] ?? []);
@@ -79,7 +116,7 @@ final class OmrDigitalProofGenerator
         $displayCode = $this->instances->displayCodeFor($instanceCode);
         $keyId = (string) config('omr.qr-keyring.current', 'dev-v1');
         $proofPages = [];
-        $answerVector = [];
+        $answerVector = $plan->expectedVector;
         $pageCount = count($rasterPages);
         $insetsPx = (array) ($artifactSet['insets_px'] ?? $artifactSet['definition']['insets_px'] ?? []);
         foreach ($rasterPages as $page) {
@@ -90,20 +127,16 @@ final class OmrDigitalProofGenerator
             }
             $black = imagecolorallocate($image, 0, 0, 0);
             $pageBlocks = $blocksByPage[$pageNo] ?? [];
-            foreach ($pageBlocks as $blockIndex => $block) {
+            $expected = $plan->expectedVectorForPage($pageNo);
+            $identity = [];
+            foreach ($pageBlocks as $block) {
                 if (! is_array($block)) {
                     continue;
                 }
-                $origin = (array) ($block['origin'] ?? [0, 0]);
-                $originX = (int) ($origin[0] ?? 0) + (int) ($insetsPx['left'] ?? 0);
-                $originY = (int) ($origin[1] ?? 0) + (int) ($insetsPx['top'] ?? 0);
-                $bubble = (array) ($block['bubbleDimensions'] ?? [20, 20]);
                 $labels = [];
                 foreach ((array) ($block['fieldLabels'] ?? []) as $declaration) {
-                    $labels = [...$labels, ...\App\Assessment\Omr\NativeBundle::expandLabel((string) $declaration)];
+                    $labels = [...$labels, ...NativeBundle::expandLabel((string) $declaration)];
                 }
-                $bubbleGap = (int) ($block['bubblesGap'] ?? 0);
-                $labelGap = (int) ($block['labelsGap'] ?? 0);
                 $values = is_array($block['bubbleValues'] ?? null)
                     ? array_values(array_map('strval', $block['bubbleValues']))
                     : match ((string) ($block['fieldType'] ?? 'QTYPE_MCQ4')) {
@@ -111,21 +144,29 @@ final class OmrDigitalProofGenerator
                         'QTYPE_INT' => ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
                         default => ['A', 'B', 'C', 'D'],
                     };
-                $vertical = (string) ($block['direction'] ?? 'horizontal') === 'vertical';
                 foreach ($labels as $labelIndex => $label) {
-                    $selected = ($labelIndex + (int) $blockIndex) % count($values);
-                    $answerVector[(string) $label] = (string) $values[$selected];
-                    $cx = $vertical
-                        ? $originX + $labelIndex * $labelGap + (int) $bubble[0] / 2
-                        : $originX + $selected * $bubbleGap + (int) $bubble[0] / 2;
-                    $cy = $vertical
-                        ? $originY + $selected * $bubbleGap + (int) $bubble[1] / 2
-                        : $originY + $labelIndex * $labelGap + (int) $bubble[1] / 2;
-                    imagefilledellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
-                    imageellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
+                    if (array_key_exists($label, $expected)) {
+                        $selected = array_search($expected[$label], $values, true);
+                        if ($selected === false) {
+                            throw new RuntimeException('digital_proof_plan_option_missing: '.$label);
+                        }
+                        $this->shade($image, $block, $insetsPx, $values, $labelIndex, $selected, $black);
+                    } elseif (str_starts_with($label, 'APPLICANT_NUMBER_')) {
+                        $identity[$label] = ['block' => $block, 'values' => $values, 'labelIndex' => $labelIndex];
+                    }
                 }
             }
-
+            foreach ($plan->calibrationDigits as $label => $digit) {
+                $entry = $identity[$label] ?? null;
+                if ($entry === null) {
+                    continue;
+                }
+                $selected = array_search((string) $digit, $entry['values'], true);
+                if ($selected === false) {
+                    throw new RuntimeException('digital_proof_calibration_option_missing: '.$label);
+                }
+                $this->shade($image, $entry['block'], $insetsPx, $entry['values'], $entry['labelIndex'], $selected, $black);
+            }
             $payload = $this->qr->sign($instanceCode, $pageNo, $pageCount, $keyId);
             $qrImage = @imagecreatefromstring($this->qrRenderer->png($payload, 240));
             if ($qrImage === false) {
@@ -150,6 +191,7 @@ final class OmrDigitalProofGenerator
         $proofHash = hash('sha256', json_encode([
             'source_pdf_asset_id' => $pdfAsset->id,
             'source_pdf_sha256' => $pdfAsset->sha256,
+            'plan_hash' => $plan->planHash(),
             'pages' => array_map(static fn (array $page): array => ['page_no' => $page['page_no'], 'sha256' => $page['sha256']], $proofPages),
             'answer_vector' => $answerVector,
             'instance_code' => $instanceCode,
@@ -164,6 +206,34 @@ final class OmrDigitalProofGenerator
             'display_code' => $displayCode,
         ];
     }
+
+    /**
+     * Fill one declared-option bubble (or one calibration digit bubble) at
+     * marker-frame origin plus the paper inset ring.
+     *
+     * @param  array<string, mixed>  $block
+     * @param  array<string, int>  $insetsPx
+     * @param  list<string>  $values
+     */
+    private function shade(\GdImage $image, array $block, array $insetsPx, array $values, int $labelIndex, int $selected, int $black): void
+    {
+        $origin = (array) ($block['origin'] ?? [0, 0]);
+        $originX = (int) ($origin[0] ?? 0) + (int) ($insetsPx['left'] ?? 0);
+        $originY = (int) ($origin[1] ?? 0) + (int) ($insetsPx['top'] ?? 0);
+        $bubble = (array) ($block['bubbleDimensions'] ?? [20, 20]);
+        $bubbleGap = (int) ($block['bubblesGap'] ?? 0);
+        $labelGap = (int) ($block['labelsGap'] ?? 0);
+        $vertical = (string) ($block['direction'] ?? 'horizontal') === 'vertical';
+        $cx = $vertical
+            ? $originX + $labelIndex * $labelGap + (int) $bubble[0] / 2
+            : $originX + $selected * $bubbleGap + (int) $bubble[0] / 2;
+        $cy = $vertical
+            ? $originY + $selected * $bubbleGap + (int) $bubble[1] / 2
+            : $originY + $labelIndex * $labelGap + (int) $bubble[1] / 2;
+        imagefilledellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
+        imageellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
+    }
+
     /** @return array{0:int,1:int} */
     private function qrPlacement(array $artifactSet, int $width, int $height, int $size): array
     {

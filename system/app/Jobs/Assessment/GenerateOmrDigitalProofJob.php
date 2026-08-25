@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Assessment;
 
-use App\Assessment\Omr\Canonical\OmrDigitalProofGenerator;
+use App\Assessment\Omr\Diagnostics\OmrProofPlan;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,12 +17,18 @@ final class GenerateOmrDigitalProofJob implements ShouldQueue
     public int $tries = 1;
     public int $timeout = 300;
 
-    public function __construct(public readonly int $draftId)
-    {
+    /** @param array<string, mixed> $planPayload canonical OmrProofPlan payload (35.18) */
+    public function __construct(
+        public readonly int $draftId,
+        public readonly array $planPayload,
+    ) {
     }
 
     public function handle(OmrDigitalProofGenerator $generator): void
     {
-        $generator->generate(OmrTemplateAuthoringDraft::query()->findOrFail($this->draftId));
+        $generator->generate(
+            OmrTemplateAuthoringDraft::query()->findOrFail($this->draftId),
+            OmrProofPlan::fromArray($this->planPayload),
+        );
     }
 }

@@ -54,6 +54,27 @@ final readonly class OmrProofPlan
     }
 
     /**
+     * Rebuild a plan from its canonical payload (the inverse of
+     * `canonicalPayload()`), so queue payloads can carry the exact plan
+     * without losing determinism.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public static function fromArray(array $payload): self
+    {
+        return new self(
+            planVersion: (string) ($payload['plan_version'] ?? ''),
+            purpose: ProofPurpose::from((string) ($payload['purpose'] ?? '')),
+            seed: (string) ($payload['seed'] ?? ''),
+            challengeCode: (string) ($payload['challenge_code'] ?? ''),
+            expectedVector: (array) ($payload['expected_vector'] ?? []),
+            calibrationDigits: array_map('intval', (array) ($payload['calibration_digits'] ?? [])),
+            pageInstructions: (array) ($payload['page_instructions'] ?? []),
+            targetHashes: (array) ($payload['target_hashes'] ?? []),
+        );
+    }
+
+    /**
      * Expected vector restricted to the labels declared for one page.
      *
      * @return array<string, string>

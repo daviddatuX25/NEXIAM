@@ -13,14 +13,6 @@ use function implode;
 use function is_array;
 use function json_encode;
 use function preg_match;
-final class OmrQrPayloadException extends RuntimeException
-{
-    public function __construct(public readonly string $errorCode, string $message)
-    {
-        parent::__construct($errorCode.': '.$message);
-    }
-}
-
 
 /**
  * Signs and verifies opaque blank-instance QR payloads.

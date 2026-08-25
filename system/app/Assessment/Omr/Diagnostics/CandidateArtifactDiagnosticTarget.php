@@ -58,7 +58,7 @@ final readonly class CandidateArtifactDiagnosticTarget implements OmrDiagnosticT
         return [
             'pageDimensions' => $page['pageDimensions'] ?? $this->artifactSet->template['pageDimensions'] ?? null,
             'bubbleDimensions' => $this->artifactSet->template['bubbleDimensions'] ?? null,
-            'customLabels' => new stdClass,
+            'customLabels' => new \stdClass,
             'fieldBlocks' => NativeBundle::workerFieldBlocks((array) ($page['fieldBlocks'] ?? [])),
             'preProcessors' => $page['preProcessors'] ?? [],
         ];

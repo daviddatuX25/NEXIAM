@@ -2,11 +2,14 @@
 
 namespace App\Assessment\Actions\Omr\Canonical;
 
-use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
 use App\Assessment\Omr\Canonical\CanonicalArtifactMaterializer;
+use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
 use App\Assessment\Omr\Canonical\OmrDigitalProofGenerator;
 use App\Assessment\Omr\Canonical\OmrNoGoMatrixRunner;
 use App\Assessment\Omr\Canonical\OmrTemplateAssetStore;
+use App\Assessment\Omr\Diagnostics\CandidateArtifactDiagnosticTarget;
+use App\Assessment\Omr\Diagnostics\OmrProofPlanner;
+use App\Assessment\Omr\Diagnostics\ProofPurpose;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
@@ -20,6 +23,7 @@ final class RunOmrDigitalVerification
 {
     public function __construct(
         private readonly OmrDigitalProofGenerator $proofs,
+        private readonly OmrProofPlanner $planner,
         private readonly OmrNoGoMatrixRunner $matrix,
         private readonly OmrTemplateAssetStore $assets,
         private readonly OmrAuthoringDraftService $drafts,
@@ -52,8 +56,10 @@ final class RunOmrDigitalVerification
             throw new \RuntimeException('digital_verification_artifact_stale');
         }
         $artifactHash = $materialized->artifactHash;
+        $target = new CandidateArtifactDiagnosticTarget($draft, $materialized, $profile);
+        $plan = $this->planner->plan($target, ProofPurpose::Digital);
         unset($materialized);
-        $proof = $this->proofs->generate($draft);
+        $proof = $this->proofs->generate($draft, $plan);
         try {
             $proofAssets = [];
             foreach ($proof['pages'] as $page) {

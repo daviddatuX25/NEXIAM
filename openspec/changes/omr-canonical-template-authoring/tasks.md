@@ -351,10 +351,10 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 
 ### Cut D — One deterministic proof planner and renderers
 
-- [ ] 35.17 Add `OmrProofPlanner::plan(OmrDiagnosticTarget $target, ProofPurpose $purpose, string $planVersion='v1'): OmrProofPlan`; expand native labels through `NativeBundle::expandLabel`, use artifact/native hash + purpose + version as seed, balance declared options, cover every page, and generate calibration digits only for a mapped ID grid.
-- [ ] 35.18 Refactor `OmrDigitalProofGenerator` to consume `OmrProofPlan`; keep machine-filled exact PDF/raster rendering and signed calibration QR, remove its internal modulo pattern ownership, and preserve existing proof hashes through the plan hash.
-- [ ] 35.19 Add `OmrPhysicalChallengeRenderer` producing (a) exact printable challenge sheet with signed calibration QR/display code and no browser geometry, and (b) separate grouped human shading guide HTML/PDF; quick mode covers first/middle/last + every option/section/ID column, full mode assigns every expanded label.
-- [ ] 35.20 Add unit/golden tests for repeated-plan determinism, option balance, full label coverage, no identity when unmapped, stable guide copy, multi-page order, challenge QR verification, and byte/hash stability of repeated rendering.
+- [x] 35.17 Add `OmrProofPlanner::plan(OmrDiagnosticTarget $target, ProofPurpose $purpose, string $planVersion='v1'): OmrProofPlan`; expand native labels through `NativeBundle::expandLabel`, use artifact/native hash + purpose + version as seed, balance declared options, cover every page, and generate calibration digits only for a mapped ID grid.
+- [x] 35.18 Refactor `OmrDigitalProofGenerator` to consume `OmrProofPlan`; keep machine-filled exact PDF/raster rendering and signed calibration QR, remove its internal modulo pattern ownership, and preserve existing proof hashes through the plan hash.
+- [x] 35.19 Add `OmrPhysicalChallengeRenderer` producing (a) exact printable challenge sheet with signed calibration QR/display code and no browser geometry, and (b) separate grouped human shading guide HTML/PDF; quick mode covers first/middle/last + every option/section/ID column, full mode assigns every expanded label.
+- [x] 35.20 Add unit/golden tests for repeated-plan determinism, option balance, full label coverage, no identity when unmapped, stable guide copy, multi-page order, challenge QR verification, and byte/hash stability of repeated rendering.
 
 ### Cut E — Durable verification runs and truthful progress
 
