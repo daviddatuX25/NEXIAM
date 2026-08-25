@@ -12,7 +12,6 @@ use App\Assessment\Actions\Omr\Canonical\GenerateOmrMarkerCalibrationArtifact;
 use App\Assessment\Actions\Omr\Canonical\IngestOmrSourceDocument;
 use App\Assessment\Actions\Omr\Canonical\PrintOmrBlankInstances;
 use App\Assessment\Actions\Omr\Canonical\QualifyOmrMarkerProfile;
-use App\Assessment\Actions\Omr\Canonical\RunOmrDigitalVerification;
 use App\Assessment\Actions\Omr\Canonical\RunOmrPhysicalQualification;
 use App\Assessment\Actions\Omr\Canonical\SaveOmrCanonicalMapping;
 use App\Assessment\Actions\Omr\Canonical\SaveOmrCanonicalOverlay;
@@ -22,6 +21,9 @@ use App\Assessment\Actions\Omr\Canonical\PreviewOmrCanonicalDraft;
 use App\Assessment\Actions\Omr\Canonical\SelectOmrMarkerProfile;
 use App\Assessment\Actions\Omr\Canonical\SupersedeOmrBlankInstanceSet;
 use App\Assessment\Actions\Omr\Canonical\VoidOmrBlankInstanceSet;
+use App\Assessment\Actions\Omr\Verification\RetryOmrTemplateVerification;
+use App\Assessment\Actions\Omr\Verification\StartOmrTemplateVerification;
+use App\Assessment\Omr\Verification\OmrTemplateVerificationStatus;
 use App\Assessment\Omr\Canonical\Queries\OmrCanonicalWorkflowProjection;
 use App\Assessment\Actions\Omr\Canonical\RectifyOmrSourcePage;
 use App\Assessment\Omr\NativeBundle;
@@ -43,13 +45,17 @@ use App\Http\Requests\Omr\Canonical\SaveOmrStudioStateRequest;
 use App\Http\Requests\Omr\Canonical\MaterializeOmrCanonicalDraftRequest;
 use App\Http\Requests\Omr\Canonical\RectifyOmrSourcePageRequest;
 use App\Http\Requests\Omr\Canonical\SelectOmrMarkerProfileRequest;
-use App\Http\Requests\Omr\Canonical\RunOmrDigitalVerificationRequest;
 use App\Http\Requests\Omr\Canonical\SupersedeOmrBlankInstanceRequest;
 use App\Http\Requests\Omr\Canonical\VoidOmrBlankInstanceRequest;
 use App\Http\Requests\Omr\Canonical\PrintOmrBlankInstancesRequest;
+use App\Http\Requests\Omr\Canonical\RetryOmrTemplateVerificationRequest;
+use App\Http\Requests\Omr\Canonical\StartOmrTemplateVerificationRequest;
+use App\Models\Assessment\OmrTemplateVerificationRun;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrBlankInstance;
+use App\Models\Assessment\OmrPhysicalChallenge;
 use App\Models\Assessment\OmrTemplateAsset;
+use App\Models\Assessment\OmrTemplateVerificationCapture;
 use App\Models\Assessment\OmrMarkerProfile;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\User;
@@ -544,15 +550,15 @@ class OmrCanonicalTemplateController extends Controller
     }
 
     public function digitalVerification(
-        RunOmrDigitalVerificationRequest $request,
+        StartOmrTemplateVerificationRequest $request,
         OmrTemplateAuthoringDraft $draft,
-        RunOmrDigitalVerification $action,
+        StartOmrTemplateVerification $action,
         CommandIdempotency $idempotency,
     ): JsonResponse {
         /** @var User $actor */
         $actor = $request->user();
         $payload = $request->validated();
-        $operation = $idempotency->claim($actor, 'omr.canonical.digital_verification', (string) $draft->id, ['draft_id' => $draft->id], (string) $payload['idempotency_key']);
+        $operation = $idempotency->claim($actor, 'omr.canonical.verification_run', (string) $draft->id, ['draft_id' => $draft->id], (string) $payload['idempotency_key']);
         $shouldExecute = $operation->wasRecentlyCreated || $operation->status !== Operation::STATUS_SUCCEEDED;
         if ($shouldExecute) {
             $operation->forceFill([
@@ -563,9 +569,9 @@ class OmrCanonicalTemplateController extends Controller
             ])->save();
         }
         try {
-            $saved = $shouldExecute ? $action->handle($draft, $actor) : $draft->fresh();
-            if (! $shouldExecute && ! in_array($saved->stage, [OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED, OmrTemplateAuthoringDraft::STAGE_COMPILED], true)) {
-                return response()->json(['outcome' => 'failed', 'code' => 'idempotency_result_stale', 'detail' => 'The prior verification result was invalidated; run verification with a new idempotency key.'], 409);
+            $run = $shouldExecute ? $action->handle($draft, $actor) : $this->latestVerificationRun($draft);
+            if ($run === null) {
+                throw new \RuntimeException('verification_run_missing: The prior verification run is no longer available; start with a new idempotency key.');
             }
             if ($shouldExecute) {
                 $operation->forceFill(['status' => Operation::STATUS_SUCCEEDED, 'last_error' => null, 'finished_at' => now()])->save();
@@ -584,7 +590,89 @@ class OmrCanonicalTemplateController extends Controller
             ], 422);
         }
 
-        return response()->json(['status' => $saved->stage, 'operation_id' => $operation->id, 'verification' => $saved->authoring_json['verification'] ?? null]);
+        return response()->json([
+            'run_id' => $run->id,
+            'status_url' => route('setup.omr.templates.canonical.verification_runs.status', ['run' => $run->id]),
+        ], 202);
+    }
+
+    public function verificationRunStatus(
+        Request $request,
+        OmrTemplateVerificationRun $run,
+        OmrTemplateVerificationStatus $status,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+        $this->assertVerificationRunAccessible($run, $actor);
+
+        return response()->json($status->get($run, $actor));
+    }
+
+    public function retryVerificationRun(
+        RetryOmrTemplateVerificationRequest $request,
+        OmrTemplateVerificationRun $run,
+        RetryOmrTemplateVerification $action,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+        $this->assertVerificationRunAccessible($run, $actor);
+        $retried = $action->handle($run, $actor);
+
+        return response()->json([
+            'run_id' => $retried->id,
+            'status' => $retried->status,
+            'attempt' => $retried->attempt,
+            'status_url' => route('setup.omr.templates.canonical.verification_runs.status', ['run' => $retried->id]),
+        ], 202);
+    }
+
+    public function verificationRunAsset(
+        Request $request,
+        OmrTemplateVerificationRun $run,
+        OmrTemplateAsset $asset,
+    ): StreamedResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+        $this->assertVerificationRunAccessible($run, $actor);
+        $captureReferenced = OmrTemplateVerificationCapture::query()
+            ->where('run_id', $run->id)
+            ->where(fn ($query) => $query->where('input_asset_id', $asset->id)
+                ->orWhere('aligned_asset_id', $asset->id)
+                ->orWhere('overlay_asset_id', $asset->id))
+            ->exists();
+        $challengeReferenced = OmrPhysicalChallenge::query()
+            ->where('run_id', $run->id)
+            ->where(fn ($query) => $query->where('sheet_asset_id', $asset->id)->orWhere('guide_asset_id', $asset->id))
+            ->exists();
+        $runOwned = is_array($asset->metadata) && (int) ($asset->metadata['run_id'] ?? 0) === (int) $run->id;
+        abort_unless($captureReferenced || $challengeReferenced || $runOwned, 404);
+        $bytes = Storage::disk($asset->disk)->get($asset->path);
+        abort_unless(is_string($bytes) && $bytes !== '', 404);
+
+        $response = response()->streamDownload(function () use ($bytes): void {
+            echo $bytes;
+        }, basename((string) $asset->path), [
+            'Content-Type' => $asset->mime,
+            'Content-Length' => strlen($bytes),
+        ]);
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
+    }
+
+    private function latestVerificationRun(OmrTemplateAuthoringDraft $draft): ?OmrTemplateVerificationRun
+    {
+        return OmrTemplateVerificationRun::query()->where('draft_id', $draft->id)->latest('id')->first();
+    }
+
+    private function assertVerificationRunAccessible(OmrTemplateVerificationRun $run, ?User $actor): void
+    {
+        abort_unless($actor !== null, 403);
+        if ($run->draft_id === null) {
+            return; // version-targeted runs are capability-gated by the route middleware
+        }
+        $draft = $run->draft;
+        abort_unless($draft !== null && (int) $draft->owner_user_id === (int) $actor->id, 404);
     }
 
     public function compile(

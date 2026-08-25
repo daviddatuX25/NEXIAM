@@ -2,6 +2,7 @@
 
 namespace App\Assessment\Omr\Canonical;
 
+use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrDetectionOutcome;
 use App\Assessment\Omr\OmrDetectionPort;
 use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
@@ -9,12 +10,23 @@ use App\Assessment\Omr\OmrLayoutVerificationPort;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 
-use function file_put_contents;
+use function array_filter;
+use function array_key_exists;
+use function array_keys;
+use function count;
 use function file_get_contents;
+use function file_put_contents;
+use function hash;
+use function implode;
+use function in_array;
+use function is_array;
+use function is_string;
+use function json_encode;
+use function strtolower;
+use function strtoupper;
 use function sys_get_temp_dir;
 use function tempnam;
 use function unlink;
-use function json_encode;
 
 final class OmrNoGoMatrixRunner
 {
@@ -76,62 +88,7 @@ final class OmrNoGoMatrixRunner
         try {
             $variants = [];
             foreach (self::VARIANTS as $variant) {
-                $expected = $variant === 'clean' ? 'pass' : 'typed_rejection';
-                if (in_array($variant, self::APPLICATION_GATE_VARIANTS, true)) {
-                    $variants[$variant] = $this->applicationGate($variant, $expected);
-                    continue;
-                }
-                $bytes = $variant === 'clean'
-                    ? (string) file_get_contents($cleanPath)
-                    : $this->variantBytes($cleanPath, $variant, $artifact);
-                $request = $this->requests->buildCandidate($artifact, $bytes, 'image/png');
-                $detected = $variant === 'clean' ? $this->detector->detect($request) : null;
-                $answerMatch = $detected === null
-                    ? null
-                    : ($detected->outcome === OmrDetectionOutcome::Succeeded && $detected->success !== null
-                        ? $this->answerVectorMatches($proof['answer_vector'] ?? [], $detected->success->items)
-                        : false);
-                $result = $this->detection->verifyLayout($request);
-                $actual = $result->succeeded() && ($variant !== 'clean' || $answerMatch === true)
-                    ? 'pass'
-                    : ($variant === 'clean' && $answerMatch === false ? 'answer_vector_mismatch' : 'typed_rejection');
-                $alignedBytes = $result->alignedBytes;
-                $overlayBytes = $result->overlayBytes;
-                $entry = [
-                    'expected' => $expected,
-                    'actual' => $actual,
-                    'status' => $actual === $expected ? 'pass' : 'fail',
-                    'execution' => 'omrchecker_layout_verification',
-                    'input_hash' => hash('sha256', $bytes),
-                    'error_code' => $result->code ?? ($detected?->safeDiagnosticCode),
-                    'detail' => $result->detail ?? ($detected?->safeDiagnosticMessage),
-                    'answer_vector_match' => $answerMatch,
-                    'detected_items' => $detected?->success?->items ?? [],
-                    'aligned_hash' => $alignedBytes !== null ? hash('sha256', $alignedBytes) : null,
-                    'overlay_hash' => $overlayBytes !== null ? hash('sha256', $overlayBytes) : null,
-                    'aligned_image' => $result->alignedImage,
-                    'overlay_image' => $result->overlayImage,
-                    'marker_matches' => $result->markerMatches,
-                    'field_block_shifts' => $result->fieldBlockShifts,
-                    'gates' => $result->gates,
-                    'timings' => ['preprocess_ms' => $result->preprocessMs, 'verification_ms' => $result->verificationMs],
-                ];
-                if ($persistEvidence === null) {
-                    $entry['aligned_bytes'] = $alignedBytes;
-                    $entry['overlay_bytes'] = $overlayBytes;
-                } else {
-                    $evidenceAssets = [];
-                    foreach (['aligned' => $alignedBytes, 'overlay' => $overlayBytes] as $role => $evidenceBytes) {
-                        if (is_string($evidenceBytes)) {
-                            $evidenceAssets[] = $persistEvidence($variant, $role === 'aligned' ? 'aligned.png' : 'layout-overlay.png', $evidenceBytes);
-                        }
-                    }
-                    if ($evidenceAssets !== []) {
-                        $entry['evidence_assets'] = $evidenceAssets;
-                    }
-                }
-                $variants[$variant] = $entry;
-                unset($entry, $alignedBytes, $overlayBytes, $result, $bytes, $request, $detected, $answerMatch);
+                $variants[$variant] = $this->runVariant($variant, $cleanPath, $artifact, $proof, $persistEvidence);
             }
             $failed = array_filter($variants, static fn (array $variant): bool => ($variant['status'] ?? null) !== 'pass');
             if ($failed !== []) {
@@ -155,33 +112,157 @@ final class OmrNoGoMatrixRunner
         }
     }
 
-    /** @param array<string,string> $expected @param list<\App\Assessment\Omr\OmrDetectedItem> $items */
-    private function answerVectorMatches(array $expected, array $items): bool
+    /**
+     * Execute ONE no-go variant and return its normalized entry. The durable
+     * verification job calls this per variant so it can persist progress and
+     * evidence after each ACTUAL variant instead of one long batch call.
+     *
+     * @param  array<string,mixed>  $proof
+     * @param  null|callable(string,string,string):array<string,mixed>  $persistEvidence
+     * @return array<string,mixed>
+     */
+    public function runVariant(
+        string $variant,
+        string $cleanPath,
+        CanonicalArtifactSet $artifact,
+        array $proof,
+        ?callable $persistEvidence = null,
+    ): array {
+        $expected = $variant === 'clean' ? 'pass' : 'typed_rejection';
+        if (in_array($variant, self::APPLICATION_GATE_VARIANTS, true)) {
+            return $this->applicationGate($variant, $expected);
+        }
+        $bytes = $variant === 'clean'
+            ? (string) file_get_contents($cleanPath)
+            : $this->variantBytes($cleanPath, $variant, $artifact);
+        $request = $this->requests->buildCandidate($artifact, $bytes, 'image/png');
+        $detected = $variant === 'clean' ? $this->detector->detect($request) : null;
+        $answerMatch = $detected === null
+            ? null
+            : ($detected->outcome === OmrDetectionOutcome::Succeeded && $detected->success !== null
+                ? self::answerVectorMatches($proof['answer_vector'] ?? [], $detected->success->items)
+                : false);
+        $result = $this->detection->verifyLayout($request);
+        $actual = $result->succeeded() && ($variant !== 'clean' || $answerMatch === true)
+            ? 'pass'
+            : ($variant === 'clean' && $answerMatch === false ? 'answer_vector_mismatch' : 'typed_rejection');
+        $alignedBytes = $result->alignedBytes;
+        $overlayBytes = $result->overlayBytes;
+        $entry = [
+            'expected' => $expected,
+            'actual' => $actual,
+            'status' => $actual === $expected ? 'pass' : 'fail',
+            'execution' => 'omrchecker_layout_verification',
+            'input_hash' => hash('sha256', $bytes),
+            'error_code' => $result->code ?? ($detected?->safeDiagnosticCode),
+            'detail' => $result->detail ?? ($detected?->safeDiagnosticMessage),
+            'answer_vector_match' => $answerMatch,
+            'detected_items' => $detected?->success?->items ?? [],
+            'aligned_hash' => $alignedBytes !== null ? hash('sha256', $alignedBytes) : null,
+            'overlay_hash' => $overlayBytes !== null ? hash('sha256', $overlayBytes) : null,
+            'aligned_image' => $result->alignedImage,
+            'overlay_image' => $result->overlayImage,
+            'marker_matches' => $result->markerMatches,
+            'field_block_shifts' => $result->fieldBlockShifts,
+            'gates' => $result->gates,
+            'timings' => ['preprocess_ms' => $result->preprocessMs, 'verification_ms' => $result->verificationMs],
+        ];
+        if ($persistEvidence === null) {
+            $entry['aligned_bytes'] = $alignedBytes;
+            $entry['overlay_bytes'] = $overlayBytes;
+        } else {
+            $evidenceAssets = [];
+            foreach (['aligned' => $alignedBytes, 'overlay' => $overlayBytes] as $role => $evidenceBytes) {
+                if (is_string($evidenceBytes)) {
+                    $evidenceAssets[] = $persistEvidence($variant, $role === 'aligned' ? 'aligned.png' : 'layout-overlay.png', $evidenceBytes);
+                }
+            }
+            if ($evidenceAssets !== []) {
+                $entry['evidence_assets'] = $evidenceAssets;
+            }
+        }
+
+        return $entry;
+    }
+
+    /**
+     * Observed label=>option map for marked items. Keys use the engine
+     * grammar (`AREA_Q_NNN`, uppercase area).
+     *
+     * @param  list<OmrDetectedItem>  $items
+     * @return array<string, string>
+     */
+    public static function observedVector(array $items): array
+    {
+        $observed = [];
+        foreach ($items as $item) {
+            if ($item->state !== OmrDetectedItem::STATE_MARKED) {
+                continue;
+            }
+            $observed[strtoupper((string) $item->areaCode).'_Q_'.(int) $item->questionNo] = (string) ($item->selectedOption ?? '');
+        }
+
+        return $observed;
+    }
+
+    /**
+     * Detected vector restricted to the expected labels, keyed by the
+     * expected label spelling (for exact-vector comparison/hash).
+     *
+     * @param  array<string, string>  $expected
+     * @param  list<OmrDetectedItem>  $items
+     * @return array<string, string>
+     */
+    public static function detectedVector(array $expected, array $items): array
+    {
+        $observed = self::observedVector($items);
+        $vector = [];
+        foreach ($expected as $label => $_option) {
+            $key = self::findObservedKey($observed, (string) $label);
+            if ($key !== null) {
+                $vector[(string) $label] = (string) $observed[$key];
+            }
+        }
+
+        return $vector;
+    }
+
+    /**
+     * Exact clean/mild answer-vector comparison: every expected label must be
+     * recovered with the exact declared option, and no extra marked item may
+     * masquerade as an expected field.
+     *
+     * @param  array<string, string>  $expected
+     * @param  list<OmrDetectedItem>  $items
+     */
+    public static function answerVectorMatches(array $expected, array $items): bool
     {
         if ($expected === []) {
             return false;
         }
-        $observed = [];
-        foreach ($items as $item) {
-            $key = strtoupper((string) $item->areaCode).'_Q_'.(int) $item->questionNo;
-            $expectedKey = array_key_exists($key, $expected)
-                ? $key
-                : (array_key_exists(strtolower($key), $expected) ? strtolower($key) : null);
-            if ($expectedKey === null || $item->state !== \App\Assessment\Omr\OmrDetectedItem::STATE_MARKED) {
-                continue;
-            }
-            $observed[$expectedKey] = (string) ($item->selectedOption ?? '');
-        }
-        if (count($observed) !== count($expected)) {
-            return false;
-        }
+        $observed = self::observedVector($items);
+        $matched = 0;
         foreach ($expected as $label => $option) {
-            if (($observed[$label] ?? null) !== (string) $option) {
+            $key = self::findObservedKey($observed, (string) $label);
+            if ($key === null || (string) $observed[$key] !== (string) $option) {
                 return false;
             }
+            $matched++;
         }
 
-        return true;
+        return $matched === count($expected);
+    }
+
+    /**
+     * @param  array<string, string>  $observed
+     */
+    private static function findObservedKey(array $observed, string $label): ?string
+    {
+        if (array_key_exists($label, $observed)) {
+            return $label;
+        }
+
+        return array_key_exists(strtolower($label), $observed) ? strtolower($label) : null;
     }
 
     /** @return array<string,mixed> */
@@ -192,6 +273,7 @@ final class OmrNoGoMatrixRunner
             'actual' => 'typed_rejection',
             'status' => 'pass',
             'execution' => 'nexiam_capture_lifecycle_gate',
+            'input_hash' => hash('sha256', 'nexiam:application-gate:'.$variant),
             'error_code' => match ($variant) {
                 'wrong_instance' => 'wrong_instance',
                 'superseded_instance' => 'superseded_instance',
@@ -239,5 +321,4 @@ final class OmrNoGoMatrixRunner
             @unlink($outputPath);
         }
     }
-
 }

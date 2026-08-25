@@ -6,7 +6,7 @@ use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 
-class RunOmrDigitalVerificationRequest extends FormRequest
+class StartOmrTemplateVerificationRequest extends FormRequest
 {
     public function authorize(): bool
     {

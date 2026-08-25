@@ -149,10 +149,12 @@
       if (fileInputElement) fileInputElement.value = '';
     }
   }
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
   async function runDigitalVerification() {
     if (lifecycleBusy || lifecycleRunning || !urls.digital_verification) return;
     lifecycleRunning = true;
-    lifecycleNotice = '';
+    lifecycleNotice = 'Starting durable verification run…';
     try {
       const response = await fetch(urls.digital_verification, {
         method: 'POST',
@@ -161,10 +163,29 @@
         body: JSON.stringify({ idempotency_key: newIdempotencyKey() }),
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.detail || body.message || body.error || 'Digital verification failed.');
-      draft.stage = body.status || 'digital_verified';
-      draft.authoring = { ...(draft.authoring || {}), verification: body.verification };
-      lifecycleNotice = 'Digital proof and real worker no-go matrix passed. Thresholds remain Unqualified.';
+      if (!response.ok) throw new Error(body.detail || body.message || body.error || 'Digital verification could not be started.');
+      if (!body.run_id || !body.status_url) throw new Error('Digital verification did not return a run.');
+      const attempts = 240;
+      for (let i = 0; i < attempts; i++) {
+        await sleep(1500);
+        const statusResponse = await fetch(body.status_url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin',
+        });
+        const status = await statusResponse.json().catch(() => ({}));
+        if (!statusResponse.ok) throw new Error(status.detail || status.message || 'Verification status is unavailable.');
+        if (status.status === 'passed') {
+          draft.stage = 'digital_verified';
+          lifecycleNotice = `Digital proof and real worker no-go matrix passed (attempt ${status.attempt ?? 1}). Thresholds remain Unqualified.`;
+          return;
+        }
+        if (status.status === 'failed') {
+          throw new Error(status.safe_issue?.detail || `Digital verification failed${status.safe_issue?.code ? ` (${status.safe_issue.code})` : ''}.`);
+        }
+        lifecycleNotice = `Verification in progress: ${status.phase ?? status.status} ${status.progress ? `${status.progress.done}/${status.progress.total}` : ''}…`;
+      }
+      throw new Error('Digital verification timed out while waiting for the worker; check the run status page.');
     } catch (error) {
       lifecycleNotice = error?.message || 'Digital verification failed.';
     } finally {

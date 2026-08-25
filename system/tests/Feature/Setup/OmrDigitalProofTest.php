@@ -1,10 +1,10 @@
 <?php
-use App\Assessment\Actions\Omr\Canonical\RunOmrDigitalVerification;
+use App\Assessment\Actions\Omr\Verification\StartOmrTemplateVerification;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
-use App\Assessment\Omr\Canonical\OmrTemplateAssetStore;
+use App\Jobs\Assessment\RunOmrTemplateVerificationJob;
 use App\Models\Assessment\OmrMarkerProfile;
-use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
+use App\Models\Assessment\OmrTemplateVerificationRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -108,13 +108,8 @@ final class DigitalProofDetectorFake implements OmrDetectionPort
     }
 }
 
-test('digital proof is draft-scoped, deterministic, and does not fabricate identity', function (): void {
-    config([
-        'omr.qr-keyring.current' => 'current-v1',
-        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
-        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
-    ]);
-    $actor = User::factory()->create();
+function digitalProofDraft(User $actor): OmrTemplateAuthoringDraft
+{
     $profile = OmrMarkerProfile::query()->create([
         'code' => 'digital-proof.marker',
         'version' => 1,
@@ -151,6 +146,18 @@ test('digital proof is draft-scoped, deterministic, and does not fabricate ident
             ],
         ],
     ])->save();
+
+    return $draft->fresh();
+}
+
+test('digital proof is draft-scoped, deterministic, and does not fabricate identity', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    $actor = User::factory()->create();
+    $draft = digitalProofDraft($actor);
     $calls = 0;
     Http::fake(['*/layout-verification' => function ($request) use (&$calls) {
         $calls++;
@@ -159,11 +166,51 @@ test('digital proof is draft-scoped, deterministic, and does not fabricate ident
     }]);
     app()->instance(OmrDetectionPort::class, new DigitalProofDetectorFake);
 
-    $saved = app(RunOmrDigitalVerification::class)->handle($draft->fresh(), $actor);
+    $run = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    RunOmrTemplateVerificationJob::dispatchSync($run->id);
 
-    expect($saved->stage)->toBe(OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED)
+    $run = $run->fresh();
+    $saved = $draft->fresh();
+
+    expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_PASSED)
+        ->and($run->attempt)->toBe(1)
+        ->and($run->progress_done)->toBe($run->progress_total)
+        ->and($run->error_code)->toBeNull()
+        ->and($saved->stage)->toBe(OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED)
         ->and($saved->authoring_json['verification']['status'])->toBe('passed')
         ->and($saved->authoring_json['verification'])->not->toHaveKey('identity')
         ->and($saved->authoring_json['verification']['matrix']['variants']['clean']['execution'])->toBe('omrchecker_layout_verification')
+        ->and($saved->authoring_json['verification']['run_id'])->toBe($run->id)
         ->and($calls)->toBeGreaterThan(1);
+});
+
+test('durable run persists one capture per variant with exact clean vector', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    $actor = User::factory()->create();
+    $draft = digitalProofDraft($actor);
+    $calls = 0;
+    Http::fake(['*/layout-verification' => function ($request) use (&$calls) {
+        $calls++;
+        [$body, $headers] = digitalProofWorkerResponse((string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''), $calls === 1);
+        return Http::response($body, $calls === 1 ? 200 : 422, $headers);
+    }]);
+    app()->instance(OmrDetectionPort::class, new DigitalProofDetectorFake);
+
+    $run = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    RunOmrTemplateVerificationJob::dispatchSync($run->id);
+    $run = $run->fresh();
+
+    $captures = $run->captures()->orderBy('id')->get();
+    expect($captures)->toHaveCount(14)
+        ->and($captures->where('variant', 'clean')->first()->status)->toBe('pass')
+        ->and($captures->where('variant', 'clean')->first()->vector_match)->toBeTrue()
+        ->and($captures->where('variant', 'clean')->first()->detected_vector_hash)->toBe($run->clean_vector_hash)
+        ->and($captures->where('variant', 'perspective')->first()->actual)->toBe('typed_rejection')
+        ->and($captures->where('variant', 'wrong_instance')->first()->error_code)->toBe('wrong_instance')
+        ->and($captures->where('variant', 'clean')->first()->aligned_asset_id)->not->toBeNull()
+        ->and($run->result_summary['variants']['clean']['execution'])->toBe('omrchecker_layout_verification');
 });

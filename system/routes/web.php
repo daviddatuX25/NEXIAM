@@ -542,6 +542,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/setup/omr/templates/canonical/drafts/{draft}/verify/digital', [OmrCanonicalTemplateController::class, 'digitalVerification'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.drafts.verify.digital');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/verification-runs', [OmrCanonicalTemplateController::class, 'digitalVerification'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.verification_runs.start');
+    Route::get('/setup/omr/templates/verification-runs/{run}', [OmrCanonicalTemplateController::class, 'verificationRunStatus'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.verification_runs.status');
+    Route::post('/setup/omr/templates/verification-runs/{run}/retry', [OmrCanonicalTemplateController::class, 'retryVerificationRun'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.verification_runs.retry');
+    Route::get('/setup/omr/templates/verification-runs/{run}/assets/{asset}', [OmrCanonicalTemplateController::class, 'verificationRunAsset'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.verification_runs.assets.show');
     Route::post('/setup/omr/templates/{templateVersion}/verify/physical', [OmrCanonicalTemplateController::class, 'physicalQualification'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.verify.physical');

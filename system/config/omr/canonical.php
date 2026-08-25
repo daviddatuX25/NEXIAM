@@ -64,4 +64,11 @@ return [
         'temp_prefix' => 'omr-canonical/temp',
         'temp_ttl_hours' => 24,
     ],
+
+    // Durable verification runs (OpenSpec 35.21-35.25). The run row is the
+    // sole resume authority; a dead worker is failed closed as
+    // `worker_timeout` once its heartbeat is older than this window.
+    'verification' => [
+        'run_timeout_seconds' => (int) env('OMR_VERIFICATION_RUN_TIMEOUT_SECONDS', 600),
+    ],
 ];
