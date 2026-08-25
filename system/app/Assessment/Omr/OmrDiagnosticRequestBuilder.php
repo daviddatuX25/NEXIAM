@@ -36,6 +36,7 @@ final class OmrDiagnosticRequestBuilder
         OmrAnswerSheetTemplateVersion $version,
         string $imageBytes,
         string $imageMime,
+        int $pageNo = 1,
     ): OmrDetectionRequest {
         $templateJson = is_array($version->native_bundle_json) ? ($version->native_bundle_json['template'] ?? null) : null;
         $marker = is_array($templateJson) ? OmrCapturePolicy::markerMetadata($templateJson) : null;
@@ -64,13 +65,13 @@ final class OmrDiagnosticRequestBuilder
             imageWidth: $width,
             imageHeight: $height,
             areas: [],
-            items: $this->diagnosticItems($reviewManifest, 1),
+            items: $this->diagnosticItems($reviewManifest, $pageNo),
             identityRegions: [],
             nativeBundleHash: (string) $version->native_bundle_hash,
             manifestHash: (string) $version->review_manifest_hash,
             configHash: (string) $version->config_hash,
             bookletHash: '',
-            nativeTemplate: $bundle->pageTemplate(1),
+            nativeTemplate: $bundle->pageTemplate($pageNo),
             nativeConfig: $bundle->config,
             nativeBundleMetadata: [
                 'files' => $bundle->fileHashes,
@@ -85,7 +86,7 @@ final class OmrDiagnosticRequestBuilder
             expectedFieldLabels: [],
             expectedOptionCodes: [],
             providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
-            pageNo: 1,
+            pageNo: $pageNo,
             nativeAssets: [$marker['asset_name'] => $bundle->assetBytes($marker['asset_name'])],
         );
     }
