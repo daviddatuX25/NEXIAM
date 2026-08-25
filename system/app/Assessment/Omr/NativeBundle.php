@@ -81,7 +81,17 @@ final readonly class NativeBundle
 
     public static function load(string $code, int $version): self
     {
-        $directory = self::resolveDirectory($code, $version);
+        return self::loadFromDirectory(self::resolveDirectory($code, $version), $code, $version);
+    }
+
+    /**
+     * Load a candidate bundle from a caller-owned directory.
+     *
+     * Candidate materialization uses this same validation path before any
+     * immutable version is created. The directory is never retained here.
+     */
+    public static function loadFromDirectory(string $directory, string $code, int $version): self
+    {
         $paths = [
             'template.json' => $directory.'/template.json',
             'config.json' => $directory.'/config.json',
@@ -115,9 +125,6 @@ final readonly class NativeBundle
         $pages = self::pagesOf($template);
         self::validateBundleShape($pages, $config, $manifest, $code, $version);
 
-        // Marker-bearing versions declare their fiducial asset. The declared
-        // file MUST ride the bundle: a missing asset fails validation here
-        // (never a child exit(31) at engine template load).
         $markerAsset = self::markerAssetNameOf($template);
         if ($markerAsset !== null) {
             if (preg_match('/^[a-z0-9][a-z0-9._-]{0,63}$/', $markerAsset) !== 1) {
@@ -220,12 +227,33 @@ final readonly class NativeBundle
             'pageDimensions' => $page['pageDimensions'],
             'bubbleDimensions' => $this->template['bubbleDimensions'],
             'customLabels' => [],
-            'fieldBlocks' => $page['fieldBlocks'],
+            'fieldBlocks' => self::workerFieldBlocks((array) $page['fieldBlocks']),
             'preProcessors' => $page['preProcessors'] ?? [],
         ];
-        $pageTemplate['customLabels'] = self::pageCustomLabels($pageTemplate);
+        $customLabels = self::pageCustomLabels($pageTemplate);
+        $pageTemplate['customLabels'] = $customLabels === [] ? new \stdClass : $customLabels;
 
         return $pageTemplate;
+    }
+
+    /** Strip NEXIAM authoring metadata before pinned OMRChecker schema validation. */
+    public static function workerFieldBlocks(array $fieldBlocks): array
+    {
+        $allowed = array_flip([
+            'fieldType',
+            'fieldLabels',
+            'origin',
+            'bubblesGap',
+            'labelsGap',
+            'bubbleValues',
+            'direction',
+            'emptyValue',
+        ]);
+
+        return array_map(
+            static fn (array $block): array => array_intersect_key($block, $allowed),
+            $fieldBlocks,
+        );
     }
 
     /** @param array<string, mixed> $pageTemplate @return array<string, list<string>> */

@@ -601,7 +601,13 @@ def validate_manifest(manifest: dict) -> None:
     require(isinstance(manifest.get("native_bundle_metadata"), dict), "manifest_invalid", "Native bundle metadata is missing.")
     require(isinstance(manifest.get("review_manifest"), dict), "manifest_invalid", "Review manifest is missing.")
     canonical = lambda value: json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode()
-    require(hashlib.sha256(canonical(manifest["native_bundle_metadata"])).hexdigest() == manifest.get("native_bundle_hash"), "bundle_hash_mismatch", "Native bundle hash does not match.")
+    bundle_metadata = manifest["native_bundle_metadata"]
+    bundle_identity = {
+        "files": bundle_metadata.get("files"),
+        "engine": bundle_metadata.get("engine"),
+        "bundle_version": bundle_metadata.get("bundle_version"),
+    }
+    require(hashlib.sha256(canonical(bundle_identity)).hexdigest() == manifest.get("native_bundle_hash"), "bundle_hash_mismatch", "Native bundle hash does not match.")
     require(hashlib.sha256(canonical(manifest["native_config"])).hexdigest() == manifest.get("config_hash"), "config_hash_mismatch", "Native config hash does not match.")
     require(hashlib.sha256(canonical(manifest["review_manifest"])).hexdigest() == manifest.get("manifest_hash"), "manifest_hash_mismatch", "Review manifest hash does not match.")
 

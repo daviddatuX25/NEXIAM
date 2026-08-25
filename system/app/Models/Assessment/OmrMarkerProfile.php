@@ -57,4 +57,24 @@ class OmrMarkerProfile extends Model
     {
         return $this->status === self::STATUS_QUALIFIED;
     }
+
+    /** Draft-preview geometry; qualified values always replace provisional defaults. */
+    public function materializationSizeMm(): float
+    {
+        return $this->size_mm !== null
+            ? (float) $this->size_mm
+            : (float) config('omr.canonical.marker.candidate_preview_size_mm', 12.0);
+    }
+
+    public function materializationQuietZoneMm(): float
+    {
+        return $this->quiet_zone_mm !== null
+            ? (float) $this->quiet_zone_mm
+            : (float) config('omr.canonical.marker.candidate_preview_quiet_zone_mm', 3.0);
+    }
+
+    public function usesProvisionalGeometry(): bool
+    {
+        return ! $this->isQualified();
+    }
 }

@@ -53,6 +53,7 @@ final class OmrHtmlSourceAdapter extends AbstractOmrSourceAdapter
             pages: $pages,
             metadata: [
                 'pdf_path' => $pdfPath,
+                'page_count' => count($pages),
                 'overlay_slots' => $preflight->metadata['overlay_slots'] ?? [],
                 'physical_page' => ['width_mm' => $widthMm, 'height_mm' => $heightMm, 'orientation' => $orientation],
             ],

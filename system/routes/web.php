@@ -489,6 +489,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/setup/omr/templates/canonical/drafts/{draft}/assets/{asset}', [OmrCanonicalTemplateController::class, 'asset'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.drafts.assets.show');
+    Route::get('/setup/omr/templates/{templateVersion}/native/template.json', [OmrCanonicalTemplateController::class, 'nativeTemplate'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.native_template');
     Route::get('/setup/omr/templates/canonical/drafts/{draft}/booklet-options', [OmrCanonicalTemplateController::class, 'bookletOptions'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.drafts.booklet_options');
@@ -522,6 +525,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/setup/omr/templates/canonical/drafts/{draft}/studio', [OmrCanonicalTemplateController::class, 'studio'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.drafts.studio');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/materialize', [OmrCanonicalTemplateController::class, 'materialize'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.materialize');
+    Route::post('/setup/omr/templates/canonical/drafts/{draft}/preview', [OmrCanonicalTemplateController::class, 'preview'])
+        ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
+        ->name('setup.omr.templates.canonical.drafts.preview');
     Route::put('/setup/omr/templates/canonical/drafts/{draft}/marker-profile/{profile}', [OmrCanonicalTemplateController::class, 'selectMarkerProfile'])
         ->middleware('capability:'.CapabilityCatalog::GUIDANCE_SCORING_OMR)
         ->name('setup.omr.templates.canonical.drafts.marker_profile');

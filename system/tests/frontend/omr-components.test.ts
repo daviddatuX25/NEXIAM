@@ -14,6 +14,7 @@ import {
   canvasRollBlockHeightMm,
   canvasRollBlockWidthMm,
   minimumCanvasPitchMm,
+  normalizeQuestionGridRowPositions,
   resetComponentSeq,
   COMPONENT_PALETTE,
   paletteForPath,
@@ -23,6 +24,7 @@ import {
   PRESET_150Q_COMPONENTS,
 } from '../../resources/js/lib/omrComponents';
 import { createStudioHistory } from '../../resources/js/lib/studioHistory';
+import { emitNativeMapping, mmToPx, validateStudioLayout } from '../../resources/js/lib/omrStudioGeometry';
 
 function getBodyContent(html: string): string {
   const match = html.match(/<body>([\s\S]*?)<\/body>/);
@@ -247,6 +249,67 @@ describe('Universal OMR Component Suite', () => {
       expect(sec?.startQ).toBe(1);
       expect(sec?.bubbleDiameterMm).toBe(6);
     });
+
+    it('offsets native bubbles below visual headers and option labels', () => {
+      const grid = createComponent('question_grid');
+      const roll = createComponent('roll');
+      const gridSection = componentToSectionData(grid);
+      const rollSection = componentToSectionData(roll);
+      if (!gridSection || !rollSection) throw new Error('Expected geometric sections');
+
+      const mapping = emitNativeMapping(210, 297, [
+        {
+          id: gridSection.id,
+          type: gridSection.type,
+          x_mm: gridSection.posX,
+          y_mm: gridSection.posY,
+          w_mm: gridSection.w_mm,
+          h_mm: gridSection.h_mm,
+          questions: gridSection.questionsCount,
+          options: gridSection.optionsCount,
+          start_q: gridSection.startQ,
+          bubble_pitch_mm: gridSection.bubblePitchMm,
+          row_pitch_mm: gridSection.rowPitchMm,
+        },
+        {
+          id: rollSection.id,
+          type: 'roll',
+          x_mm: rollSection.posX,
+          y_mm: rollSection.posY,
+          w_mm: rollSection.w_mm,
+          h_mm: rollSection.h_mm,
+          digits: rollSection.questionsCount,
+          bubble_pitch_mm: rollSection.bubblePitchMm,
+          row_pitch_mm: rollSection.rowPitchMm,
+        },
+      ]);
+
+      expect(mapping.blocks[0].origin_x).toBe(mmToPx(gridSection.posX + 5));
+      expect(mapping.blocks[0].origin_y).toBe(mmToPx(gridSection.posY + 8));
+      expect(mapping.blocks[1].origin_x).toBe(mmToPx(rollSection.posX + 6.4));
+      expect(mapping.blocks[1].origin_y).toBe(mmToPx(rollSection.posY + 14));
+    });
+
+    it('reflows colliding aptitude columns using their full visible footprints', () => {
+      const positions = [15, 46, 76, 106, 138, 162];
+      const grids = positions.map((posX, index) => {
+        const grid = createComponent('question_grid');
+        if (!isQuestionGridComponent(grid)) throw new Error('Expected question grid');
+        grid.id = `Part_${index + 1}`;
+        grid.posX = posX;
+        grid.posY = 84;
+        grid.w_mm = 28;
+        return grid;
+      });
+
+      expect(normalizeQuestionGridRowPositions(grids, 15, 210, 2)).toBe(true);
+      const bounds = grids.map((grid) => ({ x: grid.posX, width: canvasComponentBlockSizeMm(grid).w_mm }));
+      for (let index = 1; index < bounds.length; index++) {
+        expect(bounds[index].x - (bounds[index - 1].x + bounds[index - 1].width)).toBeGreaterThanOrEqual(2);
+      }
+      expect(bounds[0].x).toBe(15);
+      expect(bounds.at(-1)!.x + bounds.at(-1)!.width).toBeLessThanOrEqual(195);
+    });
   });
 
   describe('Component Sizing & Geometry', () => {
@@ -321,5 +384,21 @@ describe('Universal OMR Component Suite', () => {
       expect(history.undo()).toEqual({ value: 0 });
       expect(history.status().canRedo).toBe(true);
     });
+  });
+});
+
+describe('Recognition mapping client guard', () => {
+  it('blocks overlapping guides before autosave reaches the server', () => {
+    const result = validateStudioLayout(
+      { width_mm: 210, height_mm: 297, margin_mm: 15 },
+      { top_mm: 12, right_mm: 12, bottom_mm: 14, left_mm: 12 },
+      [
+        { id: 'Part_1', type: 'mcq', x_mm: 20, y_mm: 80, w_mm: 30, h_mm: 150 },
+        { id: 'Part_2', type: 'mcq', x_mm: 45, y_mm: 80, w_mm: 30, h_mm: 150 },
+      ],
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.warnings).toContainEqual(expect.objectContaining({ code: 'block_collision', severity: 'error' }));
   });
 });

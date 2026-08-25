@@ -91,8 +91,78 @@ final class OmrDiagnosticRequestBuilder
     }
 
     /**
-     * Unsafe field-block shift gate mirroring the review validator rule
-     * (abs(shift) >= option pitch × 0.5).
+     * Build the same signed worker request for a materialized draft candidate.
+     */
+    public function buildCandidate(
+        \App\Assessment\Omr\Canonical\CanonicalArtifactSet $artifactSet,
+        string $imageBytes,
+        string $imageMime,
+        int $pageNo = 1,
+    ): OmrDetectionRequest {
+        [$width, $height] = $this->imageDimensions($imageBytes);
+        if ($width === null || $height === null) {
+            throw new RuntimeException('The candidate preview image cannot be decoded.');
+        }
+        $page = null;
+        foreach ((array) ($artifactSet->template['pages'] ?? []) as $candidatePage) {
+            if (is_array($candidatePage) && (int) ($candidatePage['page_no'] ?? 0) === $pageNo) {
+                $page = $candidatePage;
+                break;
+            }
+        }
+        if (! is_array($page)) {
+            throw new RuntimeException("The candidate bundle has no page {$pageNo}.");
+        }
+        $markers = (array) ($page['markers'] ?? []);
+        $assetName = (string) ($markers['asset_name'] ?? '');
+        if ($assetName === '' || ! isset($artifactSet->files[$assetName])) {
+            throw new RuntimeException('The candidate bundle has no declared marker asset.');
+        }
+        $nativeTemplate = [
+            'pageDimensions' => $page['pageDimensions'] ?? $artifactSet->template['pageDimensions'] ?? null,
+            'bubbleDimensions' => $artifactSet->template['bubbleDimensions'] ?? null,
+            'customLabels' => new \stdClass,
+            'fieldBlocks' => NativeBundle::workerFieldBlocks((array) ($page['fieldBlocks'] ?? [])),
+            'preProcessors' => $page['preProcessors'] ?? [],
+        ];
+        $reviewManifest = $artifactSet->reviewManifest;
+
+        return new OmrDetectionRequest(
+            envelopeVersion: OmrDetectionRequest::ENVELOPE_VERSION,
+            runId: 'omr-candidate-'.(string) Str::uuid(),
+            correlationId: 'omr:candidate:'.$artifactSet->artifactHash,
+            imageBytes: $imageBytes,
+            inputHash: hash('sha256', $imageBytes),
+            imageMime: $imageMime,
+            imageWidth: $width,
+            imageHeight: $height,
+            areas: [],
+            items: $this->diagnosticItems($reviewManifest, $pageNo),
+            identityRegions: [],
+            nativeBundleHash: (string) ($reviewManifest['bundle_hash'] ?? ''),
+            manifestHash: $artifactSet->reviewManifestHash,
+            configHash: hash('sha256', json_encode($artifactSet->config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)),
+            bookletHash: '',
+            nativeTemplate: $nativeTemplate,
+            nativeConfig: $artifactSet->config,
+            nativeBundleMetadata: [
+                'files' => $reviewManifest['file_hashes'] ?? [],
+                'engine' => $artifactSet->manifest['engine'] ?? null,
+                'bundle_version' => $artifactSet->manifest['bundle_version'] ?? null,
+                'mapping_hash' => $artifactSet->definition['source_hash'] ?? $artifactSet->reviewManifestHash,
+            ],
+            reviewManifest: $reviewManifest,
+            engineName: (string) ($artifactSet->manifest['engine']['name'] ?? config('omr.omrchecker.engine_name', 'OMRChecker')),
+            engineCommit: isset($artifactSet->manifest['engine']['commit']) ? (string) $artifactSet->manifest['engine']['commit'] : null,
+            patchIdentity: (string) ($artifactSet->manifest['engine']['patch_set'] ?? config('omr.omrchecker.patch_identity', '')),
+            expectedFieldLabels: [],
+            expectedOptionCodes: [],
+            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            pageNo: $pageNo,
+            nativeAssets: [$assetName => $artifactSet->files[$assetName]],
+        );
+    }
+    /**
      *
      * @param  array<string, mixed>  $pageTemplate
      * @param  list<array<string, mixed>>  $shifts

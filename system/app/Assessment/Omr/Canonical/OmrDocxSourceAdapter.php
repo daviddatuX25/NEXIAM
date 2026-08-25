@@ -44,7 +44,10 @@ final class OmrDocxSourceAdapter extends AbstractOmrSourceAdapter
             converterVersion: 'libreoffice',
             settingsHash: $this->settingsHash(['width_mm' => $context['width_mm'] ?? null, 'height_mm' => $context['height_mm'] ?? null]),
             pages: $pages,
-            metadata: ['pdf_path' => $pdfPath],
+            metadata: [
+                'pdf_path' => $pdfPath,
+                'page_count' => count($pages),
+            ],
         );
 
         return $this->lastResult;

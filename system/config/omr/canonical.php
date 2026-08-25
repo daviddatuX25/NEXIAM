@@ -45,6 +45,10 @@ return [
         'quadrant_split' => [2, 3],
         'required_count' => 4,
         'allowed_inset_range_mm' => [3.0, 40.0],
+        // Candidate profiles may drive draft preview only. Compile and
+        // activation still require measured, evidence-bound qualification.
+        'candidate_preview_size_mm' => 12.0,
+        'candidate_preview_quiet_zone_mm' => 3.0,
     ],
 
     'qr' => [

@@ -122,14 +122,24 @@ final class SaveOmrCanonicalStudioState
 
             $authoring = (array) $locked->authoring_json;
             $previousMappingHash = $authoring['mapping']['mapping_hash'] ?? null;
+            $previousOverlayHash = $authoring['overlay']['hash'] ?? null;
+            $overlayChanged = $previousOverlayHash !== ($validatedOverlay['hash'] ?? null);
+            $mappingChanged = $validatedMapping !== null && $mappingHash !== $previousMappingHash;
+            $studioChanged = $studio !== null
+                && $this->studioDefinition((array) ($authoring['studio'] ?? [])) !== $this->studioDefinition($studio);
+            $sourceKindChanged = $sourceKind !== null && $sourceKind !== $locked->source_kind;
+            $definitionChanged = $overlayChanged || $studioChanged || $mappingChanged || $sourceKindChanged;
 
             $authoring['overlay'] = $validatedOverlay;
             $authoring['mapping'] = $validatedMapping;
             if ($studio !== null) {
                 $authoring['studio'] = $studio;
             }
-
-            if ($validatedMapping === null || $mappingHash !== $previousMappingHash) {
+            if ($definitionChanged) {
+                $authoring['canonical']['artifact_set'] = null;
+                $authoring['canonical']['artifact_hash'] = null;
+                $authoring['canonical']['raster_assets'] = [];
+                $authoring['canonical']['pdf_asset_id'] = null;
                 $authoring['verification'] = null;
             }
 
@@ -141,6 +151,7 @@ final class SaveOmrCanonicalStudioState
             }
 
             if ($locked->stage === OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED
+                && ! $definitionChanged
                 && $validatedMapping !== null
                 && $mappingHash === $previousMappingHash
                 && ($authoring['verification']['status'] ?? null) === 'passed') {
@@ -160,6 +171,8 @@ final class SaveOmrCanonicalStudioState
                 'overlay_hash' => $validatedOverlay['hash'],
                 'mapping_hash' => $mappingHash,
                 'field_block_count' => count($fieldBlocks),
+                'source_page_count' => count((array) ($saved->authoring_json['pages'] ?? [])),
+                'source_run_status' => $saved->authoring_json['source_run']['status'] ?? null,
                 'warnings' => $warnings,
                 'has_studio' => $studio !== null,
                 'stage' => $nextStage,
@@ -167,5 +180,28 @@ final class SaveOmrCanonicalStudioState
 
             return $saved;
         });
+    }
+
+    /** Navigation/editor chrome never invalidates byte-identical printable artifacts. */
+    private function studioDefinition(array $studio): array
+    {
+        unset(
+            $studio['current_stage'],
+            $studio['palette_filter'],
+        );
+        foreach (['components', 'sections'] as $collection) {
+            if (! is_array($studio[$collection] ?? null)) {
+                continue;
+            }
+            $studio[$collection] = array_map(static function (mixed $item): mixed {
+                if (is_array($item)) {
+                    unset($item['isLocked']);
+                }
+
+                return $item;
+            }, $studio[$collection]);
+        }
+
+        return $studio;
     }
 }

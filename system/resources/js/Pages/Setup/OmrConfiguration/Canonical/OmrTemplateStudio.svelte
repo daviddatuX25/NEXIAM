@@ -7,6 +7,7 @@
     emitNativeMapping,
     emitOverlayBoxes,
     contentBlockSizeMm,
+    validateStudioLayout,
   } from '@/lib/omrStudioGeometry';
   import {
     renderFullSheetHtml,
@@ -17,6 +18,7 @@
     componentBlockSizeMm,
     canvasComponentBlockSizeMm,
     minimumCanvasPitchMm,
+    normalizeQuestionGridRowPositions,
     COMPONENT_PATH_FILTERS,
     paletteForPath,
     overlayPaletteForPath,
@@ -64,14 +66,18 @@
     urls = {},
     onMappingSaved = null,
   } = $props();
+  const selectedMarkerProfile = $derived(
+    marker_profiles.find((profile) => Number(profile.id) === Number(draft.marker_profile_id)) ?? null,
+  );
 
   // 4-Step Streamlined Navigation
   let currentStage = $state(1);
+  const sidebarStage = $derived(currentStage);
   const stageTitles = [
     '1. Source Substrate',
     '2. Layout & Overlays',
-    '3. Question Bubbles',
-    '4. Verify & Export',
+    '3. Recognition Mapping',
+    '4. Verification & Test',
   ];
 
   // Stage 1: Base Mode ('html' | 'upload'). Chosen at the entry gate before the canvas appears.
@@ -82,7 +88,7 @@
   let componentPaletteFilter = $derived(COMPONENT_PATH_FILTERS[componentPalettePath]);
 
   // Stage 1: Sheet Designer Component State — starts BLANK; components come from the palette.
-  let designerSubTab = $state('designer'); // 'designer' | 'raw_html'
+  let designerSubTab = $state('designer'); // 'designer' | 'raw_html' | 'print_preview'
   let components = $state([]);
   let selectedComponentId = $state(null);
   let selectedComponentIds = $state([]);
@@ -200,6 +206,8 @@
       component.posX = clamp(component.posX, marginMm, maxX, marginMm);
       component.posY = clamp(component.posY, marginMm, maxY, marginMm);
     }
+    normalizeQuestionGridRowPositions(components, marginMm, PAGE_W, 2);
+
   }
   const MIN_INSET = 6;
 
@@ -619,11 +627,17 @@
 
   // Stage 3 Composition Loading
   let isComposing = $state(false);
+  let stageTransitionRunning = $state(false);
+  let previewSurface = $state('canonical');
+  let canonicalPreview = $state(null);
+  let previewRunning = $state(false);
+  let previewError = $state('');
+  let mappingDirty = $state(false);
   let showResetConfirmModal = $state(false);
   let pendingTargetStage = $state(null);
   // Stage 2: Overlays & Insets
   let marginMm = $state(15);
-  let markerPattern = $state('square');
+  let markerPattern = $state(draft.marker_profile_id ? 'target' : 'square');
   let showHeaderOverlay = $state(false);
   let headerTitle = $state(draft.name || 'EXAMINATION ANSWER SHEET');
   let headerSubtitle = $state(draft.code || 'AUTOMATED OMR EVALUATION FORM');
@@ -803,6 +817,9 @@
       isLocked: false,
     },
   ]);
+  if (stage1Mode !== 'html' && !Array.isArray(draft.authoring?.mapping?.field_blocks)) {
+    sections = [];
+  }
   let activeSectionIndex = $state(0);
   let bubbleRadiusMm = $state(4.5);
 
@@ -815,6 +832,7 @@
   let currentLockVersion = $state(draft.lock_version ?? 0);
   let saveStatus = $state('saved'); // 'saved' | 'saving' | 'error'
   let errorMessage = $state('');
+  let studioSaveIssues = $state([]);
   let autosaveTimer = null;
   let studioSaveQueue = Promise.resolve(true);
 
@@ -822,54 +840,29 @@
     sections.reduce((sum, s) => sum + (Number(s.questionsCount) || 0), 0)
   );
 
-  let jsonSchema = $derived.by(() => {
-    const fields = {};
-    sections.forEach((s) => {
-      const isRoll = s.type === 'roll';
-      fields[s.id.toLowerCase()] = {
-        type: isRoll ? 'QTYPE_INT' : s.type === 'tf' ? 'QTYPE_TF' : s.type === 'likert' ? 'QTYPE_LIKERT5' : s.optionsCount === 5 ? 'QTYPE_MCQ5' : 'QTYPE_MCQ4',
-        origin_mm: [s.posX, s.posY],
-        dimensions_mm: [s.w_mm, s.h_mm],
-        columns: s.cols,
-        questions_range: [s.startQ, s.startQ + (Number(s.questionsCount) || 1) - 1],
-        bubbles_pitch_mm: s.bubblePitchMm,
-        rows_pitch_mm: s.rowPitchMm,
-        options: isRoll
-          ? Array.from({ length: 10 }, (_, digit) => String(digit))
-          : s.type === 'tf'
-            ? ['T', 'F']
-            : s.type === 'likert'
-              ? ['1', '2', '3', '4', '5']
-              : s.type === 'custom'
-                ? (s.customValuesStr || '').split(',').map((v) => v.trim())
-                : ['A', 'B', 'C', 'D'].slice(0, s.optionsCount || 4),
-      };
-    });
+  function normalizeStudioIssues(payload, fallback = 'Studio save was rejected.') {
+    if (Array.isArray(payload?.errors)) {
+      const structured = payload.errors
+        .map((error) => typeof error === 'string' ? { message: error } : error)
+        .filter((error) => error?.message);
+      if (structured.length > 0) return structured;
+    }
+    if (payload?.errors && typeof payload.errors === 'object') {
+      const messages = Object.values(payload.errors).flat().filter((message) => typeof message === 'string');
+      if (messages.length > 0) return messages.map((message) => ({ message }));
+    }
+    const detail = payload?.detail || payload?.message || fallback;
+    if (typeof detail === 'string' && detail.trim().startsWith('[')) {
+      try {
+        const decoded = JSON.parse(detail);
+        if (Array.isArray(decoded)) return normalizeStudioIssues({ errors: decoded }, fallback);
+      } catch {
+        // Keep the safe server detail below.
+      }
+    }
+    return [{ message: String(detail || fallback) }];
+  }
 
-    return {
-      template_name: draft.name || 'Standard_Evaluation_Sheet',
-      template_code: draft.code || 'OMR-STUDIO-2026',
-      page_dimensions_mm: [210, 297],
-      margins_mm: marginMm,
-      registration_markers: {
-        pattern: markerPattern,
-        top_left: [marginMm, marginMm],
-        top_right: [210 - marginMm, marginMm],
-        bottom_left: [marginMm, 297 - marginMm],
-        bottom_right: [210 - marginMm, 297 - marginMm],
-      },
-      overlays: {
-        header: showHeaderOverlay,
-        header_title: headerTitle,
-        qr_code: showQrOverlay,
-        instructions_box: showInstructionsOverlay,
-        signature_box: showSignatureOverlay,
-        metadata_box: showMetadataOverlay,
-      },
-      total_questions: totalQuestionsCount,
-      sections: fields,
-    };
-  });
 
   function readEditorState() {
     return {
@@ -1016,40 +1009,26 @@
     historyNotice = '';
   }
 
-  function syncActiveSectionToComponent() {
-    if (stage1Mode !== 'html') return;
-    const section = sections[activeSectionIndex];
-    const component = components.find((candidate) => candidate.id === section?.id);
-    if (!section || !component) return;
 
-    component.posX = section.posX;
-    component.posY = section.posY;
-    component.bubblePitchMm = section.bubblePitchMm;
-    component.rowPitchMm = section.rowPitchMm;
-    component.isLocked = section.isLocked;
-    if (section.bubbleDiameterMm) component.bubbleDiameterMm = section.bubbleDiameterMm;
-
-    if (component.type === 'roll') {
-      component.digitsCount = section.questionsCount;
-    } else if (['mcq', 'tf', 'likert', 'custom'].includes(component.type)) {
-      component.questionsCount = section.questionsCount;
-      component.cols = section.cols;
-      component.optionsCount = section.optionsCount;
-      component.startQ = section.startQ;
-      component.customValuesStr = section.customValuesStr;
+  function invalidateCanonicalPreview() {
+    if (currentStage >= 3) {
+      mappingDirty = true;
+      previewError = '';
     }
-    htmlCode = renderCurrentHtml();
   }
 
   function handleGeometryChanged() {
-    if (currentStage >= 3) syncActiveSectionToComponent();
+    invalidateCanonicalPreview();
     recordHistory('Move or resize overlay', { coalesceKey: 'geometry' });
     triggerAutosave();
   }
 
-  function recordBubbleEdit() {
-    syncActiveSectionToComponent();
-    recordHistory('Edit question bubbles', { coalesceKey: `section:${activeSectionIndex}` });
+  function recordBubbleEdit(changeKind = 'mapping') {
+    if (changeKind === 'mapping') invalidateCanonicalPreview();
+    recordHistory(
+      changeKind === 'lock' ? 'Lock or unlock recognition guide' : 'Edit recognition mapping',
+      { coalesceKey: `section:${activeSectionIndex}:${changeKind}` },
+    );
     triggerAutosave();
   }
   function handleStudioKeydown(event) {
@@ -1092,16 +1071,21 @@
 
   onMount(() => {
     const studio = draft.authoring?.studio;
+    let persistedStage = 1;
     if (studio) {
-      if (typeof studio.current_stage === 'number') currentStage = studio.current_stage;
+      if (typeof studio.current_stage === 'number') {
+        persistedStage = studio.current_stage;
+        currentStage = persistedStage >= 3 ? 1 : persistedStage;
+      }
       if (studio.stage1Mode) stage1Mode = studio.stage1Mode;
       if (studio.baseType) baseType = studio.baseType;
 
       if (Array.isArray(studio.components) && studio.components.length > 0) {
         components = normalizeLayerOrder(JSON.parse(JSON.stringify(studio.components)).map(normalizeLoadedComponent));
         htmlCode = components.length > 0 ? renderFullSheetHtml(components) : '';
-      } else if (Array.isArray(studio.sections) && studio.sections.length > 0) {
-        sections = studio.sections;
+      }
+      if (Array.isArray(studio.sections) && studio.sections.length > 0) {
+        sections = JSON.parse(JSON.stringify(studio.sections));
       }
       if (studio.markerPattern) markerPattern = studio.markerPattern;
       if (typeof studio.bubbleRadiusMm === 'number') bubbleRadiusMm = studio.bubbleRadiusMm;
@@ -1156,7 +1140,17 @@
     if (draft.lock_version !== undefined) {
       currentLockVersion = draft.lock_version;
     }
+    if (draft.marker_profile_id) {
+      markerPattern = 'target';
+    }
     resetHistory();
+    if (persistedStage >= 3) {
+      if (draft.marker_profile_id) {
+        setTimeout(() => executeGoToStage(3), 0);
+      } else {
+        previewError = 'Select an OMRChecker fiducial profile before restoring Recognition Mapping.';
+      }
+    }
     window.addEventListener('keydown', handleStudioKeydown);
 
   });
@@ -1166,11 +1160,16 @@
     window.removeEventListener('keydown', handleStudioKeydown);
   });
 
-  function requestGoToStage(step) {
+  async function requestGoToStage(step) {
+    if (stageTransitionRunning || previewRunning || isComposing) return;
     if ((step === 1 || step === 2) && currentStage >= 3 && draft.raster_url) {
       pendingTargetStage = step;
       showResetConfirmModal = true;
       return;
+    }
+    if (step === 3 && stage1Mode !== 'html' && currentStage === 2 && !canonicalPreview) {
+      const composed = await composeUploadedSource();
+      if (!composed) return;
     }
     executeGoToStage(step);
   }
@@ -1229,9 +1228,13 @@
   }
 
   function syncSectionsFromComponentsForBubbleStage() {
+    const existingSections = new Map(sections.map((section) => [section.id, section]));
     const nextSections = components
       .map((component) => componentToSectionData(component))
-      .filter((section) => section !== null);
+      .filter((section) => section !== null)
+      .map((section) => existingSections.has(section.id)
+        ? { ...section, ...existingSections.get(section.id), id: section.id }
+        : section);
 
     if (nextSections.length > 0) {
       sections = nextSections;
@@ -1239,20 +1242,176 @@
     }
   }
 
-  async function executeGoToStage(step) {
-    const previousStage = currentStage;
-    if (step === 3 && stage1Mode === 'html') {
-      syncSectionsFromComponentsForBubbleStage();
+  async function selectMarkerProfile(profileId) {
+    if (!profileId || !urls.mapping) return;
+    const markerUrl = `${urls.mapping.replace(/\/mapping$/, '')}/marker-profile/${profileId}`;
+    try {
+      const response = await fetch(markerUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          marker_profile_id: profileId,
+          insets: { top: 12, right: 12, bottom: 14, left: 12 },
+          lock_version: currentLockVersion,
+          idempotency_key: newIdempotencyKey(),
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || body.error || 'Marker profile selection failed.');
+      draft.marker_profile_id = profileId;
+      markerPattern = 'target';
+      currentLockVersion = body.lock_version ?? currentLockVersion;
+      canonicalPreview = null;
+      previewError = '';
+      mappingDirty = false;
+    } catch (error) {
+      previewError = error?.message || 'Marker profile selection failed.';
     }
+  }
+
+  async function runCanonicalPreview() {
+    previewRunning = true;
+    previewError = '';
+    try {
+      if (!urls.preview) throw new Error('Canonical preview route is unavailable.');
+      if (!draft.marker_profile_id) throw new Error('Select a marker profile before entering Recognition Mapping.');
+      const response = await fetch(urls.preview, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ lock_version: currentLockVersion }),
+      });
+      const body = await response.json().catch(() => ({}));
+      const detail = body.code === 'marker_profile_unqualified'
+        ? 'This marker profile must be qualified before compile.'
+        : (body.detail || body.error || body.message || 'The canonical OMR preview was rejected.');
+      if (!response.ok) {
+        throw new Error(detail);
+      }
+      canonicalPreview = body;
+      currentLockVersion = body.lock_version ?? currentLockVersion;
+      mappingDirty = false;
+      return true;
+    } catch (error) {
+      canonicalPreview = null;
+      previewError = error?.message || 'The canonical OMR preview could not be generated.';
+      historyNotice = previewError;
+      errorMessage = previewError;
+      saveStatus = 'error';
+      return false;
+    } finally {
+      previewRunning = false;
+    }
+  }
+
+  async function openPrintPreview() {
+    designerSubTab = 'print_preview';
+    previewSurface = 'canonical';
+    if (canonicalPreview) return;
+    const saved = await performSave();
+    if (saved) await runCanonicalPreview();
+  }
+
+  async function verifyRecognitionMapping() {
+    if (previewRunning || stageTransitionRunning) return;
     if (autosaveTimer) {
       clearTimeout(autosaveTimer);
       autosaveTimer = null;
     }
-    currentStage = step;
-    const saved = await performSave();
-    if (!saved) {
-      currentStage = previousStage;
-      historyNotice = errorMessage || 'Could not save this stage transition. Your layout remains open.';
+    if (await performSave()) await runCanonicalPreview();
+  }
+
+  async function composeUploadedSource() {
+    if (stage1Mode === 'html') return true;
+    if (!urls.compose) {
+      previewError = 'The source composition route is unavailable.';
+      return false;
+    }
+    if (!await performSave()) return false;
+    isComposing = true;
+    try {
+      const response = await fetch(urls.compose, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          paper_width_mm: 210,
+          paper_height_mm: 297,
+          content_margin_mm: { top: 18, right: 15, bottom: 18, left: 15 },
+          printer_safe_margin_mm: { top: 5, right: 5, bottom: 5, left: 5 },
+          marker_inset_mm: { top: 12, right: 12, bottom: 14, left: 12 },
+          alignment: 'center',
+          source_dpi: 300,
+          idempotency_key: newIdempotencyKey(),
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.message || body.error || 'Source composition failed.');
+      }
+      if (body.raster_url) {
+        draft.raster_url = body.raster_url;
+      }
+      currentLockVersion = body.lock_version ?? currentLockVersion;
+      draft.stage = body.stage ?? draft.stage;
+      return true;
+    } catch (error) {
+      previewError = error?.message || 'Source composition failed.';
+      errorMessage = previewError;
+      saveStatus = 'error';
+      return false;
+    } finally {
+      isComposing = false;
+    }
+  }
+
+  async function executeGoToStage(step) {
+    const previousStage = currentStage;
+    stageTransitionRunning = true;
+    try {
+      if (step === 3 && stage1Mode === 'html') {
+        syncSectionsFromComponentsForBubbleStage();
+      }
+      if (step < 3) {
+        canonicalPreview = null;
+        previewError = '';
+        mappingDirty = false;
+      }
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = null;
+      }
+      currentStage = step;
+      const saved = await performSave();
+      const hasMappingIntent = stage1Mode === 'html' || sections.length > 0;
+      const previewNeedsVerification = !canonicalPreview || mappingDirty || Boolean(previewError);
+      if (saved && hasMappingIntent && ((step === 3 && previewNeedsVerification) || (step === 4 && previousStage === 3 && previewNeedsVerification))) {
+        const previewed = await runCanonicalPreview();
+        if (!previewed) {
+          currentStage = previousStage;
+          historyNotice = previewError;
+          return;
+        }
+      }
+      if (!saved) {
+        currentStage = previousStage;
+        historyNotice = errorMessage || 'Could not save this stage transition. Your layout remains open.';
+      }
+    } finally {
+      stageTransitionRunning = false;
     }
   }
   function triggerAutosave() {
@@ -1305,8 +1464,8 @@
         type: s.type,
         x_mm: Number(s.posX) || 15,
         y_mm: Number(s.posY) || 84,
-        w_mm,
-        h_mm,
+        w_mm: Math.max(w_mm, Number(s.w_mm) || 0),
+        h_mm: Math.max(h_mm, Number(s.h_mm) || 0),
         questions: Number(s.questionsCount) || 25,
         cols: Number(s.cols) || 1,
         options: opts,
@@ -1386,10 +1545,11 @@
   }
 
   function performSave(sourceKindOverride = null) {
+    const safeSourceKindOverride = typeof sourceKindOverride === 'string' ? sourceKindOverride : null;
     saveStatus = 'saving';
     const queuedSave = studioSaveQueue.then(
-      () => saveStudioState(sourceKindOverride),
-      () => saveStudioState(sourceKindOverride),
+      () => saveStudioState(safeSourceKindOverride),
+      () => saveStudioState(safeSourceKindOverride),
     );
     studioSaveQueue = queuedSave.catch(() => false);
     return queuedSave;
@@ -1401,9 +1561,21 @@
 
     try {
       const { blocks, overlayBlocks } = buildBlockList();
+      const clientValidation = validateStudioLayout(
+        { width_mm: 210, height_mm: 297, margin_mm: marginMm },
+        { top_mm: 12, right_mm: 12, bottom_mm: 14, left_mm: 12 },
+        blocks,
+      );
+      if (!clientValidation.valid) {
+        studioSaveIssues = clientValidation.warnings
+          .filter((warning) => warning.severity === 'error')
+          .map((warning) => ({ code: warning.code, block: warning.block_id, message: warning.message }));
+        saveStatus = 'error';
+        errorMessage = studioSaveIssues[0]?.message || 'Recognition guides overlap. Move the selected guide before saving.';
+        return false;
+      }
       const nativeMapping = emitNativeMapping(210, 297, blocks);
       const overlayBoxes = emitOverlayBoxes(overlayBlocks, 210, 297);
-
       const studioPayload = {
         current_stage: currentStage,
         sections,
@@ -1443,7 +1615,6 @@
         baseType: persistedSourceKind,
         palette_filter: componentPaletteFilter,
       };
-
       const res = await fetch(saveUrl, {
         method: 'PUT',
         headers: {
@@ -1465,6 +1636,7 @@
         const data = await res.json();
         currentLockVersion = data.lock_version ?? currentLockVersion;
         draft.source_kind = persistedSourceKind;
+        studioSaveIssues = [];
         saveStatus = 'saved';
         errorMessage = '';
         if (onMappingSaved) onMappingSaved();
@@ -1472,12 +1644,14 @@
       }
 
       const data = await res.json().catch(() => ({}));
+      studioSaveIssues = normalizeStudioIssues(data, 'Atomic studio state save rejected.');
       saveStatus = 'error';
-      errorMessage = data.message || 'Atomic studio state save rejected.';
+      errorMessage = studioSaveIssues[0]?.message || 'Atomic studio state save rejected.';
       return false;
     } catch (err) {
+      studioSaveIssues = [{ message: err?.message || 'Network error while saving studio state.' }];
       saveStatus = 'error';
-      errorMessage = err?.message || 'Network error while saving studio state.';
+      errorMessage = studioSaveIssues[0].message;
       return false;
     }
   }
@@ -1636,27 +1810,27 @@
 
 <!-- FULL-BLEED WORKSPACE: fills parent exactly. onMount strips the page layout <main> padding/overflow
      so this container occupies the entire remaining viewport without any scroll. -->
-<div class="absolute inset-0 overflow-hidden bg-slate-100 select-none" use:bleedParent>
+<div class="absolute inset-0 overflow-hidden bg-muted select-none" use:bleedParent>
   <!-- ENTRY GATE: Choose how to start before any canvas or template UI appears -->
   {#if !hasChosenMode}
-    <div class="absolute inset-0 z-[60] bg-slate-50 flex items-center justify-center p-6">
+    <div class="absolute inset-0 z-[60] bg-background flex items-center justify-center p-6">
       <div class="w-full max-w-2xl space-y-6">
         <div class="text-center space-y-1.5">
-          <h2 class="text-xl font-black text-slate-900">Start a New Template</h2>
-          <p class="text-sm text-slate-500">Choose how you want to create this answer sheet. This choice defines your workflow.</p>
+          <h2 class="text-xl font-black text-foreground">Start a New Template</h2>
+          <p class="text-sm text-muted-foreground">Choose how you want to create this answer sheet. This choice defines your workflow.</p>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <button
             type="button"
             onclick={() => chooseMode('html')}
-            class="group bg-white border-2 border-slate-200 hover:border-emerald-500 rounded-2xl p-6 text-left transition shadow-sm hover:shadow-md space-y-3"
+            class="group bg-card border-2 border-border hover:border-emerald-500 rounded-2xl p-6 text-left transition shadow-sm hover:shadow-md space-y-3"
           >
-            <div class="size-11 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+            <div class="size-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Sliders class="size-5" />
             </div>
             <div>
-              <h3 class="text-sm font-black text-slate-900">Sheet Designer</h3>
-              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              <h3 class="text-sm font-black text-foreground">Sheet Designer</h3>
+              <p class="text-xs text-muted-foreground mt-1 leading-relaxed">
                 Build the answer sheet from scratch with the draggable component suite — headers, candidate fields, ID matrix, and question grids.
               </p>
             </div>
@@ -1665,14 +1839,14 @@
           <button
             type="button"
             onclick={() => chooseMode('upload')}
-            class="group bg-white border-2 border-slate-200 hover:border-blue-500 rounded-2xl p-6 text-left transition shadow-sm hover:shadow-md space-y-3"
+            class="group bg-card border-2 border-border hover:border-blue-500 rounded-2xl p-6 text-left transition shadow-sm hover:shadow-md space-y-3"
           >
-            <div class="size-11 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
+            <div class="size-11 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <Upload class="size-5" />
             </div>
             <div>
-              <h3 class="text-sm font-black text-slate-900">Upload Document</h3>
-              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              <h3 class="text-sm font-black text-foreground">Upload Document</h3>
+              <p class="text-xs text-muted-foreground mt-1 leading-relaxed">
                 Ingest an existing PDF, Word document, or scanned image, then overlay markers and OMR components on it.
               </p>
             </div>
@@ -1683,11 +1857,17 @@
     </div>
   {/if}
   <div
-    class="absolute inset-0 overflow-hidden bg-slate-100"
+    class="absolute inset-0 overflow-hidden bg-muted"
     ondragover={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
     ondrop={handlePaletteDrop}
   >
+      {#if currentStage !== 3 && (previewError || historyNotice || (saveStatus === 'error' && errorMessage))}
+        <div class="absolute top-16 left-[376px] right-4 z-40 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900 shadow-sm" role="alert" aria-live="assertive">
+          {previewError || historyNotice || errorMessage}
+        </div>
+      {/if}
       <StudioCanvas
+        bind:scale
         bind:panX
         bind:panY
         bind:marginMm
@@ -1695,8 +1875,12 @@
         bind:canvasLocked
         rasterUrl={draft.raster_url}
         htmlContent={htmlCode}
+        {canonicalPreview}
+        mappingPreviewStale={mappingDirty || Boolean(previewError)}
         isHtmlMode={stage1Mode === 'html'}
-        {isComposing}
+        {previewSurface}
+        showCanonicalPrintPreview={currentStage === 1 && designerSubTab === 'print_preview'}
+        isComposing={isComposing || previewRunning}
         {showHeaderOverlay}
         {headerTitle}
         {headerSubtitle}
@@ -1753,10 +1937,10 @@
   </div>
 
   <!-- FLOATING TOP STEPPER BAR (Positioned over the canvas, right of Column 1) -->
-  <div class="absolute top-4 left-[376px] right-4 flex items-center justify-between z-30 pointer-events-none gap-4">
+  <div class="absolute top-4 left-[376px] right-4 flex items-center justify-between z-30 pointer-events-none gap-2">
       <!-- 4-Step Stepper Navigation -->
-      <div class="pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-2xl border border-slate-200/90 shadow-md flex items-center space-x-1 shrink-0">
-        {#each (stage1Mode === 'html' ? ['1. Sheet Designer', '2. Question Bubbles', '3. Verify & Export'] : stageTitles) as title, idx}
+      <div class="pointer-events-auto bg-card p-1 rounded-2xl border border-border/80 shadow-md flex items-center space-x-1 shrink-0">
+        {#each (stage1Mode === 'html' ? ['1. Sheet Designer', '2. Recognition Mapping', '3. Verification & Test'] : stageTitles) as title, idx}
           {@const stageNum = stage1Mode === 'html' ? (idx === 0 ? 1 : idx + 2) : idx + 1}
           {@const displayStep = idx + 1}
           {@const isActive = (stage1Mode === 'html' && ((idx === 0 && currentStage <= 2) || (idx === 1 && currentStage === 3) || (idx === 2 && currentStage === 4))) || (stage1Mode !== 'html' && currentStage === stageNum)}
@@ -1764,43 +1948,33 @@
           <button
             type="button"
             onclick={() => requestGoToStage(stageNum)}
-            class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
+            title={title.split('.')[1]?.trim() || title}
+            class={`px-2 xl:px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 leading-none ${
               isActive
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-primary text-primary-foreground shadow-xs'
                 : isPast
-                  ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-foreground hover:bg-muted'
+                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
             }`}
           >
             <span class={`size-4 rounded-full flex items-center justify-center text-[10px] font-extrabold leading-none shrink-0 ${
-              isActive ? 'bg-white text-slate-900' : isPast ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'
+              isActive ? 'bg-primary-foreground text-primary' : isPast ? 'bg-muted text-foreground' : 'bg-muted text-muted-foreground'
             }`}>
               {displayStep}
             </span>
-            <span class="truncate">{title.split('.')[1]?.trim() || title}</span>
+            <span class="hidden xl:inline truncate">{title.split('.')[1]?.trim() || title}</span>
           </button>
         {/each}
       </div>
 
-      <!-- Right Actions: Re-edit Design Button (Step 3) + Save Action -->
-      <div class="pointer-events-auto flex items-center space-x-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 shadow-md shrink-0">
-        {#if currentStage === 3 && draft.raster_url}
-          <button
-            type="button"
-            onclick={() => requestGoToStage(2)}
-            class="px-2.5 h-7 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition"
-            title="Return to Step 2 to edit overlays or re-render page raster"
-          >
-            <RotateCcw class="size-3 text-emerald-600" />
-            <span>Re-edit Design</span>
-          </button>
-        {/if}
-        <div class="flex items-center gap-0.5 border-r border-slate-200 pr-2">
+      <!-- Essential editing controls only -->
+      <div class="pointer-events-auto flex items-center gap-1.5 bg-card p-1.5 rounded-2xl border border-border/80 shadow-md shrink-0">
+        <div class="flex items-center gap-0.5 border-r border-border pr-2">
           <button
             type="button"
             onclick={undoEditor}
             disabled={!historyStatus.canUndo}
-            class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            class="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition"
             title={historyStatus.undoLabel ? `Undo: ${historyStatus.undoLabel}` : 'Undo'}
             aria-label={historyStatus.undoLabel ? `Undo: ${historyStatus.undoLabel}` : 'Undo'}
           >
@@ -1810,7 +1984,7 @@
             type="button"
             onclick={redoEditor}
             disabled={!historyStatus.canRedo}
-            class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            class="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition"
             title={historyStatus.redoLabel ? `Redo: ${historyStatus.redoLabel}` : 'Redo'}
             aria-label={historyStatus.redoLabel ? `Redo: ${historyStatus.redoLabel}` : 'Redo'}
           >
@@ -1827,8 +2001,8 @@
             <span class="text-emerald-600 font-mono text-[11px]">Saved</span>
           {:else if saveStatus === 'error'}
             <XCircle class="size-3.5 text-rose-600" />
-            <span class="text-rose-600 font-mono text-[11px] max-w-[100px] truncate" title={errorMessage}>
-              {errorMessage || 'Error'}
+            <span class="text-rose-600 font-mono text-[11px]" title={errorMessage}>
+              Save blocked
             </span>
           {/if}
           {#if historyNotice}
@@ -1838,8 +2012,8 @@
 
         <button
           type="button"
-          onclick={performSave}
-          class="px-3.5 h-7 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-xs"
+          onclick={() => performSave()}
+          class="px-3.5 h-7 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-xl transition shadow-xs"
         >
           Save
         </button>
@@ -1848,12 +2022,12 @@
 
   <!-- FLOATING COMPONENT INSPECTOR (Top-Right of Canvas, Stage 1 Sheet Designer) -->
   {#if currentStage === 1 && stage1Mode === 'html' && designerSubTab === 'designer' && selectedComponent}
-    <div class="absolute top-16 right-4 w-[320px] max-h-[calc(100%-8rem)] overflow-y-auto z-40 bg-white/95 backdrop-blur-md border border-emerald-200/90 shadow-2xl rounded-2xl p-3.5 space-y-3 pointer-events-auto text-xs">
+    <div class="absolute top-16 right-4 w-[320px] max-h-[calc(100%-8rem)] overflow-y-auto z-40 bg-card border border-emerald-500/30 shadow-2xl rounded-2xl p-3.5 space-y-3 pointer-events-auto text-xs text-foreground [&_input]:border-input [&_input]:bg-background [&_input]:text-foreground [&_select]:border-input [&_select]:bg-background [&_select]:text-foreground">
       <!-- Header row -->
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+      <div class="flex items-center justify-between border-b border-border pb-2">
         <div class="flex items-center gap-1.5 min-w-0">
           <span class="size-2 rounded-full bg-emerald-500 shrink-0"></span>
-          <span class="text-xs font-black text-slate-900 truncate">
+          <span class="text-xs font-black text-foreground truncate">
             Inspector — {componentLabel(selectedComponent)}
           </span>
         </div>
@@ -1862,7 +2036,7 @@
             type="button"
             onclick={() => { selectedComponent.isLocked = !selectedComponent.isLocked; syncComponentsToSections(); }}
             class={`p-1 rounded transition text-xs font-semibold flex items-center gap-1 ${
-              selectedComponent.isLocked ? 'text-amber-700 bg-amber-50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              selectedComponent.isLocked ? 'text-amber-700 dark:text-amber-400 bg-amber-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
             title={selectedComponent.isLocked ? 'Locked (click to unlock movement)' : 'Unlocked (click to lock)'}
           >
@@ -1884,25 +2058,25 @@
       </div>
 
       <!-- Geometry Position & Size Row -->
-      <div class="space-y-1 bg-slate-50/80 p-2 rounded-xl border border-slate-100">
-        <span class="text-[9.5px] font-bold text-slate-500 uppercase tracking-wide block">Geometry (mm)</span>
+      <div class="space-y-1 bg-muted/50 p-2 rounded-xl border border-border">
+        <span class="text-[9.5px] font-bold text-muted-foreground uppercase tracking-wide block">Geometry (mm)</span>
         <div class="grid grid-cols-4 gap-1.5">
           <div>
-            <label class="text-[9px] text-slate-500 block">X</label>
+            <label class="text-[9px] text-muted-foreground block">X</label>
             <input
               type="number"
               bind:value={selectedComponent.posX}
               oninput={syncComponentsToSections}
-              class="w-full px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[11px] font-mono"
+              class="w-full px-1.5 py-0.5 bg-background border border-input rounded text-[11px] font-mono"
             />
           </div>
           <div>
-            <label class="text-[9px] text-slate-500 block">Y</label>
+            <label class="text-[9px] text-muted-foreground block">Y</label>
             <input
               type="number"
               bind:value={selectedComponent.posY}
               oninput={syncComponentsToSections}
-              class="w-full px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[11px] font-mono"
+              class="w-full px-1.5 py-0.5 bg-background border border-input rounded text-[11px] font-mono"
             />
           </div>
           <div>
@@ -2360,46 +2534,46 @@
   {/if}
 
   <!-- FLOATING CANVAS CONTROLS (Bottom-left beside Column 1) -->
-  <div class="absolute bottom-4 left-[376px] bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
+  <div class="absolute bottom-4 left-[376px] bg-card border border-border shadow-xl rounded-2xl p-1.5 flex items-center space-x-2 z-30 pointer-events-auto">
       <button
         type="button"
         onclick={() => { canvasLocked = !canvasLocked; }}
         class={`px-3 h-8 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
           canvasLocked
-            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+            ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/40'
+            : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
         }`}
         title={canvasLocked ? 'Canvas viewport is locked (Scroll wheel & panning disabled)' : 'Canvas is interactive (Scroll wheel zooms, drag background to pan)'}
       >
         {#if canvasLocked}
-          <Lock class="size-3.5 text-amber-700" />
+          <Lock class="size-3.5" />
           <span>Canvas Locked</span>
         {:else}
-          <Unlock class="size-3.5 text-slate-600" />
+          <Unlock class="size-3.5 text-muted-foreground" />
           <span>Canvas Active</span>
         {/if}
       </button>
 
-      <div class="h-4 w-px bg-slate-200"></div>
+      <div class="h-4 w-px bg-border"></div>
 
       <!-- Zoom In & Out Buttons -->
-      <div class="flex items-center space-x-1 bg-slate-100 border border-slate-200 rounded-xl p-0.5">
+      <div class="flex items-center space-x-1 bg-muted border border-border rounded-xl p-0.5">
         <button
           type="button"
           onclick={() => zoomStep(-0.15)}
           title="Zoom Out"
-          class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
+          class="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition"
         >
           <Minus class="size-3.5" />
         </button>
-        <span class="text-xs font-mono font-bold px-1.5 text-slate-800 min-w-[42px] text-center">
+        <span class="text-xs font-mono font-bold px-1.5 text-foreground min-w-[42px] text-center">
           {Math.round(scale * 100)}%
         </span>
         <button
           type="button"
           onclick={() => zoomStep(0.15)}
           title="Zoom In"
-          class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition"
+          class="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition"
         >
           <Plus class="size-3.5" />
         </button>
@@ -2409,37 +2583,39 @@
       <button
         type="button"
         onclick={resetZoom}
-        title="Reset Zoom to Fit A4 Sheet (78%)"
-        class="px-2.5 h-8 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-1 border border-slate-200"
+        title="Reset zoom and center the sheet"
+        class="px-2.5 h-8 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition flex items-center gap-1 border border-border"
       >
         <Maximize2 class="size-3" />
-        <span>Fit (78%)</span>
+        <span>Fit</span>
+
       </button>
-    </div>
+  </div>
 
   <!-- COLUMN 1: FLOATING LEFT TOOL CARD (Positioned strictly inside top-4 to bottom-4) -->
-  <aside class="absolute top-4 left-4 bottom-4 w-[350px] max-h-[calc(100%-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden z-20">
+  <aside class="absolute top-4 left-4 bottom-4 w-[350px] max-h-[calc(100%-2rem)] bg-card rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden z-20 text-foreground [&_input]:border-input [&_input]:bg-background [&_input]:text-foreground [&_select]:border-input [&_select]:bg-background [&_select]:text-foreground dark:[&_.bg-white]:bg-card dark:[&_.bg-slate-50]:bg-muted/50 dark:[&_.bg-slate-100]:bg-muted dark:[&_.text-slate-900]:text-foreground dark:[&_.text-slate-800]:text-foreground dark:[&_.text-slate-700]:text-foreground dark:[&_.text-slate-600]:text-muted-foreground dark:[&_.text-slate-500]:text-muted-foreground dark:[&_.border-slate-200]:border-border dark:[&_.border-slate-100]:border-border">
     <!-- Card Header -->
-    <div class="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white/80">
+    <div class="h-11 border-b border-border px-4 flex items-center justify-between shrink-0 bg-card">
       <div class="flex items-center space-x-2">
         <div class="size-5 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-[10px]">
           N
         </div>
         <span
-          class="text-xs font-bold text-slate-900 truncate max-w-[180px]"
+          class="text-xs font-bold text-foreground truncate max-w-[180px]"
           title={draft.name || 'Template Studio'}
         >
           {draft.code || 'OMR-DRAFT'}
         </span>
       </div>
-      <div class="text-[10.5px] font-mono text-slate-500">
+      <div class="text-[10.5px] font-mono text-muted-foreground">
         {totalQuestionsCount} Qs
       </div>
     </div>
 
     <!-- Scrollable Tool Content Body (Dedicated internal scroll) -->
     <div class="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
-      {#if currentStage === 1}
+      {#key sidebarStage}
+      {#if sidebarStage === 1}
         <!-- STEP 1: SOURCE SUBSTRATE & INGESTION -->
         <div class="space-y-4">
           <!-- Creation Mode Indicator (deliberate change only, not an easy switch) -->
@@ -2465,25 +2641,29 @@
 
           {#if stage1Mode === 'html'}
             <!-- Sub-Mode: Visual Designer vs Compiled HTML -->
-            <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <!-- Live editor, source markup, and the authoritative printable artifact. -->
+            <div class="grid grid-cols-3 items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               <button
                 type="button"
                 onclick={() => { designerSubTab = 'designer'; }}
-                class={`flex-1 py-1 rounded-md text-[10.5px] font-semibold transition ${
+                class={`py-1 rounded-md text-[10.5px] font-semibold transition ${
                   designerSubTab === 'designer' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
-              >
-                Visual Designer
-              </button>
+              >Visual Designer</button>
               <button
                 type="button"
                 onclick={() => { designerSubTab = 'raw_html'; }}
-                class={`flex-1 py-1 rounded-md text-[10.5px] font-semibold transition ${
+                class={`py-1 rounded-md text-[10.5px] font-semibold transition ${
                   designerSubTab === 'raw_html' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
-              >
-                Compiled HTML
-              </button>
+              >Compiled HTML</button>
+              <button
+                type="button"
+                onclick={openPrintPreview}
+                class={`py-1 rounded-md text-[10.5px] font-semibold transition ${
+                  designerSubTab === 'print_preview' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >Print Preview</button>
             </div>
 
             {#if designerSubTab === 'designer'}
@@ -2560,17 +2740,9 @@
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <span class="text-[11px] font-bold text-slate-700 block">Fiducial Markers</span>
-                    <div class="grid grid-cols-3 gap-1">
-                      {#each ['square', 'target', 'aruco'] as pat}
-                        <button
-                          type="button"
-                          onclick={() => { markerPattern = pat; handleHtmlDecorationChanged(); }}
-                          class={`py-1 rounded-lg border text-center text-[10px] font-semibold capitalize transition ${
-                            markerPattern === pat ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 bg-white hover:border-slate-300'
-                          }`}
-                        >{pat}</button>
-                      {/each}
+                    <span class="text-[11px] font-bold text-slate-700 block">Fiducial Marker</span>
+                    <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-600">
+                      Preview uses the exact bullseye family owned by the selected OMRChecker profile.
                     </div>
                   </div>
                   <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
@@ -2678,7 +2850,7 @@
                               <button
                                 type="button"
                                 onclick={(e) => { e.stopPropagation(); qrLocked = !qrLocked; handleHtmlDecorationChanged(); }}
-                                class={`p-1 rounded transition ${qrLocked ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-slate-600'}`}
+                                class={`p-1 rounded transition ${qrLocked ? 'text-amber-700 dark:text-amber-400 bg-amber-500/10' : 'text-muted-foreground hover:text-foreground'}`}
                                 title={qrLocked ? 'Unlock position' : 'Lock position'}
                                 aria-label={qrLocked ? 'Unlock QR Reservation' : 'Lock QR Reservation'}
                               >
@@ -2687,7 +2859,7 @@
                               <button
                                 type="button"
                                 onclick={(e) => { e.stopPropagation(); showQrOverlay = false; clearComponentSelection(); handleHtmlDecorationChanged(); }}
-                                class="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                class="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
                                 title="Remove QR reservation"
                                 aria-label="Remove QR Reservation"
                               >
@@ -2744,7 +2916,7 @@
                               <button
                                 type="button"
                                 onclick={(e) => { e.stopPropagation(); c.isLocked = !c.isLocked; syncComponentsToSections('Toggle component lock'); }}
-                                class={`p-1 rounded transition ${c.isLocked ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-slate-600'}`}
+                                class={`p-1 rounded transition ${c.isLocked ? 'text-amber-700 dark:text-amber-400 bg-amber-500/10' : 'text-muted-foreground hover:text-foreground'}`}
                                 title={c.isLocked ? 'Unlock position' : 'Lock position'}
                                 aria-label={c.isLocked ? `Unlock ${componentLabel(c)}` : `Lock ${componentLabel(c)}`}
                               >
@@ -2753,7 +2925,7 @@
                               <button
                                 type="button"
                                 onclick={(e) => { e.stopPropagation(); removeComponent(c.id); }}
-                                class="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                class="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
                                 title="Remove component"
                                 aria-label={`Remove ${componentLabel(c)}`}
                               >
@@ -2768,8 +2940,24 @@
                 </div>
 
               </div>
+            {:else if designerSubTab === 'print_preview'}
+              <div class="space-y-3">
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11px] leading-relaxed text-emerald-950">
+                  {#if previewRunning}
+                    Generating the exact-size printable sheet and verifying its native OMR frame…
+                  {:else if previewError}
+                    Print preview failed: {previewError}
+                  {:else if canonicalPreview}
+                    This server-owned printable raster is reused by Recognition Mapping and compile.
+                  {:else}
+                    Save the current design to generate its printable artifact.
+                  {/if}
+                </div>
+                <button type="button" onclick={async () => { canonicalPreview = null; await openPrintPreview(); }} disabled={previewRunning} class="w-full rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50">
+                  Regenerate Print Preview
+                </button>
+              </div>
             {:else}
-              <!-- Compiled HTML + Suite Reference Export -->
               <div class="space-y-2.5">
                 <div class="flex items-center justify-between">
                   <label class="text-xs font-bold text-slate-700">Compiled HTML Markup</label>
@@ -2928,14 +3116,22 @@
                   {conversionError}
                 </div>
               {/if}
+              {#if previewError}
+                <div class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
+                  Recognition Mapping blocked: {previewError}
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
-      {:else if currentStage === 2}
+      {:else if sidebarStage === 2}
         <!-- STEP 2: LAYOUT, MARGINS & OVERLAYS -->
         <StudioOverlayPanel
           bind:marginMm
           bind:markerPattern
+          markerProfiles={marker_profiles}
+          selectedMarkerProfileId={draft.marker_profile_id}
+          onMarkerProfileChange={selectMarkerProfile}
           bind:showHeaderOverlay
           bind:headerTitle
           bind:headerSubtitle
@@ -2966,24 +3162,38 @@
           onBack={() => requestGoToStage(1)}
           onNext={() => requestGoToStage(3)}
         />
-      {:else if currentStage === 3}
-        <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
-        <StudioBubblePanel
-          bind:sections
-          bind:activeSectionIndex
-          onChanged={recordBubbleEdit}
-          onBack={() => requestGoToStage(2)}
-          onNext={() => requestGoToStage(4)}
-        />
-      {:else if currentStage === 4}
-        <!-- STEP 4: VERIFICATION & PRODUCTION DELIVERABLES -->
-        <StudioExportVerifyPanel
-          {draft}
-          {jsonSchema}
-          {urls}
-          onBack={() => requestGoToStage(3)}
-        />
+      {:else if sidebarStage === 3}
+        <div data-omr-stage-panel="3">
+          <!-- STEP 3: QUESTION BUBBLES & PITCH GEOMETRY -->
+          <StudioBubblePanel
+            bind:sections
+            bind:activeSectionIndex
+            markerProfiles={marker_profiles}
+            selectedMarkerProfileId={draft.marker_profile_id}
+            onMarkerProfileChange={selectMarkerProfile}
+            {canonicalPreview}
+            {previewRunning}
+            previewError={previewError}
+            {mappingDirty}
+            mappingErrors={studioSaveIssues}
+            bind:previewSurface
+            onChanged={recordBubbleEdit}
+            onVerify={verifyRecognitionMapping}
+            onBack={() => requestGoToStage(2)}
+            onNext={() => requestGoToStage(4)}
+          />
+        </div>
+      {:else if sidebarStage === 4}
+        <div data-omr-stage-panel="4">
+          <StudioExportVerifyPanel
+            {draft}
+            {urls}
+            onBack={() => requestGoToStage(3)}
+            lifecycleBusy={stageTransitionRunning}
+          />
+        </div>
       {/if}
+      {/key}
     </div>
 
     <!-- Pinned Bottom Navigation Footer in Floating Card -->
@@ -2994,7 +3204,7 @@
           onclick={() => requestGoToStage(stage1Mode === 'html' ? 3 : 2)}
           class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
         >
-          <span>{stage1Mode === 'html' ? 'Continue to Question Bubbles' : 'Continue to Layout & Markers'}</span>
+          <span>{stage1Mode === 'html' ? 'Continue to Recognition Mapping' : 'Continue to Layout & Markers'}</span>
           <ChevronRight class="size-3.5" />
         </button>
       </div>

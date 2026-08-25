@@ -23,11 +23,36 @@ final class OmrDigitalProofGenerator
     {
         $authoring = (array) $draft->authoring_json;
         $mapping = (array) ($authoring['mapping'] ?? []);
-        $blocks = (array) ($mapping['field_blocks'] ?? []);
-        if ($blocks === []) {
+        $artifactSet = (array) ($authoring['canonical']['artifact_set'] ?? []);
+        $templatePages = (array) ($artifactSet['template']['pages'] ?? []);
+        $blocksByPage = [];
+        if ($templatePages !== []) {
+            foreach ($templatePages as $templatePage) {
+                if (! is_array($templatePage)) {
+                    continue;
+                }
+                $templatePageNo = max(1, (int) ($templatePage['page_no'] ?? 1));
+                foreach ((array) ($templatePage['fieldBlocks'] ?? []) as $blockName => $block) {
+                    if (! is_array($block)) {
+                        continue;
+                    }
+                    $block['page_no'] = $templatePageNo;
+                    $blocksByPage[$templatePageNo][(string) $blockName] = $block;
+                }
+            }
+        } else {
+            foreach ((array) ($mapping['field_blocks'] ?? []) as $blockName => $block) {
+                if (! is_array($block)) {
+                    continue;
+                }
+                $pageNo = max(1, (int) ($block['page_no'] ?? 1));
+                $blocksByPage[$pageNo][(string) $blockName] = $block;
+            }
+        }
+        if ($blocksByPage === []) {
             throw new RuntimeException('digital_proof_mapping_missing');
         }
-        $pdfAssetId = (int) ($authoring['canonical']['pdf_asset_id'] ?? 0);
+        $pdfAssetId = (int) (($artifactSet['pdf_asset_id'] ?? null) ?: ($authoring['canonical']['pdf_asset_id'] ?? 0));
         $pdfAsset = $draft->assets()->whereKey($pdfAssetId)->first();
         if ($pdfAsset === null || $pdfAsset->mime !== 'application/pdf') {
             throw new RuntimeException('digital_proof_pdf_missing');
@@ -56,6 +81,7 @@ final class OmrDigitalProofGenerator
         $proofPages = [];
         $answerVector = [];
         $pageCount = count($rasterPages);
+        $insetsPx = (array) ($artifactSet['insets_px'] ?? $artifactSet['definition']['insets_px'] ?? []);
         foreach ($rasterPages as $page) {
             $pageNo = (int) $page['page_no'];
             $image = @imagecreatefromstring((string) file_get_contents($page['path']));
@@ -63,31 +89,41 @@ final class OmrDigitalProofGenerator
                 throw new RuntimeException('digital_proof_raster_invalid');
             }
             $black = imagecolorallocate($image, 0, 0, 0);
-            $pageBlocks = array_filter($blocks, static fn (mixed $block): bool => ! is_array($block) || ! isset($block['page_no']) || (int) $block['page_no'] === $pageNo);
-            $blockIndex = 0;
-            foreach ($pageBlocks as $block) {
+            $pageBlocks = $blocksByPage[$pageNo] ?? [];
+            foreach ($pageBlocks as $blockIndex => $block) {
                 if (! is_array($block)) {
                     continue;
                 }
                 $origin = (array) ($block['origin'] ?? [0, 0]);
+                $originX = (int) ($origin[0] ?? 0) + (int) ($insetsPx['left'] ?? 0);
+                $originY = (int) ($origin[1] ?? 0) + (int) ($insetsPx['top'] ?? 0);
                 $bubble = (array) ($block['bubbleDimensions'] ?? [20, 20]);
-                $labels = (array) ($block['fieldLabels'] ?? []);
+                $labels = [];
+                foreach ((array) ($block['fieldLabels'] ?? []) as $declaration) {
+                    $labels = [...$labels, ...\App\Assessment\Omr\NativeBundle::expandLabel((string) $declaration)];
+                }
                 $bubbleGap = (int) ($block['bubblesGap'] ?? 0);
                 $labelGap = (int) ($block['labelsGap'] ?? 0);
-                $optionCount = match ((string) ($block['fieldType'] ?? 'QTYPE_MCQ4')) {
-                    'QTYPE_MCQ5' => 5,
-                    'QTYPE_INT' => 10,
-                    default => 4,
-                };
-                foreach ($labels as $row => $label) {
-                    $selected = ((int) $row + $blockIndex) % $optionCount;
-                    $answerVector[(string) $label] = (string) $selected;
-                    $cx = (int) $origin[0] + $selected * $bubbleGap + (int) $bubble[0] / 2;
-                    $cy = (int) $origin[1] + (int) $row * $labelGap + (int) $bubble[1] / 2;
+                $values = is_array($block['bubbleValues'] ?? null)
+                    ? array_values(array_map('strval', $block['bubbleValues']))
+                    : match ((string) ($block['fieldType'] ?? 'QTYPE_MCQ4')) {
+                        'QTYPE_MCQ5' => ['A', 'B', 'C', 'D', 'E'],
+                        'QTYPE_INT' => ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                        default => ['A', 'B', 'C', 'D'],
+                    };
+                $vertical = (string) ($block['direction'] ?? 'horizontal') === 'vertical';
+                foreach ($labels as $labelIndex => $label) {
+                    $selected = ($labelIndex + (int) $blockIndex) % count($values);
+                    $answerVector[(string) $label] = (string) $values[$selected];
+                    $cx = $vertical
+                        ? $originX + $labelIndex * $labelGap + (int) $bubble[0] / 2
+                        : $originX + $selected * $bubbleGap + (int) $bubble[0] / 2;
+                    $cy = $vertical
+                        ? $originY + $selected * $bubbleGap + (int) $bubble[1] / 2
+                        : $originY + $labelIndex * $labelGap + (int) $bubble[1] / 2;
                     imagefilledellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
                     imageellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
                 }
-                $blockIndex++;
             }
 
             $payload = $this->qr->sign($instanceCode, $pageNo, $pageCount, $keyId);
@@ -96,8 +132,9 @@ final class OmrDigitalProofGenerator
                 throw new RuntimeException('digital_proof_qr_invalid');
             }
             $qrSize = min(240, intdiv(imagesx($image), 6));
-            imagecopyresampled($image, $qrImage, imagesx($image) - $qrSize - 40, 40, 0, 0, $qrSize, $qrSize, imagesx($qrImage), imagesy($qrImage));
-            imagestring($image, 3, imagesx($image) - $qrSize - 40, 48 + $qrSize, $displayCode, $black);
+            [$qrX, $qrY] = $this->qrPlacement($artifactSet, imagesx($image), imagesy($image), $qrSize);
+            imagecopyresampled($image, $qrImage, $qrX, $qrY, 0, 0, $qrSize, $qrSize, imagesx($qrImage), imagesy($qrImage));
+            imagestring($image, 3, $qrX, min(imagesy($image) - 12, $qrY + $qrSize + 8), $displayCode, $black);
             imagesavealpha($image, false);
             ob_start();
             imagepng($image, null, 6);
@@ -126,5 +163,21 @@ final class OmrDigitalProofGenerator
             'instance_code' => $instanceCode,
             'display_code' => $displayCode,
         ];
+    }
+    /** @return array{0:int,1:int} */
+    private function qrPlacement(array $artifactSet, int $width, int $height, int $size): array
+    {
+        $markers = (array) (($artifactSet['template']['pages'][0]['markers'] ?? null) ?: []);
+        $insets = (array) (($artifactSet['insets_px'] ?? $artifactSet['definition']['insets_px'] ?? null) ?: []);
+        $markerHalf = intdiv((int) ($markers['size'] ?? 0), 2);
+        $quiet = (int) ($markers['quiet_zone'] ?? 0);
+        $left = (int) ($insets['left'] ?? 0) + $markerHalf + $quiet + 12;
+        $right = $width - (int) ($insets['right'] ?? 0) - $markerHalf - $quiet - 12;
+        $top = (int) ($insets['top'] ?? 0) + $markerHalf + $quiet + 12;
+        $bottom = $height - (int) ($insets['bottom'] ?? 0) - $markerHalf - $quiet - 12;
+        $x = max($left, min(intdiv($width - $size, 2), $right - $size));
+        $y = max($top, min($top + 20, $bottom - $size));
+
+        return [max(0, $x), max(0, $y)];
     }
 }

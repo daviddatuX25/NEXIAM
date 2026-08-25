@@ -108,7 +108,7 @@ final class OmrMappingValidator
             }
             $regions[] = $region;
 
-            $blockLabels = (array) ($block['labels'] ?? []);
+            $blockLabels = $this->nativeLabels($name, $fieldType, (array) ($block['labels'] ?? []), $rows);
             if ($blockLabels === []) {
                 $prefix = (string) ($block['label_prefix'] ?? $name.'_Q_');
                 for ($row = 1; $row <= $rows; $row++) {
@@ -132,6 +132,7 @@ final class OmrMappingValidator
                 'labelsGap' => $rowPitch,
                 'origin' => [$originX, $originY],
                 'bubbleDimensions' => [$bubbleWidth, $bubbleHeight],
+                'page_no' => $pageNo,
             ];
         }
 
@@ -155,6 +156,37 @@ final class OmrMappingValidator
             'warnings' => $warnings,
             'field_blocks' => $fieldBlocks,
         ];
+    }
+
+    /** @param list<mixed> $labels @return list<string> */
+    private function nativeLabels(string $name, string $fieldType, array $labels, int $rows): array
+    {
+        $upperName = strtoupper($name);
+        $identity = $fieldType === 'QTYPE_INT'
+            && (str_contains($upperName, 'ID') || str_contains($upperName, 'APPLICANT') || str_contains($upperName, 'EXAMINEE'));
+        $prefix = strtoupper(trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $name), '_'));
+
+        return array_values(array_map(
+            static function (mixed $label, int $index) use ($identity, $prefix, $fieldType): string {
+                $value = strtoupper(trim((string) $label));
+                if (str_starts_with($value, 'APPLICANT_NUMBER_') || str_starts_with($value, 'BIRTHDATE_')) {
+                    return $value;
+                }
+                if ($identity && preg_match('/(\d+)$/', $value, $matches) === 1) {
+                    return 'APPLICANT_NUMBER_'.(int) $matches[1];
+                }
+                if (preg_match('/^([A-Z0-9_]+)_Q_(\d+)$/', $value, $matches) === 1) {
+                    return $matches[1].'_Q_'.(int) $matches[2];
+                }
+                if (preg_match('/(\d+)$/', $value, $matches) === 1) {
+                    return $prefix.'_Q_'.(int) $matches[1];
+                }
+
+                return $prefix.'_Q_'.($index + 1);
+            },
+            $labels,
+            array_keys($labels),
+        ));
     }
 
     /** @param array<string,mixed> $left @param array<string,mixed> $right */

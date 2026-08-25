@@ -14,6 +14,10 @@ class OmrTemplateAsset extends Model
     public const KIND_EVIDENCE = 'evidence';
     public const KIND_DIGITAL_PROOF = 'digital_proof';
     public const KIND_MARKER_PROFILE = 'marker_profile';
+    public const KIND_NATIVE_TEMPLATE = 'native_template';
+    public const KIND_NATIVE_CONFIG = 'native_config';
+    public const KIND_NATIVE_MANIFEST = 'native_manifest';
+    public const KIND_REFERENCE_PAGE = 'reference_page';
     public const KINDS = [
         self::KIND_SOURCE,
         self::KIND_INTERMEDIATE_PAGE,
@@ -22,6 +26,10 @@ class OmrTemplateAsset extends Model
         self::KIND_EVIDENCE,
         self::KIND_DIGITAL_PROOF,
         self::KIND_MARKER_PROFILE,
+        self::KIND_NATIVE_TEMPLATE,
+        self::KIND_NATIVE_CONFIG,
+        self::KIND_NATIVE_MANIFEST,
+        self::KIND_REFERENCE_PAGE,
     ];
 
     protected static function booted(): void

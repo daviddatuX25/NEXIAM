@@ -18,7 +18,9 @@
     canvasSectionBoundsMm,
     componentBackgroundColor,
     componentInputBackgroundColor,
+    GRID_SECTION_HEADER_HEIGHT_MM,
   } from '@/lib/omrComponents';
+  import { recognitionOriginOffsetMm } from '@/lib/omrStudioGeometry';
 
   let {
     scale = $bindable(1.0),
@@ -68,6 +70,10 @@
     sigLocked = false,
     customTextItems = $bindable([]),
     htmlContent = null,
+    canonicalPreview = null,
+    previewSurface = 'canonical',
+    showCanonicalPrintPreview = false,
+    mappingPreviewStale = false,
     isHtmlMode = true,
     isComposing = false,
     sections = $bindable([]),
@@ -110,6 +116,9 @@
   let pendingShiftToggleId = $state(null);
   let dragMoved = $state(false);
   let isDuplicateDragging = $state(false);
+  let isDragging = $derived(
+    isBlockDragging || isHandleDragging || isComponentDragging || isComponentResizing,
+  );
 
   // Sanitize HTML preview content by stripping scripts and executable handlers
   let safeHtmlContent = $derived.by(() => {
@@ -325,26 +334,21 @@
       }
       return;
     }
-
-    // STAGE 3: Question Bubble Sections Dragging only (constrained — no manual resize)
+    // Stage 3 moves recognition geometry over a fixed server-owned raster.
     if (currentStage === 3 && dragBlockIndex !== null) {
       const sec = sections[dragBlockIndex];
       if (!sec || sec.isLocked || !isBlockDragging) return;
-
-      const { w_mm, h_mm } = canvasSectionBoundsMm(
-        getOptionLabels(sec).length,
-        Number(sec.questionsCount) || 1,
-        Number(sec.bubblePitchMm) || 6.0,
-        Number(sec.rowPitchMm) || 6.8,
-        sec.type === 'roll',
-        Number(sec.bubbleDiameterMm) || 4.5,
-      );
-
+      const { w_mm, h_mm } = recognitionGuideSizeMm(sec);
       const nx = Math.round((blockStartGeometry.x + dXmm) / 2) * 2;
       const ny = Math.round((blockStartGeometry.y + dYmm) / 2) * 2;
-      sec.posX = Math.max(marginMm, Math.min(210 - marginMm - w_mm, nx));
-      sec.posY = Math.max(marginMm + 15, Math.min(297 - marginMm - h_mm, ny));
+      const nextX = Math.max(marginMm, Math.min(210 - marginMm - w_mm, nx));
+      const nextY = Math.max(marginMm, Math.min(297 - marginMm - h_mm, ny));
+      if (collidesWithAnotherGuide(dragBlockIndex, nextX, nextY)) return;
+      if (nextX !== sec.posX || nextY !== sec.posY) dragMoved = true;
+      sec.posX = nextX;
+      sec.posY = nextY;
     }
+
   }
 
   function handleCanvasMouseUp() {
@@ -357,13 +361,14 @@
     if (hadBlockDrag) {
       isBlockDragging = false;
       isHandleDragging = false;
+      dragBlockIndex = null;
       dragItemIds = [];
       dragComponentIds = [];
       componentStartPositions = {};
       dragAxis = null;
       isDuplicateDragging = false;
-      if (shouldSyncStage1Items && onComponentGeometryChanged) onComponentGeometryChanged();
-      else if (onGeometryChanged) onGeometryChanged();
+      if (dragMoved && shouldSyncStage1Items && onComponentGeometryChanged) onComponentGeometryChanged();
+      else if (dragMoved && onGeometryChanged) onGeometryChanged();
     }
     if (hadComponentDrag) {
       isComponentDragging = false;
@@ -491,12 +496,12 @@
     blockStartGeometry = { ...geometry };
   }
 
-  // Section Bubble Drag Triggers (Stage 3)
   function handleBlockMouseDown(e, index) {
-    const sec = sections[index];
-    if (currentStage !== 3 || sec?.isLocked) return;
+    if (currentStage !== 3) return;
     e.stopPropagation();
     activeSectionIndex = index;
+    const sec = sections[index];
+    if (!sec || sec.isLocked) return;
     isBlockDragging = true;
     dragBlockIndex = index;
     dragItemIds = [];
@@ -505,7 +510,66 @@
     dragMoved = false;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-    blockStartGeometry = { x: Number(sec.posX) || 25, y: Number(sec.posY) || 72, w: Number(sec.w_mm) || 75, h: Number(sec.h_mm) || 140 };
+    blockStartGeometry = {
+      x: Number(sec.posX) || 25,
+      y: Number(sec.posY) || 72,
+      w: Number(sec.w_mm) || 75,
+      h: Number(sec.h_mm) || 140,
+    };
+  }
+  function recognitionGuideSizeMm(section) {
+    const bubble = Number(section.bubbleDiameterMm) || 4.5;
+    const optionPitch = Number(section.bubblePitchMm) || 6;
+    const rowPitch = Number(section.rowPitchMm) || 6.8;
+    if (section.type === 'roll') {
+      const columns = Math.max(1, Number(section.questionsCount) || 7);
+      return { w_mm: bubble + (columns - 1) * optionPitch, h_mm: bubble + 9 * rowPitch };
+    }
+    const options = getOptionLabels(section).length;
+    const rows = Math.max(1, Number(section.questionsCount) || 1);
+    return { w_mm: bubble + (options - 1) * optionPitch, h_mm: bubble + (rows - 1) * rowPitch };
+  }
+
+  function recognitionGuideBounds(section, posX = Number(section.posX), posY = Number(section.posY)) {
+    const bounds = recognitionGuideSizeMm(section);
+    const offset = recognitionOriginOffsetMm(section);
+    return { x: posX + offset.x, y: posY + offset.y, w: bounds.w_mm, h: bounds.h_mm };
+  }
+
+  function localRecognitionBubbles(section) {
+    const origin = recognitionGuideBounds(section);
+    const bubbleSize = Number(section.bubbleDiameterMm) || 4.5;
+    const optionCount = getOptionLabels(section).length;
+    const rowCount = section.type === 'roll' ? 10 : Math.max(1, Number(section.questionsCount) || 1);
+    const columnCount = section.type === 'roll' ? Math.max(1, Number(section.questionsCount) || 7) : optionCount;
+    const xPitch = Number(section.bubblePitchMm) || 6;
+    const yPitch = Number(section.rowPitchMm) || 6.8;
+    const bubbles = [];
+    for (let row = 0; row < rowCount; row += 1) {
+      for (let column = 0; column < columnCount; column += 1) {
+        bubbles.push({
+          x_mm: origin.x + column * xPitch,
+          y_mm: origin.y + row * yPitch,
+          w_mm: bubbleSize,
+          h_mm: bubbleSize,
+        });
+      }
+    }
+    return bubbles;
+  }
+
+  function collidesWithAnotherGuide(index, posX, posY, minimumGapMm = 2) {
+    const candidate = recognitionGuideBounds(sections[index], posX, posY);
+    return sections.some((section, otherIndex) => {
+      if (otherIndex === index) return false;
+      const other = recognitionGuideBounds(section);
+      return !(
+        candidate.x + candidate.w + minimumGapMm <= other.x
+        || other.x + other.w + minimumGapMm <= candidate.x
+        || candidate.y + candidate.h + minimumGapMm <= other.y
+        || other.y + other.h + minimumGapMm <= candidate.y
+      );
+    });
   }
 
   function componentLabel(c) {
@@ -544,7 +608,7 @@
   }
 </script>
 
-<div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-slate-100 select-none">
+<div class="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-muted select-none">
   <!-- Canvas Viewport with Absolute Centering (ZERO scrollHeight inflation) -->
   <div
     class={`w-full h-full overflow-hidden relative ${isDuplicateDragging ? 'cursor-copy' : 'cursor-grab active:cursor-grabbing'} canvas-grid`}
@@ -562,11 +626,26 @@
       <!-- Scalable Paper Document Sheet (A4 Proportion: 520px x 735px @ 2.476 px/mm) -->
       <div
         data-omr-sheet="true"
-        class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative pointer-events-auto shrink-0 overflow-hidden"
+        class="bg-white shadow-2xl rounded-xs border border-slate-300 transition-transform origin-center relative pointer-events-auto shrink-0 overflow-hidden isolate"
         style={`width: 520px; height: 735px; transform: translate(${panX}px, ${panY}px) scale(${scale});`}
       >
-      <!-- Continuous Background Layer (HTML source preview or composed raster — disabled in Stage 1 Sheet Designer to avoid duplicate rendering) -->
-      {#if safeHtmlContent && !isHtmlMode}
+      <!-- The full printable sheet remains the base in every preview mode. -->
+      {#if canonicalPreview?.artifact?.canonical_url && (currentStage >= 3 || showCanonicalPrintPreview)}
+        <img
+          src={canonicalPreview.artifact.canonical_url}
+          alt="Canonical server-rendered page"
+          class="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        />
+        {#if currentStage >= 3 && previewSurface !== 'canonical'}
+          {@const insets = canonicalPreview.artifact.insets_mm ?? { top: 12, right: 12, bottom: 14, left: 12 }}
+          <img
+            src={previewSurface === 'overlay' ? canonicalPreview.overlay_url : canonicalPreview.aligned_url}
+            alt={previewSurface === 'overlay' ? 'OMRChecker diagnostic overlay' : 'OMRChecker aligned frame'}
+            class="absolute pointer-events-none"
+            style={`top:${Number(insets.top) * 2.476}px;left:${Number(insets.left) * 2.476}px;width:${(210 - Number(insets.left) - Number(insets.right)) * 2.476}px;height:${(297 - Number(insets.top) - Number(insets.bottom)) * 2.476}px;`}
+          />
+        {/if}
+      {:else if safeHtmlContent && !isHtmlMode}
         <div class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none rounded-xs bg-white">
           <iframe
             srcdoc={safeHtmlContent}
@@ -584,26 +663,25 @@
         />
       {/if}
 
-      <!-- STAGE 2+: 4 Corner Registration Fiducial Markers (ALWAYS VISIBLE in Stage 2, 3, 4) -->
-      {#if currentStage >= 2 || (isHtmlMode && currentStage === 1)}
+      {#if (currentStage >= 2 || (isHtmlMode && currentStage === 1)) && !canonicalPreview && !showCanonicalPrintPreview}
         <div
-          class={`absolute ${markerClassName(markerPattern)}`}
+          class={`absolute z-40 pointer-events-none ${markerClassName(markerPattern)}`}
           style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
         ></div>
         <div
-          class={`absolute ${markerClassName(markerPattern)}`}
+          class={`absolute z-40 pointer-events-none ${markerClassName(markerPattern)}`}
           style={`top: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
         <div
-          class={`absolute ${markerClassName(markerPattern)}`}
+          class={`absolute z-40 pointer-events-none ${markerClassName(markerPattern)}`}
           style={`bottom: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px;`}
         ></div>
         <div
-          class={`absolute ${markerClassName(markerPattern)}`}
+          class={`absolute z-40 pointer-events-none ${markerClassName(markerPattern)}`}
           style={`bottom: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px;`}
         ></div>
       {/if}
-      {#if isHtmlMode && currentStage === 1}
+      {#if isHtmlMode && currentStage === 1 && !showCanonicalPrintPreview}
         <div
           class="absolute border border-dashed border-emerald-300/70 pointer-events-none z-0"
           style={`top: ${marginMm * 2.476}px; left: ${marginMm * 2.476}px; right: ${marginMm * 2.476}px; bottom: ${marginMm * 2.476}px;`}
@@ -612,9 +690,8 @@
       {/if}
 
       <!-- Shared overlay layer (Stage 2 and Sheet Designer Stage 1) -->
-      {#if currentStage === 2 || (isHtmlMode && currentStage === 1)}
-        <!-- Document Header Overlay -->
-        {#if showHeaderOverlay}
+      {#if currentStage === 2 || (isHtmlMode && currentStage === 1) || (currentStage >= 3 && canonicalPreview)}
+        {#if showHeaderOverlay && currentStage < 3 && !showCanonicalPrintPreview}
           <div
             class={`absolute flex justify-between items-center pb-1.5 border-b-2 border-slate-900 transition-all ${
               selectedOverlay === 'header' && !headerLocked
@@ -735,8 +812,7 @@
           </div>
         {/if}
 
-        <!-- Instructions Box Overlay -->
-        {#if showInstructionsOverlay}
+        {#if showInstructionsOverlay && currentStage < 3 && !showCanonicalPrintPreview}
           <div
             class={`absolute border p-2 rounded text-[8px] leading-tight transition-all ${
               selectedOverlay === 'instructions' && !instLocked
@@ -762,8 +838,7 @@
           </div>
         {/if}
 
-        <!-- Signature Box Overlay -->
-        {#if showSignatureOverlay}
+        {#if showSignatureOverlay && currentStage < 3 && !showCanonicalPrintPreview}
           <div
             class={`absolute border-2 border-slate-400 p-2 rounded bg-white flex flex-col justify-between transition-all ${
               selectedOverlay === 'signature' && !sigLocked
@@ -791,7 +866,7 @@
           </div>
         {/if}
 
-        <!-- Custom Text Items Overlay -->
+        {#if currentStage < 3 && !showCanonicalPrintPreview}
         {#each customTextItems as t, idx}
           <div
             class={`absolute font-medium leading-tight p-0.5 rounded cursor-move transition-all ${
@@ -807,14 +882,13 @@
             {t.content}
           </div>
         {/each}
+        {/if}
       {/if}
 
-      <!-- STAGE 1: Sheet Designer Universal Component Blocks (Single-source interactive document) -->
-      {#if isHtmlMode}
+      {#if isHtmlMode && !(currentStage >= 3 && canonicalPreview) && !showCanonicalPrintPreview}
         {#each components as comp, compIndex (comp.id)}
           {@const isSelected = (activeComponentIds ?? []).includes(comp.id) || activeComponentId === comp.id}
           {@const isPrimarySelected = activeComponentId === comp.id}
-          {@const isDragging = isComponentDragging && dragComponentIds.includes(comp.id)}
           {@const isRoll = comp.type === 'roll'}
           {@const isGrid = isQuestionGridComponent(comp)}
           {@const isText = !isRoll && !isGrid}
@@ -891,11 +965,13 @@
                   {/each}
                 </div>
               </div>
-
             {:else if isGrid}
-              <!-- Question Grid (compact rows matching the print renderer) -->
+              <!-- Question Grid (shared physical header and row geometry) -->
               <div class="w-full h-full flex flex-col justify-start bg-white pointer-events-none" style={`background-color: ${componentBackgroundColor(comp)};`}>
-                <div class="bg-slate-900 text-white font-black text-[7px] text-center uppercase tracking-wide rounded-xs py-0.5 mb-1 truncate px-1">
+                <div
+                  class="bg-slate-900 text-white font-black text-center uppercase tracking-wide rounded-xs truncate px-1"
+                  style={`height: ${GRID_SECTION_HEADER_HEIGHT_MM * 2.476}px; line-height: ${GRID_SECTION_HEADER_HEIGHT_MM * 2.476}px; font-size: ${Math.max(4.5, (Number(comp.labelFontSizePt) || 6.5) * 0.75)}px; margin-bottom: ${0.5 * 2.476}px;`}
+                >
                   {comp.subjectName || comp.name || 'Subject'}
                 </div>
                 <!-- Option labels align with the bubble centers below -->
@@ -1030,100 +1106,37 @@
       {/if}
 
       <!-- STAGE 3+ Multi-Section grids (for Section Bubbles stage) -->
-      {#if currentStage >= 3}
+      {#if currentStage >= 3 && previewSurface !== 'overlay'}
         {#each sections as sec, i}
           {@const isSelected = activeSectionIndex === i}
-          {@const labels = getOptionLabels(sec)}
-          {@const isRoll = sec.type === 'roll'}
-          {@const bPitchMm = Number(sec.bubblePitchMm) || (isRoll ? 5.5 : 5.2)}
-          {@const rPitchMm = Number(sec.rowPitchMm) || (isRoll ? 4.8 : 6.8)}
-          {@const stageBubblePx = isRoll ? ((Number(sec.bubbleDiameterMm) || 4.5) * 2.476) : CANVAS_RENDER_BUBBLE_PX}
-          {@const bubbleGapPx = Math.max(1.5, (bPitchMm * 2.476) - stageBubblePx)}
-          {@const rowGapPx = Math.max(0.5, (rPitchMm * 2.476) - stageBubblePx)}
-          {@const digitsCount = Number(sec.questionsCount) || (isRoll ? 7 : 25)}
-          {@const visualBounds = canvasSectionBoundsMm(labels.length, Number(sec.questionsCount) || (isRoll ? 10 : 1), bPitchMm, rPitchMm, isRoll, Number(sec.bubbleDiameterMm) || 4.5)}
-          {@const sourceComponent = isHtmlMode ? components.find((component) => component.id === sec.id) : null}
-          {@const sourceBounds = sourceComponent ? canvasComponentBlockSizeMm(sourceComponent) : visualBounds}
-          {@const blockWidthMm = sourceBounds.w_mm}
-          {@const blockHeightMm = sourceBounds.h_mm}
-          {@const qEnd = (Number(sec.startQ) || 1) + (Number(sec.questionsCount) || 1) - 1}
+          {@const visualBounds = recognitionGuideSizeMm(sec)}
+          {@const originOffset = recognitionOriginOffsetMm(sec)}
+          {@const nativeGuide = mappingPreviewStale ? null : (canonicalPreview?.mapping_guides?.find((guide) => guide.id === sec.id) ?? null)}
+          {@const bubbleGuides = Array.isArray(nativeGuide?.bubbles) && nativeGuide.bubbles.length > 0 ? nativeGuide.bubbles : localRecognitionBubbles(sec)}
+          {@const blockX = Number(nativeGuide?.x_mm ?? (Number(sec.posX) + originOffset.x)) || 16}
+          {@const blockY = Number(nativeGuide?.y_mm ?? (Number(sec.posY) + originOffset.y)) || 56}
+          {@const blockWidthMm = Number(nativeGuide?.w_mm ?? visualBounds.w_mm)}
+          {@const blockHeightMm = Number(nativeGuide?.h_mm ?? visualBounds.h_mm)}
           <div
-            class={`absolute rounded-lg border transition-all overflow-hidden ${
+            class={`absolute rounded-lg border transition-all overflow-hidden ${sec.isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'} ${
               isSelected
-                ? `border-emerald-600 border-dashed ring-2 ring-emerald-400/60 z-30 shadow-sm ${isHtmlMode ? 'bg-transparent' : 'bg-emerald-500/15 backdrop-blur-[0.5px]'}`
-                : `border-emerald-500/80 border-dashed hover:border-emerald-600 z-20 ${isHtmlMode ? 'bg-transparent' : 'bg-emerald-500/5 backdrop-blur-[0.5px]'}`
+                ? 'border-emerald-600 border-dashed ring-2 ring-emerald-400/60 z-30 shadow-sm bg-emerald-500/15 backdrop-blur-[0.5px]'
+                : 'border-emerald-500/80 border-dashed hover:border-emerald-600 z-20 bg-emerald-500/5 backdrop-blur-[0.5px]'
             }`}
-            style={`top: ${(Number(sec.posY) || 56) * 2.476}px; left: ${(Number(sec.posX) || 16) * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
+            style={`top: ${blockY * 2.476}px; left: ${blockX * 2.476}px; width: ${blockWidthMm * 2.476}px; height: ${blockHeightMm * 2.476}px;`}
             data-omr-section-id={sec.id}
             onmousedown={(e) => handleBlockMouseDown(e, i)}
             role="button"
             tabindex="0"
           >
-            {#if !isHtmlMode}
-              {#if isRoll}
-                <!-- Roll / Examinee ID 0-9 Bubble Matrix -->
-                <div class="p-1 w-full h-full flex flex-col justify-start" style={`gap: ${rowGapPx}px;`}>
-                  {#each Array.from({ length: 10 }) as _, digit}
-                    <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
-                      <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
-                        {digit}
-                      </span>
-                      <div class="flex items-center" style={`gap: ${bubbleGapPx}px;`}>
-                        {#each Array.from({ length: digitsCount }) as _}
-                          <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[5.5px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
-                          </div>
-                        {/each}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
+            <div class="pointer-events-none absolute inset-0">
+              {#each bubbleGuides as bubble}
                 <div
-                  class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
-                    isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
-                  }`}
-                >
-                  ID ({digitsCount} Digits)
-                </div>
-              {:else}
-                <!-- Translucent Optical Target Rings with DYNAMIC Pitch Spacing (content-hug padding) -->
-                <div
-                  class="p-1 w-full h-full flex flex-col justify-start"
-                  style={`gap: ${rowGapPx}px;`}
-                >
-                  {#each Array.from({ length: Math.min(Number(sec?.questionsCount) || 1, 50) }) as _, r}
-                    <div class="flex items-center text-[7px] font-mono text-emerald-950 shrink-0 leading-none" style={`height: ${stageBubblePx}px;`}>
-                      <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 rounded px-0.5 text-center mr-1 shrink-0 flex items-center justify-center" style={`width: 14px; height: ${stageBubblePx}px;`}>
-                        {(Number(sec?.startQ) || 1) + r}
-                      </span>
-                      <div
-                        class="flex items-center"
-                        style={`gap: ${bubbleGapPx}px;`}
-                      >
-                        {#each labels as opt}
-                          <div class="rounded-full border border-emerald-600/90 bg-emerald-500/25 text-emerald-950 flex items-center justify-center text-[6px] font-bold shadow-xs shrink-0" style={`width: ${stageBubblePx}px; height: ${stageBubblePx}px;`}>
-                            {opt}
-                          </div>
-                        {/each}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-
-                <!-- Minimal Floating Q-Range Label (no header bar, no pitch text) -->
-                <div
-                  class={`absolute top-0.5 right-0.5 px-1 py-px rounded text-[6.5px] font-mono font-bold shadow-xs pointer-events-none select-none ${
-                    isSelected ? 'bg-emerald-700/90 text-white' : 'bg-emerald-600/70 text-white'
-                  }`}
-                >
-                  Q{Number(sec.startQ) || 1}{qEnd > (Number(sec.startQ) || 1) ? `–${qEnd}` : ''}
-                </div>
-              {/if}
-            {/if}
-            {#if sec.isLocked}
-              <div class="absolute top-0.5 left-0.5 text-amber-600 pointer-events-none select-none">
-                <Lock class="size-2.5" />
-              </div>
-            {/if}
+                  class="absolute rounded-full border-2 border-emerald-600 bg-emerald-400/20 shadow-[0_0_0_1px_rgba(255,255,255,0.7)]"
+                  style={`left: ${(Number(bubble.x_mm) - blockX) * 2.476}px; top: ${(Number(bubble.y_mm) - blockY) * 2.476}px; width: ${Number(bubble.w_mm) * 2.476}px; height: ${Number(bubble.h_mm) * 2.476}px;`}
+                ></div>
+              {/each}
+            </div>
           </div>
         {/each}
       {/if}
@@ -1147,7 +1160,8 @@
 
 <style>
   .canvas-grid {
-    background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+    background-color: var(--muted);
+    background-image: radial-gradient(circle, color-mix(in srgb, var(--muted-foreground) 28%, transparent) 1px, transparent 1px);
     background-size: 20px 20px;
   }
   .marker-box {

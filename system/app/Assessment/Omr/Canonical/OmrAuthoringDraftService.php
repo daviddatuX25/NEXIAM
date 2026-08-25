@@ -101,6 +101,11 @@ final class OmrAuthoringDraftService
         $authoring['mapping'] = null;
         $authoring['overlay'] = null;
         $authoring['verification'] = null;
+        $authoring['canonical']['artifact_set'] = null;
+        $authoring['canonical']['artifact_hash'] = null;
+        $authoring['canonical']['raster_assets'] = [];
+        $authoring['canonical']['pdf_asset_id'] = null;
+        $authoring['canonical']['source_pdf_asset_id'] = null;
         $authoring['invalidations'] = [
             'stale_mapping' => true,
             'verification_invalidated' => true,

@@ -252,32 +252,147 @@ Rename the Stage-1 "Native Builder" workspace to **Sheet Designer** (one term ev
 
 ### Cut A — Freeze engine behavior and establish one materializer
 
-- [ ] 31.1 Freeze current pinned behavior with characterization fixtures for native `Template`/`FieldBlock` expansion, `CropOnMarkers`, marker-center `pageDimensions`, bounded field shifts, clean aligned return bytes, and separate `draw_template_layout` output; detection math and the two owned patches remain unchanged.
-- [ ] 31.2 Add a server-validated `CanonicalSheetDefinition` for paper, visual components, explicit section-header visibility/text, OMR block intent, overlay slots, and qualified marker profile/insets; normalize recognition geometry to integer canonical pixels at 300 PPI.
-- [ ] 31.3 Extract reusable bundle assembly from `OmrCanonicalNativeBundleCompiler` and add one `CanonicalArtifactMaterializer` that emits the 300-PPI PNG, exact-size image-backed PDF, non-blank reference page, native `template.json`/`config.json`, exact marker asset, expanded review manifest, and one artifact-set hash.
-- [ ] 31.4 Make compile byte-promote the passing candidate artifact set instead of regenerating it; any definition, renderer, marker, mapping, engine, patch, config, or output-byte change invalidates candidate verification.
+- [x] 31.1 Freeze current pinned behavior with characterization fixtures for native `Template`/`FieldBlock` expansion, `CropOnMarkers`, marker-center `pageDimensions`, bounded field shifts, clean aligned return bytes, and separate `draw_template_layout` output; detection math and the two owned patches remain unchanged.
+- [x] 31.2 Add a server-validated `CanonicalSheetDefinition` for paper, visual components, explicit section-header visibility/text, OMR block intent, overlay slots, and qualified marker profile/insets; normalize recognition geometry to integer canonical pixels at 300 PPI.
+- [x] 31.3 Extract reusable bundle assembly from `OmrCanonicalNativeBundleCompiler` and add one `CanonicalArtifactMaterializer` that emits the 300-PPI PNG, exact-size image-backed PDF, non-blank reference page, native `template.json`/`config.json`, exact marker asset, expanded review manifest, and one artifact-set hash.
+- [x] 31.4 Make compile byte-promote the passing candidate artifact set instead of regenerating it; any definition, renderer, marker, mapping, engine, patch, config, or output-byte change invalidates candidate verification.
 
 ### Cut B — Make Question Bubbles the explicit accuracy boundary
 
-- [ ] 31.5 Add a draft candidate-preview action: save definition → materialize artifacts → load with the pinned native template path → derive native expanded bubbles → run the clean page through the existing signed `/v1/layout-verification` seam → return canonical underlay, engine overlay, hashes, and typed failures.
-- [ ] 31.6 Generalize `OmrDiagnosticRequestBuilder` over a pinned diagnostic-geometry value object so draft candidates and compiled versions share the same envelope, marker asset carriage, review-manifest derivation, unsafe-shift gates, and result validation.
-- [ ] 31.7 Replace Stage-3 client bubble rendering with the server canonical page underlay plus native expanded mapping guides only; remove compiled-HTML substitution and client bubble-origin calculations from the accuracy path.
-- [ ] 31.8 Make section headers explicit definition fields and render them through the same server path as the page/PDF/reference artifact; prove a label cannot first appear after Stage-1 transition.
+- [x] 31.5 Add a draft candidate-preview action: save definition → materialize artifacts → load with the pinned native template path → derive native expanded bubbles → run the clean page through the existing signed `/v1/layout-verification` seam → return canonical underlay, engine overlay, hashes, and typed failures.
+- [x] 31.6 Generalize `OmrDiagnosticRequestBuilder` over a pinned diagnostic-geometry value object so draft candidates and compiled versions share the same envelope, marker asset carriage, review-manifest derivation, unsafe-shift gates, and result validation.
+- [x] 31.7 Replace Stage-3 client bubble rendering with the server canonical page underlay plus native expanded mapping guides only; remove compiled-HTML substitution and client bubble-origin calculations from the accuracy path.
+- [x] 31.8 Make section headers explicit definition fields and render them through the same server path as the page/PDF/reference artifact; prove a label cannot first appear after Stage-1 transition.
+
 
 ### Cut C — Execute real digital and physical proof
-
-- [ ] 31.9 Replace `OmrNoGoMatrixRunner`'s expected-equals-actual loop with queued real worker executions for clean, perspective, rotation, uneven light, blur, glare, low resolution, partial page, missing/wrong marker, wrong/superseded/duplicate instance, and multipage order; persist input/output hashes, aligned/overlay assets, typed outcomes, and timings.
-- [ ] 31.10 Move a draft to `digital_verified` only when the clean answer vector is recovered exactly and every no-go variant produces its declared real outcome; worker unavailable/timeout/decode/hash mismatch is a failed or retryable variant, never a synthetic pass.
-- [ ] 31.11 Keep physical Test Capture version-scoped after compile; default Stage 4 to the worker-returned clean aligned raster, retain the upload as separate forensic input, expose the engine overlay/evidence tabs, and gate qualification on marker count, dimensions, unsafe shifts, and recorded printer/device/paper measurements.
-
+- [x] 31.9 Replace `OmrNoGoMatrixRunner`'s expected-equals-actual loop with a queue-safe real worker job boundary for clean, perspective, rotation, uneven light, blur, glare, low resolution, partial page, missing/wrong marker, wrong/superseded/duplicate instance, and multipage order; persist input/output hashes, aligned/overlay assets, typed outcomes, and timings. The current request remains synchronous through `dispatchSync` so the existing lifecycle response is truthful; the job payload is asset-ID based and safe to switch to queued polling.
+- [x] 31.10 Move a draft to `digital_verified` only when the clean answer vector is recovered exactly and every no-go variant produces its declared real outcome; worker unavailable/timeout/decode/hash mismatch is a failed or retryable variant, never a synthetic pass.
+- [x] 31.11 Keep physical Test Capture version-scoped after compile; default Stage 4 to the worker-returned clean aligned raster, retain the upload as separate forensic input, expose the engine overlay/evidence tabs, and gate qualification on marker count, dimensions, unsafe shifts, and recorded printer/device/paper measurements.
 ### Cut D — Honest lifecycle, export, and proof
 
-- [ ] 31.12 Make Stage 4 lifecycle-aware: show candidate materialization/digital verification/compile gates, disable physical Test Capture before `compiled_version_id`, remove the nonexistent uncompiled fallback URL, and surface typed corrective actions.
-- [ ] 31.13 Stream the immutable bundle's actual `template.json` with capability reauthorization and `private, no-store`; relabel client JSON as a non-authoritative mapping preview and remove native-template wording from it.
-- [ ] 31.14 Delete blank reference generation and obsolete duplicate HTML/green-sheet accuracy paths after all callers use the materializer; no compatibility shim or second geometry compiler remains.
-- [ ] 31.15 Add parity coverage: repeated materialization byte/hash stability; definition→PNG/PDF/reference/native bubble coordinate equality; exact marker asset/inset/frame equality; candidate→compiled byte equality; real worker clean/no-go results; aligned-image dimensions/hash; actual native download; and rejection of stale candidates.
+- [x] 31.12 Make Stage 4 lifecycle-aware: show candidate materialization/digital verification/compile gates, disable physical Test Capture before `compiled_version_id`, remove the nonexistent uncompiled fallback URL, and surface typed corrective actions.
+- [x] 31.13 Stream the immutable bundle's actual `template.json` with capability reauthorization and `private, no-store`; relabel client JSON as a non-authoritative mapping preview and remove native-template wording from it.
+- [x] 31.14 Delete blank reference generation and obsolete duplicate HTML/green-sheet accuracy paths after all callers use the materializer; no compatibility shim or second geometry compiler remains.
+- [x] 31.15 Add parity coverage: repeated materialization byte/hash stability; definition→PNG/PDF/reference/native bubble coordinate equality; exact marker asset/inset/frame equality; candidate→compiled byte equality; real worker clean/no-go results; aligned-image dimensions/hash; actual native download; and rejection of stale candidates.
 - [ ] 31.16 Browser-prove one canonical draft end to end: Stage 1 header choice → Stage 3 server underlay/native overlay → digital matrix → immutable compile → uploaded printed/photo fixture → worker aligned raster/overlay → actual `template.json`, with zero hidden labels, geometry drift, failed requests, or fabricated qualification.
 
-### Stop gates
+- [x] 31.17 Do not start Cut B until Cut A proves one artifact set; do not mark digital verification passed until Cut C calls the real worker; do not activate until a qualified marker profile and genuine version-bound physical evidence exist. Production enablement remains blocked on the approved sheet/key, representative labeled corpus, and operational qualification.
+- [x] 31.18 Make the printable artifact visible before mapping and stable across the boundary: add Sheet Designer `Print Preview` from the materializer; preserve it across navigation-only saves; reuse it entering Question Bubbles; keep it as the full-paper base for `Print Sheet` / marker-frame `Engine Aligned` / `Engine Overlay`; retain the QR reservation; use the same Question Bubbles interface for designed and uploaded sources.
 
-- [ ] 31.17 Do not start Cut B until Cut A proves one artifact set; do not mark digital verification passed until Cut C calls the real worker; do not activate until a qualified marker profile and genuine version-bound physical evidence exist. Production enablement remains blocked on the approved sheet/key, representative labeled corpus, and operational qualification.
+## 32. Printable artifact → CropOnMarkers → mapping hardening
+
+- [x] 32.1 Freeze the three authorities: full-paper `CanonicalArtifactSet` is print truth; native marker-frame `fieldBlocks` are recognition truth; OMRChecker aligned/overlay outputs are read-only diagnostics. Record the paper↔frame inset transform and QR-reservation rule.
+- [x] 32.2 Expose the materializer in Sheet Designer as `Print Preview`; preserve byte-identical candidates across navigation-only saves; invalidate on any printable/source/mapping/profile/inset change; reuse the same candidate entering Question Bubbles.
+- [x] 32.3 Run the exact candidate through signed `/v1/layout-verification` with `CropOnMarkers`, the selected marker bytes, native config/template, and hash checks; retain full paper as the default while aligned/overlay images stay inside the marker frame.
+- [x] 32.4 Give Question Bubbles one source-agnostic interface: `Print Sheet`, `Engine Aligned`, `Engine Overlay`, QR reservation, native guides, typed failure/recovery. Sheet Designer and uploaded sources differ only before materialization.
+- [ ] 32.5 Add the source matrix acceptance suite for Sheet Designer, HTML, DOCX, PDF, image, and preset: confirmed source → printable raster/PDF → CropOnMarkers → aligned dimensions → overlay → mapping guides, with no source-specific Question Bubbles branches.
+- [ ] 32.6 Browser-prove one designed source and one uploaded source through preview reuse, edit invalidation/recovery, mapping save, digital verification, compile-byte promotion, and actual native download; keep physical qualification/activation blocked until genuine evidence exists.
+
+## 33. Review findings
+
+- [x] [Review][Patch] Revalidate the artifact/profile and lock state after long-running digital verification before setting `digital_verified`. [`RunOmrDigitalVerification.php`]
+- [x] [Review][Patch] Revalidate the locked draft and current qualified marker geometry before promoting a candidate at compile. [`CompileOmrCanonicalDraft.php`]
+- [x] [Review][Patch] Prevent failed idempotent digital/compile attempts from replaying as false HTTP success. [`OmrCanonicalTemplateController.php`]
+- [x] [Review][Patch] Enforce draft ownership for workflow and draft-asset reads, not only mutation endpoints. [`OmrCanonicalTemplateController.php`]
+- [x] [Review][Patch] Bound and terminate isolated raster mutation subprocesses and clean partial proof/evidence assets on failure. [`OmrNoGoMatrixRunner.php`, `RunOmrDigitalVerification.php`]
+- [x] [Review][Patch] Restore the floating sidebar as a workspace sibling instead of a child of the bottom canvas-controls bar; browser geometry must remain 350 px wide and viewport-height bounded. [`OmrTemplateStudio.svelte`]
+- [x] [Review][Patch] Separate Question Bubbles correctly: `Print Sheet` stays the immutable server raster; unlocked native mapping guides edit the same `template.json` recognition coordinates without moving printed content; locked guides cannot move; lock-only saves preserve the passing candidate; normal mapping edits retain the raster and show one amber saved/stale-diagnostics status—not a red error; Test & Verify reruns diagnostics and clears that status; genuine mapping refusals remain typed 422. [`StudioCanvas.svelte`, `StudioBubblePanel.svelte`, `OmrTemplateStudio.svelte`, `SaveOmrCanonicalStudioState.php`, `OmrCanonicalTemplateController.php`]
+- [ ] [Review][Decision] Define evidence-backed expected outcomes and perturbation severities for perspective, rotation, uneven light, blur, glare, and low-resolution matrix cases; current real worker accepts them, so digital verification honestly blocks.
+- [ ] [Review][Decision] Resolve the one-active-OpenSpec conflict between `omr-canonical-template-authoring` and `omr-profile-test-readiness` before further feature implementation.
+
+## 34. Source-agnostic Recognition Mapping and physical test UX
+
+- [x] 34.1 Rename the bubble stage to Recognition Mapping and render the same translucent MCQ/ID recognition overlay for Sheet Designer, image, PDF, DOCX, HTML, and preset candidates.
+- [x] 34.2 Keep printable components and recognition field-block coordinates separate: moving a guide updates mapping only, keeps the canonical raster mounted, and requires an explicit recognition test.
+- [x] 34.3 Persist guide lock state as editor metadata without invalidating artifacts; prevent guide collisions client-side so ordinary dragging cannot emit repeated 422 autosave failures.
+- [x] 34.4 Replace the compressed `Single Q`/`Add Section` row with Stage-1-style Single question and Question range component cards.
+- [x] 34.5 Separate `Run recognition test` from `Continue to Verification`; label the three views `Print Sheet`, `Aligned Check`, and `Recognition Overlay`.
+- [x] 34.6 Remove native `template.json` download and client mapping JSON controls from normal staff UI; retain the authenticated endpoint for diagnostics and automatic scanner use.
+- [x] 34.7 Expose the canonical candidate PDF in Verification & Test Capture with 100%/Actual Size instructions while retaining camera and uploaded-photo capture after immutable compile.
+- [x] 34.8 Prove designed and uploaded candidates render the same recognition UI; prove collision drag is refused without 422; prove Verification shows print/camera/upload and no native download.
+- [x] 34.9 Derive client overlay rings from expanded native field labels and exact paper-space bubble rectangles; prove MCQ25 renders 100 rings, Examinee ID renders 7×10 rings, and remove overlay labels/padding that obscured printed content.
+- [x] 34.10 Remove the legacy `margin + 15 mm` top clamp from Recognition Mapping; enforce the normal printable margin uniformly and browser-prove the Examinee ID guide moves upward and restores without errors.
+- [x] 34.11 Bind the shared Studio zoom state into `StudioCanvas`, replace the misleading hard-coded `Fit (78%)` label, and browser-prove Zoom In enlarges the sheet and Zoom Out restores it.
+- [x] 34.12 Reduce the global utility bar to Undo, Redo, save status, and Save; collapse stage labels to numbered tooltips at narrow widths so essential controls remain visible.
+- [x] 34.13 Move marker/profile detail into a Page registration disclosure in Recognition Mapping, explain its registration-only role, and hide comparison-only candidates from normal staff authoring.
+- [x] 34.14 Theme workspace, sidebar, inspector, mapping, verification, inputs, and viewport controls with semantic light/dark tokens while keeping the physical printable sheet white.
+- [x] 34.15 Browser-prove dark surfaces and white paper at desktop, essential Save visibility/no horizontal overflow at 1024px, desktop step labels, and comparison-profile absence.
+- [x] 34.16 Validate recognition-block overlap in the browser before atomic save so invalid coordinate inputs show inline recovery and emit no failing PUT/422 request.
+- [x] 34.17 Replace the hard-coded blue OMR information row with a theme-aware neutral Recognition guides explanation.
+- [x] 34.18 Normalize Studio validation responses into a structured sidebar list, keep the toolbar status concise, prevent MouseEvent leakage into `source_kind`, and prove manual Save returns 200 while invalid overlap emits no PUT.
+
+## 35. Shared verification kernel, physical challenge, and scanner evidence repair
+
+### Cut A — Freeze behavior and make this the sole implementation owner
+
+- [ ] 35.1 Mark `omr-profile-test-readiness` implementation work paused/read-only and record this change as the sole active OMR implementation owner; copy no tasks blindly—cross-reference only the pinned worker/bundle/Test-capture evidence inherited from it.
+- [ ] 35.2 Add characterization fixtures for `TestCaptureOmrTemplate`, canonical candidate preview, `RunOmrSheetAnalysis`, `ActivateOmrConfiguration` projection rows, `Capture.svelte` template item projection, and `OmrRegionCrop`; record current pass/fail behavior and reproduce the broken/missing canonical per-item options/regions before refactoring.
+- [ ] 35.3 Define and fixture the no-go policy table for clean, mild perspective/rotation/light/blur/low-resolution expected exact recovery versus severe/partial/missing/wrong marker expected typed rejection. Stop: do not make the matrix green by changing expectations without fixture evidence.
+
+### Cut B — Extract one template geometry projection and repair scanner inputs
+
+- [ ] 35.4 Add `system/app/Assessment/Omr/OmrTemplateGeometryProjector.php` with `project(OmrAnswerSheetTemplateVersion $version, array $reviewManifest): GeometryProjectionResult`; move version-owned page/area/question/option persistence out of `ActivateOmrConfiguration`, including normalized regions, declared option order, semantic area/question identity, projection hash, idempotent identical retry, and stale/different-manifest rejection.
+- [ ] 35.5 Make predecessor `ActivateOmrConfiguration` call `OmrTemplateGeometryProjector`; delete its duplicate projection implementation after all tests use the module.
+- [ ] 35.6 Make both canonical compile paths call the same projector inside the compile transaction after version creation and before draft commit; failure SHALL remove the partial version/assets and leave the draft uncompiled.
+- [ ] 35.7 Add `system/app/Assessment/Omr/Queries/OmrReviewGeometryQuery.php`; return page/question/declared-option normalized regions from template-owned projection and merge correct options from the pinned booklet by validated area code + question number/position coverage.
+- [ ] 35.8 Replace `GradingController::omr()`'s booklet-question→optional-templateQuestion geometry projection with `OmrReviewGeometryQuery`; keep roster, applicant, batch, and score projections unchanged.
+- [ ] 35.9 Add typed `geometry_projection_missing|geometry_projection_stale|pair_geometry_coverage_mismatch|pair_option_set_mismatch` failures and block pair activation/analysis rather than emitting `[0,0,1,1]` fallback regions.
+- [ ] 35.10 Add feature tests proving canonical compile creates one idempotent page/area/question/option projection, MCQ4/MCQ5/int options are complete, compatible booklet merge returns exact correct options, and grading props contain nonzero exact regions without relying on `template_question_id`.
+
+### Cut C — Define the deep shared diagnostic interfaces
+
+- [ ] 35.11 Add `OmrDiagnosticTarget` interface exposing target kind/id, page count, native template/config/assets, review manifest, marker/profile identity, and artifact/native/manifest/config/mapping hashes; document rehearsal/qualification capability in the interface invariant.
+- [ ] 35.12 Add `CandidateArtifactDiagnosticTarget` and `CompiledVersionDiagnosticTarget` adapters; candidate adapter fails stale draft/artifact hashes and reports `qualification_capable=false`; version adapter reads only pinned immutable version assets and reports `qualification_capable=true`.
+- [ ] 35.13 Add immutable `OmrProofPlan` value object and `ProofPurpose` enum (`digital`, `quick_rehearsal`, `full_qualification`) with plan version, deterministic seed, challenge code, expected vector, calibration digits, per-page instructions, target hashes, and canonical plan hash.
+- [ ] 35.14 Add `OmrDiagnosticEvidence` value object/projection containing captured/aligned/overlay assets, gates, marker matches, field shifts, declared-option item/ID evidence, expected/detected values, exact/ambiguous/missing summary, timings, hashes, safe issues, and calibration status; prohibit applicant/score mutation fields.
+- [ ] 35.15 Add `OmrTemplateDiagnosticRunner::verify(OmrDiagnosticTarget $target, string $bytes, string $mime, ?OmrProofPlan $plan): OmrDiagnosticEvidence`; reuse `OmrDiagnosticRequestBuilder`, `OmrCheckerDetection`, `OmrDetectionPort`, `OmrLayoutVerificationPort`, unsafe-shift gates, and response hash/HMAC validation. No second detector or threshold implementation.
+- [ ] 35.16 Add contract tests running candidate and compiled adapters through the same fake/real-worker seam and asserting identical normalized evidence shape, target/hash identity, typed failures, and candidate qualification refusal.
+
+### Cut D — One deterministic proof planner and renderers
+
+- [ ] 35.17 Add `OmrProofPlanner::plan(OmrDiagnosticTarget $target, ProofPurpose $purpose, string $planVersion='v1'): OmrProofPlan`; expand native labels through `NativeBundle::expandLabel`, use artifact/native hash + purpose + version as seed, balance declared options, cover every page, and generate calibration digits only for a mapped ID grid.
+- [ ] 35.18 Refactor `OmrDigitalProofGenerator` to consume `OmrProofPlan`; keep machine-filled exact PDF/raster rendering and signed calibration QR, remove its internal modulo pattern ownership, and preserve existing proof hashes through the plan hash.
+- [ ] 35.19 Add `OmrPhysicalChallengeRenderer` producing (a) exact printable challenge sheet with signed calibration QR/display code and no browser geometry, and (b) separate grouped human shading guide HTML/PDF; quick mode covers first/middle/last + every option/section/ID column, full mode assigns every expanded label.
+- [ ] 35.20 Add unit/golden tests for repeated-plan determinism, option balance, full label coverage, no identity when unmapped, stable guide copy, multi-page order, challenge QR verification, and byte/hash stability of repeated rendering.
+
+### Cut E — Durable verification runs and truthful progress
+
+- [ ] 35.21 Add migrations/models for `omr_template_verification_runs`, `omr_physical_challenges`, and `omr_template_verification_captures` with real FKs, exactly-one draft/version target CHECK, status/phase/mode CHECKs, positive attempt/version constraints, private asset references, hashes, safe error, actor/timestamps, and no applicant/score FK. Define row/asset deletion order and indexes for target+status, run+attempt, challenge code, and active-run lookup.
+- [ ] 35.22 Add `StartOmrTemplateVerification` action + FormRequest; idempotently create a run pinned to current target/proof-plan hashes, audit it, dispatch `RunOmrTemplateVerificationJob` after commit, and return `202 {run_id,status_url}`.
+- [ ] 35.23 Add `OmrTemplateVerificationStatus` query + capability/owner-scoped GET route returning phase, real completed/total counts, current variant, safe issue, result summary, available challenge/capture actions, run version, and evidence URLs with `private, no-store`. The run/evidence rows are the sole resume authority; never reconstruct progress from operations/jobs.
+- [ ] 35.24 Refactor `RunOmrNoGoMatrixJob`/digital verification into the durable job: persist `preparing_proof → clean_recovery → variant_matrix`, update progress after each actual variant, compare clean/mild exact vector, require severe typed outcomes, store evidence assets, and set `passed|failed` without a long synchronous HTTP request.
+- [ ] 35.25 Add retry/cancel semantics: retry creates the next attempt against the same pinned plan; explicit new challenge creates a new plan hash; stale target fails closed; worker unavailable/timeout preserves completed evidence and exposes retry; no pause.
+- [ ] 35.26 Add transition/idempotency/concurrency tests for every run phase, duplicate start replay, stale target, retry attempt number, worker timeout, partial evidence preservation, forbidden cross-owner read, and audit events.
+
+### Cut F — Physical challenge capture and derived qualification
+
+- [ ] 35.27 Add `CreateOmrPhysicalChallenge` action + request/route for quick/full mode; require current digital pass, render/store sheet+guide assets, persist expected vector/plan hash/signed calibration-purpose QR, transition run to `awaiting_print|awaiting_capture`, and return print/guide URLs.
+- [ ] 35.28 Add shared capture submission action accepting JPEG/PNG/WebP/scanned PDF, reusing source preflight limits and `OmrTemplateDiagnosticRunner`; persist forensic/aligned/overlay assets and normalized evidence per attempt, compare detected vector exactly to plan, and transition `analyzing_capture → needs_review|passed|failed`.
+- [ ] 35.29 Add camera/upload equivalence, wrong challenge/template/QR purpose, partial page, missing marker, ambiguous/missing answer, unsafe shift, image hash, repeated capture attempt, multi-page, and expected-vector comparison tests.
+- [ ] 35.30 Replace the physical “matrix passed” checkbox path: `RunOmrPhysicalQualification` accepts only a compiled full-challenge run id and derives pass from exact recovery + gates + qualified profile + printer/device/paper/measurements; candidate or quick run returns typed refusal.
+- [ ] 35.31 Wire `RegisterOmrBlankInstanceCapture` into canonical grading upload before analysis request construction; distinguish calibration challenge QR purpose from blank-instance QR, verify signed template/page against batch pair, add audited absent/unreadable manual recovery before recognition, and hard-reject present-invalid or mismatched signed QR.
+### Cut G — Extract shared frontend modules without moving workflow authority
+
+- [ ] 35.32 Move `OmrRegionCrop.svelte` to `resources/js/Components/Omr/Diagnostics/OmrRegionCrop.svelte` using LSP/file-aware import updates; preserve lazy aligned-image crop behavior and add declared-option/expected/detected states independent of grading correctness.
+- [ ] 35.33 Add deep `OmrDiagnosticEvidencePanel.svelte` owning captured/aligned/recognition tabs, gate summary, `problems|all` filter, item and ID crop cards, expected/detected/mean/threshold/shift/hash display, loading/empty/error states, and optional return URL. Its only inputs are normalized evidence + labels/actions; it emits no domain mutation.
+- [ ] 35.34 Add `OmrCaptureInput.svelte` owning camera lifecycle, camera switch, file picker/drop, accepted MIME/size copy, preflight display, capture/retry, and one `submit(File)` callback; no run, grading, qualification, or applicant knowledge.
+- [ ] 35.35 Replace duplicated evidence/capture markup in `Templates/TestCapturePanel.svelte` and `Canonical/StudioExportVerifyPanel.svelte` with the shared modules; delete obsolete local state/functions/imports after parity.
+- [ ] 35.36 Adopt `OmrDiagnosticEvidencePanel` in grading `Capture.svelte` review while retaining gallery/session/applicant/issues/confirm/score orchestration. Replace the existing per-item table crop source with aligned image + `OmrReviewGeometryQuery` option regions; do not redesign unrelated grading screens.
+- [ ] 35.37 Add frontend contract tests for MCQ4/MCQ5/int evidence, expected≠detected, ambiguous/missing, failed crop, problems filter, hashes/gates, camera unavailable/upload fallback, and builder/scanner equivalent evidence rendering.
+
+### Cut H — Stage 3 experience
+
+- [ ] 35.38 Rebuild Verification & Test Capture as five visible checkpoints: Digital engine check → Physical challenge → Capture printed challenge → Evidence review → Qualification. Each checkpoint shows purpose, prerequisites, persisted phase/status, actual next action, retry/recovery, and completed evidence.
+- [ ] 35.39 Add real polling for active verification run with bounded interval/teardown; show actual phase/variant and completed/total only; no fake percentages. Reload/re-login SHALL restore the current run and evidence.
+- [ ] 35.40 Add challenge mode selector, printable sheet and separate shading guide, grouped expected marks, calibration-ID disclaimer, Actual Size instruction, camera/upload capture, captured/aligned/overlay tabs, gate summary, exact/ambiguous/missing totals, problems-first item list, and Return to Recognition Mapping.
+- [ ] 35.41 Keep compile/qualification gates explicit: candidate rehearsal labels `Rehearsal only`; full compiled challenge enables derived qualification only after genuine evidence; activation remains unavailable until qualification.
+
+### Cut I — Acceptance, cleanup, and handoff
+
+- [ ] 35.42 Add focused backend suites `OmrProofPlanTest`, `OmrTemplateGeometryProjectorTest`, `OmrTemplateVerificationRunTest`, `OmrPhysicalChallengeTest`, and canonical/scanner integration tests using the real PostgreSQL constraints and private asset store.
+- [ ] 35.43 Extend pinned inference characterization for expected exact mild variants and severe typed rejection, item/ID evidence option cardinality, aligned/overlay hashes, and QR/template mismatch; do not change pinned recognition math without a separate evidence-backed decision.
+- [ ] 35.44 Browser-prove one designed and one uploaded candidate through digital progress, quick print/guide, camera or uploaded capture, aligned/overlay/per-item review, return-to-mapping, retry/reload; browser-prove one compiled full challenge through genuine physical qualification without fabricated evidence.
+- [ ] 35.45 Browser-prove grading scanner with a canonical compiled template–booklet pair: signed QR resolves version, all item/ID crops use aligned geometry, declared options and correct answers are distinct, problems filter works, and review/confirm writes the same score contract as before.
+- [ ] 35.46 Remove old duplicated diagnostic code, dead JSON shapes, optional template-question geometry fallback, manual physical-pass checkbox, synchronous digital verification response assumptions, unused imports/routes, and compatibility aliases after all callers migrate.
+- [ ] 35.47 Run focused Pest/Vitest/python/browser/build plus strict OpenSpec and diff checks once; update demo seeder with a deterministic non-qualified verification run and printable challenge only (never physical_qualified), then update `HANDOFF.md` with credentials, reset command, URLs, challenge instructions, evidence hashes, known blockers, and exact reproduction steps.

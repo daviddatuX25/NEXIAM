@@ -19,6 +19,7 @@ import json
 import time
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+import sys
 
 import cv2
 import numpy as np
@@ -146,16 +147,18 @@ def verify(manifest: dict, image_path: Path, output_directory: Path) -> dict:
     detect.materialize_native_assets(manifest, output_directory)
 
     engine_log_capture = __import__("io").StringIO()
-    with redirect_stdout(engine_log_capture), redirect_stderr(engine_log_capture):
-        template = template_class(template_path, config)
-        image_ops = image_ops_class(config)
-        preprocess_started = time.monotonic()
-        processing_width = int(config.dimensions.processing_width)
-        processing_height = int(config.dimensions.processing_height)
-        camera_input = decoded_width != processing_width or decoded_height != processing_height
-        processed = image_ops.apply_preprocessors(str(image_path), image, template)
-    engine_text = engine_log_capture.getvalue()
-    sys.stderr.write(engine_text)
+    try:
+        with redirect_stdout(engine_log_capture), redirect_stderr(engine_log_capture):
+            template = template_class(template_path, config)
+            image_ops = image_ops_class(config)
+            preprocess_started = time.monotonic()
+            processing_width = int(config.dimensions.processing_width)
+            processing_height = int(config.dimensions.processing_height)
+            camera_input = decoded_width != processing_width or decoded_height != processing_height
+            processed = image_ops.apply_preprocessors(str(image_path), image, template)
+    finally:
+        engine_text = engine_log_capture.getvalue()
+        sys.stderr.write(engine_text)
     preprocess_ms = (time.monotonic() - preprocess_started) * 1000.0
 
     if processed is None:

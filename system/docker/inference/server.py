@@ -498,14 +498,14 @@ class Handler(BaseHTTPRequestHandler):
 
     @staticmethod
     def safe_child_code(stderr: bytes) -> str:
-        try:
-            line = stderr.decode("utf-8", "replace").splitlines()[-1]
-            value = json.loads(line)
+        for line in reversed(stderr.decode("utf-8", "replace").splitlines()):
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             code = value.get("error")
             if isinstance(code, str) and code.replace("_", "").isalnum() and len(code) <= 64:
                 return code
-        except (IndexError, json.JSONDecodeError):
-            pass
         return "child_failed"
 
     def send_json(self, status: int, payload: dict) -> None:

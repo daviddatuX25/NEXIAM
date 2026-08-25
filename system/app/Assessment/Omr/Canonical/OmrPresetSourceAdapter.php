@@ -75,6 +75,7 @@ final class OmrPresetSourceAdapter extends AbstractOmrSourceAdapter
             pages: $pages,
             metadata: [
                 'pdf_path' => $pdfPath,
+                'page_count' => count($pages),
                 'old_page' => $oldPage,
                 'new_page' => $newPage,
                 'field_blocks' => $fieldBlocks,

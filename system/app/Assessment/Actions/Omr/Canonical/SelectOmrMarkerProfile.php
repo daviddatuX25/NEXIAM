@@ -24,6 +24,9 @@ final class SelectOmrMarkerProfile
     public function handle(OmrTemplateAuthoringDraft $draft, User $actor, OmrMarkerProfile $profile, ?array $insets, int $expectedLockVersion): OmrTemplateAuthoringDraft
     {
         $this->drafts->assertOwner($draft, $actor);
+        if ($draft->isCompiled()) {
+            throw new OmrAuthoringDraftException('draft_read_only', 'Compiled drafts are immutable.');
+        }
         if ($profile->status === OmrMarkerProfile::STATUS_RETIRED) {
             throw new OmrAuthoringDraftException('marker_profile_retired', 'Retired marker profiles cannot be selected.');
         }
@@ -42,10 +45,19 @@ final class SelectOmrMarkerProfile
                 'physical_size_mm' => $profile->size_mm,
                 'quiet_zone_mm' => $profile->quiet_zone_mm,
             ];
+            $authoring['canonical']['artifact_set'] = null;
+            $authoring['canonical']['artifact_hash'] = null;
+            $authoring['canonical']['raster_assets'] = [];
+            $authoring['canonical']['pdf_asset_id'] = null;
+            $authoring['verification'] = null;
+            $nextStage = $locked->stage === OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED
+                ? OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE
+                : $locked->stage;
             $locked->forceFill([
                 'marker_profile_id' => $profile->id,
                 'authoring_json' => $authoring,
                 'lock_version' => $expectedLockVersion + 1,
+                'stage' => $nextStage,
             ])->save();
             $saved = $locked->fresh();
             $this->recordAuditEvent->handle('omr.canonical.marker_profile_selected', [

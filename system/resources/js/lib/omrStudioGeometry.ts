@@ -13,6 +13,8 @@ export const PX_PER_MM = TARGET_PPI / MM_PER_INCH; // ~11.8110236
 export const MIN_BUBBLE_MM = 4.2;
 export const OMR_BUBBLE_DIAMETER_MM = 4.5;
 export const MIN_OPTION_GAP_MM = 1.26;
+export const GRID_BUBBLE_ORIGIN_OFFSET_MM = { x: 5.0, y: 8.0 } as const;
+export const ROLL_BUBBLE_ORIGIN_OFFSET_MM = { x: 6.4, y: 14.0 } as const;
 export const ALLOWED_INSET_RANGE_MM: [number, number] = [3.0, 40.0];
 
 export interface PaperDefinition {
@@ -152,6 +154,13 @@ export interface StudioValidationResult {
   warnings: StudioValidationWarning[];
 }
 
+/** Position of the first native bubble inside the visual component footprint. */
+export function recognitionOriginOffsetMm(block: StudioBlock): { x: number; y: number } {
+  return block.type === 'roll'
+    ? ROLL_BUBBLE_ORIGIN_OFFSET_MM
+    : GRID_BUBBLE_ORIGIN_OFFSET_MM;
+}
+
 /**
  * Emit native fieldBlocks mapping for OMRChecker validation and compilation
  */
@@ -194,8 +203,8 @@ export function emitNativeMapping(
           labels,
           rows: rowsPerCol,
           options: opts,
-          origin_x: mmToPx(block.x_mm),
-          origin_y: mmToPx(block.y_mm),
+          origin_x: mmToPx(block.x_mm + recognitionOriginOffsetMm(block).x),
+          origin_y: mmToPx(block.y_mm + recognitionOriginOffsetMm(block).y),
           width: blockW,
           height: blockH,
           option_pitch_px: optionPitch,
@@ -226,8 +235,8 @@ export function emitNativeMapping(
             labels,
             rows: colCount,
             options: opts,
-            origin_x: mmToPx(colX),
-            origin_y: mmToPx(block.y_mm),
+            origin_x: mmToPx(colX + recognitionOriginOffsetMm(block).x),
+            origin_y: mmToPx(block.y_mm + recognitionOriginOffsetMm(block).y),
             width: blockW,
             height: blockH,
             option_pitch_px: optionPitch,
@@ -255,8 +264,8 @@ export function emitNativeMapping(
         rows: 10,
         options: 10,
         direction: 'vertical',
-        origin_x: mmToPx(block.x_mm),
-        origin_y: mmToPx(block.y_mm),
+        origin_x: mmToPx(block.x_mm + recognitionOriginOffsetMm(block).x),
+        origin_y: mmToPx(block.y_mm + recognitionOriginOffsetMm(block).y),
         width: blockW,
         height: blockH,
         option_pitch_px: rowPitch,

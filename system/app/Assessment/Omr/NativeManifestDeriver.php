@@ -133,8 +133,9 @@ final class NativeManifestDeriver
         if ($identityPolicy !== 'optional' && (count($identityLabels) !== 10 || $identitySymbols !== $expectedIdentitySymbols)) {
             throw new RuntimeException('Native bundle applicant-number identity must declare ten positions with symbols 0 through 9.');
         }
-        if ($identityPolicy === 'optional' && $hasIdentity && (count($identityLabels) !== 10 || $identitySymbols !== $expectedIdentitySymbols)) {
-            throw new RuntimeException('Canonical identity grids must be complete when declared.');
+        if ($identityPolicy === 'optional' && $hasIdentity
+            && (count($identityLabels) < 1 || count($identityLabels) > 10 || $identitySymbols !== $expectedIdentitySymbols)) {
+            throw new RuntimeException('Canonical identity grids must declare one through ten positions with symbols 0 through 9.');
         }
         if ($birthdateLabels !== [] && (count($birthdateLabels) !== 6 || $birthdateSymbols !== $expectedIdentitySymbols)) {
             throw new RuntimeException('Native bundle birthdate identity must declare six positions with symbols 0 through 9.');

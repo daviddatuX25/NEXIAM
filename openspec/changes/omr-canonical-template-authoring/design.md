@@ -341,13 +341,14 @@ flowchart LR
 
 ### Stage boundary
 
-- **Sheet Designer** may use a responsive client renderer for editing, but its output is only draft intent.
-- **Entering Question Bubbles** is the accuracy boundary: save the definition, materialize the candidate on the server, load the pinned native template, derive expanded bubbles, run the clean candidate through `/v1/layout-verification`, and show the server page/engine overlay. Failure leaves staff in the designer with a typed corrective error.
-- **Question Bubbles** displays the server-rendered canonical page as the underlay and native expanded regions as guides. It does not draw a second bubble sheet or calculate its own bubble origins.
+- **Sheet Designer** uses a responsive client renderer for editing, but exposes an explicit **Print Preview** backed by `CanonicalArtifactMaterializer`; that server-owned full-paper raster/PDF is the first printable product, not the browser DOM.
+- **Entering Recognition Mapping** reuses the unchanged candidate artifact already previewed in Sheet Designer; if none exists or the definition changed, it saves, materializes, loads the pinned native template, derives expanded bubbles, and runs the clean candidate through `/v1/layout-verification`. Navigation-only saves never invalidate byte-identical artifacts.
+- **Recognition Mapping** always keeps the full printable canonical sheet as its fixed base—including visual content, four markers, and the read-only QR reservation. `Print Sheet`, `Aligned Check`, and `Recognition Overlay` switch only the diagnostic surface. Every authoring source renders the same translucent bubble/ID guides. Unlocked guides edit native field-block coordinates only; print components remain unchanged. Lock state is editor metadata. Collision guards stop invalid geometry before autosave.
 - **Digital verification** runs the declared synthetic/no-go variants through the same worker endpoint and candidate artifact hash; expected outcomes are assertions, not recorded actuals.
 - **Compile** byte-promotes the passing candidate artifact set into the immutable version. Any byte/hash change forces re-verification.
-- **Physical Test Capture** accepts a photo/scan only for the compiled version and defaults to OMRChecker's returned aligned raster, with the engine overlay as the comparison tab.
-- **Export** streams the immutable bundle's real `template.json`; the client mapping preview is labeled as a draft diagnostic and never exported under that filename.
+- **Verification & Test Capture** exposes the candidate PDF with Actual Size print instructions, then accepts camera/photo/scan evidence only after immutable compile. It defaults to OMRChecker's returned aligned raster, with the engine overlay as the comparison tab.
+- **Runtime pairing** resolves the signed blank-instance QR to the immutable template version; capture-batch/template-booklet pairing resolves the answer key. Scanner code loads internal native `template.json` automatically and never guesses geometry from appearance alone.
+- **Native download** remains an authenticated diagnostics endpoint for engineering evidence, but ordinary staff authoring UI does not expose `template.json`, client mapping JSON, or copy/download controls.
 
 ### Reuse seams
 
@@ -355,6 +356,104 @@ flowchart LR
 - Generalize `OmrDiagnosticRequestBuilder` over a pinned diagnostic-geometry value object; compiled versions and draft candidates then share one request/envelope path.
 - Reuse `NativeManifestDeriver`, `OmrCheckerDetection::verifyLayout`, `OmrLayoutVerificationResult`, diagnostic asset streaming, and unsafe-shift gates.
 - Replace `OmrNoGoMatrixRunner`'s contract-only loop; do not add a second detector, threshold algorithm, alignment implementation, or browser geometry compiler.
+
+## Shared verification and scanner architecture spine
+
+**Paradigm:** modular-monolith diagnostic kernel with immutable geometry snapshots, ports/adapters at the candidate/version seam, durable pipeline state machines, and read-only evidence projections.
+
+### Adopted decisions
+
+**AD-1 — One diagnostic kernel**
+- **Binds:** canonical verification, template Test Capture, and grading scanner evidence.
+- **Prevents:** three request builders, three evidence schemas, or browser-owned recognition math.
+- **Rule:** `OmrTemplateDiagnosticRunner` consumes an `OmrDiagnosticTarget`, input image, and optional `OmrProofPlan`; it delegates only to `OmrDiagnosticRequestBuilder` + `OmrLayoutVerificationPort`/`OmrDetectionPort` and returns `OmrDiagnosticEvidence`.
+
+**AD-2 — Two target adapters, one interface**
+- **Binds:** draft candidate artifact and immutable compiled version.
+- **Prevents:** candidate rehearsals silently acting as compiled qualification.
+- **Rule:** `CandidateArtifactDiagnosticTarget` exposes current artifact/native/mapping hashes and is rehearsal-only; `CompiledVersionDiagnosticTarget` exposes pinned version/native/manifest/config hashes and is qualification-capable. Every result repeats target kind/id/hashes.
+
+**AD-3 — One deterministic proof plan**
+- **Binds:** digital synthetic proof, quick physical rehearsal, and full qualification challenge.
+- **Prevents:** random retries, browser-selected answers, fabricated applicant identity, and digital/physical expected-vector drift.
+- **Rule:** `OmrProofPlanner::plan(target, purpose, seed)` returns versioned `OmrProofPlan` with expected label→value vector, optional calibration digits only when an identity grid exists, per-page shading instructions, challenge code, seed, and plan hash. Seed = artifact/native hash + plan version + purpose. `OmrDigitalProofGenerator` renders a machine-filled plan; `OmrPhysicalChallengeRenderer` renders the exact blank/signed-QR sheet plus a separate human guide.
+
+**AD-4 — Template geometry and answer keys have separate owners**
+- **Binds:** canonical compile/activation and grading review.
+- **Prevents:** scanner crops/options disappearing when booklet rows lack `template_question_id`, and prevents the shared diagnostic module from owning scores.
+- **Rule:** extract `OmrTemplateGeometryProjector` from `ActivateOmrConfiguration`; it idempotently projects native review manifest → version-owned pages/areas/questions/options. Canonical compile and legacy activation call it. `OmrReviewGeometryQuery` reads template geometry and merges pinned booklet correct options by validated semantic area/question coverage. Booklet pairing owns correctness; template version owns regions/options.
+
+**AD-5 — Evidence is read-only and normalized**
+- **Binds:** builder evidence review, legacy Test Capture, and grading scanner review.
+- **Prevents:** provider-specific JSON in pages and scoring mutations from diagnostic UI.
+- **Rule:** `OmrDiagnosticEvidence` carries target/proof hashes, captured/aligned/overlay assets, gates, marker matches, shifts, declared-option item crops/rectangles/means/threshold status, expected/detected values, timings, and safe issues. It contains no applicant binding or score command.
+
+**AD-6 — Durable runs report real progress**
+- **Binds:** digital matrix and physical challenge/capture.
+- **Prevents:** fake percentages, request timeouts, lost retries, and UI-only run state.
+- **Rule:** `omr_template_verification_runs` owns `queued|preparing_proof|clean_recovery|variant_matrix|awaiting_print|awaiting_capture|analyzing_capture|needs_review|passed|failed`, phase detail, progress done/total, hashes, safe error, actor, timestamps, and optimistic version. The normalized run/evidence rows—not the generic operation ledger, browser state, or job payload—are the recovery and qualification authority. POST starts idempotently and returns `202`; status GET polls persisted progress. Jobs lock the run, verify expected run version/target hashes, update after each actual phase/variant, and dispatch follow-on work only after commit.
+
+**AD-7 — Qualification is derived, never checked manually**
+- **Binds:** challenge result and activation gate.
+- **Prevents:** “matrix passed” checkbox or rehearsal evidence activating production.
+- **Rule:** candidate quick/full runs are rehearsal-only. Physical qualification requires compiled target, full plan, exact expected-vector recovery, passing marker/dimension/shift gates, qualified profile, printer/device/paper/measurement evidence, and stored capture hashes. `RunOmrPhysicalQualification` derives pass from the run.
+
+**AD-8 — Runtime identification is QR + pinned pair**
+- **Binds:** blank-instance capture and grading scanner.
+- **Prevents:** template guessing from appearance and staff selecting native JSON.
+- **Rule:** signed blank-instance QR resolves immutable template version/page set; capture batch resolves active template–booklet pair; analysis requires both to match before building the request. Unreadable/absent QR uses audited manual recovery before recognition; present-invalid signature hard-fails. Internal native bundle loads automatically. Calibration challenge QR uses a distinct signed payload purpose and cannot enter applicant capture lifecycle.
+
+**AD-9 — Shared frontend is diagnostic presentation, not workflow**
+- **Binds:** setup Test Capture, canonical Stage 3, and grading review.
+- **Prevents:** coupling canonical builder to grading sessions/applicants/scores, or duplicating 428/556-line diagnostic panels.
+- **Rule:** extract one deep `OmrDiagnosticEvidencePanel.svelte` (tabs, gates, problems filter, item/ID evidence, return link) and one `OmrCaptureInput.svelte` (camera/upload/preflight). `OmrRegionCrop.svelte` moves under the shared diagnostic module. Canonical and scanner workflows remain separate callers.
+
+**AD-10 — Data and asset deletion order is explicit**
+- **Binds:** failed compile, failed run/capture, retry, and GC.
+- **Prevents:** orphan private images, deleted evidence still referenced by run rows, or version evidence lost on cleanup.
+- **Rule:** create immutable asset → persist referencing row in one action boundary; on failure delete only newly-created unreferenced draft/run assets; version-owned assets never delete; GC queries references from run/challenge/capture/version rows before storage deletion. Run/challenge rows are retained per evidence policy even when failed.
+
+### Module map
+
+```mermaid
+flowchart LR
+  CAND[Candidate artifact adapter] --> TARGET[OmrDiagnosticTarget]
+  VER[Compiled version adapter] --> TARGET
+  TARGET --> PLAN[OmrProofPlanner]
+  TARGET --> RUNNER[OmrTemplateDiagnosticRunner]
+  PLAN --> DIGITAL[Machine-filled proof renderer]
+  PLAN --> PHYSICAL[Physical challenge renderer]
+  DIGITAL --> RUNNER
+  CAPTURE[Camera/upload adapter] --> RUNNER
+  RUNNER --> EVIDENCE[OmrDiagnosticEvidence]
+  EVIDENCE --> PANEL[Shared evidence panel]
+  PANEL --> BUILDER[Canonical verification workflow]
+  PANEL --> SCANNER[Grading review workflow]
+  MANIFEST[Native review manifest] --> PROJECTOR[OmrTemplateGeometryProjector]
+  PROJECTOR --> GEOMETRY[(Template geometry rows)]
+  BOOKLET[(Pinned booklet key)] --> QUERY[OmrReviewGeometryQuery]
+  GEOMETRY --> QUERY
+  QUERY --> SCANNER
+```
+
+### Persistence seed
+
+| table | ownership | required fields |
+|---|---|---|
+| `omr_template_verification_runs` | draft XOR version target | purpose, status/phase, progress, target/artifact/native/manifest/config hashes, proof-plan hash, summary, safe error, actor, timestamps, version |
+| `omr_physical_challenges` | verification run | challenge code, mode `quick|full`, plan version/seed/hash, expected vector, instruction manifest, signed QR/display code, sheet/guide asset ids |
+| `omr_template_verification_captures` | verification run + attempt | attempt no, input/aligned/overlay asset ids+hashes, outcome/gates/evidence, printer/device/paper/measurements, created/finished timestamps |
+
+Images remain immutable `omr_template_assets`; rows reference asset ids and never embed image bytes. Additive DB CHECKs enforce exactly one run target, phase/status enums, mode, positive attempt numbers, and compiled-only qualification.
+
+### Complexity and deletion rules
+
+- `Capture.svelte` remains grading orchestration but loses capture-input and evidence-rendering implementation; do not rewrite unrelated gallery/batch/review state.
+- `StudioExportVerifyPanel.svelte` becomes verification-run orchestration and uses shared modules; delete duplicated camera/upload/proof-tab/item-evidence code.
+- `Templates/TestCapturePanel.svelte` becomes a thin caller or is deleted after its show page uses the shared modules.
+- `ActivateOmrConfiguration` delegates geometry persistence to `OmrTemplateGeometryProjector`; no second canonical projector.
+- Controllers validate/request-project/delegate only. Actions own transitions. Query modules own page projections.
+- No generic OMR “service registry,” no score callbacks in shared UI, no polymorphic image ownership, and no compatibility aliases after all callers migrate.
 
 ## Adapters
 
@@ -396,8 +495,12 @@ All adapters return `OmrSourceIngestionResult` through `OmrSourceAdapterRegistry
 | `/drafts/{draft}/overlay` | PUT | save overlay layer |
 | `/drafts/{draft}/mapping` | GET/PUT | read/save mapping (autosave endpoint, lock_version) |
 | `/drafts/{draft}/marker-profile` | PUT | select marker profile (candidate list) |
-| `/drafts/{draft}/verify/digital` | POST | run digital proof + no-go matrix (DRAFT-scoped) |
-| `/drafts/{draft}/compile` | POST | atomic compile → immutable version + frozen PDF/bundle (requires mapping + qualified profile + digital) |
+| `/drafts/{draft}/verification-runs` | POST | idempotently start queued digital/quick candidate verification; returns 202 + status URL |
+| `/drafts/{draft}/verification-runs/{run}` | GET | owner/capability-scoped persisted phase/progress/result/evidence |
+| `/drafts/{draft}/verification-runs/{run}/retry` | POST | next attempt against the pinned proof plan |
+| `/drafts/{draft}/verification-runs/{run}/challenges` | POST | create quick/full challenge, printable sheet, and shading guide |
+| `/drafts/{draft}/verification-runs/{run}/captures` | POST | submit camera/upload capture and queue analysis |
+| `/drafts/{draft}/compile` | POST | atomic compile → immutable version + frozen PDF/bundle + geometry projection (requires qualified profile + digital) |
 | `/setup/omr/templates/canonical/diagnostics` | GET | staff-only diagnostics |
 
 ### Marker-profile routes
@@ -412,8 +515,12 @@ All adapters return `OmrSourceIngestionResult` through `OmrSourceAdapterRegistry
 
 | route | verb | purpose |
 |---|---|---|
-| `/setup/omr/templates/{templateVersion}/verify/physical` | POST | record physical qualification evidence (AGAINST compiled version) |
-| `/setup/omr/templates/{templateVersion}/activate` | POST | activation (atomic swap; requires compiled + qualified profile + physical_qualified) |
+| `/setup/omr/templates/{templateVersion}/verification-runs` | POST | start compiled full challenge/qualification run |
+| `/setup/omr/templates/{templateVersion}/verification-runs/{run}` | GET | persisted phase/result/evidence |
+| `/setup/omr/templates/{templateVersion}/verification-runs/{run}/challenges` | POST | render full challenge pack |
+| `/setup/omr/templates/{templateVersion}/verification-runs/{run}/captures` | POST | submit compiled challenge capture |
+| `/setup/omr/templates/{templateVersion}/verify/physical` | POST | derive physical qualification from a passing compiled full-challenge run |
+| `/setup/omr/templates/{templateVersion}/activate` | POST | activation (requires compiled + qualified profile + derived physical qualification) |
 | `/setup/omr/templates/{templateVersion}/blank/print` | POST | print blank instances (chunked) |
 | `/setup/omr/templates/{templateVersion}/blank/instances` | GET | instance history (sets + pages) |
 | `/setup/omr/templates/{templateVersion}/blank/instances/{instance}/supersede` | POST | whole-set replacement (explicit; audited; allowed on partial capture) |
@@ -436,23 +543,27 @@ All adapters return `OmrSourceIngestionResult` through `OmrSourceAdapterRegistry
 
 ### Jobs
 
-`RenderOmrSourcePagesJob` (conversion, progress/cancel/retry), `RenderOmrMarkerCalibrationArtifactJob` (renders the SYSTEM marker-calibration sheet via the canonical renderer), `RenderOmrBlankInstanceBatchJob` (chunked, set + per-page manifest, idempotent retry, chunk ZIP download with preserved page order), `GenerateOmrDigitalProofJob`, `RunOmrNoGoMatrixJob`, `GcOmrCanonicalTempAssetsJob` (scheduled GC for UNREFERENCED draft/temp assets only; version-owned provenance never collected).
+`RenderOmrSourcePagesJob` (conversion), `RenderOmrMarkerCalibrationArtifactJob`, `RenderOmrBlankInstanceBatchJob`, `RunOmrTemplateVerificationJob` (proof + clean + per-variant persisted progress), `AnalyzeOmrTemplateVerificationCaptureJob` (camera/upload evidence), `GcOmrCanonicalTempAssetsJob`. `GenerateOmrDigitalProofJob` and `RunOmrNoGoMatrixJob` are folded into the durable verification job and deleted after callers migrate.
 
-### Services (`system/app/Assessment/Omr/Canonical/`)
+### Shared diagnostic modules
 
-`OmrSourceAdapter` (interface) + `OmrSourceAdapterRegistry`; `OmrHtmlSourceAdapter`, `OmrDocxSourceAdapter`, `OmrPdfSourceAdapter`, `OmrImageSourceAdapter`, `OmrPresetSourceAdapter`; `OmrSourcePreflight`; `OmrQuadRectifier` (manual-confirmed + quality gates; invokes worker `POST /v1/source-rectification` — server is authority); `OmrCanonicalComposer` (with source-type-aware enlargement DPI gate); `OmrPageDimensionMath` (incl. normalized preset transform); `OmrMarkerProfileService` (candidates, template-independent qualification via calibration artifact, `OmrMarkerCalibrationArtifactGenerator`, selection, insets-only editing); `OmrOverlaySpec` (closed tag set, scopes, `data-omr-overlay` slots, token rejection); `OmrMappingValidator` (regular geometry, collisions, page parity, explicit-split recheck, min sizes); `OmrAuthoringDraftService` (stage transitions, lock_version); `OmrTemplateAssetStore` (FK-owned draft/version assets, copy-pin on compile, SHA-256 chain, provenance-preserving GC); `OmrBlankInstanceService` (≥128-bit codes, unique checksummed display codes, signed QR + keyring, lifecycle, supersede chain, page rows, `qr_manifest_hash`); `OmrBlankPrintOrchestrator` (chunking, partial failure, chunk ZIP); `OmrDigitalProofGenerator` (booklet-independent deterministic vector; identity only when an identity grid is mapped); `OmrNoGoMatrixRunner`; `OmrPhysicalQualification` (evidence binding to compiled version + renderer + marker profile); `OmrQrPayload` (sign/verify HMAC against keyring).
+`OmrDiagnosticTarget` + candidate/version adapters; `OmrProofPlanner`, `OmrProofPlan`, `OmrPhysicalChallengeRenderer`; `OmrTemplateDiagnosticRunner`, `OmrDiagnosticEvidence`; `OmrTemplateGeometryProjector`; `OmrReviewGeometryQuery`. Existing `OmrDiagnosticRequestBuilder`, detection/layout ports, OMRChecker adapter, native expansion, and unsafe-shift gates remain the implementation seams.
 
 ### Worker (`docker/inference/`)
 
 Extend the EXISTING `/v1/layout-verification` endpoint (`server.py`, child `verify.py` behind the server route — NOT a new HTTP endpoint) so its multipart/result payload additionally carries item evidence (per-item declared-option-set rects, crops, means, threshold delta/status, field-block shifts, marker matches) and source/mapping/bundle hashes; the existing HMAC envelope is retained. Add a new bounded child `rectify.py` served as `POST /v1/source-rectification` in `server.py` (same child-process/HMAC envelope pattern) accepting staff-confirmed four points + image and returning the rectified raster + quality metrics. Add an optional QR-decode passthrough for blank-instance verification; new `test_corner_false_positive.py`; new fixtures in `generate_fixture.py` (corner decorations, partial markers, imported borders, wrong-marker, wrong-instance, superseded/duplicate page sets). `detect.py` recognition untouched.
 
-### Svelte components (`system/resources/js/Pages/Setup/OmrConfiguration/Canonical/`)
+### Shared and workflow Svelte modules
 
-`CanonicalWorkflow.svelte` (draft-scoped stage shell + stepper), `SourceIngestPanel.svelte`, `SourcePageConfirmPanel.svelte`, `CanonicalPagePreparePanel.svelte`, `OverlayEditorPanel.svelte`, `CanonicalMapEditor.svelte` (native SVG scene, canonical-px viewBox), `MapGeometryInspector.svelte`, `MarkerProfilePanel.svelte` (candidate list, selection, qualification evidence), `DigitalProofPanel.svelte`, `CompilePanel.svelte` (atomic compile with gate display), `PhysicalQualificationPanel.svelte` (version-scoped, after compile), `ActivatePanel.svelte`, `BlankInstancePrintPanel.svelte`, `BlankInstanceHistoryPanel.svelte` (incl. manual display-code recovery UI). Extend `Templates/TestCapturePanel.svelte` with per-item evidence + `Return to mapping and select row`.
+- `resources/js/Components/Omr/Diagnostics/OmrDiagnosticEvidencePanel.svelte`: deep read-only evidence presentation.
+- `resources/js/Components/Omr/Diagnostics/OmrCaptureInput.svelte`: camera/upload/preflight input.
+- `resources/js/Components/Omr/Diagnostics/OmrRegionCrop.svelte`: lazy aligned-region crop and declared-option markers.
+- Canonical `StudioExportVerifyPanel.svelte` and legacy `Templates/TestCapturePanel.svelte` become workflow callers.
+- Grading `Capture.svelte` retains batch/applicant/review/score orchestration and calls shared evidence presentation; no wholesale scanner redesign in this cut.
 
 ## UX IA and wireframes
 
-IA: `Setup › OMR Configuration › Templates › Canonical authoring (drafts)`. NINE stages in one workflow shell: Start → Convert/inspect → Prepare page → Overlay → Map → Digital verify → Compile → Physical qualify/Activate → Blank print. Stages 1–7 are draft-scoped; compile pivots the SAME workflow shell to the compiled template version for stages 8–9, and Blank print stays disabled until the version is `active`.
+IA: `Setup › OMR Configuration › Templates › Canonical authoring`. Three staff-facing top stages: Sheet Designer/Source Preparation → Recognition Mapping → Verification & Test. Verification contains five persisted checkpoints: Digital engine check → Physical challenge → Capture → Evidence review → Qualification/activation. Domain stages and compile pivot remain server-owned; Blank print appears only after activation.
 
 ### Stage wireframes
 
@@ -522,36 +633,32 @@ IA: `Setup › OMR Configuration › Templates › Canonical authoring (drafts)`
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**6 Digital verify — item evidence**
+**Verification & Test — five persisted checkpoints**
 ```
-│ Proof: deterministic vector (A,B,C,D… from mapped labels)      │
-│ Identity shading: ☑ only when identity grid mapped (else none) │
-│ QR slot: signed instance QR + display code                     │
-│ Matrix: clean ✓ perspective ✓ rotation ✓ blur ✓ glare ✓ …      │
-│ Item evidence (declared option set A–D):                       │
-│  Q1 [A][B][C][D] rects · crops · means · Δthreshold · shift    │
-│ [Return to mapping and select row]  Status: digital_verified   │
+│ 1 Digital engine check                                         │
+│   ✓ prepare plan  ✓ render  ● clean recovery  ○ variant 3/10   │
+│   Current: rotation · persisted progress · [Retry]              │
+│                                                                │
+│ 2 Physical challenge                                           │
+│   Mode: Quick rehearsal | Full qualification                   │
+│   Challenge PC-7D41A2 · [Printable sheet] [Shading guide]      │
+│                                                                │
+│ 3 Capture printed challenge                                    │
+│   [Device camera] [Upload photo/scan] · preflight → analyze     │
+│                                                                │
+│ 4 Evidence review                                              │
+│   [Captured] [Aligned] [Recognition] · gates · 147/150 exact   │
+│   [Problems only] Q37 expected C / detected B / crop+means      │
+│   [Return to Recognition Mapping]                               │
+│                                                                │
+│ 5 Compile / Qualification / Activate                           │
+│   Candidate quick run: Rehearsal only                          │
+│   Full compiled run: exact recovery + printer/device/paper      │
+│   [Compile] → [Record derived qualification] → [Activate]       │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-**7 Compile readiness**
-```
-│ Gates:  mapping_complete ✓ · marker profile qualified ✓ ·      │
-│         digital_verified ✓ · hashes current ✓                  │
-│ [Compile — freeze version + bundle]  ⚠ irreversible            │
-│ On success: version v2 (draft/immutable) · bundle hash 4c1e…   │
-└────────────────────────────────────────────────────────────────┘
-```
-
-**8 Physical qualify / Activate**
-```
-│ Print at 100% (actual size — do not fit to page) ⚠              │
-│ Printer: [HP LaserJet …] · device: [camera/scanner] · paper: … │
-│ Test capture: whole page + per-item evidence + marker profile   │
-│ Measured: marker-center dist 211.0 mm (expected 211.0) ✓        │
-│ [Record qualification] → [Activate — swap active version]       │
-└────────────────────────────────────────────────────────────────┘
-```
+The progress list reflects durable run phases and completed variants, never timer animation. The shading guide is separate from the exact sheet. Candidate evidence cannot qualify. The shared evidence panel is read-only; canonical workflow owns compile/qualification and grading workflow owns review/scores.
 
 **9 Blank print**
 ```
@@ -575,9 +682,9 @@ IA: `Setup › OMR Configuration › Templates › Canonical authoring (drafts)`
 | Prepare | Confirm page composition | "Resolve collisions / DPI warning first" | composition error → Re-open controls | ghost frame + saving | page_prepared | unsaved margins guard | return to offending control |
 | Overlay | Save overlay | "Select a tag from the allowed set" | tag_forbidden: "Applicant tags are not allowed" | saving… | overlay saved | autosave conflict banner | return to box |
 | Map | Save mapping | overfull/irregular: "Split this block explicitly" | validation errors named → Fix | autosave dot | mapping_complete | lock_version conflict → reload | return to selected row |
-| Digital verify | Run proof/matrix | "Mapping must be complete" | no-go variant failed (named) → Re-run | matrix progress | digital_verified | stale proof → re-run | return to failed variant |
-| Compile | Compile version | "Requires mapping + qualified marker profile + digital verification" | compile_failed (no partial version) → Fix gates | compiling… | version compiled | — | return to failing gate |
-| Physical qualify/Activate | Record qualification → Activate | "Requires a compiled version" | physical_evidence_missing → run matrix | capture progress | active (swap) | — | return to missing evidence |
+| Digital engine check | Start / Retry | "Current mapping and marker profile required" | named variant/worker/stale-target issue → evidence/retry | persisted phase + actual variant done/total | exact clean + declared matrix outcomes | stale target fails run | failed variant/item |
+| Physical challenge/capture | Print guide / Analyze capture | candidate quick = rehearsal; qualification requires compiled full | preflight/QR/marker/vector/gate issue → retry or mapping | persisted awaiting/analyzing phase and attempts | evidence `needs_review|passed` | new challenge explicitly changes plan hash | failed item/ID or mapping row |
+| Compile/Qualification/Activate | Compile → derived qualification → Activate | qualified profile + digital; qualification requires compiled full exact run | no partial compile; physical evidence issue → capture | actual job/capture state | immutable version / physical_qualified / active | version/hash mismatch fails closed | failing gate |
 | Blank print | Print instances | "No active compiled version" (disabled until active); manual QR: undecodable/absent → audited confirmation; present-but-invalid signature → hard reject, no override | partial failure list → Retry chunk | chunk progress | sets printed | duplicate retry blocked (idempotency) | return to failed instance |
 
 Phone view-only throughout the editor stages (≥1024 px required; explicit open-on-tablet message).
@@ -587,6 +694,8 @@ Phone view-only throughout the editor stages (≥1024 px required; explicit open
 Draft stages: `draft → source_confirmed → page_prepared → mapping_complete → digital_verified → compiled`. Compiled version status: `draft` (immutable) → `active` (activation swap) → `retired`. Marker profile status: `candidate → qualified | retired` (single-qualified invariant).
 
 Typed errors (all carry HTTP status, corrective copy, and a retry/recover path): `unsupported_source`, `hostile_docx`, `zip_bomb`, `macro_rejected`, `encrypted_pdf`, `invalid_pdf_xref`, `page_count_over_cap`, `pixel_budget_exceeded` (per-page/job), `paper_out_of_bounds`, `unsanitizable_html`, `dynamic_token_rejected`, `remote_asset_forbidden`, `image_icc_unsupported`, `transparency_unflattenable`, `insufficient_resolution` (incl. enlargement DPI gate), `quad_confirmation_required`, `quad_quality_failed`, `page_not_confirmed`, `mixed_page_sizes`, `composition_failed`, `marker_missing`, `marker_mismatch`, `marker_quadrant_violation`, `corner_false_positive`, `marker_profile_unqualified` (compile/activation gate), `marker_profile_not_selected`, `tag_forbidden` (applicant tag), `overlay_invalid`, `mapping_invalid`, `bubble_too_small`, `pitch_too_tight`, `overfull_row`, `irregular_options`, `explicit_split_required`, `page_parity_mismatch`, `stale_mapping`, `verification_invalidated`, `digital_verification_failed`, `no_go_variant_failed`, `compile_gate_missing`, `compile_failed`, `physical_evidence_missing`, `activation_gate_missing`, `draft_not_found`, `concurrency_conflict` (draft `lock_version`), `asset_owner_violation`, `duplicate_instance`, `page_already_captured`, `page_missing_from_set`, `qr_signature_invalid`, `qr_key_unknown`, `tamper_detected`, `template_mismatch`, `superseded_instance`, `page_set_reused`, `instance_resolved_manually` (recorded outcome, not an error), `idempotency_conflict`.
+
+Verification/scanner additions: `verification_run_stale`, `proof_plan_invalid`, `challenge_mode_invalid`, `candidate_not_qualification_capable`, `challenge_qr_mismatch`, `expected_vector_mismatch`, `geometry_projection_missing`, `geometry_projection_stale`, `pair_geometry_coverage_mismatch`, `pair_option_set_mismatch`, `capture_attempt_active`, `qualification_run_invalid`.
 
 ## Authz / Audit / Idempotency / Concurrency
 
@@ -610,6 +719,8 @@ Typed errors (all carry HTTP status, corrective copy, and a retry/recover path):
 - **Python worker**: `test_corner_false_positive.py` (decorations/partial markers/imported borders → no registration), item-evidence payload contract within the existing `/v1/layout-verification` response, and `test_source_rectification.py` (staff-confirmed quad → rectified raster + quality metrics; HMAC envelope).
 - **Browser**: stage flow incl. compile-gate and physical-after-compile sequencing, SVG editor (px scene, 4px snap, keyboard/touch/undo/autosave/conflict/accessibility), per-stage states and microcopy, explicit-split UX, blank print chunk UI + per-page states, manual recovery UI, Test-capture per-item evidence + return-to-row, actual-size print warning surfaces.
 - Seeds/handoff: `OmrCanonicalDemoSeeder` seeds five authoring drafts at useful stages (one per adapter kind) and MAY compile the digitally verified examples, but MUST NOT fabricate physical qualification or activate supplier templates; marker profiles are seeded as candidates only; credentials and recreate steps recorded in `HANDOFF.md`.
+- **Shared verification/scanner**: `OmrProofPlanTest`, `OmrTemplateGeometryProjectorTest`, `OmrTemplateVerificationRunTest`, `OmrPhysicalChallengeTest`; contract tests for candidate/version targets and normalized evidence; canonical compile→pair→grading props prove exact nonzero item/option geometry and correct-option merge; camera/upload equivalence; candidate cannot qualify; full compiled challenge derives qualification.
+- **Complexity regression**: imports/static checks prove one projector, one evidence panel, one capture input, no duplicate native expansion/detector, no geometry fallback, and no shared-module imports of grading/applicant/score actions.
 
 ## Risks / Trade-offs
 
@@ -624,3 +735,7 @@ Typed errors (all carry HTTP status, corrective copy, and a retry/recover path):
 - **[Trade-off] Image-backed PDF over vector** → provable exact-size print authority at the cost of larger files; acceptable for sheet printing.
 - **[Trade-off] One size/orientation per template in v1** → simpler validator/editor; mixed sizes rejected with a typed list until v2.
 - **[Trade-off] Draft staging doubles persistence (drafts + versions)** → necessary to keep the immutable version table clean; compile is the single atomic hand-off and the physical-qualification anchor.
+- **[Risk] Shared diagnostic UI grows grading authority** → normalized evidence is read-only; workflow commands stay in canonical/grading callers and import checks enforce the direction.
+- **[Risk] Canonical per-item scanner crops use missing legacy links** → template-owned projector/query is a stop gate before scanner adoption; no full-page fallback regions.
+- **[Risk] Human shading variance obscures geometry defects** → digital machine-filled plan isolates engine geometry; quick rehearsal isolates usability; only a full compiled challenge with exact recovery may qualify.
+- **[Trade-off] Dedicated verification-run tables over generic operations payload** → more schema, but truthful progress, retries, evidence provenance, and qualification gates remain local and queryable.

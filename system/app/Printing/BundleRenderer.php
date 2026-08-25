@@ -220,7 +220,7 @@ final class BundleRenderer
         foreach ($pages as $index => $page) {
             $dims = $page['pageDimensions'];
             $markers = is_array($page['markers'] ?? null) ? $page['markers'] : null;
-            [$pageMmW, $pageMmH] = $this->assertPaperMatch($dims, $index + 1, $markers);
+            [$pageMmW, $pageMmH] = $this->assertPaperMatch($dims, $index + 1, $markers, false);
             $total = count($pages);
             $pageNo = $index + 1;
             // 0.2mm breathing room avoids a rounding-driven 0.003pt overflow
@@ -626,7 +626,7 @@ final class BundleRenderer
      * @param  array<string, mixed>|null  $markers  page marker metadata (physical paper = frame + 2×inset)
      * @return array{0: float, 1: float}
      */
-    private function assertPaperMatch(mixed $dims, int $pageNo, ?array $markers = null): array
+    private function assertPaperMatch(mixed $dims, int $pageNo, ?array $markers = null, bool $allowStandardPaper = true): array
     {
         if ($markers !== null && is_array($markers['paper'] ?? null)) {
             if (isset($markers['paper']['width_mm'], $markers['paper']['height_mm'])) {
@@ -645,10 +645,12 @@ final class BundleRenderer
             return [$this->paper['width'], $this->paper['height']];
         }
 
-        foreach (['a4', 'long', 'legal', 'letter'] as $std) {
-            $spec = self::paperFor($std);
-            if (abs($widthMm - $spec['width']) <= 2.0 && abs($heightMm - $spec['height']) <= 2.0) {
-                return [$spec['width'], $spec['height']];
+        if ($allowStandardPaper) {
+            foreach (['a4', 'long', 'legal', 'letter'] as $standard) {
+                $paper = self::paperFor($standard);
+                if (abs($widthMm - $paper['width']) <= 2.0 && abs($heightMm - $paper['height']) <= 2.0) {
+                    return [$paper['width'], $paper['height']];
+                }
             }
         }
 

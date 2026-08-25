@@ -1,5 +1,6 @@
 <script>
   import { onDestroy } from 'svelte';
+  import { newIdempotencyKey } from '@/lib/utils';
   import {
     Camera,
     Upload,
@@ -8,21 +9,18 @@
     Loader2,
     XCircle,
     ShieldCheck,
-    Download,
-    Copy,
-    Check,
+    Printer,
     ChevronLeft,
   } from 'lucide-svelte';
 
   let {
     draft = {},
     urls = {},
-    jsonSchema = {},
     getCsrfToken = () => '',
+    lifecycleBusy = false,
     onBack = null,
   } = $props();
-
-  let captureMode = $state('upload'); // 'camera' | 'upload'
+  let captureMode = $state('upload');
   let videoElement = $state(null);
   let canvasElement = $state(null);
   let fileInputElement = $state(null);
@@ -33,8 +31,14 @@
   let captureResult = $state(null);
   let captureFailure = $state(null);
   let selectedFileName = $state('');
-  let activeProofTab = $state('overlay'); // 'overlay' | 'aligned'
-  let copied = $state(false);
+  let lifecycleRunning = $state(false);
+  let lifecycleNotice = $state('');
+  let printerIdentity = $state('');
+  let deviceIdentity = $state('');
+  let measuredWidthMm = $state('');
+  let measuredHeightMm = $state('');
+  let physicalMatrixPassed = $state(false);
+  let physicalQualified = $state(Boolean(draft.physical_qualified));
 
   onDestroy(() => {
     stopCameraStream();
@@ -105,15 +109,15 @@
 
   async function runTestCapture(file) {
     if (captureRunning || !file) return;
+    if (!draft.compiled_version_id) {
+      captureFailure = { code: 'compile_required', detail: 'Compile the digitally verified candidate before running physical Test Capture.' };
+      return;
+    }
     captureRunning = true;
     captureFailure = null;
     captureResult = null;
 
-    const versionId = draft.compiled_version_id;
-    const targetUrl = versionId
-      ? `/setup/omr/templates/${versionId}/test-capture`
-      : (urls.test_capture || `/setup/omr/templates/canonical/drafts/${draft.id}/test-capture`);
-
+    const targetUrl = `/setup/omr/templates/${draft.compiled_version_id}/test-capture`;
     const formData = new FormData();
     formData.append('image', file);
 
@@ -145,27 +149,196 @@
       if (fileInputElement) fileInputElement.value = '';
     }
   }
-
-  function copyJSON() {
-    navigator.clipboard.writeText(JSON.stringify(jsonSchema, null, 2));
-    copied = true;
-    setTimeout(() => (copied = false), 2000);
+  async function runDigitalVerification() {
+    if (lifecycleBusy || lifecycleRunning || !urls.digital_verification) return;
+    lifecycleRunning = true;
+    lifecycleNotice = '';
+    try {
+      const response = await fetch(urls.digital_verification, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+        credentials: 'same-origin',
+        body: JSON.stringify({ idempotency_key: newIdempotencyKey() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.detail || body.message || body.error || 'Digital verification failed.');
+      draft.stage = body.status || 'digital_verified';
+      draft.authoring = { ...(draft.authoring || {}), verification: body.verification };
+      lifecycleNotice = 'Digital proof and real worker no-go matrix passed. Thresholds remain Unqualified.';
+    } catch (error) {
+      lifecycleNotice = error?.message || 'Digital verification failed.';
+    } finally {
+      lifecycleRunning = false;
+    }
   }
 
-  function downloadJSON() {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(jsonSchema, null, 2));
-    const dl = document.createElement('a');
-    dl.setAttribute('href', dataStr);
-    dl.setAttribute('download', `omr_template_${draft.code || 'sheet'}.json`);
-    dl.click();
+  async function compileCandidate() {
+    if (lifecycleBusy || lifecycleRunning || !urls.compile) return;
+    lifecycleRunning = true;
+    lifecycleNotice = '';
+    try {
+      const response = await fetch(urls.compile, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+        credentials: 'same-origin',
+        body: JSON.stringify({ idempotency_key: newIdempotencyKey() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.detail || body.message || body.error || 'Immutable compile failed.');
+      draft.stage = body.status || 'compiled';
+      draft.compiled_version_id = body.template_version_id;
+      urls.native_template = body.template_version_id
+        ? `/setup/omr/templates/${body.template_version_id}/native/template.json`
+        : urls.native_template;
+      lifecycleNotice = 'Immutable native version compiled. Physical Test Capture now uses that exact bundle.';
+    } catch (error) {
+      lifecycleNotice = error?.message || 'Immutable compile failed.';
+    } finally {
+      lifecycleRunning = false;
+    }
+  }
+  async function qualifyPhysical() {
+    if (lifecycleRunning || !draft.compiled_version_id || !printerIdentity || !deviceIdentity || !measuredWidthMm || !measuredHeightMm || !physicalMatrixPassed) return;
+    lifecycleRunning = true;
+    lifecycleNotice = '';
+    try {
+      const response = await fetch(`/setup/omr/templates/${draft.compiled_version_id}/verify/physical`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          printer: printerIdentity,
+          device: deviceIdentity,
+          paper: 'canonical',
+          renderer_version: 'canonical-renderer-v1',
+          measured_marker_center_mm: [Number(measuredWidthMm), Number(measuredHeightMm)],
+          outcomes: ['pass'],
+          idempotency_key: newIdempotencyKey(),
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || body.error || 'Physical qualification failed.');
+      physicalQualified = body.status === 'physical_qualified';
+      draft.physical_qualified = physicalQualified;
+      lifecycleNotice = physicalQualified ? 'Physical qualification recorded against this immutable version.' : 'Physical evidence was recorded but has not passed all gates.';
+    } catch (error) {
+      lifecycleNotice = error?.message || 'Physical qualification failed.';
+    } finally {
+      lifecycleRunning = false;
+    }
+  }
+
+  async function activateVersion() {
+    if (lifecycleRunning || !draft.compiled_version_id || !physicalQualified) return;
+    lifecycleRunning = true;
+    lifecycleNotice = '';
+    try {
+      const response = await fetch(`/setup/omr/templates/${draft.compiled_version_id}/activate`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+        credentials: 'same-origin',
+        body: JSON.stringify({ idempotency_key: newIdempotencyKey() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || body.error || 'Activation failed.');
+      lifecycleNotice = `Template version ${body.template_version_id} is now ${body.status}.`;
+    } catch (error) {
+      lifecycleNotice = error?.message || 'Activation failed.';
+    } finally {
+      lifecycleRunning = false;
+    }
+  }
+
+
+  function openPrintSheet() {
+    if (!draft.print_pdf_url) {
+      captureFailure = { code: 'print_sheet_unavailable', detail: 'Run the recognition test before printing this candidate sheet.' };
+      return;
+    }
+    window.open(draft.print_pdf_url, '_blank', 'noopener,noreferrer');
   }
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6 text-foreground [&_input]:border-input [&_input]:bg-background [&_input]:text-foreground">
   <div>
-    <h2 class="text-base font-bold text-slate-900">Verification & Export</h2>
-    <p class="text-xs text-slate-500 mt-1">Dual-input test capture (camera or file upload) and production deliverables.</p>
+    <h2 class="text-base font-bold text-foreground">Verification &amp; Test Capture</h2>
+    <p class="text-xs text-muted-foreground mt-1">Print the candidate, run digital gates, then test a real camera or uploaded scan.</p>
   </div>
+
+  <div class="rounded-xl border border-border bg-card p-3 space-y-2">
+    <span class="text-xs font-bold uppercase tracking-wider text-foreground">Physical test sheet</span>
+    <button
+      type="button"
+      onclick={openPrintSheet}
+      disabled={!draft.print_pdf_url}
+      class="w-full rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40"
+    >
+      <span class="flex items-center justify-center gap-1.5"><Printer class="size-3.5" /> Open printable PDF</span>
+    </button>
+    <p class="text-[10px] leading-relaxed text-muted-foreground">Print at 100% / Actual Size. Do not use “Fit to page”.</p>
+  </div>
+
+  {#if !draft.compiled_version_id}
+    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+      Physical Test Capture is locked until this draft passes digital verification and is compiled into an immutable native bundle.
+    </div>
+  {/if}
+
+  <div class="p-3 rounded-xl border border-border bg-muted/40 space-y-2">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-bold text-foreground uppercase tracking-wider">Digital candidate lifecycle</span>
+      {#if draft.compiled_version_id}
+        <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-400">compiled v{draft.compiled_version_id}</span>
+      {:else}
+        <span class="text-[10px] font-mono text-muted-foreground">{draft.stage || 'mapping_complete'}</span>
+      {/if}
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        onclick={runDigitalVerification}
+        disabled={lifecycleBusy || lifecycleRunning || draft.stage === 'digital_verified' || Boolean(draft.compiled_version_id)}
+        class="py-2 rounded-lg bg-blue-700 text-white text-[11px] font-semibold disabled:opacity-40"
+      >
+        {lifecycleRunning && !draft.compiled_version_id ? 'Running worker matrix…' : 'Run digital verification'}
+      </button>
+      <button
+        type="button"
+        onclick={compileCandidate}
+        disabled={lifecycleBusy || lifecycleRunning || draft.stage !== 'digital_verified' || Boolean(draft.compiled_version_id)}
+        class="py-2 rounded-lg bg-slate-900 text-white text-[11px] font-semibold disabled:opacity-40"
+      >
+        Compile immutable version
+      </button>
+    </div>
+    {#if lifecycleNotice}
+      <div class="rounded-lg border border-border bg-card px-2.5 py-2 text-[11px] text-muted-foreground" role="status" aria-live="polite">
+        {lifecycleNotice}
+      </div>
+    {/if}
+  </div>
+
+  {#if draft.compiled_version_id}
+    <div class="p-3 rounded-xl border border-border bg-card space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-foreground uppercase tracking-wider">Physical qualification</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <input bind:value={printerIdentity} placeholder="Printer identity" class="rounded-lg border border-slate-200 px-2 py-1.5 text-xs" />
+        <input bind:value={deviceIdentity} placeholder="Camera/scanner identity" class="rounded-lg border border-slate-200 px-2 py-1.5 text-xs" />
+        <input bind:value={measuredWidthMm} type="number" min="1" step="0.01" placeholder="Marker width (mm)" class="rounded-lg border border-slate-200 px-2 py-1.5 text-xs" />
+        <input bind:value={measuredHeightMm} type="number" min="1" step="0.01" placeholder="Marker height (mm)" class="rounded-lg border border-slate-200 px-2 py-1.5 text-xs" />
+      </div>
+      <label class="flex items-center gap-2 text-[11px] text-slate-700">
+        <input type="checkbox" bind:checked={physicalMatrixPassed} />
+        Physical matrix passed on the named printer/device/paper
+      </label>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick={qualifyPhysical} disabled={lifecycleBusy || lifecycleRunning || physicalQualified || !physicalMatrixPassed} class="py-2 rounded-lg bg-emerald-700 text-white text-[11px] font-semibold disabled:opacity-40">Record qualification</button>
+        <button type="button" onclick={activateVersion} disabled={lifecycleBusy || lifecycleRunning || !physicalQualified} class="py-2 rounded-lg bg-slate-900 text-white text-[11px] font-semibold disabled:opacity-40">Activate version</button>
+      </div>
+    </div>
+  {/if}
 
   <!-- Dual-Input Mode Switcher -->
   <div class="space-y-3">
@@ -182,6 +355,7 @@
             ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
             : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-slate-50/50'
         }`}
+        disabled={!draft.compiled_version_id || captureRunning}
       >
         <Camera class="size-3.5" />
         <span>Device Camera</span>
@@ -244,7 +418,7 @@
         type="button"
         onclick={captureSnapshot}
         disabled={captureRunning || !cameraActive}
-        class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+        class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-emerald-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
       >
         {#if captureRunning}
           <Loader2 class="size-3.5 animate-spin" />
@@ -269,21 +443,21 @@
       <button
         type="button"
         onclick={() => fileInputElement?.click()}
-        disabled={captureRunning}
-        class="w-full p-6 border-2 border-dashed border-slate-300 hover:border-slate-400 rounded-2xl flex flex-col items-center justify-center text-center transition bg-slate-50/50 hover:bg-slate-50"
+        disabled={!draft.compiled_version_id || captureRunning}
+        class="w-full p-6 border-2 border-dashed border-border hover:border-primary/50 rounded-2xl flex flex-col items-center justify-center text-center transition bg-muted/30 hover:bg-muted/50"
       >
-        <Upload class="size-8 text-slate-400 mb-2" />
-        <span class="text-xs font-bold text-slate-800">
+        <Upload class="size-8 text-muted-foreground mb-2" />
+        <span class="text-xs font-bold text-foreground">
           {selectedFileName ? selectedFileName : 'Choose Photo or Drag & Drop'}
         </span>
-        <span class="text-[10px] text-slate-500 mt-1">Accepts JPG, PNG, WebP or scanned PDF</span>
+        <span class="text-[10px] text-muted-foreground mt-1">Accepts JPG, PNG, WebP or scanned PDF</span>
       </button>
 
       {#if selectedFileName}
         <button
           type="button"
           onclick={() => fileInputElement?.files?.[0] && runTestCapture(fileInputElement.files[0])}
-          disabled={captureRunning}
+          disabled={!draft.compiled_version_id || captureRunning}
           class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
         >
           {#if captureRunning}
@@ -311,13 +485,13 @@
 
   <!-- Diagnostic Result Visualization -->
   {#if captureResult}
-    <div class="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+    <div class="space-y-4 p-4 bg-muted/40 rounded-2xl border border-border text-xs">
       <div class="flex items-center justify-between">
-        <span class="font-bold text-slate-900 flex items-center gap-1.5">
-          <ShieldCheck class="size-4 text-emerald-600" />
+        <span class="font-bold text-foreground flex items-center gap-1.5">
+          <ShieldCheck class="size-4 text-emerald-600 dark:text-emerald-400" />
           <span>OMRChecker Diagnostic Results</span>
         </span>
-        <span class="font-mono text-[10px] text-slate-500">
+        <span class="font-mono text-[10px] text-muted-foreground">
           {captureResult.timings?.verification_ms ?? 0}ms
         </span>
       </div>
@@ -339,7 +513,7 @@
 
       <!-- Proof Image Tabs -->
       <div class="space-y-2">
-        <div class="flex gap-1 border-b border-slate-200 pb-1">
+        <div class="flex gap-1 border-b border-border pb-1">
           <button
             type="button"
             onclick={() => { activeProofTab = 'overlay'; }}
@@ -367,52 +541,16 @@
     </div>
   {/if}
 
-  <!-- Dual Production Deliverables -->
-  <div class="space-y-3 border-t border-slate-100 pt-4">
-    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Production Deliverables</span>
-    <button
-      type="button"
-      onclick={downloadJSON}
-      class="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2"
-    >
-      <Download class="size-3.5" />
-      <span>Download template.json (OMRChecker Native)</span>
-    </button>
-  </div>
-
-  <div class="space-y-2 border-t border-slate-100 pt-4">
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Generated JSON Schema</span>
-      <button onclick={copyJSON} class="text-[11px] text-slate-600 hover:text-slate-900 flex items-center gap-1 font-medium">
-        {#if copied}
-          <Check class="size-3 text-emerald-600" />
-          <span class="text-emerald-600">Copied!</span>
-        {:else}
-          <Copy class="size-3" />
-          <span>Copy JSON</span>
-        {/if}
-      </button>
-    </div>
-    <pre class="p-3 bg-slate-900 text-emerald-400 font-mono text-[10px] rounded-xl overflow-x-auto max-h-44 leading-relaxed">{JSON.stringify(jsonSchema, null, 2)}</pre>
-  </div>
 
   <!-- Sticky Bottom Navigation Footer -->
-  <div class="sticky bottom-0 bg-white border-t border-slate-200 p-4 -mx-6 -mb-6 flex items-center justify-between gap-3 shadow-xs">
+  <div class="sticky bottom-0 bg-card border-t border-border p-4 -mx-6 -mb-6 flex items-center justify-start shadow-xs">
     <button
       type="button"
       onclick={onBack}
       class="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center gap-1.5"
     >
       <ChevronLeft class="size-3.5" />
-      <span>Back to Question Bubbles</span>
-    </button>
-    <button
-      type="button"
-      onclick={downloadJSON}
-      class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
-    >
-      <Download class="size-3.5" />
-      <span>Download template.json</span>
+      <span>Back to Recognition Mapping</span>
     </button>
   </div>
 </div>

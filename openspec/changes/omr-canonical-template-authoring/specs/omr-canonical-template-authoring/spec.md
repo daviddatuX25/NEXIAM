@@ -302,7 +302,7 @@ The saved mapping SHALL emit `field_blocks` in the OMRChecker shape. The recogni
 
 ### Requirement: One server materialization SHALL bind editor intent, print artifacts, native geometry, markers, and engine preview
 
-Before Question Bubbles, the system SHALL normalize the editable draft into one server-owned canonical sheet definition and deterministically materialize one candidate artifact set containing the exact 300-PPI page PNG, exact-size PDF, non-blank reference page, qualified marker asset and inset geometry, native `template.json`/`config.json`, and activation-derived review manifest. The browser SHALL NOT be a print or recognition geometry authority. Compile SHALL promote the verified candidate bytes without recalculating geometry; the immutable native bundle SHALL become runtime recognition authority.
+Before Question Bubbles, the system SHALL normalize the editable draft into one server-owned canonical sheet definition and deterministically materialize one candidate artifact set containing the exact 300-PPI page PNG, exact-size PDF, non-blank reference page, selected marker asset and inset geometry, native `template.json`/`config.json`, and activation-derived review manifest. Candidate profiles MAY use explicitly marked provisional geometry for draft preview; compile/activation SHALL still require evidence-qualified geometry. The browser SHALL NOT be a print or recognition geometry authority. Compile SHALL promote the verified candidate bytes without recalculating geometry; the immutable native bundle SHALL become runtime recognition authority.
 
 #### Scenario: Entering Question Bubbles crosses the accuracy boundary
 - **WHEN** staff continues from Sheet Designer to Question Bubbles
@@ -311,6 +311,22 @@ Before Question Bubbles, the system SHALL normalize the editable draft into one 
 #### Scenario: Stage 3 never redraws the sheet
 - **WHEN** Question Bubbles displays a materialized candidate
 - **THEN** its underlay is the server-rendered canonical page and its only client-drawn elements are selection/mapping guides derived from native expanded regions
+
+#### Scenario: Printable artifact exists before mapping
+- **WHEN** staff explicitly opens Print Preview after Sheet Designer or completes canonical composition for HTML, DOCX, PDF, image, or preset input
+- **THEN** the materializer produces the full-paper raster/PDF, Question Bubbles can consume it, and the browser DOM or original source file is not treated as the printable authority
+
+#### Scenario: Unchanged transition reuses the candidate
+- **WHEN** staff enters Question Bubbles after a passing Print Preview without changing source, components, mapping, overlays, marker profile, or insets
+- **THEN** navigation-only state is saved without invalidating the candidate and the exact existing artifact/hash is reused without another materialization request
+
+#### Scenario: Question Bubbles separates paper and marker-frame diagnostics
+- **WHEN** staff switches among Print Sheet, Engine Aligned, and Engine Overlay
+- **THEN** the full printable paper remains the base, aligned/overlay bytes are placed only inside the declared marker frame, the QR reservation remains visible, and duplicate mapping guides are hidden on Engine Overlay
+
+#### Scenario: Printable changes invalidate every downstream view
+- **WHEN** staff changes any source, visual component, field geometry, overlay, marker profile, or inset after preview
+- **THEN** the prior printable candidate and worker diagnostics are marked stale and Question Bubbles requires one new materialization/verification before editing continues
 
 #### Scenario: Visual labels cannot appear only after transition
 - **WHEN** a section header or other static label is enabled, disabled, or edited
@@ -371,6 +387,94 @@ Digital verification SHALL run on the draft candidate artifact set and SHALL be 
 #### Scenario: Qualification evidence gates the swap
 - **WHEN** physical qualification records renderer, marker profile, printer, device, paper, and measured-output evidence with passing variants
 - **THEN** activation proceeds, the version becomes `active`, and the previous active version is retired
+
+### Requirement: Digital and physical verification SHALL consume one deterministic proof plan
+
+The system SHALL derive a versioned `OmrProofPlan` from target artifact/native hash, purpose, and plan version. The plan SHALL own the expected label→value vector, per-page instructions, challenge code/hash, and optional calibration digits only when an identity grid exists. Digital proof, quick rehearsal, and full qualification SHALL consume the same plan interface. Repeating the same inputs SHALL reproduce the same plan; requesting another challenge SHALL create a new auditable plan rather than silently randomizing. A paired booklet SHALL NOT be required for template verification and SHALL remain the separate score-key authority.
+
+#### Scenario: Repeated plan is deterministic
+- **WHEN** the same target hash, purpose, and plan version are planned twice
+- **THEN** expected vector, instructions, challenge code, and plan hash are identical
+
+#### Scenario: Full plan covers every mapped label
+- **WHEN** staff creates a full qualification plan
+- **THEN** every expanded native field label has exactly one declared expected value, every declared option column is exercised, every page is represented, and no applicant identity is fabricated
+
+#### Scenario: Quick rehearsal cannot qualify
+- **WHEN** a candidate or compiled target passes a quick rehearsal
+- **THEN** the result is labeled rehearsal-only and cannot satisfy physical qualification or activation
+
+### Requirement: Template verification SHALL expose durable truthful progress and retry
+
+Digital and physical verification SHALL run through durable `omr_template_verification_runs` with exactly one draft candidate OR compiled version target, idempotent start, optimistic run version, persisted phase/progress, safe error, hashes, actor, and timestamps. Allowed phases SHALL be `queued|preparing_proof|clean_recovery|variant_matrix|awaiting_print|awaiting_capture|analyzing_capture|needs_review|passed|failed`. POST SHALL return `202`; status polling SHALL report only completed real work, current phase/variant, and recoverable next action. A stale target hash SHALL fail closed; retry SHALL create the next attempt against the same pinned plan or an explicitly new challenge.
+
+#### Scenario: Progress reports real phases
+- **WHEN** a verification job completes proof generation and starts the third matrix variant
+- **THEN** status reports `variant_matrix`, actual completed/total counts, and the current variant without timer-derived percentage
+
+#### Scenario: Worker interruption is recoverable
+- **WHEN** the worker times out or becomes unavailable
+- **THEN** the run records a typed safe failure/retry state, preserves completed evidence, and never reports passed
+
+#### Scenario: Target changes during run
+- **WHEN** mapping, artifact, native bundle, or marker-profile hashes change while a run is active
+- **THEN** completion is rejected as stale and cannot move the draft/version gate
+
+### Requirement: Physical challenge packs SHALL bind print, instructions, capture, and expected recovery
+
+The system SHALL create immutable quick/full challenge records bound to target hashes and proof-plan hash. A challenge SHALL provide the exact printable sheet with signed calibration-instance QR/display code, a separate human shading guide, expected vector, Actual Size instruction, and private evidence asset references. Camera and upload SHALL use one capture interface and the same diagnostic runner. Capture evidence SHALL retain forensic input, clean aligned raster, separate recognition overlay, gates, marker matches, shifts, declared-option item/ID crops, means/threshold state, detected vector, and exact comparison summary. Candidate challenges MAY rehearse but SHALL NOT qualify; qualification SHALL require the exact compiled version and full challenge.
+
+#### Scenario: Staff prints and shades a challenge
+- **WHEN** staff opens a physical challenge
+- **THEN** the UI shows challenge id/mode/target hash, exact printable PDF, separate grouped shading instructions, signed calibration QR, and `Print at 100% / Actual Size — do not fit`
+
+#### Scenario: Camera and upload share evidence
+- **WHEN** equivalent challenge captures arrive from device camera and uploaded image
+- **THEN** both produce the same normalized diagnostic-evidence shape and gates
+
+#### Scenario: Qualification is derived
+- **WHEN** a compiled full challenge has exact vector recovery, passing registration/dimension/shift gates, qualified profile, and recorded printer/device/paper/measurements
+- **THEN** physical qualification may be recorded from stored evidence without a manual “matrix passed” checkbox
+
+### Requirement: Canonical compile and grading review SHALL share one template-owned geometry projection
+
+Native review manifest SHALL be projected idempotently into version-owned pages, areas, questions, and declared-option regions by one `OmrTemplateGeometryProjector` used by canonical and predecessor activation paths. Correct answers SHALL remain booklet-version owned. `OmrReviewGeometryQuery` SHALL merge template geometry with the pinned booklet key by validated semantic area/question coverage. Grading review SHALL NOT depend on optional `bookletQuestion.templateQuestion` links to obtain regions/options. Missing, duplicate, or mismatched geometry/key coverage SHALL block pairing/analysis with a typed error rather than rendering full-page fallback crops.
+
+#### Scenario: Canonical version supplies scanner geometry
+- **WHEN** a canonical version compiles and is paired to a compatible booklet
+- **THEN** grading review receives exact page/question/option regions for every paired item and the correct option from the booklet
+
+#### Scenario: Projection is idempotent
+- **WHEN** projection is retried with identical version and manifest hash
+- **THEN** no duplicate pages/areas/questions/options are created and the projection hash remains identical
+
+#### Scenario: Per-item scanner crop uses aligned geometry
+- **WHEN** a real capture reaches review
+- **THEN** each item crop uses the clean aligned image and template-owned normalized question/option regions, while detected observation and booklet correctness remain separate fields
+
+### Requirement: Diagnostic evidence presentation SHALL be shared without sharing workflow authority
+
+Canonical verification, template Test Capture, and grading review SHALL consume one normalized `OmrDiagnosticEvidence` and one shared evidence panel for captured/aligned/overlay tabs, gates, problems filter, per-item/ID crops, expected/detected values, means, threshold status, shifts, hashes, and return link. Camera/upload input MAY also be shared. The shared module SHALL be read-only and SHALL NOT own grading sessions, applicant binding, batch state, answer keys, score writes, qualification decisions, or activation commands.
+
+#### Scenario: Same evidence renders in builder and scanner
+- **WHEN** builder challenge and grading capture provide equivalent normalized evidence
+- **THEN** the shared panel renders the same gate, raster, and item-evidence semantics while each caller retains its own workflow actions
+
+#### Scenario: Builder evidence cannot write scores
+- **WHEN** staff reviews builder diagnostic evidence
+- **THEN** no applicant, booklet answer key, score proposal, or grading mutation interface is exposed
+
+### Requirement: Scanner template identification SHALL use signed instance identity and pinned pairing
+
+For canonical printed sheets, capture SHALL resolve signed blank-instance QR to immutable template version/page set before recognition; the active capture batch SHALL provide the pinned template–booklet pair and answer-key version. The scanner SHALL load internal native geometry automatically and SHALL NOT ask staff to select or download `template.json`, nor guess template identity from appearance. Absent/unreadable QR SHALL enter audited manual recovery; a present-invalid signature or template/page mismatch SHALL hard-fail.
+
+#### Scenario: Signed QR resolves template
+- **WHEN** a captured page contains a valid registered blank-instance QR
+- **THEN** capture binds the matching immutable template version/page and verifies it matches the batch pair before OMR analysis
+
+#### Scenario: Invalid signed QR cannot be overridden
+- **WHEN** QR is present but forged, unknown, or bound to another template/page set
+- **THEN** recognition is blocked with a typed tamper/mismatch issue and manual recovery cannot override it
 
 ### Requirement: Canonical authoring SHALL enforce security, audit, and operational controls
 

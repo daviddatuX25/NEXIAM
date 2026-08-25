@@ -59,7 +59,9 @@ final class OmrCanonicalWorkflowProjection
     public function workflowProps(OmrTemplateAuthoringDraft $draft, User $actor): array
     {
         $canEdit = (int) $draft->owner_user_id === (int) $actor->id;
-        $rasterAssetId = (int) ($draft->authoring_json['canonical']['raster_assets'][0]['asset_id'] ?? 0);
+        $authoring = (array) $draft->authoring_json;
+        $rasterAssetId = (int) (($authoring['canonical']['raster_assets'][0]['asset_id'] ?? null) ?: ($authoring['pages'][0]['asset_id'] ?? 0));
+        $printPdfAssetId = (int) ($authoring['canonical']['pdf_asset_id'] ?? 0);
         $compiledVersion = $draft->compiled_version_id !== null
             ? OmrAnswerSheetTemplateVersion::query()->find($draft->compiled_version_id)
             : null;
@@ -87,6 +89,7 @@ final class OmrCanonicalWorkflowProjection
                 'source_kind' => $draft->source_kind,
                 'stage' => $draft->stage,
                 'lock_version' => $draft->lock_version,
+                'marker_profile_id' => $draft->marker_profile_id,
                 'compiled_version_id' => $draft->compiled_version_id,
                 'compiled_version_status' => $compiledVersion?->status,
                 'physical_qualified' => ($compiledVersion?->authoring_manifest['physical_qualification']['status'] ?? null) === 'physical_qualified',
@@ -96,10 +99,18 @@ final class OmrCanonicalWorkflowProjection
                 'raster_url' => $rasterAssetId > 0
                     ? route('setup.omr.templates.canonical.drafts.assets.show', [$draft, $rasterAssetId])
                     : null,
+                'print_pdf_url' => $printPdfAssetId > 0
+                    ? route('setup.omr.templates.canonical.drafts.assets.show', [$draft, $printPdfAssetId])
+                    : null,
             ],
             'marker_profiles' => OmrMarkerProfile::query()
                 ->whereIn('status', [OmrMarkerProfile::STATUS_CANDIDATE, OmrMarkerProfile::STATUS_QUALIFIED])
-                ->orderBy('status')
+                ->where(function ($query) use ($draft): void {
+                    $query->whereKey($draft->marker_profile_id)
+                        ->orWhere('code', 'omrchecker.sample')
+                        ->orWhere('status', OmrMarkerProfile::STATUS_QUALIFIED);
+                })
+                ->orderByRaw('case when id = ? then 0 else 1 end', [$draft->marker_profile_id ?? 0])
                 ->orderBy('code')
                 ->get(['id', 'code', 'version', 'family', 'status', 'size_mm', 'quiet_zone_mm', 'asset_sha256'])
                 ->values()
@@ -126,8 +137,13 @@ final class OmrCanonicalWorkflowProjection
                 'overlay' => route('setup.omr.templates.canonical.drafts.overlay', $draft),
                 'mapping' => route('setup.omr.templates.canonical.drafts.mapping', $draft),
                 'studio' => route('setup.omr.studio.save', $draft),
+                'materialize' => route('setup.omr.templates.canonical.drafts.materialize', $draft),
+                'preview' => route('setup.omr.templates.canonical.drafts.preview', $draft),
                 'booklet_options' => route('setup.omr.templates.canonical.drafts.booklet_options', $draft),
                 'digital_verification' => route('setup.omr.templates.canonical.drafts.verify.digital', $draft),
+                'native_template' => $compiledVersion !== null
+                    ? route('setup.omr.templates.native_template', $compiledVersion)
+                    : null,
                 'compile' => route('setup.omr.templates.canonical.drafts.compile', $draft),
             ],
         ];

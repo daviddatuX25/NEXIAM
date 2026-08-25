@@ -19,7 +19,7 @@ use function tempnam;
 final class OmrPdfPageRasterizer
 {
     /**
-     * @param array{width_mm?:float|null,height_mm?:float|null,ppi?:int} $context
+     * @param array{width_mm?:float|null,height_mm?:float|null,width_px?:int|null,height_px?:int|null,ppi?:int} $context
      * @return list<array{page_no:int,path:string,mime:string,bytes:int,sha256:string,width:int,height:int,width_mm:float|null,height_mm:float|null,orientation:string,metadata:array<string,mixed>}>
      */
     public function rasterize(string $pdfPath, array $context = []): array
@@ -33,7 +33,17 @@ final class OmrPdfPageRasterizer
         }
         $prefix = $directory.'/page';
         $ppi = (int) ($context['ppi'] ?? 300);
-        $process = new Process(['pdftoppm', '-png', '-r', (string) $ppi, $pdfPath, $prefix]);
+        $targetWidth = (int) ($context['width_px'] ?? 0);
+        $targetHeight = (int) ($context['height_px'] ?? 0);
+        $command = ['pdftoppm', '-png', '-r', (string) $ppi];
+        if ($targetWidth > 0 && $targetHeight > 0) {
+            $command = [
+                ...$command,
+                '-scale-to-x', (string) $targetWidth,
+                '-scale-to-y', (string) $targetHeight,
+            ];
+        }
+        $process = new Process([...$command, $pdfPath, $prefix]);
         $process->setTimeout((float) config('omr.canonical.limits.conversion_timeout_seconds_per_page', 300));
         $process->run();
         if (! $process->isSuccessful()) {

@@ -3,6 +3,7 @@
 namespace App\Assessment\Actions\Omr\Canonical;
 
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftException;
+use App\Assessment\Omr\Canonical\CanonicalArtifactMaterializer;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
 use App\Assessment\Omr\Canonical\OmrCanonicalNativeBundleCompiler;
 use App\Assessment\Omr\Canonical\OmrMarkerProfileService;
@@ -27,6 +28,7 @@ final class CompileOmrCanonicalDraft
         private readonly OmrMarkerProfileService $profiles,
         private readonly OmrTemplateAssetStore $assets,
         private readonly OmrAuthoringDraftService $drafts,
+        private readonly CanonicalArtifactMaterializer $artifacts,
         private readonly RecordAuditEvent $recordAuditEvent,
     ) {
     }
@@ -43,16 +45,38 @@ final class CompileOmrCanonicalDraft
         if (($authoring['verification']['status'] ?? null) !== 'passed') {
             throw new OmrAuthoringDraftException('compile_gate_missing', 'The draft has no passing digital verification evidence.');
         }
+        $artifactSet = (array) ($authoring['canonical']['artifact_set'] ?? []);
+        $verifiedArtifactHash = (string) ($authoring['verification']['artifact_hash'] ?? '');
+        $candidateArtifactHash = (string) ($artifactSet['artifact_hash'] ?? '');
+        if ($artifactSet === [] || $verifiedArtifactHash === '' || $candidateArtifactHash === ''
+            || ! hash_equals($verifiedArtifactHash, $candidateArtifactHash)) {
+            throw new OmrAuthoringDraftException('compile_candidate_stale', 'Digital verification does not match the current materialized artifact set.');
+        }
+        $candidateVersion = (int) ($artifactSet['candidate_version'] ?? 0);
+        $currentArtifact = $this->artifacts->materialize($draft, $profile, $candidateVersion > 0 ? $candidateVersion : null);
+        if (! hash_equals($candidateArtifactHash, $currentArtifact->artifactHash)) {
+            throw new OmrAuthoringDraftException('compile_candidate_stale', 'Marker qualification or printable geometry changed after digital verification.');
+        }
+        unset($currentArtifact);
+        $expectedLockVersion = (int) $draft->lock_version;
         $manifest = $this->compactManifest($draft, $profile);
         $compiled = $this->compiler->compile($draft, $profile, $manifest);
         $version = $compiled['version'];
 
         try {
-            DB::transaction(function () use ($draft, $version, $authoring, $manifest): void {
+            DB::transaction(function () use ($draft, $version, $authoring, $manifest, $expectedLockVersion, $candidateArtifactHash): void {
+                $locked = OmrTemplateAuthoringDraft::query()->lockForUpdate()->findOrFail($draft->id);
+                $lockedAuthoring = (array) $locked->authoring_json;
+                $lockedArtifactHash = (string) ($lockedAuthoring['canonical']['artifact_set']['artifact_hash'] ?? '');
+                if ((int) $locked->lock_version !== $expectedLockVersion
+                    || $locked->stage !== OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED
+                    || $lockedArtifactHash === ''
+                    || ! hash_equals($lockedArtifactHash, $candidateArtifactHash)) {
+                    throw new OmrAuthoringDraftException('compile_concurrency_conflict', 'The draft changed while compile was running.');
+                }
                 foreach ($draft->assets as $asset) {
                     $this->assets->pinToVersion($asset, $version);
                 }
-                $locked = OmrTemplateAuthoringDraft::query()->lockForUpdate()->findOrFail($draft->id);
                 $nextAuthoring = [...$authoring, 'compiled' => ['version_id' => $version->id, 'bundle_hash' => $version->native_bundle_hash, 'manifest' => $manifest]];
                 $locked->forceFill([
                     'stage' => OmrTemplateAuthoringDraft::STAGE_COMPILED,

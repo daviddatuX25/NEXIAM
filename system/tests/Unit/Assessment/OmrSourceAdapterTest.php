@@ -3,6 +3,8 @@
 use App\Assessment\Omr\Canonical\OmrSourceAdapterRegistry;
 use App\Assessment\Omr\Canonical\OmrSourcePreflight;
 use App\Assessment\Omr\Canonical\OmrSourcePreflightException;
+use App\Printing\DomPdfPrintRenderer;
+use App\ResultSheet\Rendering\DocxToPdfConverter;
 
 function omrTempSource(string $extension, string $contents): string
 {
@@ -10,6 +12,23 @@ function omrTempSource(string $extension, string $contents): string
     file_put_contents($path, $contents);
 
     return $path;
+}
+
+function omrMatrixPdfBytes(): string
+{
+    return app(DomPdfPrintRenderer::class)->render(
+        '<!doctype html><html><body><h1>Source matrix</h1><p>Static page content.</p></body></html>',
+        ['format' => 'custom', 'orientation' => 'portrait', 'width_mm' => 210, 'height_mm' => 297],
+    );
+}
+
+function omrMatrixDocx(string $path): void
+{
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::CREATE);
+    $zip->addFromString('[Content_Types].xml', '<Types/>');
+    $zip->addFromString('word/document.xml', '<document/>');
+    $zip->close();
 }
 
 test('registry exposes all five canonical source kinds', function (): void {
@@ -82,4 +101,84 @@ test('image adapter requires confirmed quad for authoring photos and rejects TIF
 
     expect(fn () => app(OmrSourceAdapterRegistry::class)->get('image')->convert($imagePath, ['authoring_photo' => true]))
         ->toThrow(OmrSourcePreflightException::class, 'quad_confirmation_required');
+});
+
+test('all source adapters emit the same canonical page boundary contract', function (): void {
+    config(['print.paper' => 'long']);
+    $registry = app(OmrSourceAdapterRegistry::class);
+    $pdfBytes = omrMatrixPdfBytes();
+    $fixtures = [];
+    $generatedPages = [];
+
+    $fixtures['html'] = omrTempSource('html', '<!doctype html><html><body><h1>HTML source</h1><p>Static content.</p></body></html>');
+    $fixtures['pdf'] = omrTempSource('pdf', $pdfBytes);
+
+    $docxPath = tempnam(sys_get_temp_dir(), 'nexiam-source-matrix-').'.docx';
+    omrMatrixDocx($docxPath);
+    $fixtures['docx'] = $docxPath;
+    app()->instance(DocxToPdfConverter::class, new class($pdfBytes) implements DocxToPdfConverter
+    {
+        public function __construct(private readonly string $pdfBytes)
+        {
+        }
+
+        public function isAvailable(): bool
+        {
+            return true;
+        }
+
+        public function convert(string $documentPath): string
+        {
+            return $this->pdfBytes;
+        }
+    });
+
+    $fixtures['image'] = omrTempSource('png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true));
+    $fixtures['preset'] = omrTempSource('json', json_encode([
+        'bubbleDimensions' => [40, 40],
+        'pageDimensions' => [2060, 3144],
+        'fieldBlocks' => [
+            'Logic' => [
+                'fieldType' => 'QTYPE_MCQ4',
+                'direction' => 'horizontal',
+                'fieldLabels' => ['LOGIC_Q_1..2'],
+                'bubblesGap' => 66,
+                'labelsGap' => 80,
+                'origin' => [180, 900],
+            ],
+        ],
+    ], JSON_THROW_ON_ERROR));
+
+    try {
+        foreach ($fixtures as $kind => $path) {
+            $context = [
+                'width_mm' => 210,
+                'height_mm' => 297,
+                'source_dpi' => 300,
+            ];
+            if ($kind === 'preset') {
+                $context['new_page'] = ['width' => 2480, 'height' => 3508];
+            }
+            $result = $registry->get($kind)->convert($path, $context);
+            expect($result->kind)->toBe($kind)
+                ->and($result->pages)->not->toBeEmpty()
+                ->and($result->metadata)->toHaveKey('page_count');
+
+            foreach ($result->pages as $page) {
+                $generatedPages[] = $page['path'];
+                expect(is_file($page['path']))->toBeTrue()
+                    ->and($page['mime'])->toBe('image/png')
+                    ->and($page['width'])->toBeGreaterThan(0)
+                    ->and($page['height'])->toBeGreaterThan(0)
+                    ->and($page['sha256'])->toHaveLength(64);
+            }
+        }
+    } finally {
+        foreach ($fixtures as $path) {
+            @unlink($path);
+        }
+        foreach ($generatedPages as $path) {
+            @unlink($path);
+        }
+    }
 });

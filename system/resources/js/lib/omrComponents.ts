@@ -8,7 +8,7 @@
  * are HTML-only.
  */
 
-import { contentBlockSizeMm, OMR_BUBBLE_DIAMETER_MM } from './omrStudioGeometry';
+import { contentBlockSizeMm, GRID_BUBBLE_ORIGIN_OFFSET_MM, OMR_BUBBLE_DIAMETER_MM } from './omrStudioGeometry';
 
 export interface OmrTypography {
   fontSizePt: number;
@@ -210,6 +210,7 @@ export const DEFAULT_A4_SETTINGS: SheetSettings = {
 export const CANVAS_PX_PER_MM = 2.476; // 520px sheet width ÷ 210mm — canvas scale authority
 export const CANVAS_BUBBLE_DIAMETER_PX = OMR_BUBBLE_DIAMETER_MM * CANVAS_PX_PER_MM;
 
+export const GRID_SECTION_HEADER_HEIGHT_MM = 3.5;
 /** Option labels for a question grid component. */
 export function gridOptionLabels(g: QuestionGridComponent): string[] {
   if (g.type === 'tf') return ['T', 'F'];
@@ -324,17 +325,24 @@ export function canvasSectionBoundsMm(
 ): { w_mm: number; h_mm: number } {
   const optionCount = Math.max(2, Number(options) || 4);
   const rowCount = Math.min(50, Math.max(1, Number(questions) || 1));
-  const renderBubblePxForMode = isRoll
-    ? Math.max(4.2, Number(bubbleDiameterMm) || 4.5) * CANVAS_PX_PER_MM
-    : renderBubblePx;
-  const minimumPitchMm = minimumCanvasPitchMm(isRoll ? Number(bubbleDiameterMm) || 4.5 : 4.5);
+  if (!isRoll) {
+    const bubble = Math.max(4.2, Number(bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM);
+    const optionPitch = Math.max(Number(bubblePitchMm) || 6, bubble);
+    const rowPitch = Math.max(Number(rowPitchMm) || 6.8, bubble);
+    return {
+      w_mm: Number((GRID_BUBBLE_ORIGIN_OFFSET_MM.x + bubble + (optionCount - 1) * optionPitch + 0.5).toFixed(1)),
+      h_mm: Number((GRID_BUBBLE_ORIGIN_OFFSET_MM.y + bubble + (rowCount - 1) * rowPitch + 0.5).toFixed(1)),
+    };
+  }
+
+  const renderBubblePxForMode = Math.max(4.2, Number(bubbleDiameterMm) || 4.5) * CANVAS_PX_PER_MM;
+  const minimumPitchMm = minimumCanvasPitchMm(Number(bubbleDiameterMm) || 4.5);
   const bPitch = Math.max(Number(bubblePitchMm) || 6, minimumPitchMm);
   const rPitch = Math.max(Number(rowPitchMm) || 6.8, minimumPitchMm);
   const minimumGapPx = CANVAS_ROLL_MIN_ROW_GAP_PX;
   const bubbleGapPx = Math.max(minimumGapPx, bPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
   const rowGapPx = Math.max(minimumGapPx, rPitch * CANVAS_PX_PER_MM - renderBubblePxForMode);
-  const labelWidthPx = isRoll ? 16 : 18;
-  const widthPx = 8 + labelWidthPx + optionCount * renderBubblePxForMode + Math.max(0, optionCount - 1) * bubbleGapPx;
+  const widthPx = 8 + 16 + optionCount * renderBubblePxForMode + Math.max(0, optionCount - 1) * bubbleGapPx;
   const heightPx = 8 + rowCount * renderBubblePxForMode + Math.max(0, rowCount - 1) * rowGapPx;
 
   return {
@@ -368,6 +376,43 @@ export function canvasComponentBlockSizeMm(c: OmrComponent): { w_mm: number; h_m
     };
   }
   return componentBlockSizeMm(c);
+}
+
+/** Reflow colliding question grids in a shared row across the printable width. */
+export function normalizeQuestionGridRowPositions(
+  components: OmrComponent[],
+  marginMm: number,
+  paperWidthMm = 210,
+  minimumGapMm = 2,
+): boolean {
+  const rows = new Map<string, QuestionGridComponent[]>();
+  for (const component of components.filter(isQuestionGridComponent)) {
+    const key = Number(component.posY).toFixed(1);
+    rows.set(key, [...(rows.get(key) ?? []), component]);
+  }
+
+  let changed = false;
+  const printableWidth = paperWidthMm - marginMm * 2;
+  for (const row of rows.values()) {
+    if (row.length < 2) continue;
+    row.sort((left, right) => Number(left.posX) - Number(right.posX));
+    const widths = row.map((component) => canvasComponentBlockSizeMm(component).w_mm);
+    const collides = row.some((component, index) => (
+      index > 0 && Number(component.posX) - (Number(row[index - 1].posX) + widths[index - 1]) < minimumGapMm
+    ));
+    const totalWidth = widths.reduce((sum, width) => sum + width, 0);
+    if (!collides || totalWidth > printableWidth) continue;
+    const gap = (printableWidth - totalWidth) / (row.length - 1);
+    let nextX = marginMm;
+    row.forEach((component, index) => {
+      const normalizedX = Number(nextX.toFixed(1));
+      changed ||= normalizedX !== Number(component.posX);
+      component.posX = normalizedX;
+      nextX += widths[index] + gap;
+    });
+  }
+
+  return changed;
 }
 
 /** Escape text for HTML attribute/innerText interpolation. */
@@ -837,14 +882,15 @@ export function componentToSectionData(c: OmrComponent): SectionData | null {
     };
   }
   if (isQuestionGridComponent(c)) {
+    const visualSize = canvasComponentBlockSizeMm(c);
     return {
       id: c.id,
       name: c.name || c.subjectName,
       type: c.type,
       posX: c.posX,
       posY: c.posY,
-      w_mm: gridBlockWidthMm(c),
-      h_mm: gridBlockHeightMm(c),
+      w_mm: visualSize.w_mm,
+      h_mm: visualSize.h_mm,
       questionsCount: c.questionsCount,
       cols: c.cols || 1,
       optionsCount: c.optionsCount || 4,

@@ -28,7 +28,7 @@ use function time;
  * Stateless authenticated transport to the isolated OMRChecker supervisor.
  * It receives no model, storage, roster, answer-key, or scoring dependency.
  */
-final class OmrCheckerDetection implements OmrDetectionPort
+final class OmrCheckerDetection implements OmrDetectionPort, OmrLayoutVerificationPort
 {
     public function detect(OmrDetectionRequest $request): OmrDetectionResult
     {
@@ -149,10 +149,6 @@ final class OmrCheckerDetection implements OmrDetectionPort
             ];
         }
         usort($identity, static fn (array $left, array $right): int => $left['position'] <=> $right['position']);
-
-        if ($identity === []) {
-            throw new RuntimeException('Applicant-number geometry is missing.');
-        }
 
         return $identity;
     }

@@ -84,7 +84,7 @@ final class OmrImageSourceAdapter extends AbstractOmrSourceAdapter
             converterVersion: 'gd-normalize-v1',
             settingsHash: $this->settingsHash(['source_dpi' => $sourceDpi, 'width_mm' => $widthMm, 'height_mm' => $heightMm]),
             pages: [$page],
-            metadata: ['authoring_photo' => (bool) ($context['authoring_photo'] ?? false)],
+            metadata: ['authoring_photo' => (bool) ($context['authoring_photo'] ?? false), 'page_count' => 1],
         );
 
         return $this->lastResult;

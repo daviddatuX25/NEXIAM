@@ -19,6 +19,9 @@
   let {
     marginMm = $bindable(15),
     markerPattern = $bindable('square'),
+    markerProfiles = [],
+    selectedMarkerProfileId = null,
+    onMarkerProfileChange = null,
     showHeaderOverlay = $bindable(true),
     headerTitle = $bindable('EXAMINATION ANSWER SHEET'),
     headerSubtitle = $bindable('AUTOMATED OMR EVALUATION FORM'),
@@ -120,25 +123,28 @@
     />
   </div>
 
-  <!-- Marker Profile Picker -->
+  <!-- Marker appearance is profile-owned; the editor does not invent alternatives. -->
   <div class="space-y-1.5 border-t border-slate-200 pt-3">
-    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Fiducial Marker Pattern</span>
-    <div class="grid grid-cols-3 gap-1.5">
-      {#each ['square', 'target', 'aruco'] as pat}
-        <button
-          type="button"
-          onclick={() => { markerPattern = pat; handleInput(); }}
-          class={`py-1.5 px-2 rounded-lg border text-center transition font-semibold text-xs capitalize ${
-            markerPattern === pat
-              ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-              : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
-          }`}
-        >
-          {pat}
-        </button>
-      {/each}
+    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Fiducial Marker</span>
+    <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] leading-relaxed text-slate-600">
+      The canvas mirrors the selected OMRChecker profile’s bullseye marker. Marker shape is not independently editable.
     </div>
   </div>
+
+  <label class="block space-y-1.5 border-t border-slate-200 pt-3">
+    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">OMRChecker fiducial profile</span>
+    <select
+      value={selectedMarkerProfileId ?? ''}
+      onchange={(event) => onMarkerProfileChange?.(Number(event.currentTarget.value))}
+      class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800"
+    >
+      <option value="" disabled>Select a marker profile</option>
+      {#each markerProfiles as profile}
+        <option value={profile.id}>{profile.code} v{profile.version} · {profile.status}</option>
+      {/each}
+    </select>
+    <span class="text-[10px] text-slate-500">The selected profile supplies the physical marker asset used by print and alignment.</span>
+  </label>
 
   <!-- Printable Overlay Elements with Individual Locks and Typography Controls -->
   <div class="space-y-3.5 border-t border-slate-200 pt-3">
@@ -487,7 +493,7 @@
       onclick={onNext}
       class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
     >
-      <span>Question Bubbles</span>
+      <span>Recognition Mapping</span>
       <ChevronRight class="size-3.5" />
     </button>
   </div>

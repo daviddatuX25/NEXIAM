@@ -1,9 +1,11 @@
 <?php
 
 use App\Assessment\Actions\Omr\Canonical\SaveOmrCanonicalOverlay;
+use App\Assessment\Actions\Omr\Canonical\SelectOmrMarkerProfile;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftException;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
 use App\Assessment\Omr\Canonical\OmrOverlayException;
+use App\Models\Assessment\OmrMarkerProfile;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,6 +37,38 @@ test('overlay rejects applicant tags and persists fixed scope boxes', function (
         ->toThrow(OmrOverlayException::class, 'tag_forbidden');
 });
 
+test('marker profile selection preserves uploaded pages and authoring state', function (): void {
+    $actor = User::factory()->create();
+    $profile = OmrMarkerProfile::query()->create([
+        'code' => 'authoring-marker',
+        'version' => 1,
+        'family' => 'omrchecker.bullseye',
+        'asset_path' => 'app/Assessment/Omr/Fiducial/omr_marker.jpg',
+        'asset_sha256' => hash_file('sha256', base_path('app/Assessment/Omr/Fiducial/omr_marker.jpg')),
+        'matching_config' => [],
+        'status' => OmrMarkerProfile::STATUS_CANDIDATE,
+        'created_by_user_id' => $actor->id,
+    ]);
+    $draft = app(OmrAuthoringDraftService::class)->create($actor, 'AUTHORING-MARKER', 'Marker', 'image');
+    $draft->forceFill([
+        'stage' => OmrTemplateAuthoringDraft::STAGE_SOURCE_CONFIRMED,
+        'authoring_json' => [
+            'pages' => [['page_no' => 1, 'asset_id' => 123, 'confirmed' => true]],
+            'studio' => ['stage1Mode' => 'upload'],
+            'mapping' => ['field_blocks' => ['Question' => ['fieldType' => 'QTYPE_MCQ4']]],
+        ],
+    ])->save();
+
+    $saved = app(SelectOmrMarkerProfile::class)->handle($draft->fresh(), $actor, $profile, [
+        'top' => 12, 'right' => 12, 'bottom' => 12, 'left' => 12,
+    ], 0);
+
+    expect($saved->authoring_json['pages'])->toHaveCount(1)
+        ->and($saved->authoring_json['studio']['stage1Mode'])->toBe('upload')
+        ->and($saved->authoring_json['mapping']['field_blocks'])->toHaveKey('Question')
+        ->and($saved->marker_profile_id)->toBe($profile->id);
+});
+
 test('atomic studio endpoint saves mapping, overlays, and studio state without cross-invalidation', function (): void {
     $actor = User::factory()->create();
     \Spatie\Permission\Models\Permission::findOrCreate(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR, 'web');
@@ -44,6 +78,11 @@ test('atomic studio endpoint saves mapping, overlays, and studio state without c
     $draft->forceFill([
         'stage' => OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED,
         'authoring_json' => [
+            'pages' => [[
+                'page_no' => 1,
+                'asset_id' => 987,
+                'confirmed' => true,
+            ]],
             'canonical' => ['content_zones' => [], 'marker_zones' => []],
         ],
     ])->save();
@@ -130,37 +169,72 @@ test('atomic studio endpoint saves mapping, overlays, and studio state without c
     $fresh = $draft->fresh();
     expect($fresh->stage)->toBe(OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE)
         ->and($fresh->lock_version)->toBe(1)
+        ->and($fresh->authoring_json['pages'])->toHaveCount(1)
         ->and($fresh->authoring_json['overlay']['boxes'])->toHaveCount(2)
         ->and($fresh->authoring_json['overlay']['boxes'][0]['content'])->toBe('ENTRANCE EXAMINATION')
         ->and($fresh->authoring_json['mapping']['field_blocks'])->toHaveKey('Section_1')
         ->and($fresh->authoring_json['studio']['marginMm'])->toBe(15);
-
-    // Second save with new lock version succeeds
+    // Navigation-only saves preserve an already materialized printable artifact.
+    $authoring = (array) $fresh->authoring_json;
+    $authoring['canonical'] = [
+        'artifact_set' => ['artifact_hash' => str_repeat('a', 64)],
+        'artifact_hash' => str_repeat('a', 64),
+        'raster_assets' => [['page_no' => 1, 'asset_id' => 999]],
+        'pdf_asset_id' => 998,
+    ];
+    $fresh->forceFill(['authoring_json' => $authoring])->save();
     $payload['lock_version'] = 1;
+    $payload['idempotency_key'] = 'studio-save-navigation-only';
+    $payload['studio']['current_stage'] = 3;
+    $this->actingAs($actor)
+        ->putJson(route('setup.omr.templates.canonical.drafts.studio', $draft), $payload)
+        ->assertOk()
+        ->assertJson(['lock_version' => 2]);
+    expect($draft->fresh()->authoring_json['canonical']['artifact_set']['artifact_hash'])->toBe(str_repeat('a', 64));
+
+    // Editor lock state persists without changing printable or native geometry.
+    $payload['lock_version'] = 2;
+    $payload['idempotency_key'] = 'studio-save-lock-only';
+    $payload['studio']['sections'][0]['isLocked'] = true;
+    $this->actingAs($actor)
+        ->putJson(route('setup.omr.templates.canonical.drafts.studio', $draft), $payload)
+        ->assertOk()
+        ->assertJson(['lock_version' => 3]);
+    expect($draft->fresh()->authoring_json['canonical']['artifact_set']['artifact_hash'])->toBe(str_repeat('a', 64));
+
+    // A real printable-definition change invalidates the candidate.
+    $payload['lock_version'] = 3;
     $payload['idempotency_key'] = 'studio-save-key-2';
     $payload['studio']['marginMm'] = 18;
-
     $secondRes = $this->actingAs($actor)->putJson(
         route('setup.omr.templates.canonical.drafts.studio', $draft),
         $payload
     );
+    $secondRes->assertOk()->assertJson(['status' => 'saved', 'lock_version' => 4]);
+    expect($draft->fresh()->authoring_json['studio']['marginMm'])->toBe(18)
+        ->and($draft->fresh()->authoring_json['canonical']['artifact_set'])->toBeNull();
 
-    $secondRes->assertOk()
-        ->assertJson([
-            'status' => 'saved',
-            'lock_version' => 2,
-        ]);
-
-    expect($draft->fresh()->authoring_json['studio']['marginMm'])->toBe(18);
-
-    // Stale lock version is rejected with concurrency conflict
     $stalePayload = $payload;
-    $stalePayload['lock_version'] = 1; // Stale (current is 2)
+    $stalePayload['lock_version'] = 3;
     $staleRes = $this->actingAs($actor)->putJson(
         route('setup.omr.templates.canonical.drafts.studio', $draft),
         $stalePayload
     );
-    $staleRes->assertStatus(500);
+    $staleRes->assertUnprocessable()->assertJsonPath('code', 'concurrency_conflict');
+
+    $overlapPayload = $payload;
+    $overlapPayload['lock_version'] = 4;
+    $overlapPayload['mapping']['blocks'][] = [
+        ...$overlapPayload['mapping']['blocks'][0],
+        'name' => 'Section_2',
+    ];
+    $this->actingAs($actor)
+        ->putJson(route('setup.omr.templates.canonical.drafts.studio', $draft), $overlapPayload)
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'mapping_invalid')
+        ->assertJsonPath('message', 'Block Section_2 overlaps Section_1.')
+        ->assertJsonPath('errors.0.code', 'block_overlap')
+        ->assertJsonPath('errors.0.block', 'Section_2');
 });
 
 test('studio endpoint persists the selected upload source kind', function (): void {
@@ -224,4 +298,97 @@ test('source ingestion endpoint accepts image and html documents with audit and 
         ]);
 
     expect($draft->fresh()->authoring_json['source_run']['status'])->toBe('queued');
+});
+
+test('canonical draft and asset reads are owner scoped', function (): void {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    \Spatie\Permission\Models\Permission::findOrCreate(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR, 'web');
+    $other->givePermissionTo(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR);
+    $draft = app(OmrAuthoringDraftService::class)->create($owner, 'OWNER-SCOPED', 'Owner scoped', 'html');
+    $asset = app(\App\Assessment\Omr\Canonical\OmrTemplateAssetStore::class)->putDraftAsset(
+        $draft,
+        \App\Models\Assessment\OmrTemplateAsset::KIND_SOURCE,
+        '<html></html>',
+        'text/html',
+    );
+
+    $this->actingAs($other)
+        ->get(route('setup.omr.templates.canonical.drafts.show', $draft))
+        ->assertNotFound();
+    $this->actingAs($other)
+        ->get(route('setup.omr.templates.canonical.drafts.assets.show', [$draft, $asset]))
+        ->assertNotFound();
+});
+
+test('failed digital verification idempotency keys retry instead of replaying success', function (): void {
+    $actor = User::factory()->create();
+    \Spatie\Permission\Models\Permission::findOrCreate(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR, 'web');
+    $actor->givePermissionTo(\App\Authorization\CapabilityCatalog::GUIDANCE_SCORING_OMR);
+    $draft = app(OmrAuthoringDraftService::class)->create($actor, 'VERIFY-RETRY', 'Verify retry', 'html');
+    $url = route('setup.omr.templates.canonical.drafts.verify.digital', $draft);
+    $payload = ['idempotency_key' => 'verification-retry-key'];
+
+    $this->actingAs($actor)->postJson($url, $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'digital_verification_stage_invalid');
+    $this->actingAs($actor)->postJson($url, $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'digital_verification_stage_invalid');
+
+    $operation = \App\Models\Foundation\Operation::query()
+        ->where('type', 'omr.canonical.digital_verification')
+        ->firstOrFail();
+    expect($operation->status)->toBe(\App\Models\Foundation\Operation::STATUS_FAILED)
+        ->and($operation->attempts)->toBe(2);
+});
+
+test('workflow projection exposes the canonical printable PDF for physical testing', function (): void {
+    $actor = User::factory()->create();
+    $draft = app(OmrAuthoringDraftService::class)->create($actor, 'PRINT-CANDIDATE', 'Print candidate', 'html');
+    $asset = app(\App\Assessment\Omr\Canonical\OmrTemplateAssetStore::class)->putDraftAsset(
+        $draft,
+        \App\Models\Assessment\OmrTemplateAsset::KIND_PRINT_PDF,
+        '%PDF-1.4 test',
+        'application/pdf',
+    );
+    $draft->forceFill(['authoring_json' => ['canonical' => ['pdf_asset_id' => $asset->id]]])->save();
+
+    $props = app(\App\Assessment\Omr\Canonical\Queries\OmrCanonicalWorkflowProjection::class)
+        ->workflowProps($draft->fresh(), $actor);
+
+    expect($props['draft']['print_pdf_url'])
+        ->toBe(route('setup.omr.templates.canonical.drafts.assets.show', [$draft, $asset]));
+});
+
+test('normal authoring hides comparison-only marker profiles', function (): void {
+    $actor = User::factory()->create();
+    $primary = OmrMarkerProfile::query()->create([
+        'code' => 'omrchecker.sample',
+        'version' => 1,
+        'family' => 'omrchecker.bullseye',
+        'asset_path' => 'app/Assessment/Omr/Fiducial/omr_marker.jpg',
+        'asset_sha256' => hash_file('sha256', base_path('app/Assessment/Omr/Fiducial/omr_marker.jpg')),
+        'matching_config' => [],
+        'status' => OmrMarkerProfile::STATUS_CANDIDATE,
+        'created_by_user_id' => $actor->id,
+    ]);
+    OmrMarkerProfile::query()->create([
+        'code' => 'nexiam.custom',
+        'version' => 1,
+        'family' => 'nexiam.fiducial',
+        'asset_path' => 'app/Assessment/Omr/Fiducial/omr_marker.jpg',
+        'asset_sha256' => $primary->asset_sha256,
+        'matching_config' => ['candidate_role' => 'comparison'],
+        'status' => OmrMarkerProfile::STATUS_CANDIDATE,
+        'created_by_user_id' => $actor->id,
+    ]);
+    $draft = app(OmrAuthoringDraftService::class)->create($actor, 'PROFILE-FILTER', 'Profile filter', 'html');
+    $draft->forceFill(['marker_profile_id' => $primary->id])->save();
+
+    $props = app(\App\Assessment\Omr\Canonical\Queries\OmrCanonicalWorkflowProjection::class)
+        ->workflowProps($draft->fresh(), $actor);
+
+    expect(collect($props['marker_profiles'])->pluck('code')->all())
+        ->toBe(['omrchecker.sample']);
 });

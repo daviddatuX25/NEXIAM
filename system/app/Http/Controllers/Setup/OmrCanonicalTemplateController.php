@@ -17,13 +17,17 @@ use App\Assessment\Actions\Omr\Canonical\RunOmrPhysicalQualification;
 use App\Assessment\Actions\Omr\Canonical\SaveOmrCanonicalMapping;
 use App\Assessment\Actions\Omr\Canonical\SaveOmrCanonicalOverlay;
 use App\Assessment\Actions\Omr\Canonical\SaveOmrCanonicalStudioState;
+use App\Assessment\Actions\Omr\Canonical\MaterializeOmrCanonicalDraft;
+use App\Assessment\Actions\Omr\Canonical\PreviewOmrCanonicalDraft;
 use App\Assessment\Actions\Omr\Canonical\SelectOmrMarkerProfile;
 use App\Assessment\Actions\Omr\Canonical\SupersedeOmrBlankInstanceSet;
 use App\Assessment\Actions\Omr\Canonical\VoidOmrBlankInstanceSet;
 use App\Assessment\Omr\Canonical\Queries\OmrCanonicalWorkflowProjection;
 use App\Assessment\Actions\Omr\Canonical\RectifyOmrSourcePage;
+use App\Assessment\Omr\NativeBundle;
 use App\Http\Controllers\Controller;
 use App\Foundation\Actions\RecordAuditEvent;
+use App\Models\Foundation\Operation;
 use App\Http\Requests\Omr\Canonical\CancelOmrSourceRunRequest;
 use App\Http\Requests\Omr\Canonical\CompileOmrCanonicalDraftRequest;
 use App\Http\Requests\Omr\Canonical\ComposeOmrCanonicalRequest;
@@ -36,12 +40,14 @@ use App\Http\Requests\Omr\Canonical\RunOmrPhysicalQualificationRequest;
 use App\Http\Requests\Omr\Canonical\SaveOmrMappingRequest;
 use App\Http\Requests\Omr\Canonical\SaveOmrOverlayRequest;
 use App\Http\Requests\Omr\Canonical\SaveOmrStudioStateRequest;
+use App\Http\Requests\Omr\Canonical\MaterializeOmrCanonicalDraftRequest;
 use App\Http\Requests\Omr\Canonical\RectifyOmrSourcePageRequest;
 use App\Http\Requests\Omr\Canonical\SelectOmrMarkerProfileRequest;
 use App\Http\Requests\Omr\Canonical\RunOmrDigitalVerificationRequest;
 use App\Http\Requests\Omr\Canonical\SupersedeOmrBlankInstanceRequest;
 use App\Http\Requests\Omr\Canonical\VoidOmrBlankInstanceRequest;
 use App\Http\Requests\Omr\Canonical\PrintOmrBlankInstancesRequest;
+use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrBlankInstance;
 use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrMarkerProfile;
@@ -73,13 +79,15 @@ class OmrCanonicalTemplateController extends Controller
     ): Response|\Illuminate\Http\RedirectResponse {
         /** @var User $actor */
         $actor = $request->user();
+        if ($draft !== null) {
+            abort_unless((int) $draft->owner_user_id === (int) $actor->id, 404);
+        }
 
         if ($draft === null) {
             $draft = OmrTemplateAuthoringDraft::query()
                 ->where('owner_user_id', $actor->id)
                 ->orderByDesc('id')
-                ->first()
-                ?? OmrTemplateAuthoringDraft::query()->orderByDesc('id')->first();
+                ->first();
         }
 
         if ($draft !== null) {
@@ -96,16 +104,33 @@ class OmrCanonicalTemplateController extends Controller
     ): Response {
         /** @var User $actor */
         $actor = $request->user();
+        abort_unless((int) $draft->owner_user_id === (int) $actor->id, 404);
 
         return Inertia::render('Setup/OmrConfiguration/Canonical/CanonicalWorkflow', $projection->workflowProps($draft, $actor));
     }
 
-    public function asset(OmrTemplateAuthoringDraft $draft, OmrTemplateAsset $asset): StreamedResponse
+    public function asset(Request $request, OmrTemplateAuthoringDraft $draft, OmrTemplateAsset $asset): StreamedResponse
     {
+        abort_unless((int) $draft->owner_user_id === (int) $request->user()?->getAuthIdentifier(), 404);
         abort_unless((int) $asset->authoring_draft_id === (int) $draft->id, 404);
 
         return Storage::disk($asset->disk)->response($asset->path, null, [
             'Content-Type' => $asset->mime,
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function nativeTemplate(Request $request, OmrAnswerSheetTemplateVersion $templateVersion): \Symfony\Component\HttpFoundation\Response
+    {
+        abort_unless($request->user() !== null, 403);
+        $asset = $templateVersion->canonicalAssets()->where('kind', OmrTemplateAsset::KIND_NATIVE_TEMPLATE)->latest('id')->first();
+        $bytes = $asset !== null ? Storage::disk($asset->disk)->get($asset->path) : json_encode($templateVersion->native_bundle_json['template'] ?? [], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        abort_unless(is_string($bytes) && $bytes !== '', 404);
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="template.json"',
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);
@@ -265,13 +290,18 @@ class OmrCanonicalTemplateController extends Controller
         $payload = $request->validated();
         unset($payload['idempotency_key']);
         $saved = $action->handle($draft, $actor, $payload);
+        $composition = (array) ($saved->authoring_json['canonical'] ?? []);
+        $rasterAssetId = (int) ($composition['raster_assets'][0]['asset_id'] ?? 0);
 
         return response()->json([
             'status' => 'ready',
             'draft_id' => $saved->id,
             'stage' => $saved->stage,
             'lock_version' => $saved->lock_version,
-            'composition' => $saved->authoring_json['canonical'] ?? null,
+            'raster_url' => $rasterAssetId > 0
+                ? route('setup.omr.templates.canonical.drafts.assets.show', [$saved, $rasterAssetId])
+                : null,
+            'composition' => $composition,
         ]);
     }
 
@@ -309,15 +339,36 @@ class OmrCanonicalTemplateController extends Controller
         /** @var User $actor */
         $actor = $request->user();
         $payload = $request->validated();
-        $saved = $action->handle(
-            $draft,
-            $actor,
-            $payload['overlay'],
-            $payload['mapping'] ?? null,
-            $payload['studio'] ?? null,
-            (int) $payload['lock_version'],
-            $payload['source_kind'] ?? null,
-        );
+        try {
+            $saved = $action->handle(
+                $draft,
+                $actor,
+                $payload['overlay'],
+                $payload['mapping'] ?? null,
+                $payload['studio'] ?? null,
+                (int) $payload['lock_version'],
+                $payload['source_kind'] ?? null,
+            );
+        } catch (\RuntimeException $exception) {
+            [$code, $detail] = array_pad(explode(':', $exception->getMessage(), 2), 2, $exception->getMessage());
+            $code = preg_replace('/[^a-z0-9_]+/i', '_', strtolower($code));
+            $detail = trim($detail);
+            $errors = [];
+            if ($code === 'mapping_invalid') {
+                $decoded = json_decode($detail, true);
+                if (is_array($decoded)) {
+                    $errors = array_values(array_filter($decoded, 'is_array'));
+                }
+            }
+            $message = (string) ($errors[0]['message'] ?? $detail);
+
+            return response()->json([
+                'code' => $code,
+                'detail' => $message,
+                'message' => $message,
+                'errors' => $errors,
+            ], 422);
+        }
 
         return response()->json([
             'status' => 'saved',
@@ -328,6 +379,154 @@ class OmrCanonicalTemplateController extends Controller
             'overlay' => $saved->authoring_json['overlay'] ?? null,
             'studio' => $saved->authoring_json['studio'] ?? null,
         ]);
+    }
+
+    public function materialize(
+        MaterializeOmrCanonicalDraftRequest $request,
+        OmrTemplateAuthoringDraft $draft,
+        MaterializeOmrCanonicalDraft $action,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+        try {
+            $saved = $action->handle($draft, $actor, (int) $request->validated()['lock_version']);
+        } catch (\RuntimeException $exception) {
+            [$code, $detail] = array_pad(explode(':', $exception->getMessage(), 2), 2, $exception->getMessage());
+
+            return response()->json(['outcome' => 'failed', 'code' => preg_replace('/[^a-z0-9_]+/i', '_', strtolower($code)), 'detail' => $detail], 422);
+        }
+        $artifactSet = (array) ($saved->authoring_json['canonical']['artifact_set'] ?? []);
+
+        return response()->json([
+            'status' => 'materialized',
+            'draft_id' => $saved->id,
+            'stage' => $saved->stage,
+            'lock_version' => $saved->lock_version,
+            'artifact_set' => [
+                'artifact_hash' => $artifactSet['artifact_hash'] ?? null,
+                'definition_hash' => $artifactSet['definition_hash'] ?? null,
+                'review_manifest_hash' => $artifactSet['review_manifest_hash'] ?? null,
+                'raster_assets' => $artifactSet['raster_assets'] ?? [],
+            ],
+        ]);
+    }
+    public function preview(
+        MaterializeOmrCanonicalDraftRequest $request,
+        OmrTemplateAuthoringDraft $draft,
+        PreviewOmrCanonicalDraft $action,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+        try {
+            $preview = $action->handle($draft, $actor, (int) $request->validated()['lock_version']);
+        } catch (\RuntimeException $exception) {
+            [$code, $detail] = array_pad(explode(':', $exception->getMessage(), 2), 2, $exception->getMessage());
+
+            return response()->json(['outcome' => 'failed', 'code' => preg_replace('/[^a-z0-9_]+/i', '_', strtolower($code)), 'detail' => $detail], 422);
+        }
+        $result = $preview['result'];
+        if (! $result->succeeded()) {
+            return response()->json([
+                'outcome' => 'failed',
+                'code' => $result->code,
+                'detail' => $result->detail,
+            ], 422);
+        }
+        $token = (string) \Illuminate\Support\Str::uuid();
+        $directory = 'omr-diagnostics/'.$token;
+        $disk = Storage::disk('local');
+        $disk->put($directory.'/aligned.png', (string) $result->alignedBytes);
+        $disk->put($directory.'/layout-overlay.png', (string) $result->overlayBytes);
+        $saved = $preview['draft'];
+        $artifact = $preview['artifact'];
+        $rasterAssetId = (int) (($saved->authoring_json['canonical']['artifact_set']['raster_assets'][0]['asset_id'] ?? 0));
+
+        return response()->json([
+            'outcome' => 'succeeded',
+            'draft_id' => $saved->id,
+            'stage' => $saved->stage,
+            'lock_version' => $saved->lock_version,
+            'artifact' => [
+                'artifact_hash' => $artifact->artifactHash,
+                'definition_hash' => $artifact->definition['source_hash'],
+                'template_hash' => $artifact->templateHash,
+                'config_hash' => $artifact->configHash,
+                'review_manifest_hash' => $artifact->reviewManifestHash,
+                'canonical_url' => $rasterAssetId > 0 ? route('setup.omr.templates.canonical.drafts.assets.show', [$saved, $rasterAssetId]) : null,
+                'paper' => $artifact->definition['paper'] ?? null,
+                'insets_mm' => $artifact->definition['insets_mm'] ?? null,
+            ],
+            'aligned_url' => route('setup.omr.templates.test_capture_asset', ['token' => $token, 'file' => 'aligned.png']),
+            'overlay_url' => route('setup.omr.templates.test_capture_asset', ['token' => $token, 'file' => 'layout-overlay.png']),
+            'aligned_image' => $result->alignedImage,
+            'overlay_image' => $result->overlayImage,
+            'marker_matches' => $result->markerMatches,
+            'field_block_shifts' => $result->fieldBlockShifts,
+            'bubble_means' => $result->bubbleMeans,
+            'item_evidence' => $result->itemEvidence,
+            'gates' => $result->gates,
+            'calibration_status' => 'unqualified',
+            'timings' => ['preprocess_ms' => $result->preprocessMs, 'verification_ms' => $result->verificationMs],
+            'mapping_guides' => $this->mappingGuides($artifact->template, (array) ($artifact->definition['insets_px'] ?? [])),
+        ]);
+    }
+
+    /** @return list<array{id:string,x_mm:float,y_mm:float,w_mm:float,h_mm:float,bubbles:list<array{x_mm:float,y_mm:float,w_mm:float,h_mm:float}>}> */
+    private function mappingGuides(array $template, array $insetsPx): array
+    {
+        $guides = [];
+        $toMm = static fn (int $pixels): float => round($pixels * 25.4 / 300, 3);
+        foreach ((array) (($template['pages'][0]['fieldBlocks'] ?? [])) as $id => $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+            $origin = (array) ($block['origin'] ?? [0, 0]);
+            $bubble = (array) ($block['bubbleDimensions'] ?? [0, 0]);
+            $labels = [];
+            foreach ((array) ($block['fieldLabels'] ?? []) as $fieldLabel) {
+                $labels = [...$labels, ...NativeBundle::expandLabel((string) $fieldLabel)];
+            }
+            $values = match ((string) ($block['fieldType'] ?? '')) {
+                'QTYPE_INT' => 10,
+                'QTYPE_MCQ5' => 5,
+                'QTYPE_TF' => 2,
+                default => 4,
+            };
+            $vertical = (string) ($block['direction'] ?? 'horizontal') === 'vertical';
+            $bubblesGap = (int) ($block['bubblesGap'] ?? 0);
+            $labelsGap = (int) ($block['labelsGap'] ?? 0);
+            $width = $vertical
+                ? (int) ($bubble[0] ?? 0) + max(0, count($labels) - 1) * $labelsGap
+                : (int) ($bubble[0] ?? 0) + max(0, $values - 1) * $bubblesGap;
+            $height = $vertical
+                ? (int) ($bubble[1] ?? 0) + max(0, $values - 1) * $bubblesGap
+                : (int) ($bubble[1] ?? 0) + max(0, count($labels) - 1) * $labelsGap;
+            $paperOriginX = (int) ($origin[0] ?? 0) + (int) ($insetsPx['left'] ?? 0);
+            $paperOriginY = (int) ($origin[1] ?? 0) + (int) ($insetsPx['top'] ?? 0);
+            $bubbleGuides = [];
+            foreach (array_keys($labels) as $labelIndex) {
+                for ($valueIndex = 0; $valueIndex < $values; $valueIndex++) {
+                    $x = $paperOriginX + ($vertical ? $labelIndex * $labelsGap : $valueIndex * $bubblesGap);
+                    $y = $paperOriginY + ($vertical ? $valueIndex * $bubblesGap : $labelIndex * $labelsGap);
+                    $bubbleGuides[] = [
+                        'x_mm' => $toMm($x),
+                        'y_mm' => $toMm($y),
+                        'w_mm' => $toMm((int) ($bubble[0] ?? 0)),
+                        'h_mm' => $toMm((int) ($bubble[1] ?? 0)),
+                    ];
+                }
+            }
+            $guides[] = [
+                'id' => (string) $id,
+                'x_mm' => $toMm($paperOriginX),
+                'y_mm' => $toMm($paperOriginY),
+                'w_mm' => $toMm($width),
+                'h_mm' => $toMm($height),
+                'bubbles' => $bubbleGuides,
+            ];
+        }
+
+        return $guides;
     }
 
     public function selectMarkerProfile(
@@ -354,7 +553,36 @@ class OmrCanonicalTemplateController extends Controller
         $actor = $request->user();
         $payload = $request->validated();
         $operation = $idempotency->claim($actor, 'omr.canonical.digital_verification', (string) $draft->id, ['draft_id' => $draft->id], (string) $payload['idempotency_key']);
-        $saved = $operation->wasRecentlyCreated ? $action->handle($draft, $actor) : $draft->fresh();
+        $shouldExecute = $operation->wasRecentlyCreated || $operation->status !== Operation::STATUS_SUCCEEDED;
+        if ($shouldExecute) {
+            $operation->forceFill([
+                'status' => Operation::STATUS_PROCESSING,
+                'attempts' => (int) $operation->attempts + 1,
+                'last_error' => null,
+                'finished_at' => null,
+            ])->save();
+        }
+        try {
+            $saved = $shouldExecute ? $action->handle($draft, $actor) : $draft->fresh();
+            if (! $shouldExecute && ! in_array($saved->stage, [OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED, OmrTemplateAuthoringDraft::STAGE_COMPILED], true)) {
+                return response()->json(['outcome' => 'failed', 'code' => 'idempotency_result_stale', 'detail' => 'The prior verification result was invalidated; run verification with a new idempotency key.'], 409);
+            }
+            if ($shouldExecute) {
+                $operation->forceFill(['status' => Operation::STATUS_SUCCEEDED, 'last_error' => null, 'finished_at' => now()])->save();
+            }
+        } catch (\Throwable $exception) {
+            $operation->forceFill(['status' => Operation::STATUS_FAILED, 'last_error' => $exception->getMessage(), 'finished_at' => now()])->save();
+            if (! $exception instanceof \RuntimeException) {
+                throw $exception;
+            }
+            [$code, $detail] = array_pad(explode(':', $exception->getMessage(), 2), 2, $exception->getMessage());
+
+            return response()->json([
+                'outcome' => 'failed',
+                'code' => preg_replace('/[^a-z0-9_]+/i', '_', strtolower($code)),
+                'detail' => trim($detail),
+            ], 422);
+        }
 
         return response()->json(['status' => $saved->stage, 'operation_id' => $operation->id, 'verification' => $saved->authoring_json['verification'] ?? null]);
     }
@@ -369,7 +597,27 @@ class OmrCanonicalTemplateController extends Controller
         $actor = $request->user();
         $payload = $request->validated();
         $operation = $idempotency->claim($actor, 'omr.canonical.compile', (string) $draft->id, ['draft_id' => $draft->id], (string) $payload['idempotency_key']);
-        $saved = $operation->wasRecentlyCreated ? $action->handle($draft, $actor) : $draft->fresh();
+        $shouldExecute = $operation->wasRecentlyCreated || $operation->status !== Operation::STATUS_SUCCEEDED;
+        if ($shouldExecute) {
+            $operation->forceFill([
+                'status' => Operation::STATUS_PROCESSING,
+                'attempts' => (int) $operation->attempts + 1,
+                'last_error' => null,
+                'finished_at' => null,
+            ])->save();
+        }
+        try {
+            $saved = $shouldExecute ? $action->handle($draft, $actor) : $draft->fresh();
+            if (! $shouldExecute && ($saved->stage !== OmrTemplateAuthoringDraft::STAGE_COMPILED || $saved->compiled_version_id === null)) {
+                return response()->json(['outcome' => 'failed', 'code' => 'idempotency_result_stale', 'detail' => 'The prior compile result is no longer current; compile with a new idempotency key.'], 409);
+            }
+            if ($shouldExecute) {
+                $operation->forceFill(['status' => Operation::STATUS_SUCCEEDED, 'last_error' => null, 'finished_at' => now()])->save();
+            }
+        } catch (\Throwable $exception) {
+            $operation->forceFill(['status' => Operation::STATUS_FAILED, 'last_error' => $exception->getMessage(), 'finished_at' => now()])->save();
+            throw $exception;
+        }
 
         return response()->json([
             'status' => $saved->stage,

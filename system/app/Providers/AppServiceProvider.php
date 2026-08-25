@@ -12,6 +12,7 @@ use App\Application\Capabilities\CapabilityRegistry;
 use App\Assessment\Omr\FakeOmrDetection;
 use App\Assessment\Omr\OmrCheckerDetection;
 use App\Assessment\Omr\OmrDetectionRequest;
+use App\Assessment\Omr\OmrLayoutVerificationPort;
 use App\Assessment\Omr\OmrDetectionPort;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\ServiceProvider;
@@ -41,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(\App\Printing\PrintRenderer::class, \App\Printing\DomPdfPrintRenderer::class);
         $this->app->bind(\App\ResultSheet\Rendering\DocxToPdfConverter::class, \App\ResultSheet\Rendering\LibreOfficeConverter::class);
+        $this->app->bind(OmrLayoutVerificationPort::class, OmrCheckerDetection::class);
 
         $this->app->singleton(OmrDetectionPort::class, function (): OmrDetectionPort {
             $driver = (string) config('omr.provider.driver', 'fake');
