@@ -25,3 +25,7 @@ Homestead.yaml
 Thumbs.db
 .env.pgsql
 .env.sqlite.orig
+
+# Dev-only docs workspace SQLite store (client brief decisions)
+database/*.sqlite
+database/*.sqlite-journal

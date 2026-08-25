@@ -18,6 +18,8 @@ use App\Http\Controllers\Consultation\ConsultationSessionController;
 use App\Http\Controllers\Examination\ExamMonitoringController;
 use App\Http\Controllers\Examination\ExamSessionController;
 use App\Http\Controllers\Examination\ProctorDutyController;
+use App\Http\Controllers\Foundation\DocsStateController;
+use App\Http\Controllers\Foundation\StatusController as FoundationStatusController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Knowledge\KnowledgeSourceController;
 use App\Http\Controllers\Nexi\NexiConversationController;
@@ -678,4 +680,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/foundation/capability-probe', function () {
         return response()->json(['ok' => true, 'capability' => 'foundation.probe']);
     })->middleware('capability:foundation.probe')->name('foundation.capability-probe');
+    Route::get('/foundation/status', FoundationStatusController::class)->name('foundation.status');
 });
+
+// Dev-only docs workspace: client brief review surface + separate SQLite store.
+// Ungated on purpose (dev workspace only); the routes and the `docs` SQLite
+// connection do not exist outside the local environment.
+if (app()->environment('local')) {
+    Route::get('/foundation/client-brief', fn () => view('foundation.client-brief'))->name('foundation.client-brief');
+    Route::get('/foundation/docs/state', [DocsStateController::class, 'index'])->name('foundation.docs.state');
+    Route::post('/foundation/docs/state', [DocsStateController::class, 'store'])->name('foundation.docs.state.store');
+}

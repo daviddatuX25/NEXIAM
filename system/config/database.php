@@ -114,6 +114,15 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        // Dev-only docs workspace (client brief decisions, task done flags).
+        // Deliberately absent outside local so production never sees it.
+        'docs' => env('APP_ENV') === 'local' ? [
+            'driver' => 'sqlite',
+            'database' => database_path('docs.sqlite'),
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ] : [],
+
     ],
 
     /*

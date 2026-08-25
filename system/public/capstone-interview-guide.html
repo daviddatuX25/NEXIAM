@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Interview Guide</title>
+  <style>
+    :root { color-scheme: dark; --bg: #090d1c; --panel: #11182b; --line: #2a3656; --text: #eef2ff; --muted: #a8b3d0; --accent: #73a7ff; --ok: #72ddb0; }
+    * { box-sizing: border-box; } body { margin: 0; background: radial-gradient(circle at 20% 0%, #1a2b55 0, transparent 38rem), var(--bg); color: var(--text); font: 15px/1.55 system-ui, sans-serif; }
+    main { width: min(980px, calc(100% - 2rem)); margin: auto; padding: 3rem 0 5rem; } header { border-bottom: 1px solid var(--line); padding-bottom: 2rem; }
+    .eyebrow { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; } h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; } h2 { margin: 2.2rem 0 .7rem; font-size: 1.55rem; } h3 { margin: 0 0 .3rem; }
+    p, li { color: var(--muted); } strong { color: var(--text); } a { color: var(--accent); } .actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.2rem; } .actions a { border: 1px solid var(--line); border-radius: .7rem; padding: .55rem .8rem; text-decoration: none; } .actions a.primary { background: var(--accent); color: #081126; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; } article, .notice { border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); padding: 1rem; } ol, ul { padding-left: 1.25rem; } li { margin: .4rem 0; } .step { color: var(--ok); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; } table { width: 100%; border-collapse: collapse; margin-top: .8rem; } th, td { border: 1px solid var(--line); padding: .7rem; text-align: left; vertical-align: top; } th { color: var(--text); background: #0d1426; } td { color: var(--muted); } footer { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1rem; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">NEXIAM · requirements gathering</div>
+    <h1>Client interview guide</h1>
+    <p>Use this page during the next Guidance Office interview. It separates interview prompts and evidence capture from the manuscript summary and from the product roadmap.</p>
+    <div class="actions">
+      <a class="primary" href="/foundation/client-brief">Run briefing + interview (split view)</a>
+      <a href="/capstone-manuscript-brief.html">Open manuscript brief</a>
+      <a href="/capstone-wireframe-review.html">Open wireframe review</a>
+      <a href="/foundation/status">Open feature roadmap</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>Meeting outcome</h2>
+    <div class="notice"><p>Leave with confirmed process wording, decision owners, booking rules, OMR exception rules, release rules, and annotated wireframe corrections. Do not change production screens during the interview.</p></div>
+  </section>
+
+  <section>
+    <h2>Interview sequence</h2>
+    <div class="grid">
+      <article><div class="step">01 · Align</div><h3>System vision</h3><p>Confirm that the office wants one visible record from application through result release.</p></article>
+      <article><div class="step">02 · Walk</div><h3>Current process</h3><p>Ask the client to narrate the real handoffs, owners, exceptions, and paper/manual work.</p></article>
+      <article><div class="step">03 · Validate</div><h3>Future process</h3><p>Review the decision matrix and mark each row confirmed, changed, or still open.</p></article>
+      <article><div class="step">04 · Review</div><h3>Interfaces</h3><p>Walk the wireframes and confirm dashboards, cards, statistics, lists, detail pages, actions, and states.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Questions to ask</h2>
+    <ol>
+      <li>Which three handoffs cause the most follow-up today?</li>
+      <li>What must Guidance see first when opening an applicant?</li>
+      <li>Which changes require Registrar, Guidance, or Program Head approval?</li>
+      <li>Which examination and consultation activities may an applicant book?</li>
+      <li>What should happen when an OMR sheet is unreadable, disputed, or incomplete?</li>
+      <li>What must be written in a follow-up remark before a case can close?</li>
+      <li>What must be complete before a result can be released, printed, or reversed?</li>
+      <li>Which screen labels, dashboard cards, statistics, or table columns are missing?</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Capture corrections</h2>
+    <table>
+      <thead><tr><th>Reference</th><th>Client correction</th><th>Owner / rule</th><th>Follow-up</th></tr></thead>
+      <tbody>
+        <tr><td>Matrix ID / WF number</td><td>What the client said or marked</td><td>Who decides and what state/reason is required</td><td>Name + date</td></tr>
+        <tr><td>Interface coverage</td><td>Missing dashboard/card/stat/list/detail/action/state</td><td>Role that needs it</td><td>Backlog or requirement update</td></tr>
+        <tr><td>Exception</td><td>What happens in the real office</td><td>Allowed fallback</td><td>Evidence to retain</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Bring these artifacts</h2>
+    <ul>
+      <li>Requirements and interview brief.</li>
+      <li>Process and decision matrix.</li>
+      <li>Low-fidelity wireframe packet.</li>
+      <li>Existing UI kit gallery.</li>
+      <li>Feature roadmap with expandable interface coverage.</li>
+    </ul>
+  </section>
+
+  <footer>Client interview surface only. The manuscript page records the capstone explanation; the roadmap records implementation scope.</footer>
+</main>
+</body>
+</html>
