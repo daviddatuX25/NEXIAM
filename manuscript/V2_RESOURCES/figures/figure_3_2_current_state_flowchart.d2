@@ -1,0 +1,53 @@
+# Source bounds: manuscript/sections/03_chapter_3_results_and_discussion/03_1_so1_process_analysis.md, Reported Current Workflow.
+# Appendices G, H, I; dated Guidance questionnaire/interview and Program Head survey records
+# (Requirements Planning / Preliminary Interviews & Questionaire). The chart summarizes the
+# reported current process only; it is not a target design. Enrollment processing is out of scope.
+# Program Head quota/slot information is shown as an input to consultation; source response:
+# face-to-face meetings. No Registrar-specific operation is asserted.
+direction: down
+
+style: {
+  font-size: 20
+  font-color: "#111827"
+}
+
+application: "Paper application and\nrequirements submitted" {
+  style.fill: "#ffffff"
+  style.stroke: "#374151"
+}
+
+review: "Admission staff review\npaper requirements" {
+  style.fill: "#f3f4f6"
+  style.stroke: "#374151"
+}
+
+scheduling: "Staff-managed exam batch\nscheduling around available rooms\nand pooled applicants" {
+  style.fill: "#ffffff"
+  style.stroke: "#374151"
+}
+
+exam: "Applicant attends paper ICAT" {
+  style.fill: "#f3f4f6"
+  style.stroke: "#374151"
+}
+
+scoring: "Guidance staff manually score\nanswer sheets using stencils" {
+  style.fill: "#ffffff"
+  style.stroke: "#374151"
+}
+
+consultation: "Face-to-face result explanation\nand counseling" {
+  style.fill: "#f3f4f6"
+  style.stroke: "#374151"
+}
+
+quota: "Program Head quota / slot information\ncommunicated to Guidance\n(face-to-face meetings reported)" {
+  shape: rectangle
+  style.fill: "#ffffff"
+  style.stroke: "#374151"
+}
+
+application -> review -> scheduling -> exam -> scoring -> consultation
+quota -> consultation: "Information input" {
+  style.stroke-dash: 5
+}

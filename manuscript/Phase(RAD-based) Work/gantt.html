@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXIAM Project Gantt Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { brand: { 50: '#f5f7ff', 100: '#ebf0ff', 200: '#d6e0ff', 300: '#b3c7ff', 400: '#85a3ff', 500: '#5c7cfa', 600: '#425cf3', 700: '#2b3ee4', 800: '#1e29bc', 900: '#141c91' } },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .gantt-bar { height: 18px; border-radius: 4px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .gantt-bar:hover { filter: brightness(1.2); transform: scaleY(1.4); z-index: 20; }
+        .gantt-bar.milestone { width: 16px !important; border-radius: 3px; background: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.2) 3px, rgba(255,255,255,0.2) 6px) !important; }
+        .tooltip { position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 10px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 30; }
+        .gantt-bar:hover .tooltip { opacity: 1; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col">
+
+<header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="bg-gradient-to-tr from-brand-600 to-indigo-500 text-white p-2 rounded-lg shadow shadow-brand-500/20">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2"><h1 class="text-lg font-extrabold tracking-tight text-brand-600 dark:text-brand-400">NEXIAM</h1><span class="text-[10px] font-semibold bg-brand-100 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 px-1.5 py-0.5 rounded-full">Active</span></div>
+                <p class="text-[11px] text-slate-400">June–September 2026 · 18-Week RAD Blueprint · <span class="text-brand-500 font-semibold">Week 8 · Jul 15, 2026</span></p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] text-slate-400">Legend:</span>
+            <span class="flex items-center gap-1 text-[10px]"><span class="w-2.5 h-2.5 rounded bg-emerald-500 inline-block"></span>Done</span>
+            <span class="flex items-center gap-1 text-[10px]"><span class="w-2.5 h-2.5 rounded bg-brand-500 inline-block"></span>Active</span>
+            <span class="flex items-center gap-1 text-[10px]"><span class="w-2.5 h-2.5 rounded bg-slate-400 inline-block"></span>Planned</span>
+            <span class="flex items-center gap-1 text-[10px]"><span class="w-2.5 h-2.5 bg-amber-500 inline-block" style="clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%)"></span>Milestone</span>
+            <span class="flex items-center gap-1 text-[10px]"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>Defense</span>
+        </div>
+    </div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
+
+<section class="grid grid-cols-4 gap-3 mb-4">
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+        <span class="text-[10px] font-semibold text-slate-400 uppercase block">Progress</span>
+        <span class="text-2xl font-extrabold mt-0.5 block">40%</span>
+        <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2"><div class="bg-gradient-to-r from-emerald-500 to-brand-500 h-1.5 rounded-full" style="width:40%"></div></div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+        <span class="text-[10px] font-semibold text-slate-400 uppercase block">Now</span>
+        <span class="text-sm font-bold text-brand-600 dark:text-brand-400 mt-1 block">Rapid Construction</span>
+        <span class="text-[10px] text-slate-400">Week 8 · Jul 15, 2026</span>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+        <span class="text-[10px] font-semibold text-slate-400 uppercase block">Completed</span>
+        <span class="text-2xl font-extrabold text-emerald-500 mt-0.5 block">7 / 20</span>
+        <span class="text-[10px] text-slate-400">Req gathering ends Jul 16. Engines pending.</span>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+        <span class="text-[10px] font-semibold text-slate-400 uppercase block">Next Milestone</span>
+        <span class="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1 block">P0+P1 Feature Freeze</span>
+        <span class="text-[10px] text-slate-400">Target: Week 11 · Aug 9</span>
+    </div>
+</section>
+
+<section class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <div class="min-w-[1700px] select-none pb-2">
+            <div class="grid relative" style="grid-template-columns: 340px repeat(18, minmax(68px, 1fr));">
+
+                <!-- TODAY LINE — Week 8, Jul 15 -->
+                <div class="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center" style="grid-column: 9; margin-left: 34px;">
+                    <div class="bg-brand-500 text-[9px] font-extrabold text-white px-2 py-0.5 rounded-full shadow shadow-brand-500/30 whitespace-nowrap animate-pulse">TODAY (JUL 15)</div>
+                    <div class="w-0.5 h-full bg-brand-500/60 border-dashed"></div>
+                </div>
+
+                <!-- MONTHS -->
+                <div class="bg-slate-50 dark:bg-slate-950 font-bold text-[10px] uppercase tracking-wider text-slate-400 p-3 border-b border-slate-200 dark:border-slate-800 flex items-center">20 Tasks · 4 Phases</div>
+                <div class="col-span-5 bg-slate-50/50 dark:bg-slate-950/30 text-center py-3 border-b border-l border-slate-200 dark:border-slate-800 text-[11px] font-extrabold text-slate-500 uppercase">June — Requirements Planning</div>
+                <div class="col-span-5 bg-brand-50/15 dark:bg-brand-950/10 text-center py-3 border-b border-l border-slate-200 dark:border-slate-800 text-[11px] font-extrabold text-brand-600 dark:text-brand-400 uppercase">July — Design & Rapid Construction</div>
+                <div class="col-span-4 bg-slate-50/50 dark:bg-slate-950/30 text-center py-3 border-b border-l border-slate-200 dark:border-slate-800 text-[11px] font-extrabold text-slate-500 uppercase">August — Rapid Construction</div>
+                <div class="col-span-4 bg-rose-50/20 dark:bg-rose-950/5 text-center py-3 border-b border-l border-slate-200 dark:border-slate-800 text-[11px] font-extrabold text-rose-500 uppercase">September — Defense</div>
+
+                <!-- WEEK HEADERS -->
+                <div class="bg-slate-100/40 dark:bg-slate-900/40 text-slate-400 p-2 text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">Task</div>
+                <script>
+                    ['W1<br><span class="text-[8px] font-normal">Jun 1-7</span>','W2<br><span class="text-[8px] font-normal">Jun 8-14</span>','W3<br><span class="text-[8px] font-normal">Jun 15-21</span>','W4<br><span class="text-[8px] font-normal">Jun 22-28</span>','W5<br><span class="text-[8px] font-normal">Jun 29</span>','W6<br><span class="text-[8px] font-normal">Jul 1-5</span>','W7<br><span class="text-[8px] font-normal">Jul 6-12</span>','W8<br><span class="text-[8px] font-normal">Jul 13-19</span>','W9<br><span class="text-[8px] font-normal">Jul 20-26</span>','W10<br><span class="text-[8px] font-normal">Jul 27-Aug 2</span>','W11<br><span class="text-[8px] font-normal">Aug 3-9</span>','W12<br><span class="text-[8px] font-normal">Aug 10-16</span>','W13<br><span class="text-[8px] font-normal">Aug 17-23</span>','W14<br><span class="text-[8px] font-normal">Aug 24-30</span>','W15<br><span class="text-[8px] font-normal">Aug 31-Sep 6</span>','W16<br><span class="text-[8px] font-normal">Sep 7-13</span>','W17<br><span class="text-[8px] font-normal">Sep 14-20</span>','W18<br><span class="text-[8px] font-normal">Sep 21-28</span>'].forEach(w=>document.write('<div class="text-center py-2 border-b border-l border-slate-200 dark:border-slate-800 bg-slate-100/20 dark:bg-slate-900/20 text-[9px] font-bold text-slate-500">'+w+'</div>'));
+                </script>
+            </div>
+        </div>
+    </div>
+</section>
+</main>
+
+<script>
+// ====== 20 TASKS (corrected dates) ======
+const tasks = [
+    // REQUIREMENTS PLANNING (2)
+    { name:"1. Requirements Planning: inquiry, observation, workflows, gaps", phase:"Requirements Planning", start:1, end:6, status:"done", priority:"P0" },
+    { name:"◆ Capstone Proposal (Jul 7, 2026)", phase:"Requirements Planning", start:6, end:6, status:"milestone", priority:"P0" },
+
+    // USER DESIGN + overlapping requirements gathering (3)
+    { name:"2. User Design: RBAC schema, DB, diagrams, mockups", phase:"User Design", start:5, end:7, status:"done", priority:"P0" },
+    { name:"3. Program Head interviews + requirements gathering", phase:"User Design", start:6, end:8, status:"active", priority:"P0" },
+    { name:"4. Core CRUD: Apps, Users, Courses, Rooms, AY", phase:"Rapid Construction", start:5, end:7, status:"done", priority:"P0" },
+
+    // RAPID CONSTRUCTION P0 — Core Pipeline (2)
+    { name:"5. Applicant Portal: identifier key, mobile, email", phase:"Rapid Construction", start:7, end:9, status:"active", priority:"P0" },
+    { name:"6. RBAC refactor + Direct Assessment + Google OAuth", phase:"Rapid Construction", start:8, end:9, status:"active", priority:"P0" },
+
+    // RAPID CONSTRUCTION P1 — Defense-Critical (3)
+    { name:"7. RAG Chatbot: policy only, confidence gated", phase:"Rapid Construction", start:9, end:11, status:"planned", priority:"P1" },
+    { name:"8. HMAC audit trail + Program Head & Guidance dashboards", phase:"Rapid Construction", start:9, end:11, status:"planned", priority:"P1" },
+    { name:"◆ P0+P1 Feature Freeze", phase:"Rapid Construction", start:11, end:11, status:"milestone", priority:"P0" },
+
+    // RAPID CONSTRUCTION P2 — Admission Support Engines (3)
+    { name:"9. Computer-vision OMR: scan, detect, score", phase:"Rapid Construction", start:11, end:13, status:"planned", priority:"P2" },
+    { name:"10. Engine Registry + Yukee Cluster Engine (K-Means)", phase:"Rapid Construction", start:12, end:13, status:"planned", priority:"P2" },
+    { name:"11. BGE Interest Engine + Triage Dashboard", phase:"Rapid Construction", start:13, end:14, status:"planned", priority:"P2" },
+
+    // RAPID CONSTRUCTION P3 — Polish (2)
+    { name:"12. In-App Messaging + Proctoring offline (PWA)", phase:"Rapid Construction", start:14, end:15, status:"planned", priority:"P3" },
+    { name:"13. Engine Manager admin panel", phase:"Rapid Construction", start:14, end:15, status:"planned", priority:"P3" },
+
+    // TRANSITION & DEFENSE (4)
+    { name:"14. Cutover: cloud deploy (Dokploy)", phase:"Transition & Defense", start:15, end:16, status:"planned", priority:"P1" },
+    { name:"15. TAM evaluation: 271 evaluators, role scenarios", phase:"Transition & Defense", start:16, end:17, status:"planned", priority:"P0" },
+    { name:"16. Chapter 3 manuscript + data analysis", phase:"Transition & Defense", start:17, end:18, status:"planned", priority:"P0" },
+    { name:"■ 17. Defense prep + Final Presentation", phase:"Transition & Defense", start:17, end:18, status:"defense", priority:"P0" },
+];
+
+// ====== RENDER ======
+function renderGantt() {
+    const container = document.querySelector('.grid.relative');
+    const colorMap = { done:'bg-emerald-500', active:'bg-brand-500', planned:'bg-slate-400 dark:bg-slate-500', milestone:'bg-amber-500 milestone', defense:'bg-rose-500' };
+    const lblMap = { done:'✓ Done', active:'◉ In Progress', planned:'○ Planned', milestone:'◆ Milestone', defense:'■ Defense' };
+    const lblCls = {
+        done:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+        active:'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400',
+        planned:'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+        milestone:'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
+        defense:'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400'
+    };
+
+    tasks.forEach((t,i) => {
+        const sc = t.start+1, ec = t.end+1, span = ec-sc+1;
+        const ld = document.createElement('div');
+        ld.className = 'p-2 border-b border-slate-100 dark:border-slate-800 text-[11px] flex items-center justify-between';
+        ld.style.gridColumn = '1'; ld.style.gridRow = i+3;
+        ld.innerHTML = `<div><span class="font-semibold text-slate-700 dark:text-slate-200">${t.name}</span><div class="text-[9px] text-slate-400 mt-0.5">${t.phase} · ${t.priority}</div></div><span class="text-[9px] font-medium px-1.5 py-0.5 rounded-full ${lblCls[t.status]}">${lblMap[t.status]}</span>`;
+        container.appendChild(ld);
+
+        const bd = document.createElement('div');
+        bd.className = 'flex items-center px-1 border-b border-slate-100 dark:border-slate-800';
+        bd.style.gridColumn = `${sc} / span ${span}`; bd.style.gridRow = i+3;
+        const bar = document.createElement('div');
+        bar.className = `gantt-bar ${colorMap[t.status]} w-full`;
+        bar.innerHTML = `<span class="tooltip">${t.name.split('. ')[1] || t.name}<br>Weeks ${t.start}–${t.end} · ${t.priority}</span>`;
+        bd.appendChild(bar); container.appendChild(bd);
+    });
+}
+document.addEventListener('DOMContentLoaded', renderGantt);
+</script>
+
+<footer class="text-center text-[10px] text-slate-400 py-4 border-t border-slate-200 dark:border-slate-800">
+    NEXIAM Gantt Planner · July 15, 2026 · Capstone Proposal: July 7 · Req Gathering ends: July 16 · ISPSC Tagudin
+</footer>
+
+</body>
+</html>

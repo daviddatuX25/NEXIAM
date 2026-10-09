@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEXIAM Client Visit Brief — Requirements + User Design</title>
+<style>
+  :root{--ink:#17202a;--muted:#56616b;--line:#cbd3da;--soft:#f4f7f9;--blue:#174a7e;--yellow:#fff4bd;--green:#e9f6ed;--orange:#fff0d6}
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;color:var(--ink);line-height:1.42;margin:0;background:#e9edf0}
+  .page{max-width:980px;margin:24px auto;background:#fff;padding:42px 50px;box-shadow:0 1px 8px #0002}
+  h1{color:var(--blue);font-size:28px;margin:0 0 4px} h2{color:var(--blue);font-size:21px;border-bottom:2px solid var(--blue);padding-bottom:5px;margin:28px 0 12px} h3{color:#243d55;font-size:16px;margin:19px 0 7px}
+  p{margin:6px 0 9px}.sub{color:var(--muted);font-size:13px}.cover{border-bottom:5px solid #f0c94c;padding-bottom:22px;margin-bottom:16px}
+  .callout{background:var(--yellow);border-left:5px solid #d9ae00;padding:12px 15px;margin:12px 0}.integrity{background:var(--green);border-left:5px solid #3c9760;padding:12px 15px;margin:12px 0}.prompt{background:var(--soft);padding:12px 15px;border-left:4px solid var(--blue);margin:12px 0;font-style:italic}
+  table{width:100%;border-collapse:collapse;margin:9px 0 16px;font-size:11px}th{background:#e8eef4;color:#173650;text-align:left;font-weight:bold}th,td{border:1px solid var(--line);padding:6px 7px;vertical-align:top}tr:nth-child(even) td{background:#fafcfd}.decision{white-space:nowrap;font-size:10px}
+  ul,ol{margin-top:5px;padding-left:23px}li{margin:3px 0}.small{font-size:11px;color:var(--muted)}.mono{font-family:Consolas,monospace}.sig{height:38px;border-bottom:1px solid #555;margin:8px 0 3px}.blank{height:42px;border-bottom:1px solid #88939d;margin:7px 0}.two{display:grid;grid-template-columns:1fr 1fr;gap:25px}.pill{display:inline-block;background:#e6edf5;border:1px solid #b9c8d5;padding:2px 6px;border-radius:4px;font-size:11px}.nowrap{white-space:nowrap}.pagebreak{page-break-before:always}.footer{border-top:1px solid var(--line);margin-top:28px;padding-top:8px;color:var(--muted);font-size:10px}
+  a{color:#145b97} @media print{body{background:#fff}.page{margin:0;max-width:none;box-shadow:none;padding:25mm 17mm 20mm}a{color:inherit;text-decoration:none}.pagebreak{page-break-before:always}table{break-inside:auto}tr{break-inside:avoid;break-after:auto}h2,h3{break-after:avoid}.no-print{display:none}}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="cover">
+    <h1>NEXIAM Client Visit Brief</h1>
+    <p><strong>Requirements Gathering — Session 2 + User Design — Session 1</strong></p>
+    <p class="sub">For ISPSC Tagudin Campus Guidance Office, Registrar Office, and Program Heads</p>
+    <p><strong>Purpose:</strong> Read through this with the client, confirm what is correct, revise what is not, and record the decisions.</p>
+    <p><strong>Date of validation visit:</strong> ____________________________________</p>
+    <p><strong>Reference visual:</strong> <a href="https://canva.link/pxua5lanxtd85mj">NEXIAM Canva design</a></p>
+  </section>
+
+  <div class="integrity"><strong>Important — this is a validation document.</strong><br>
+    Items labelled <strong>documented finding</strong> come from earlier questionnaires/interviews. Items labelled <strong>proposed requirement</strong> are discussion points. Do not mark a proposal as approved unless the client actually agrees. If the client corrects a fact, record the correction.</div>
+  <div class="prompt">Suggested opening: “We will summarize what we understood from our first discussion, then show the process changes and screen sketches we are proposing. Please correct us if anything is wrong. The system must follow your actual office process—not the other way around.”</div>
+
+  <h2>Part 1 — Requirements Gathering, Session 1 recap</h2>
+  <h3>1. What we understood from the first session</h3>
+  <p>This is a compact read-through only. Please correct any item that is incomplete or inaccurate.</p>
+  <table>
+    <thead><tr><th>Area</th><th>Documented finding</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>Manual scoring</td><td>Recorded responses described scoring one admission cycle as taking <strong>more than five days</strong>. Problems included double-marked or unclear answers.</td><td>Results may be delayed; manual checking can produce errors.</td></tr>
+      <tr><td>Staff effort</td><td>Responses mentioned about <strong>2–3 staff</strong> for one scoring process, with trained staff helping.</td><td>Automation should reduce repetitive checking but keep a human fallback.</td></tr>
+      <tr><td>Consultation volume</td><td>One Guidance response described about <strong>70–80 applicants per day</strong> in a peak period, with short interactions of about <strong>2–5 minutes</strong>.</td><td>The volume is a heavy <strong>staff load</strong> (70–80 short sessions a day), and <strong>applicants wait in line</strong> for their turn; quick record access and fast advice recording ease the staff load and cut applicant waiting time.</td></tr>
+      <tr><td>Applicant visits</td><td>About <strong>three campus visits</strong> were described, mainly for requirements, taking the exam, and claiming results.</td><td>Online information and status tracking may reduce unnecessary travel.</td></tr>
+      <tr><td>Travel</td><td>Municipalities mentioned included Sta. Cruz, Bangar, Sudipen, Tagudin, Sta. Lucia, and Alilem. Some applicants may travel more than two hours.</td><td>Clear schedules, status information, and online updates may help applicants plan.</td></tr>
+      <tr><td>Common questions</td><td>“When is the exam?”, “Is the application still open?”, requirements, application status, and contact information.</td><td>These are candidates for an approved FAQ/chatbot and visible status page.</td></tr>
+      <tr><td>Proctoring</td><td>Guidance staff are trained to administer the ICAT. Other institutional staff may be trained under strict procedures during a surge.</td><td>Additional proctors need authorization, training, and confidentiality rules.</td></tr>
+      <tr><td>Scheduling</td><td>Schedules are coordinated with Guidance and other relevant personnel through an official messaging application. Miscommunication sometimes occurs.</td><td>A shared, trackable schedule can reduce lost or misunderstood messages.</td></tr>
+      <tr><td>Clustering and chatbot</td><td>Previous clustering output was not integrated into the workflow. A live dashboard was considered possibly helpful. A chatbot was considered somewhat useful.</td><td>Model output must support—not replace—the counselor’s judgement. Routine questions may be answered faster.</td></tr>
+      <tr><td>Quota information</td><td>Guidance obtains quota information through the coordinator and relevant personnel. Program Head feedback described face-to-face coordination and daily updates.</td><td>A shared quota view and alerts may reduce repeated follow-ups.</td></tr>
+      <tr><td>Program Head needs</td><td>Real-time quota capacity, pre-enrollment applicant lists, and threaded inter-office notes were rated highly useful in the recorded response.</td><td>Program Heads can see their own intake situation and communicate a needed action.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Session 1 confirmation:</strong> ☐ Accurate enough &nbsp; ☐ Accurate after corrections below &nbsp; ☐ New description needed</p>
+  <p><strong>Corrections / missing facts:</strong></p><div class="blank"></div><div class="blank"></div>
+
+  <div class="pagebreak"></div>
+  <h2>Part 2 — Requirements Gathering, Session 2</h2>
+  <h3>2. What we need to decide today</h3>
+  <ol><li>Which paper or informal activities should become digital.</li><li>Which process should change because it is slow, difficult to track, or unclear.</li><li>Which process must stay the same for confidentiality, training, or office policy.</li><li>Which screens and information the Guidance Office needs first.</li></ol>
+  <h3>3. Proposed digitized processes: From → To</h3>
+  <p>These are <strong>proposed requirements</strong>. Mark each row: <span class="pill">Agree</span> <span class="pill">Modify</span> <span class="pill">Keep current</span> <span class="pill">Defer</span>.</p>
+  <table>
+    <thead><tr><th>No.</th><th>Current process (From)</th><th>Proposed digital process (To)</th><th>Main user</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Application is written on paper and encoded later.</td><td><strong>Digital application form</strong> saves the information once and gives an identifier key. Paper may remain as backup.</td><td>Applicant / Registrar</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>2</td><td>Identity is connected using a name, NOA number, or paper record.</td><td><strong>One application ID key</strong> is used on the application, slip, answer sheet, result, and portal.</td><td>Applicant / Registrar / Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>3</td><td>Requirements are checked through folders or separate lists.</td><td><strong>Digital requirements checklist</strong> shows only <strong>missing</strong> and <strong>submitted/verified</strong> documents (no separate submitted or verified states).</td><td>Registrar</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>4</td><td>Exam slots are set by tradition through a single authority; no adjustments are allowed. Coordination runs through messages, calls, or conversations.</td><td><strong>Shared exam schedule</strong> shows date, time, room, batch size, and proctor.</td><td>Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>5</td><td>Students wait for the office to assign a schedule.</td><td><strong>Optional student booking</strong> may be turned on or off by authorized staff.</td><td>Guidance / Applicant</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>6</td><td>Attendance is written on paper or checked manually.</td><td><strong>Digital attendance</strong> uses the ID/QR on the admission slip. Paper backup remains available.</td><td>Proctor / Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>7</td><td>Answer sheets are checked using a stencil or by hand.</td><td><strong>OMR-powered checking</strong> reads the sheet and checks marked answers.</td><td>Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>8</td><td>Unclear, double-marked, or erased answers are judged during checking.</td><td><strong>Manual fallback</strong> sends low-confidence answers to a staff review list before confirmation.</td><td>Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>9</td><td>Raw scores are converted using a separate table or calculation.</td><td><strong>Stored conversion table</strong> converts the raw score into the official result after confirmation.</td><td>Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>10</td><td>Results are released only together with the consultation, face-to-face; there is no online result.</td><td><strong>Online result + print on request</strong>; a human confirms before publication.</td><td>Guidance / Applicant</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>11</td><td>Consultation is arranged as applicants arrive or through office coordination.</td><td><strong>Consultation schedule</strong> displays open slots, bookings, daily capacity, and mode.</td><td>Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>12</td><td>Consultation is face-to-face only or arranged informally.</td><td><strong>Two modes: face-to-face and online/video</strong>, according to policy and situation.</td><td>Guidance / Applicant</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>13</td><td>Advice is only said during the session; it is not noted on paper or in any other record.</td><td><strong>Short typed consultation note</strong> records advice, date, counselor, and next step.</td><td>Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>14</td><td>After consultation, a follow-up may be invisible to the next office.</td><td><strong>Trackable follow-up</strong> records action, responsible person, date, remarks, and status.</td><td>Guidance / Registrar / Program Head</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>15</td><td>Quota information is requested from a coordinator or Program Head.</td><td><strong>Program quota view</strong> shows quota, current status, and last update time.</td><td>Guidance / Program Head / Registrar</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>16</td><td>Staff discover late that a program is near or over quota.</td><td><strong>Quota threshold alert</strong> notifies authorized staff.</td><td>Guidance / Registrar / Program Head</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>17</td><td>Routine questions arrive through messages, calls, social media, or visits.</td><td><strong>Approved FAQ/chatbot</strong> answers routine questions and has a staff fallback.</td><td>Applicant / Guidance</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>18</td><td>Guidance and Registrar coordinate in external messaging channels.</td><td><strong>Trackable in-app request/task</strong> keeps the request, response, and status connected.</td><td>Guidance / Registrar</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>19</td><td>Reports are prepared manually from separate lists.</td><td><strong>Role-based reports</strong> show applicants, batches, scores, results, quota, and follow-ups.</td><td>All offices</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>20</td><td>It is difficult to prove who viewed or changed a record.</td><td><strong>Activity history</strong> records important views, edits, approvals, releases, alerts, and changes.</td><td>Authorized staff / IT</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><strong>Easy explanation for Guidance:</strong> “Instead of asking where the paper, message, score, or follow-up went, the office can open the applicant or batch record and see the current status, the next action, and who handled it.” The system does not remove the Guidance Office’s professional decision.</div>
+
+  <div class="pagebreak"></div>
+  <h3>4. Proposed breaking changes</h3>
+  <p>These changes affect how people work, not just where information is stored.</p>
+  <table>
+    <thead><tr><th>No.</th><th>Current way</th><th>Proposed new way</th><th>Reason</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td>After consultation, the next step may be invisible.</td><td><strong>Trackable handoff:</strong> advice, follow-up, person, due date, status.</td><td>Prevents forgotten applicants and clarifies responsibility.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B2</td><td>Results are released only together with the consultation, face-to-face, as one crowded activity.</td><td>Separate result release from consultation scheduling.</td><td>Reduces lines and manages daily capacity.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B3</td><td>Release and consultation may be face-to-face only.</td><td>Support online and face-to-face modes under office policy.</td><td>Helps applicants who live far away while keeping F2F available.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B4</td><td>Admin controls every exam schedule.</td><td>Office may allow or disable student self-booking for exam and consultation separately.</td><td>Gives the office flexibility.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B5</td><td>Schedule is coordinated through separate messages.</td><td>One shared schedule shows room, batch, capacity, proctors, and conflicts.</td><td>Reduces double booking and unclear updates.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B6</td><td>Only Guidance normally proctors.</td><td>Trained institutional staff may proctor during a surge if authorized.</td><td>Adds capacity without removing Guidance control.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B7</td><td>Manual stencil scoring is the main check.</td><td>OMR is the first check; manual review is the safety net.</td><td>Speeds checking while preserving human review.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B8</td><td>Score moves between paper, spreadsheet, and message.</td><td>One confirmed result record feeds conversion, release, print, and portal.</td><td>Reduces re-encoding and inconsistent results.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B9</td><td>Quota is obtained by asking the coordinator/Program Head.</td><td>Shared quota status with update time and threshold alerts.</td><td>Lets staff act earlier.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B10</td><td>Routine questions require staff time.</td><td>Approved FAQ/chatbot with human fallback.</td><td>Reduces repeated questions without inventing policy.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B11</td><td>Clustering/recommendation output is separate from consultation.</td><td>Counselor dashboard shows suggestions beside applicant record.</td><td>Makes information easier to review; counselor still decides.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B12</td><td>No single activity history across offices.</td><td>Important actions record staff, date, time, and action.</td><td>Supports accountability and dispute resolution.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B13</td><td>Exam slots are set by a single authority; no adjustments are allowed.</td><td><strong>Shared, trackable exam schedule</strong> with office-controlled adjustments.</td><td>Removes the single-authority bottleneck and makes every change visible to all parties.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+      <tr><td>B14</td><td>Consultations are arranged as applicants arrive or through informal office coordination.</td><td><strong>Scheduled consultation slots</strong> with bookings, daily capacity, and mode.</td><td>Manages the 70–80-per-day staff load and shortens applicant waiting in line.</td><td class="decision">☐ A ☐ M ☐ K ☐ D</td></tr>
+    </tbody>
+  </table>
+  <h3>Safeguards to confirm</h3>
+  <ul><li>☐ Human confirms OMR results before release.</li><li>☐ Manual score entry remains available.</li><li>☐ Office can disable student self-booking.</li><li>☐ Online consultation follows office policy.</li><li>☐ Unauthorized users cannot see confidential exam content.</li><li>☐ Counselor remains responsible for advice and placement decisions.</li><li>☐ Chatbot can say “I do not have that information” and refer to staff.</li><li>☐ Each office sees only information needed for its work.</li><li>☐ Paper backup remains available for attendance/outages.</li><li>☐ Important record changes are activity-logged.</li></ul>
+
+  <h3>5. Summary sign-off matrix</h3>
+  <table><thead><tr><th>Decision area</th><th>Final direction</th><th>Client remarks / exact wording</th></tr></thead><tbody>
+    <tr><td>Digital application</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>OMR + manual fallback</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Human confirmation before release</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Online result + print on request</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Separate consultation schedule</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>F2F consultation remains</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Online consultation option</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Exam/consultation self-booking option</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Trackable follow-up and handoff</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Shared quota view and alerts</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>FAQ/chatbot with fallback</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr><tr><td>Counselor remains final decision-maker</td><td>☐ Agree ☐ Modify ☐ Defer</td><td></td></tr>
+  </tbody></table>
+  <h3>Follow-up questions for the office</h3>
+  <ol><li><strong>Retake:</strong> is retake possible? Within the same admission cycle, or in another academic year, when the student already has a saved result on record? <div class="blank"></div></li></ol>
+
+  <div class="pagebreak"></div>
+  <h2>Part 3 — User Design, Session 1</h2>
+  <h3>6. Two levels of design</h3>
+  <p><strong>Level 1 — Lofi wireframe pad:</strong> Open <a href="ascii-wireframes.html">ascii-wireframes.html</a>. The boxes show proposed screen arrangement, information, and actions. Ask “Is this the right information?”, “What is missing?”, and “What should be removed?”</p>
+  <p><strong>Level 2 — Detailed wireframes and UI kit:</strong> Open <a href="ui-kit-index.html">ui-kit-index.html</a> to show the existing role wireframes and locked UI kit reference.</p>
+  <div class="integrity"><strong>Research integrity note:</strong> These are proposed NEXIAM screens. They are not photographs of the current office process and must not be presented as proof that the current process already looks this way.</div>
+  <h3>7. Walkthrough order</h3>
+  <table><thead><tr><th>Office / role</th><th>Walkthrough screens</th><th>Ask the client</th></tr></thead><tbody>
+    <tr><td><strong>Guidance (primary)</strong></td><td>Triage, OMR, Scheduling, Release, Consultation, Proctoring</td><td>What is needed during consultation? Who verifies flagged marks? Who approves publication? What must work offline?</td></tr>
+    <tr><td><strong>Registrar</strong></td><td>Applications, Import, Processing, Reports, Setup</td><td>What statuses, requirements, fields, and reports are actually used?</td></tr>
+    <tr><td><strong>Program Head</strong></td><td>Quota, Pre-enrollment Slate, Reports</td><td>What quota and applicant information is useful? What must remain confidential?</td></tr>
+    <tr><td><strong>Applicant</strong></td><td>Entry, Status, Form, Slip, Chatbot</td><td>Is the ID easy to use? What is the next step? Which questions need staff?</td></tr>
+    <tr><td><strong>System Admin</strong></td><td>Users, Audit, Engines, Settings</td><td>Who may change settings? What actions must be logged?</td></tr>
+  </tbody></table>
+  <h3>8. User design questions</h3>
+  <ol><li>What is the first action needed when an applicant arrives or calls? <div class="blank"></div></li><li>What must be visible without opening another page? <div class="blank"></div></li><li>What must be hidden from other offices? <div class="blank"></div></li><li>What is the most dangerous mistake the system could make? <div class="blank"></div></li><li>What must still be possible during an internet outage? <div class="blank"></div></li><li>What screen should be tested first in the next review? <div class="blank"></div></li></ol>
+
+  <h3>9. Wireframe validation record</h3>
+  <table><thead><tr><th>Role / office</th><th>Screens reviewed</th><th>Direction accepted?</th><th>Changes requested</th></tr></thead><tbody>
+    <tr><td>Guidance</td><td>Triage, OMR, Scheduling, Release, Consultation, Proctoring</td><td>☐ Yes ☐ Revise</td><td></td></tr><tr><td>Registrar</td><td>Applications, Import, Processing, Reports, Setup</td><td>☐ Yes ☐ Revise</td><td></td></tr><tr><td>Program Head</td><td>Quota, Slate, Reports</td><td>☐ Yes ☐ Revise</td><td></td></tr><tr><td>Applicant</td><td>Entry, Status, Form, Slip, Chatbot</td><td>☐ Yes ☐ Revise</td><td></td></tr><tr><td>System Admin</td><td>Users, Audit, Engines, Settings</td><td>☐ Yes ☐ Revise</td><td></td></tr>
+  </tbody></table>
+  <p><strong>Most important design change requested:</strong></p><div class="blank"></div><div class="blank"></div>
+
+  <div class="pagebreak"></div>
+  <h2>Part 4 — Validation and evidence record</h2>
+  <h3>10. Record after the visit</h3>
+  <ul><li>Exact corrections to the Session 1 recap</li><li>Each From → To decision: Agree, Modify, Keep Current, or Defer</li><li>New facts or constraints</li><li>Screens accepted for the next design review</li><li>Rejected screens/features and the reason</li><li>Policy or confidentiality restrictions</li><li>Permission status for photos and documents</li></ul>
+  <h3>11. Client validation sign-off</h3>
+  <p>This means the client reviewed the summary and proposed direction. It does not mean that every final implementation detail is approved.</p>
+  <div class="two"><div><strong>Guidance representative</strong><div class="sig"></div>Name / Position<div class="sig"></div>Signature / Date</div><div><strong>Registrar representative</strong><div class="sig"></div>Name / Position<div class="sig"></div>Signature / Date</div></div>
+  <br><div class="two"><div><strong>Program Head representative</strong><div class="sig"></div>Name / Program<div class="sig"></div>Signature / Date</div><div><strong>NEXIAM team representative</strong><div class="sig"></div>Name<div class="sig"></div>Signature / Date</div></div>
+  <h3>Photo/document permission</h3><p>☐ Photo of client reviewing lofi wireframe &nbsp; ☐ Marked decision pages &nbsp; ☐ Anonymized process artifacts &nbsp; ☐ No photos &nbsp; ☐ Other restriction: __________________________</p>
+  <div class="callout"><strong>Team reminder:</strong> Do not write “client approved” unless the client actually marked or stated approval. Keep proposed requirements, confirmed requirements, and unresolved questions separate. The dated notes and signed/initialed matrix are the RAD evidence.</div>
+  <div class="footer">Prepared for NEXIAM RAD documentation. Source baseline: existing interview/questionnaire files under <span class="mono">01-requirements-planning/Preliminary Interviews &amp; Questionaire/</span>.</div>
+</main>
+</body>
+</html>

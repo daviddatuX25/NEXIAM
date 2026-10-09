@@ -1,0 +1,269 @@
+{
+  "source": "manuscript/sections/04_appendices/04_appendix_j_tam_evaluation_instrument_sheet.md",
+  "sourceSha256": "f0c90e068ed16c491b94f14eb52a186cd1fe9dfadf10c823e780c3429205eed0",
+  "headerSource": "/home/user/Documents/BSIT Capstone Template.docx",
+  "paper": "A4",
+  "roleStartPages": [
+    2,
+    6,
+    11,
+    16
+  ],
+  "combinedPages": 19,
+  "printInstructions": "A4. Combined packet 19 pages with original English Critique Letter first; print single-sided for submission. Separate Registrar/Academic Leader forms four pages; Guidance/Student five pages. No extra binding allowance.",
+  "verification": [
+    {
+      "file": "NEXIAM_TAM_Academic_Leader.docx",
+      "pages": 4,
+      "items": 8,
+      "itemsAndNamesPreserved": true,
+      "noBindingAllowance": true,
+      "plainNumeralsAboveHeaderRule": true,
+      "cursiveFontEmbedded": true
+    },
+    {
+      "file": "NEXIAM_TAM_Guidance.docx",
+      "pages": 5,
+      "items": 13,
+      "itemsAndNamesPreserved": true,
+      "noBindingAllowance": true,
+      "plainNumeralsAboveHeaderRule": true,
+      "cursiveFontEmbedded": true
+    },
+    {
+      "file": "NEXIAM_TAM_Registrar.docx",
+      "pages": 4,
+      "items": 8,
+      "itemsAndNamesPreserved": true,
+      "noBindingAllowance": true,
+      "plainNumeralsAboveHeaderRule": true,
+      "cursiveFontEmbedded": true
+    },
+    {
+      "file": "NEXIAM_TAM_Review_and_All_Roles.docx",
+      "pages": 19,
+      "items": 38,
+      "itemsAndNamesPreserved": true,
+      "noBindingAllowance": true,
+      "plainNumeralsAboveHeaderRule": true,
+      "cursiveFontEmbedded": true
+    },
+    {
+      "file": "NEXIAM_TAM_Student.docx",
+      "pages": 5,
+      "items": 9,
+      "itemsAndNamesPreserved": true,
+      "noBindingAllowance": true,
+      "plainNumeralsAboveHeaderRule": true,
+      "cursiveFontEmbedded": true
+    }
+  ],
+  "visualProof": "Date-corrected letter and questionnaire numeral 1 inspected. Both letters compared to originals: raster differences confined to the date digit, all other text unchanged. Final DOCX questionnaire pages pixel-identical to print PDF; all 18 numerals and 38 items verified.",
+  "files": [
+    {
+      "name": "NEXIAM_TAM_Review_and_All_Roles.pdf",
+      "bytes": 940089,
+      "sha256": "f06e625c72d0be4fd840be497fb8abfc780ee38b8269a973b159dcef8794da63",
+      "md5": "c5de4f76b6c74d90da652f7cd95a337e",
+      "driveUrl": "https://drive.google.com/file/d/1hipvO6nX6oeya7q-nWNB191_usJ3p95E/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Review_and_All_Roles.docx",
+      "bytes": 1761752,
+      "sha256": "ed96c983f1bca25aa8e439252b31bc8879d9bae04ed13c7dc8e007d14b7c8cda",
+      "md5": "b65e45f18eec39fb3db624f26c0be36b",
+      "driveUrl": "https://drive.google.com/file/d/1xQpdTl5FUPtq6Rs19mbgHLvtUcR5qjLQ/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Registrar.pdf",
+      "bytes": 138225,
+      "sha256": "7e5e785ded898b42469e7e8ad6960bc85d8d2333ef5bacdf89cb831b6889e1f4",
+      "md5": "1b1a6b5ec176732c5e3ba4b6d56d2130",
+      "driveUrl": "https://drive.google.com/file/d/1l03Bo5NkdZsEeLL0H5iCMi65YyJbDNXG/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Guidance.pdf",
+      "bytes": 155698,
+      "sha256": "51a49a771e9eec57d128b548d83d0df927d6f222e93f5e36c44499f9702d7c83",
+      "md5": "46f0f2289d5bbb3d41303564e22fc487",
+      "driveUrl": "https://drive.google.com/file/d/1Tv4ituc3uEWosoUWu_sDA5OiVDEfrMyx/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Student.pdf",
+      "bytes": 145799,
+      "sha256": "def73570d15ff48047a0f2f97e1c18516843c2f0927f1e9c80c6b02921046a66",
+      "md5": "7e0b874f4c6ba8a4aca9f36df0d9a627",
+      "driveUrl": "https://drive.google.com/file/d/1lyI9nZ3IcuYbnYYsZcNPDFEsYwwqbi84/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Academic_Leader.pdf",
+      "bytes": 138383,
+      "sha256": "fc0b9d14eedaec774a96be860020d2e84b02095daf274f9b970faab539da19a3",
+      "md5": "c3e28408c6f150d808a4e1f18393358e",
+      "driveUrl": "https://drive.google.com/file/d/1IsBO1cv8v4sZ9aXyxjRYt6ngWrGE2qWG/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Registrar.docx",
+      "bytes": 1273090,
+      "sha256": "b9aba75c33651ae7aaf8b3b71542480c023b7455274546f84c8c96947b5c5be3",
+      "md5": "792400db6946c4058d99ac1cd5fa033f",
+      "driveUrl": "https://drive.google.com/file/d/1SRUMZO96EH5P--suEYnwxkYtx9BPwFX8/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Guidance.docx",
+      "bytes": 1273492,
+      "sha256": "8fac564ff11c80c72a56003ca7ccc0288c0e9207b91a9459060d4e3a3a91c62b",
+      "md5": "b921bfc404f713f256e8267c3145e9c2",
+      "driveUrl": "https://drive.google.com/file/d/1eaQO9TQIaZGfWX3vTiCoyU86RMBG5Rl3/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Student.docx",
+      "bytes": 1273243,
+      "sha256": "bb73c8f6c1c30d79461631188bd8fc5596d96309cdd3989c71e0120ac0a8e787",
+      "md5": "199680f14f30182ea40b4a4a4253d5c8",
+      "driveUrl": "https://drive.google.com/file/d/1QE1mHHH3gWVswTKWQs1PzOvfRoeeCrPk/view"
+    },
+    {
+      "name": "NEXIAM_TAM_Academic_Leader.docx",
+      "bytes": 1273070,
+      "sha256": "fc86d5391b307e14a584d9b2521be0aef2c05ae35fde3fa81ee873a72d2e52fb",
+      "md5": "3c56f5f6cff2d1f202948ccc3596f8c5",
+      "driveUrl": "https://drive.google.com/file/d/1nS5vbsyuZuFk9HLsE7jpx-m8vtvcpzmd/view"
+    }
+  ],
+  "typography": {
+    "formFont": "Times New Roman",
+    "formFontPoints": 12,
+    "proseLineSpacing": 1.5,
+    "tableLineSpacing": 1.0,
+    "handwritingLineSpacing": 2.0,
+    "responseLabels": [
+      "Strongly Agree",
+      "Agree",
+      "Neutral",
+      "Disagree",
+      "Strongly Disagree"
+    ]
+  },
+  "revision": "Researcher requested October 6, 2026 on both letter PDFs and questionnaire numbering restarted at 1 after the letter. Only the letter date digits changed; original October 1 PDFs archived.",
+  "pageGeometryInches": {
+    "page_width": 8.268056,
+    "page_height": 11.693056,
+    "top_margin": 1.5,
+    "bottom_margin": 1,
+    "left_margin": 1,
+    "right_margin": 1,
+    "header_distance": 0.5,
+    "footer_distance": 0.5,
+    "gutter": 0
+  },
+  "mirroredMargins": false,
+  "footer": {
+    "nativeTemplateRule": true,
+    "text": "Bachelor of Science in Information Technology",
+    "font": "Pinyon Script",
+    "fontPoints": 16,
+    "originalTemplateFont": "Edwardian Script ITC",
+    "exactOriginalFontAvailable": false,
+    "substitutionDisclosed": true,
+    "fontEmbeddedDocx": true,
+    "fontEmbeddedPdf": true,
+    "license": "SIL Open Font License 1.1",
+    "licenseUrl": "https://openfontlicense.org",
+    "copyright": "Copyright 2022 The PinyonScript Project Authors (https://github.com/SorkinType/Pinyon)",
+    "pageNumber": false
+  },
+  "tableLayout": "Item code and unchanged statement share the first column; five full response-label columns; total width equals the template text area.",
+  "researchers": [
+    "David Datu N. Sarmiento",
+    "Jaypee G. Pagaduan",
+    "Christine M. Lopez"
+  ],
+  "pageNumbering": {
+    "position": "right edge immediately above the institutional header rule",
+    "format": "plain Arabic numerals",
+    "prefix": null,
+    "footerNumbers": false,
+    "firstPage": "English Critique Letter remains outside questionnaire numbering. Physical PDF page 2 is questionnaire numeral 1.",
+    "questionnaireSectionStart": 1,
+    "verifiedPrintedNumerals": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ]
+  },
+  "sourcePublication": {
+    "researchGuide": "24 tasks and four role-scoped instruments published successfully",
+    "manuscriptReader": "25 documents published successfully"
+  },
+  "remoteVerification": {
+    "method": "rclone check --one-way on both destinations",
+    "changedFilesMatched": 4,
+    "lettersMatched": 2,
+    "packetFilesMatched": 2,
+    "differences": 0
+  },
+  "firstPage": {
+    "source": "manuscript/V2_RESOURCES/latest_diagrams/English Critique Letter.pdf",
+    "sourceSha256": "dafeba772fc3bf42d47b6c791a98e1ced88dea668050eb62b431df02e8ccc31b",
+    "pdf": "Original source letter page inserted without retyping or rasterization; extracted text and coordinates identical.",
+    "docx": "Full-page image facsimile of the original letter; no instrument header/footer overlay; following forms remain editable.",
+    "customSigningCoverRemoved": true,
+    "sourceNameBlock": "DAVID DATU SARMIENTO; CHRISTINE LOPEZ; JAYPEE PAGADUAN",
+    "sourceNameBlockUnchanged": true,
+    "date": "October 6, 2026",
+    "dateDigitEditedOnly": true,
+    "originalBackup": "manuscript/V2_RESOURCES/latest_diagrams/original_letters_2026-10-01/English Critique Letter.pdf"
+  },
+  "letterDateCorrections": [
+    {
+      "name": "English Critique Letter.pdf",
+      "date": "October 6, 2026",
+      "otherTextUnchanged": true,
+      "rasterChangesOnlyDateDigit": true,
+      "changedPixelBoundsAt144Dpi": [
+        343,
+        250,
+        355,
+        269
+      ],
+      "originalBackup": "manuscript/V2_RESOURCES/latest_diagrams/original_letters_2026-10-01/English Critique Letter.pdf",
+      "sha256": "dafeba772fc3bf42d47b6c791a98e1ced88dea668050eb62b431df02e8ccc31b"
+    },
+    {
+      "name": "Deployment Letter Final.pdf",
+      "date": "October 6, 2026",
+      "otherTextUnchanged": true,
+      "rasterChangesOnlyDateDigit": true,
+      "changedPixelBoundsAt144Dpi": [
+        343,
+        250,
+        355,
+        269
+      ],
+      "originalBackup": "manuscript/V2_RESOURCES/latest_diagrams/original_letters_2026-10-01/Deployment Letter Final.pdf",
+      "sha256": "52d5cedeffa26475137d567079874b5908b0267aba603c1a5681cde89a257197"
+    }
+  ],
+  "questionnairePrintedRoleStarts": [
+    1,
+    5,
+    10,
+    15
+  ]
+}

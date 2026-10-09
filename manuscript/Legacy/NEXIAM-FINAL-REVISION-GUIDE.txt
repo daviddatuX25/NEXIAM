@@ -1,0 +1,329 @@
+================================================================================
+NEXIAM FINAL REVISION GUIDE — July 4, 2026
+Cross-document audit: Manuscript (NEXIAM.txt) vs Presentation vs Speaker Script
+vs Q&A Defense Bank v4 vs Defense Prep Note
+================================================================================
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 1: CRITICAL — CROSS-DOCUMENT ALIGNMENT (MUST FIX FIRST)
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE 1.1 — n-Number Clash: 47 vs 49
+-------------------------------------------------------------------------------
+| Document                   | Total n | IT Experts |
+|----------------------------|---------|------------|
+| NEXIAM.txt (manuscript)    | 47      | 1          |
+| NEXIAM-presentation.txt    | 49      | 3          |
+| Speaker Script             | 49      | 3          |
+| Q&A Defense Bank v4        | 49      | 3          |
+| Defense Prep Note          | 49      | 3          |
+
+ACTION: Align ALL documents to ONE number.
+  - If going 49/3 IT Experts: update NEXIAM.txt lines 144, 146-152, 158, 287
+  - If staying 47/1 IT Expert: roll back presentation, speaker script, defense
+    bank TRAPS 40+46, and defense prep note
+RECOMMENDATION: Go 49/3 IT Experts (defense materials are newer and already
+aligned). This also gives the "Technical Panel" more statistical weight for
+descriptive reporting, even if n=3 stays non-inferential.
+
+ISSUE 1.2 — IPO Inputs: Manuscript vs Presentation Mismatch
+-------------------------------------------------------------------------------
+Manuscript IPO Inputs (NEXIAM.txt lines 41-55):
+  - Applicant profiles
+  - Exam & schedule preferences
+  - Admission inquiries
+  - ML decision-support models
+  - Triage advisory notes
+  - Scanned answer sheets
+  - Program quotas  (7 items)
+
+Presentation IPO Inputs (Slide 5):
+  - Applicant profiles
+  - Exam & schedule preferences
+  - Counseling data
+  - Support queries
+  - Scanned answer sheets
+  - Program quotas
+  - Status updates
+  - Activity logs  (8 items)
+
+Only 4 overlap. The rest are different items.
+
+ACTION: The manuscript is the single source of truth. Align the presentation
+slide to match the manuscript. If you prefer the presentation's input list,
+update the manuscript instead — but ONE must change.
+
+ISSUE 1.3 — IPO Output #4 Naming: "Aptitude dashboards" vs "Decision-support triage"
+-------------------------------------------------------------------------------
+  - Manuscript line 65: "Decision-support triage" (correct, renamed)
+  - Presentation Slide 5: "Aptitude dashboards" (old name)
+  - Per your own notes, Output #4 was renamed FROM "Aptitude dashboards"
+    TO "Decision-support triage"
+
+ACTION: Update presentation Slide 5 to say "Decision-support triage."
+
+ISSUE 1.4 — NEXIAM Acronym Expansion Mismatch
+-------------------------------------------------------------------------------
+  - Manuscript glossary line 307: "Next-generation Examination and
+    Intelligent Admission Management platform"
+  - Presentation Slide 1: "Next-Generation Examinations and X(Cross)-Role
+    Intelligent Admissions Management"
+
+ACTION: Pick one and align. The presentation expansion is more descriptive
+("Cross-Role" highlights the RBAC contribution). If you adopt it, also
+update the manuscript glossary line 307.
+
+ISSUE 1.5 — Role Assignment: Who Is Project Manager?
+-------------------------------------------------------------------------------
+  - Manuscript Table 1 (line 135): David = Project Manager
+  - Defense Bank Section 2 header: Jaypee = "Project Manager / co-Lead Developer"
+
+ACTION: The manuscript is authoritative. Fix the defense bank header to say:
+  "Roles: Lead Developer and Programmer" (matching Table 1).
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 2: HIGH — MANUSCRIPT INTERNAL ERRORS (NEXIAM.txt)
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE 2.1 — Proctor Role Contradiction (4 different answers in one document)
+-------------------------------------------------------------------------------
+  Line 90  (Scope): Proctor = "duty overlay," not "a distinct eighth role"
+          → implies 7 roles + Proctor overlay
+  Line 313 (Glossary "Proctor"): "the Proctor is one of the seven
+          defined user roles" → counts Proctor as a role
+  Line 318 (Glossary "User Role"): lists 7 roles INCLUDING Proctor,
+          OMITS Program Head entirely
+  Line 405 (Appendix B): "eight actors" including Proctor AND Program Head
+          plus "Super Admin" instead of "System IT Administrator"
+
+ACTION: Standardize across all four locations:
+  - 7 RBAC roles: Applicant, Guidance Counselor, Guidance Admin, Registrar
+    Staff, Registrar Admin, Program Head, IT Admin/Super Admin
+  - Proctor = duty overlay assignable to any staff role
+  - Use case diagram: 8 actors (7 roles + Proctor overlay)
+  - Fix glossary "Proctor" entry (line 313) to say "duty overlay"
+  - Fix glossary "User Role" entry (line 318) to include Program Head
+  - Fix Appendix B (line 405) to use "IT Administrator" instead of
+    "Super Admin" (or standardize to one name everywhere)
+
+ISSUE 2.2 — TAM Item Non-Parallelism (Guidance PU Items 1-2)
+-------------------------------------------------------------------------------
+Table 3.2 (line 167-173):
+  Pre Item 1: "I have the tools to profile applicants based on their
+             exam performance."
+  Post Item 1: "NEXIAM's decision-support triage helps me evaluate
+              applicant readiness for placement."
+  → These measure DIFFERENT activities. Pre asks about "tools to profile";
+    Post asks about "evaluate readiness for placement."
+
+  Pre Item 2: "The current process of reviewing exam scores is adequate
+             for my counseling sessions."
+  Post Item 2: "NEXIAM's triage output provides useful profiles for
+              counseling sessions."
+  → Pre asks about "reviewing exam scores"; Post asks about "triage
+    output provides profiles." Different referent activities.
+
+For a paired t-test to be valid, the pre and post items must measure the
+same construct with only the referent changing (current process → NEXIAM).
+
+ACTION: Either (a) reword pre-test items to describe the same activities
+NEXIAM delivers (profiling, triage), or (b) add an explicit limitation
+acknowledging that some TAM items necessarily measure different activities
+because the manual process has no equivalent to automated triage.
+
+ISSUE 2.3 — TAM Typos
+-------------------------------------------------------------------------------
+  Line 186 (Table 3.4, PU Program Head Item 3):
+    "Coordinating with guidance personel" → "personnel"
+  Line 208 (Table 4.3 header):
+    "forApplicant" → "for Applicant" (missing space)
+
+ISSUE 2.4 — Sentence Fragments
+-------------------------------------------------------------------------------
+  Line 31: "Rooting from the Republic Act No. 10931 (2017) which
+          increased admission volumes after removing tuition fees in
+          public higher education, putting more pressure on staff and
+          infrastructure."
+          → Fragment; no main clause. Connect to next sentence.
+
+  Line 35: "A platform that can integrate applicant registration,
+          streamlined testing operations, automated scoring,
+          decision-support with AI advisory services, and result
+          delivery into one admission ecosystem..."
+          → Fragment; no main verb. Connect to previous sentence.
+
+ISSUE 2.5 — Word-Level Corrections
+-------------------------------------------------------------------------------
+  Line 31: "In hindsight" → "Compounding this" or "Additionally"
+           (hindsight means looking back at past events with present
+           knowledge — not the intended meaning here)
+  Line 29: "researcher's background" → "researchers' background"
+           (plural possessive, three researchers)
+  Line 38: "measurable evidences" → "measurable evidence" (uncountable)
+  Line 38: "prove if" → "prove whether" (formal register)
+  Line 38: "The input serves as variables that covers" →
+           "The input consists of variables covering..."
+  Line 27: "outweighed by drawbacks" — French et al. found benefits AND
+           drawbacks. The word "outweigh" implies a value judgment. Consider
+           "accompanied by" or "often come with" to avoid overstating.
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 3: MODERATE — TYPOS & FORMATTING (NEXIAM.txt)
+═══════════════════════════════════════════════════════════════════════════════
+
+  Line 32:  "optiomization" → "optimization"
+  Line 32:  "data driven" → "data-driven"
+  Line 33:  "data driven" → "data-driven" (second occurrence)
+  Line 31:  "under utilized" → "under-utilized"
+  Line 288: "Glosary" → "Glossary"
+  Line 401: "concering" → "concerning"
+  Line 401: "in replacement to" → "in replacement of" or "to replace"
+
+ISSUE 3.1 — "The current manual process" phrasing
+-------------------------------------------------------------------------------
+  Lines 165 and 196 use "the current manual process" in TAM pre-test items.
+  Per your preference: use "the current process" (no "manual"). If this
+  is still your preferred phrasing, change these.
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 4: HIGH — DEFENSE BANK / PRESENTATION ISSUES
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE 4.1 — TRAP 30: "85% of developers" Statistic Uncited
+-------------------------------------------------------------------------------
+  The defense bank and Slide 8 both claim "85% of professional developers
+  now use AI coding agents" and "41% of new code is AI-generated." These
+  figures are NOT in the manuscript text. If a panelist asks for the exact
+  source, the team must produce it — page/section/table from the Osmani
+  whitepaper. Otherwise this looks fabricated under questioning.
+
+ACTION: Either (a) add the 85%/41% statistics to the manuscript body with
+proper citation (Osmani et al., 2026, p. X), or (b) remove the specific
+percentages from the defense bank answer and slide and use the manuscript's
+language: "AI agents reliably generate the majority of routine
+implementation work."
+
+ISSUE 4.2 — Peng et al. (2023) Citation Doesn't Support the Claim
+-------------------------------------------------------------------------------
+  Line 116: "The developers conduct rigorous peer code reviews on every
+  AI-generated module to prevent architectural debt and align with
+  productivity gains documented in recent AI software engineering studies
+  (Peng et al., 2023)."
+  → Peng et al. measured GitHub Copilot's impact on developer productivity
+    (speed). It does NOT study peer code reviews or "architectural debt
+    prevention." The claim and citation don't match. Either: (a) add a
+    separate source that supports peer review preventing architectural debt,
+    or (b) rephrase so Peng et al. only supports the productivity point.
+
+ISSUE 4.3 — Presentation Slide 6 Wording Contradiction
+-------------------------------------------------------------------------------
+  "The proctoring interface relies on the cloud alone, maintaining offline
+  resilience via service-worker caching."
+  → "Relies on the cloud alone" and "offline resilience" contradict.
+  Rewrite: "The proctoring interface is cloud-connected but maintains
+  offline resilience via service-worker caching for exam venues with
+  intermittent connectivity."
+
+ISSUE 4.4 — Missing Defense Traps (Should Add to Q&A Bank)
+-------------------------------------------------------------------------------
+  These angles are NOT covered by the current 56 traps:
+
+  TRAP 57 (NEW): "Your manuscript says 47 evaluators but your
+    presentation says 49. Which is it? Why the discrepancy?"
+    → Answer must explain the update and that the manuscript will be
+      corrected to match.
+
+  TRAP 58 (NEW): "Several references in your reference list are never
+    cited in the text — over a dozen. APA 7th requires every reference
+    to be cited. Can you explain?"
+    → Answer: either cite them in body or remove from list. The defense
+      prep note proposes where each should go (Part 4).
+
+  TRAP 59 (NEW): "Your IPO inputs in the manuscript are different from
+    the presentation slide. Which inputs are correct?"
+    → Answer should acknowledge the presentation was simplified and the
+      manuscript is authoritative.
+
+  TRAP 60 (NEW): "For Guidance TAM items 1 and 2, your pre-test and
+    post-test measure different activities. How can a paired t-test work
+    if you're measuring different things?"
+    → Answer must explain that the manual process has no equivalent to
+      automated triage, so the comparison measures perception of the
+      tool available in each scenario. Acknowledge as a limitation.
+
+  TRAP 61 (NEW): "You claim French et al. found that drawbacks 'outweigh'
+    benefits. Is that their conclusion or yours? Would French et al. agree?"
+    → Answer: "French et al. documented both benefits and drawbacks. The
+      framing 'outweigh' reflects the pattern across their reviewed
+      studies, but we can soften this to 'are accompanied by' to more
+      precisely reflect their scoping review."
+
+  TRAP 62 (NEW): "You cite Peng et al. for peer code review preventing
+    architectural debt. Peng et al. studied developer speed with Copilot.
+    How does that support peer review?"
+    → Answer: acknowledge Peng et al. supports productivity only.
+      Architectural debt prevention is grounded in the RAD model itself
+      (Pressman & Maxim, 2020).
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 5: UNCITED REFERENCES IN MANUSCRIPT (NEXIAM.txt)
+═══════════════════════════════════════════════════════════════════════════════
+
+These appear in the reference list (lines 328-387) but are NOT cited
+anywhere in the body text. APA 7th requires every reference to be cited:
+
+  1. Calfoforo & Raga (2024)
+  2. Catalan (2017)
+  3. Cenezan & Valdez (2023) — distinct from Cenezan & Gacusan (2025)
+  4. Cohen (1988) — only implicitly invoked via "Cohen's d" at line 287
+  5. Dash et al. (2024)
+  6. Ilagan et al. (2025)
+  7. Mittal & Malhotra (2026)
+  8. Neupane et al. (2024)
+  9. Rutvik et al. (2024)
+  10. Sánchez-Mendiola et al. (2025)
+  11. Tamascelli et al. (2025)
+  12. Van Deventer et al. (2024)
+  13. RA 10844 (2016) — DICT Act, not cited in policy discussion
+
+ACTION: Either (a) cite each in the body at the appropriate point (the
+defense prep note Part 4 maps where each fits), or (b) remove uncited
+references from the list. For Cohen (1988), add an explicit citation
+at line 287: "(Cohen, 1988)."
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 6: SUMMARY — PRIORITY FIX ORDER
+═══════════════════════════════════════════════════════════════════════════════
+
+  IMMEDIATE (before defense dry run):
+  □ 1. Harmonize n-number: pick 49 or 47, update EVERY document
+  □ 2. Harmonize IPO inputs between manuscript and presentation
+  □ 3. Change "Aptitude dashboards" → "Decision-support triage" in
+       presentation Slide 5
+  □ 4. Fix Proctor/7-role/8-actor contradiction (4 locations in manuscript)
+  □ 5. Fix Jaypee's role label in defense bank header (not PM)
+
+  HIGH (before defense):
+  □ 6. Resolve TAM non-parallelism (Guidance PU 1-2) or add limitation
+  □ 7. Fix or remove the 85%/41% statistics claim (or cite page number)
+  □ 8. Fix Peng et al. citation mismatch (line 116)
+  □ 9. Add 6 missing defense traps (57-62) to Q&A bank
+  □ 10. Fix presentation Slide 6 contradictory phrasing
+
+  MEDIUM (for manuscript final):
+  □ 11. Fix typos: optimization, Glossary, concerning, personnel, forApplicant
+  □ 12. Fix sentence fragments (lines 31, 35)
+  □ 13. Fix word-level: In hindsight, researcher's, evidences, prove if,
+        data driven, under utilized
+  □ 14. Harmonize NEXIAM acronym expansion across documents
+  □ 15. "Manual process" → "current process" (or keep as-is per decision)
+  □ 16. Cite or remove 13 uncited references
+  □ 17. Add explicit Cohen (1988) citation at line 287
+
+  NICE-TO-HAVE:
+  □ 18. Review "outweighed" claim about French et al. (line 27)
+  □ 19. Standardize "Super Admin" vs "IT Administrator" naming
+
+================================================================================
+END OF FINAL REVISION GUIDE
+================================================================================

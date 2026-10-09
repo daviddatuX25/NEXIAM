@@ -1,0 +1,255 @@
+Here is the structured content of the presentation, broken down slide by slide based on the provided text and diagrams:
+
+---
+
+## Slide 1: Title Slide
+
+### PROPOSAL DEFENSE | JUNE 30, 2026
+
+**NEXIAM: A Role-Based College Admission Testing System for the Guidance and Registrar Offices at ISPSC Tagudin**
+
+* **Presenters:** SARMIENTO, D. D. | PAGADUAN, J. G. | LOPEZ, C. M.
+* **Affiliation:** BSIT - ISPSC Tagudin Campus
+* **Adviser:** Dr. Zeus Vincent Mendoza
+
+> **NEXIAM Acronym Breakdown:**
+> **N**ext-**G**eneration **E**xaminations and **X**(Cross)-**R**ole **I**ntelligent **A**dmissions **M**anagement
+>
+> *(Align with manuscript glossary: "Next-generation Examination and Intelligent Admission Management platform" — pick one and update the other.)*
+
+---
+
+## Slide 2: The Problem (Global & National)
+
+### A Worldwide Shift, A Familiar Strain
+
+* **Paper-Based Testing Vulnerabilities:** Shifting away due to slow speeds, integrity risks, and equity gaps.
+* **Global Shift:** Transitioning to AI-assisted, cloud-based admission platforms where machine learning applicant assessments have been validated *(Lira et al., Science Advances)*.
+* **National Strain (RA 10931):** The Free Higher Education Act has significantly increased admission volumes, heavily straining institution staff and infrastructure. Unified platforms have proven successfully deployable with up to 97% usability *(Adwan et al.)*.
+* **Legal & Regulatory Floors (RA 10173):** The Data Privacy Act establishes data protection as a mandatory legal duty governing all system designs.
+
+---
+
+## Slide 3: The Problem (At ISPSC Tagudin)
+
+### Same Pressure, Paper Process
+
+* **The Numbers:** **700-1,000 applicants** are processed manually every single year completely on paper.
+* **Efficiency Bottlenecks:** Hand-scoring answer sheets creates a delay of five days to two full weeks per cycle.
+* **Communication Gaps:** Exam results are posted publicly on a Facebook page, which can only be monitored during office hours. Inter-office coordination completely relies on text messages with no shared system or visibility.
+* **The Integration Gap:** Key components have been proven independently but remain unintegrated:
+* *RAG Chatbot:* Dayata & Yap (IEEE COMNETSAT)
+* *OMR Scoring:* Cuerdo (PH Public Schools)
+* *K-Means Routing:* Tan (ACM)
+* **Core Issue:** *No unified admission platform currently exists to bring these together.*
+
+
+
+---
+
+## Slide 4: Objectives of the Study
+
+### One General Objective, Four Specific Objectives
+
+* **General Objective:** To Develop NEXIAM: A Role-Based College Admission Testing System for the Guidance and Registrar Offices at ISPSC Tagudin Campus.
+* **Specific Objectives (SO):**
+* **SO1:** Analyze the existing admission process and pinpoint its gaps.
+* **SO2:** Determine the system requirements those gaps demand.
+* **SO3:** Evaluate user acceptance of NEXIAM using the Technology Acceptance Model (TAM).
+* **SO4:** Test whether NEXIAM performs measurably better than the manual process it replaces.
+
+
+
+---
+
+## Slide 5: Conceptual Framework
+
+### Input-Process-Output (IPO) Diagram | RAD & TAM Framework
+
+| INPUT | PROCESS | OUTPUT |
+| --- | --- | --- |
+| • Applicant profiles<br>
+
+<br>• Exam & schedule preferences<br>
+
+<br>• Admission inquiries<br>
+
+<br>• ML decision-support models<br>
+
+<br>• Triage advisory notes<br>
+
+<br>• Scanned answer sheets<br>
+
+<br>• Program quotas | **Development and Evaluation of NEXIAM:**<br>
+
+<br>A Role-Based College Admission Testing System for the Guidance and Registrar Offices at ISPSC Tagudin | • Chatbot responses<br>
+
+<br>• Pre-enrollment slates<br>
+
+<br>• Status notifications<br>
+
+<br>• Decision-support triage<br>
+
+<br>• Exam scores & prints<br>
+
+<br>• Optimized exam schedules<br>
+
+<br>• Applicant portal<br>
+
+<br>• Audit trails |
+
+---
+
+## Slide 6: Scope and Limitation
+
+### What NEXIAM Covers - And What It Doesn't
+
+### Scope
+
+* Covers the admission testing workflow only from **June to September 2026**.
+* Supports **7 distinct user roles** with full web-based application intake.
+* Targeting a **$\ge 95\%$ accuracy rate** for OMR scoring.
+* Features active deployment of a RAG chatbot, K-Means aptitude dashboard, and AI-assisted scheduling.
+
+### Limitation
+
+* Excludes enrollment, tuition management, or long-term record keeping.
+* The proctoring interface is cloud-connected but maintains offline resilience via service-worker caching for exam venues with intermittent connectivity.
+* Free-tier OpenRouter inference caps overall request volume.
+* The September evaluation will utilize **simulated evaluators** drawn through purposive sampling, not live applicants.
+* No formal NPC certification; data protection is strictly application-layer rather than regulatory-certified.
+
+---
+
+## Slide 7: Beneficiaries
+
+### Who NEXIAM Serves
+
+* **Institution & Offices:** ISPSC, the Registrar, Guidance office, and Program Heads gain a much faster, fully compliant, real-time admission process.
+* **Applicants & Students:** Gain a **24/7 online portal**, eliminating repeat physical trips to the campus just to check an exam result.
+* **Research Community:** Provides hands-on AI software development experience and a functional blueprint other campuses can replicate.
+
+---
+
+## Slide 8: Research Design
+
+### Descriptive-Developmental (Frey, 2022)
+
+> **Core Logic:** Diagnose the existing process first, then build and evaluate the solution directly against it.
+
+**Descriptive Phase (SO1 + SO2):**
+* Analyze the current manual admission workflow through interviews and field observation
+* Extract operational pain points via thematic analysis
+* Convert validated gaps into system requirements
+
+**Developmental Phase (SO3 + SO4):**
+* Construct NEXIAM through AI-Augmented RAD
+* Evaluate user acceptance via paired TAM (pre-test → post-test)
+* Test whether NEXIAM significantly outperforms the manual process
+
+---
+
+## Slide 9: Software Model
+
+### AI-Augmented Rapid Application Development (RAD)
+
+| Phase | Focus |
+|-------|-------|
+| 1. Requirements Planning | Map process gaps, gather verified operational evidence |
+| 2. User Design | RBAC schema, authorization matrix, architecture diagrams, mockups |
+| 3. Rapid Construction | AI-assisted build with human Review & Integrate on every module |
+| 4. Cutover | Deploy to cloud, run paired TAM evaluation, finalize manuscript |
+
+### AI Coding Agents: Industry Adoption
+
+| Stat | Value |
+|------|-------|
+| Developers using AI coding agents regularly | **85%** |
+| Using AI coding agents daily | **51%** |
+| New code that is AI-generated | **41%** |
+| Codebase: Human-Written vs AI-Generated | **~59% / ~41%** |
+
+> *Source: Osmani et al. (2026). The new SDLC with vibe coding: From ad-hoc prompting to agentic engineering. Google.*
+
+**Human-in-the-Loop:** AI generates → Human reviews → Integrate or loop back for revision.
+
+---
+
+## Slide 10: Project Plan
+
+### Timeline Schedule (June - September 2026)
+
+* **June:** Requirements Planning
+* **July:** User Design
+* **August:** Rapid Construction
+* **September:** Cutover
+
+> **Current Status:** On track against this schedule as of today.
+
+---
+
+## Slide 11: Population and Locale
+
+### 47 Purposive Evaluators — 46 TAM + 1 IT Expert
+
+* **30** First-Year Students
+* **11** Program Heads
+* **3** Registrar Staff
+* **2** Guidance Staff
+* **1** IT Expert
+* **Total: 47 Evaluators**
+
+### Workflow Simulation Environment Breakdown:
+
+* **Administrator (n=5):** Guidance Office & Registrar staff simulate data entry and conduct Administrative Reviews. (Steps: *Profile Creation, Score Marking, Advising/Counseling*)
+* **First-Year Students (n=30):** Students with recent admission experience evaluate the applicant portal and related workflows through simulated operational scenarios. (Steps: *Profile Creation, Score Marking, Advising/Counseling*)
+* **Program Head (n=11):** Simulates operational triage and administrative decision-making. (Steps: *Program Review, Decision & Notification*)
+* **IT Expert (n=1):** Evaluates backend architecture, RBAC security matrices, and data privacy compliance through a structured technical walkthrough — reported qualitatively alongside TAM results.
+
+---
+
+## Slide 12: Research Instrument
+
+### Technology Acceptance Model (Davis, 1989)
+
+### Measured Core TAM Constructs:
+
+* **PU:** Perceived Usefulness
+* **PEOU:** Perceived Ease of Use
+* **ATU:** Attitude Toward Use
+* **BIU:** Behavioral Intention to Use
+
+### Execution Details:
+
+* **16 Items Total** role-adapted across four respondent groups (Registrar Personnel, Guidance Personnel, Applicants, Program Heads). The IT Expert is evaluated separately via a structured technical walkthrough outside the TAM instrument.
+* Evaluations are scored using a **7-Point Likert Scale** ranging from `1` (Strongly Disagree) to `7` (Strongly Agree).
+* **Shift Measurement:** Data is collected twice to measure the actual shift in perception:
+
+$$\text{Pre-Test} \longrightarrow \text{Simulation Exercise} \longrightarrow \text{Post-Test} \longrightarrow \text{Measured Shift in Perception}$$
+
+
+
+---
+
+## Slide 13: Data Analysis Techniques
+
+### Mapped Directly to the Four Specific Objectives
+
+* **SO1 $\rightarrow$ Thematic Analysis:** Surfaces the actual pain-point themes extracted from interview and survey responses.
+* **SO2 $\rightarrow$ Iterative Validation:** Proposed system requirements are confirmed with Registrar and Guidance staff directly against real-world workflows.
+* **SO3 $\rightarrow$ TAM Means:** Computes pooled and per-role construct means, checking them comprehensively against established acceptance benchmarks.
+* **SO4 $\rightarrow$ t-Test & Shapiro-Wilk:** Performs a normality check first, followed by a paired t-test or Wilcoxon signed-rank test at $\alpha = .05$, accompanied by effect size calculations.
+
+---
+
+## Slide 14: Closing Slide
+
+### NEXIAM PROPOSAL DEFENSE
+
+**Thank You.**
+
+*We're ready for your questions.*
+
+* SARMIENTO, D. D.
+* PAGADUAN, J. G.
+* LOPEZ, C. M.

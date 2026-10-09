@@ -1,0 +1,92 @@
+{
+  "folderUrl": "https://drive.google.com/drive/folders/16aEcQ4KDoC5rF22JJ8HZAtIjNa2xx6W8",
+  "retrievedAt": "2026-10-05T23:39:24.673Z",
+  "authority": "Researcher-designated latest diagram and attachment reference folder. Reference synchronization does not approve unchanged manuscript placement or establish completed deployment/research.",
+  "refresh": "Recheck folder on future attachment requests; no background synchronization.",
+  "files": [
+    {
+      "id": "1HN9uoPYWrPGRq40JXiH9SQgxdI932wKQ",
+      "name": "Deployment Letter Final.pdf",
+      "bytes": 379079,
+      "sha256": "52d5cedeffa26475137d567079874b5908b0267aba603c1a5681cde89a257197",
+      "status": "Researcher-approved date changed to October 6, 2026; updated Drive copy checksum verified",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/Deployment Letter Final.pdf",
+      "sourceUrl": "https://drive.google.com/file/d/1HN9uoPYWrPGRq40JXiH9SQgxdI932wKQ/view",
+      "originalBackup": "manuscript/V2_RESOURCES/latest_diagrams/original_letters_2026-10-01/Deployment Letter Final.pdf"
+    },
+    {
+      "id": "1eJoERpHOqZTMYWzJXDN5CSrbuabuvIut",
+      "name": "English Critique Letter.pdf",
+      "bytes": 380162,
+      "sha256": "dafeba772fc3bf42d47b6c791a98e1ced88dea668050eb62b431df02e8ccc31b",
+      "status": "Researcher-approved date changed to October 6, 2026; updated Drive copy checksum verified",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/English Critique Letter.pdf",
+      "sourceUrl": "https://drive.google.com/file/d/1eJoERpHOqZTMYWzJXDN5CSrbuabuvIut/view",
+      "originalBackup": "manuscript/V2_RESOURCES/latest_diagrams/original_letters_2026-10-01/English Critique Letter.pdf"
+    },
+    {
+      "id": "1Iz2DPOrR1hHWRhWLk4XZ2J_dz9xFhg-T",
+      "name": "ipo diagram.png",
+      "bytes": 131601,
+      "sha256": "0055e2a072cc3ef1d556acd2dd0398a1e64b12f050f50415613f33ea5296375d",
+      "status": "existing copy matches",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/ipo-diagram.png",
+      "sourceUrl": "https://drive.google.com/file/d/1Iz2DPOrR1hHWRhWLk4XZ2J_dz9xFhg-T/view"
+    },
+    {
+      "id": "15VseQbsCg4hjRROFgeP-Uk3kXi_79PI7",
+      "name": "new-DfD-level-0.png",
+      "bytes": 104336,
+      "sha256": "588bd6da7b91f70e3265d50d5fb9d9bd13ed4b18b12191b2e491a2726c905053",
+      "status": "existing copy matches",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/new-DfD-level-0.png",
+      "sourceUrl": "https://drive.google.com/file/d/15VseQbsCg4hjRROFgeP-Uk3kXi_79PI7/view"
+    },
+    {
+      "id": "1JzvPZhi1yT96qZrAnEFH-aMYzhlmQZgz",
+      "name": "new-DfD-Level1.drawio.png",
+      "bytes": 334282,
+      "sha256": "9c85fe765a3da57946e241e216fca3e5286a04f5c405a59ddc7162b502f73b57",
+      "status": "existing copy matches",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/new-DfD-Level1.drawio.png",
+      "sourceUrl": "https://drive.google.com/file/d/1JzvPZhi1yT96qZrAnEFH-aMYzhlmQZgz/view"
+    },
+    {
+      "id": "1po_CpakvWNWntmJ9eS7p2m6VypogFtq5",
+      "name": "new-usecase-diagram.jpg",
+      "bytes": 62554,
+      "sha256": "88d0b0bcd87cb72cb6f89598cb88236620809d3fda523309444a3cb6ca2762ef",
+      "status": "existing copy matches",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/new-usecase-diagram.jpg",
+      "sourceUrl": "https://drive.google.com/file/d/1po_CpakvWNWntmJ9eS7p2m6VypogFtq5/view"
+    },
+    {
+      "id": "18bnHM_LnhYdL3RNiAshcNaoZ7V2_PFAZ",
+      "name": "NEXIAM_Core_Admissions_ERD_A4.png",
+      "bytes": 379487,
+      "sha256": "4f246245620d9e561de4f47a402e980dc0880e6ef55b57484909b7220cb42ef2",
+      "status": "downloaded missing file",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/NEXIAM_Core_Admissions_ERD_A4.png",
+      "sourceUrl": "https://drive.google.com/file/d/18bnHM_LnhYdL3RNiAshcNaoZ7V2_PFAZ/view"
+    },
+    {
+      "id": "1SsEEpCcZFVsc3L_wyQc69dht0uNwtM7z",
+      "name": "nexiam-erd-compact.png",
+      "bytes": 783602,
+      "sha256": "2c565443c287a63b7688e1a7d92a42c29fd4350f2807b36d1827e03eed015124",
+      "status": "existing copy matches",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/nexiam-erd-compact.png",
+      "sourceUrl": "https://drive.google.com/file/d/1SsEEpCcZFVsc3L_wyQc69dht0uNwtM7z/view"
+    },
+    {
+      "id": "1H7s3KG99ics-LGKj4hS2BbmtNiHy0vfS",
+      "name": "updated_ipo_diagram.png",
+      "bytes": 71372,
+      "sha256": "0f1d2523eedf0daa73757379f19622a446c34f39fc7ac86aa6a49a576cbbe885",
+      "status": "downloaded missing file",
+      "path": "manuscript/V2_RESOURCES/latest_diagrams/updated_ipo_diagram.png",
+      "sourceUrl": "https://drive.google.com/file/d/1H7s3KG99ics-LGKj4hS2BbmtNiHy0vfS/view"
+    }
+  ],
+  "letterDateRevision": "October 6, 2026, at researcher request; only date digits changed; originals archived."
+}

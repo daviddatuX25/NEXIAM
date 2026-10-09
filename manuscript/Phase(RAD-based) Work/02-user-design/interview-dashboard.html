@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXIAM Interview Dashboard — Round 3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{50:'#f5f7ff',100:'#ebf0ff',200:'#d6e0ff',300:'#b3c7ff',400:'#85a3ff',500:'#5c7cfa',600:'#425cf3',700:'#2b3ee4',800:'#1e29bc',900:'#141c91'}},fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Inter',sans-serif}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  .dark ::-webkit-scrollbar-thumb{background:#334155;border-radius:9999px}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9999px}
+  .tab-btn{transition:all .15s}
+  .tab-btn.active{background:#5c7cfa;color:#fff}
+  .q-card{transition:all .15s}
+  .q-card:hover{border-color:#5c7cfa}
+  .skip{opacity:.35;text-decoration:line-through}
+  summary{cursor:pointer;user-select:none}
+  summary:hover{color:#5c7cfa}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
+
+<!-- HEADER -->
+<header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="bg-brand-600 text-white p-1.5 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"/></svg></div>
+      <div><h1 class="text-base font-extrabold text-brand-600 dark:text-brand-400">NEXIAM Interview</h1><p class="text-[10px] text-slate-400">Round 3 · July 15–16, 2026 · 33 questions · ~1.5–2 hrs</p></div>
+    </div>
+    <div class="flex items-center gap-2 text-[10px]">
+      <a href="wireframes/index.html" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-brand-900/30">🎨 Wireframes</a>
+      <a href="features.html" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-brand-900/30">📋 Features</a>
+      <a href="gantt.html" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-brand-900/30">📅 Gantt</a>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800">🌓</button>
+    </div>
+  </div>
+</header>
+
+<!-- ROLE TABS -->
+<nav class="max-w-6xl mx-auto px-4 pt-4 flex gap-1 flex-wrap">
+  <button class="tab-btn active px-3 py-1.5 rounded-lg text-xs font-semibold" onclick="switchTab('all')">📋 All Questions</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800" onclick="switchTab('guidance')">🧠 Guidance (10 Qs · 25 min)</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800" onclick="switchTab('registrar')">📁 Registrar (9 Qs · 20 min)</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800" onclick="switchTab('program-head')">🎓 Program Heads (7 Qs · 12 min)</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800" onclick="switchTab('applicant')">👤 Applicants (7 Qs · 7 min)</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" onclick="switchTab('checklist')">✅ Bring + Post</button>
+</nav>
+
+<main class="max-w-6xl mx-auto px-4 py-4 space-y-3">
+
+<!-- ===== GUIDANCE ===== -->
+<section class="role-section" data-role="guidance">
+  <details open><summary class="text-sm font-bold text-brand-600 dark:text-brand-400 mb-2">🧠 Guidance Office — 10 questions · ~25 min · 1 respondent</summary>
+  <div class="space-y-2 mt-2">
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">G1</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>OMR Batch Size &amp; Sheet Layout.</strong> "NEXIAM will scan answer sheets with computer vision. How many sheets arrive per batch? Show us a sample sheet so we can design the bubble grid." 📸 <em>Photo of blank answer sheet.</em></div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">G2</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Confidence Threshold Review.</strong> "If the computer flags a bubble as uncertain — smudge, half-erased — who should review it?"</div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">G3</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Triage Dashboard Acceptance.</strong> "Two panels: left = aptitude cluster with programs, right = interest match scores. You see both, you decide. Does this work for how you counsel?" <a href="wireframes/guidance-dashboard.html" class="text-brand-500 underline">See wireframe</a></div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">G4</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Signal Weighting.</strong> "If aptitude says Math-dominant but interest says BSEd English — what would you do?"</div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">G5</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Chatbot Boundary Refinement.</strong> "You said chatbot is 'somewhat helpful.' What would make it MORE helpful without crossing into counseling territory?"</div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">G6</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Audit Trail Scope.</strong> "NEXIAM logs every action with cryptographic chaining. What actions worry you most that should absolutely be logged?"</div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">G7</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>First Screen Priority.</strong> "When you open an applicant's profile during counseling, what should you see FIRST — scores, cluster, programs, status?"</div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">G8</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>Data Density &amp; Lighting.</strong> "More data on one screen or fewer things with bigger text? Is the Guidance Office bright or dim?"</div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">G9</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>Sketch Your Screen.</strong> "Draw how you'd arrange the counseling screen. Where would each panel go?" 📸 <em>Photo of their sketch.</em></div></div>
+    </div>
+
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+      <div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded">G10</span><span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded">ADD-ON</span><div class="text-xs"><strong>Wishlist.</strong> "Anything NEXIAM could do — within admission testing only — that we haven't discussed?"</div></div>
+    </div>
+  </div></details>
+
+  <!-- SKIPPED GUIDE -->
+  <details class="mt-2"><summary class="text-[10px] text-slate-400 cursor-pointer">22 questions skipped from Rounds 1–2 ▶</summary>
+    <div class="text-[10px] text-slate-400 mt-1 space-y-0.5 skip">
+      <div>R1 Q4-9: Scoring duration, staff, errors</div><div>R1 Q10-12: Consultation load, FAQs</div>
+      <div>R1 Q16-20: Municipalities, travel</div><div>R1 Q21-23: Equipment, answer sheet identity</div>
+      <div>R1 Q24-26: Desired improvements, transition concerns</div><div>R2 Q2-4: Proctoring preferences</div>
+      <div>R2 Q5-8: Scheduling coordination</div><div>R2 Q9-11: Yukee system usage</div>
+      <div>R2 Q12-13: Chatbot openness, question scope</div><div>R2 Q14-15: Quota source</div>
+    </div>
+  </details>
+</section>
+
+<!-- ===== REGISTRAR ===== -->
+<section class="role-section hidden" data-role="registrar">
+  <details open><summary class="text-sm font-bold text-brand-600 dark:text-brand-400 mb-2">📁 Registrar Office — 9 questions · ~20 min · 1 respondent</summary>
+  <div class="space-y-2 mt-2">
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">R1</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Handoff Flow.</strong> "Walk us through what happens when Guidance hands you scored results. Draw it." 📸</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">R2</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Records Storage &amp; Access.</strong> "Where are physical records stored? Who has keys? Ever had records accessed by wrong person?" 📸</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">R3</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Processing Volume.</strong> "One at a time or batches? How many per day during peak?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">R4</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>RBAC Cross-Role Isolation.</strong> "Can Guidance access Registrar records? Should they?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">R5</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Email Notification Workflow.</strong> "If we automate email on result release — auto-send or review first?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">R6</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Direct Assessment Bottleneck.</strong> "Do walk-in applicants come to you? What slows that down?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">R7</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>First Screen Info.</strong> "When processing an application, what must be on the first screen?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">R8</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>Dashboard Metric.</strong> "If you had a dashboard — pending, processed, released — what ONE number matters most?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded">R9</span><span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded">ADD-ON</span><div class="text-xs"><strong>Wishlist.</strong> "Anything for your office — admission testing only?"</div></div></div>
+  </div></details>
+</section>
+
+<!-- ===== PROGRAM HEADS ===== -->
+<section class="role-section hidden" data-role="program-head">
+  <details open><summary class="text-sm font-bold text-brand-600 dark:text-brand-400 mb-2">🎓 Program Heads — 7 questions · ~12 min each · 2–3 respondents</summary>
+  <div class="space-y-2 mt-2">
+    <div class="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg text-xs mb-3">
+      <strong>🔑 BRING:</strong> Printed mapping table — ONE row per Program Head (show ONLY their program). Let them mark directly on the paper. Take photo afterward.
+    </div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 px-1.5 py-0.5 rounded">P1</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">★ CRITICAL</span><div class="text-xs"><strong>Cluster Mapping Validation.</strong> "Here's the cluster NEXIAM maps to your program. Does this match what you see in successful students? Mark agree/disagree/change." 📸</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">P2</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Negative Criteria.</strong> "Is there a sub-test score that would make you say 'this student should NOT be in my program'?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">P3</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Beyond Scores.</strong> "What matters for success in your program that exam scores can't capture?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">P4</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>Dashboard Priority.</strong> "If you had a dashboard — applicants scored, matched, quota remaining — what ONE number first? <a href="wireframes/program-head-admin.html" class="text-brand-500 underline">See wireframe</a>"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">P5</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>Aggregate vs. Individual.</strong> "Individual applicant scores or just aggregate numbers?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">P6</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Dashboard vs. Calls.</strong> "Would a direct dashboard reduce those coordination calls with Sir Sonny, or do you prefer talking directly?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded">P7</span><span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded">ADD-ON</span><div class="text-xs"><strong>Wishlist.</strong> "Anything for your program during admissions?"</div></div></div>
+  </div></details>
+</section>
+
+<!-- ===== APPLICANTS ===== -->
+<section class="role-section hidden" data-role="applicant">
+  <details open><summary class="text-sm font-bold text-brand-600 dark:text-brand-400 mb-2">👤 Applicants — 7 questions · ~7 min each · 3–5 respondents</summary>
+  <div class="space-y-2 mt-2">
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">A1</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>How Found Schedule/Results.</strong> "Facebook? Text? Came to campus? Word of mouth?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">A2</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Unnecessary Campus Visits.</strong> "Did you ever go to campus just to ask something you could've checked online?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">A3</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Email Viability.</strong> "Do you have email and check it? Would results by email work?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">A4</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Chatbot Trust.</strong> "If a chatbot answered deadlines &amp; requirements — but NOT course advice — would you use it? <a href='wireframes/applicant-portal.html' class='text-brand-500 underline'>See wireframe</a>"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">A5</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Program Decision.</strong> "How did you decide what program to apply for? Anyone help you?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">A6</span><span class="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400 px-1.5 py-0.5 rounded">DESIGN</span><div class="text-xs"><strong>Phone First Screen.</strong> "What's the ONE thing you'd want to see first on your phone?"</div></div></div>
+    <div class="q-card bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800"><div class="flex items-start gap-2"><span class="text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400 px-1.5 py-0.5 rounded">A7</span><span class="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">NEW</span><div class="text-xs"><strong>Frustration Point.</strong> "Single most frustrating thing about applying?"</div></div></div>
+  </div></details>
+</section>
+
+<!-- ===== CHECKLIST ===== -->
+<section class="role-section hidden" data-role="checklist">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+      <h3 class="text-sm font-bold mb-3">✅ What to Bring</h3>
+      <div class="text-xs space-y-1.5">
+        <div>☐ Printed cluster mapping table (1 row per Program Head)</div>
+        <div>☐ Phone camera (photos of marked tables, workspaces, answer sheets)</div>
+        <div>☐ Blank paper + pen (workflow sketches)</div>
+        <div>☐ This dashboard (phone or tablet)</div>
+        <div>☐ <a href="wireframes/index.html" class="text-brand-500 underline">Wireframes</a> open in browser</div>
+      </div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+      <h3 class="text-sm font-bold mb-3">📋 Post-Interview</h3>
+      <div class="text-xs space-y-1.5">
+        <div>☐ Fill Correlation Matrix (Guidance vs Registrar vs Prog Head vs Applicant)</div>
+        <div>☐ Photo of all marked-up mapping tables</div>
+        <div>☐ Photo of workflow sketches</div>
+        <div>☐ Compile FAQ list (from R1 Q12 + A1–A4)</div>
+        <div>☐ Compile DESIGN notes per role</div>
+        <div>☐ Compile ADD-ON wishlist items</div>
+      </div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+      <h3 class="text-sm font-bold mb-3">🔄 Correlation Matrix</h3>
+      <table class="w-full text-[10px] border-collapse"><tr class="border-b border-slate-200 dark:border-slate-700"><th class="text-left py-1">Topic</th><th class="text-left py-1">Guidance</th><th class="text-left py-1">Registrar</th><th class="text-left py-1">Prog Head</th><th class="text-left py-1">Applicant</th><th class="text-left py-1">Done</th></tr>
+        <tr class="border-b border-slate-100 dark:border-slate-800"><td class="py-1">Handoff: scored→released</td><td></td><td></td><td></td><td>N/A</td><td>☐</td></tr>
+        <tr class="border-b border-slate-100 dark:border-slate-800"><td class="py-1">Records access</td><td></td><td></td><td>N/A</td><td>N/A</td><td>☐</td></tr>
+        <tr class="border-b border-slate-100 dark:border-slate-800"><td class="py-1">Email: auto or reviewed?</td><td></td><td></td><td>N/A</td><td></td><td>☐</td></tr>
+        <tr class="border-b border-slate-100 dark:border-slate-800"><td class="py-1">Cluster→program fit</td><td></td><td>N/A</td><td></td><td>N/A</td><td>☐</td></tr>
+        <tr><td class="py-1">Chatbot scope</td><td></td><td>N/A</td><td>N/A</td><td></td><td>☐</td></tr>
+      </table>
+      <div class="text-[10px] text-slate-400 mt-2">Conflict rule: Applicant need wins. Document resolution.</div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+      <h3 class="text-sm font-bold mb-3">📊 Output Feeds</h3>
+      <div class="text-[10px] space-y-1">
+        <div><strong>SO1 (Process Analysis):</strong> Workflow sketches + handoff descriptions</div>
+        <div><strong>SO2 (Requirements):</strong> Feature justification + validated cluster mapping</div>
+        <div><strong>User Design:</strong> Design preference notes (screen, layout, data density)</div>
+        <div><strong>Chapter 3:</strong> Cross-role correlation findings, validated gaps</div>
+        <div><strong>Feature Alignment:</strong> Confirmed feature-to-gap traceability</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ALL QUESTIONS (combined view) -->
+<section class="role-section" data-role="all">
+  <div class="text-xs text-slate-400 text-center py-8">Click a role tab above to filter questions. All 33 questions are organized by role. Use <strong>Ctrl+F</strong> to search by keyword.</div>
+</section>
+
+</main>
+
+<script>
+function switchTab(role) {
+  document.querySelectorAll('.role-section').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('bg-slate-100','dark:bg-slate-800'); });
+  
+  if (role === 'all') {
+    document.querySelectorAll('.role-section').forEach(s => s.classList.remove('hidden'));
+  } else {
+    const target = document.querySelector(`[data-role="${role}"]`);
+    if (target) target.classList.remove('hidden');
+  }
+  
+  const activeBtn = document.querySelector(`[onclick="switchTab('${role}')"]`);
+  if (activeBtn) { activeBtn.classList.add('active'); activeBtn.classList.remove('bg-slate-100','dark:bg-slate-800'); }
+}
+
+// Default: show all questions
+switchTab('all');
+</script>
+
+<footer class="text-center text-[10px] text-slate-400 py-6 border-t border-slate-200 dark:border-slate-800 max-w-6xl mx-auto">
+  NEXIAM Interview Dashboard · Round 3 · 33 questions · <a href="wireframes/index.html" class="text-brand-500 underline">Wireframes</a> · <a href="features.html" class="text-brand-500 underline">Features</a> · <a href="gantt.html" class="text-brand-500 underline">Gantt</a>
+</footer>
+
+</body></html>

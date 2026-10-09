@@ -1,0 +1,1261 @@
+{
+  "version": "6.1",
+  "id": "cwuczi3uh3gpndzavohf7fqv",
+  "name": "ISPSC Tagudin Campus \u2014 Admission Journey Survey",
+  "events": [
+    {
+      "id": "crj3jp3kg6l5jwbys3bk104x",
+      "type": "start",
+      "graphCoordinates": {
+        "x": 0,
+        "y": 0
+      },
+      "outgoingEdgeId": "cqsrz2sb0mo4x5d7q1mdisrh"
+    }
+  ],
+  "groups": [
+    {
+      "id": "cw5fszzjv46dfbrkx0xm1gmi",
+      "title": "1. Welcome & Privacy",
+      "graphCoordinates": {
+        "x": 200,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "c57x1lkn6ecaslvmwq9p7jhe",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udc4b Hello there! Greetings from ISPSC Tagudin Campus."
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "We are 4th-year BSIT researchers conducting our capstone study: NEXIAM (College Admission & Testing System)."
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "As a freshman who recently experienced the admission process, your voice will directly help improve the system for future students!"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c6175bajce0x4evx4tpmtbej",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udd12 Data Privacy Notice (RA 10173):"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Your answers are voluntary, anonymous, and used strictly for academic research."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cnzzoaq7ddtks13uukl643oe",
+          "type": "choice input",
+          "options": {
+            "variableId": null,
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cpgm58dlk9qrdkxxo09t0pjj",
+              "content": "Let's start! \ud83d\ude80"
+            }
+          ],
+          "outgoingEdgeId": "cxckk3mrcxvod1i8zgha6r3p"
+        }
+      ]
+    },
+    {
+      "id": "cq5pt422e6vawiytevhnl55x",
+      "title": "2. Admission Journey Refresher",
+      "graphCoordinates": {
+        "x": 550,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cnsb463jjqcgppkttkoq3bic",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83e\udded Quick Journey Refresher \u2014 Remember the 4 stages:"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "1\ufe0f\u20e3 Application: Submitting Grade 12 cards & requirements"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "2\ufe0f\u20e3 Exam & Batch: Awaiting schedule & taking the ICAT"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "3\ufe0f\u20e3 Consultation: Score release & counseling in Guidance"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "4\ufe0f\u20e3 Enrollment: Choosing program & registering at Registrar"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "ccogptu5ijnl758ffjo67hby",
+          "type": "choice input",
+          "options": {
+            "variableId": null,
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "c9jpyg0rdqp3l9o5i6z3imxm",
+              "content": "Got it! Proceed to questions \ud83d\udc4d"
+            }
+          ],
+          "outgoingEdgeId": "ctenwizzddjngbfhetas5dtw"
+        }
+      ]
+    },
+    {
+      "id": "cfgwx7rqfbopz9pnbxwutfjp",
+      "title": "3. Student Profile",
+      "graphCoordinates": {
+        "x": 900,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cmk7k3ti07ca8m26iolbooso",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "First, what course or academic program are you currently enrolled in?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "ca9m548hfdu6dgoonvr0f8ko",
+          "type": "text input",
+          "options": {
+            "labels": {
+              "placeholder": "e.g. BSIT, BSHM, BEEd, BSEd, etc."
+            },
+            "variableId": "czncm3o2y5ldgotcg2yvyq5k"
+          }
+        },
+        {
+          "id": "ccs3gu5c2h7djgyvmohkfmlm",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Which municipality do you reside in?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cvkpv256e83ng6xpu40qemtk",
+          "type": "choice input",
+          "options": {
+            "variableId": "c5npyvt1te15m66lptn7k94x",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cmdtb3isw64qgjnsvp11eq1k",
+              "content": "Tagudin"
+            },
+            {
+              "id": "c3m1cij2j0x9tsxe5mwoutvg",
+              "content": "Sta. Cruz"
+            },
+            {
+              "id": "c6idj11fnmk0682u28gsbvyw",
+              "content": "Sta. Lucia"
+            },
+            {
+              "id": "cc3ud1tn00hq0j9dui4xu3cy",
+              "content": "Bangar"
+            },
+            {
+              "id": "cflw8ib92zbao7xp76jmz0nl",
+              "content": "Sudipen"
+            },
+            {
+              "id": "c61pp5vajaw1m58kux04fa8m",
+              "content": "Alilem"
+            },
+            {
+              "id": "csxvqs3k7i3zjg74bpk7n3rq",
+              "content": "Suyo"
+            },
+            {
+              "id": "cp0d7zf5oke51uw4aimfrz03",
+              "content": "Other municipality"
+            }
+          ],
+          "outgoingEdgeId": "cdojsdehfe2jxoah0f1aq240"
+        }
+      ]
+    },
+    {
+      "id": "cplnremqvojqly47sa3ncjm3",
+      "title": "4. Device & Internet Access",
+      "graphCoordinates": {
+        "x": 1250,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cmw3quqxvipz5wypjtjmu0q2",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "What device do you primarily use to check school announcements?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c298if9kvl8sxpvbdkfa9una",
+          "type": "choice input",
+          "options": {
+            "variableId": "cg1aoku7rdabkktayf2tkmmg",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "c44wi8rb76iwfscap14t4vtq",
+              "content": "\ud83d\udcf1 Smartphone (Android/iOS)"
+            },
+            {
+              "id": "cdg7vjq76wrzit72xa33bop8",
+              "content": "\ud83d\udcbb Laptop / Desktop Computer"
+            },
+            {
+              "id": "c9oubtrm46b720wrsggt7wgd",
+              "content": "\ud83d\udc65 Shared device with family/friends"
+            }
+          ]
+        },
+        {
+          "id": "cil90ix1eglm10ck5aj4v4an",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "What is your primary internet connection at home?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c6po0d50doamwt78js852xo2",
+          "type": "choice input",
+          "options": {
+            "variableId": "cy8k6ktzekngy48ph2oadj0w",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cth3ibq85h08mvdaems4l57h",
+              "content": "\ud83d\udcf6 Prepaid Mobile Data (Load)"
+            },
+            {
+              "id": "c24g3po0n4snchzaqhsfisev",
+              "content": "\ud83c\udf10 Home Wi-Fi / Broadband"
+            },
+            {
+              "id": "c12ffddiqkf97i5rmeopy7q8",
+              "content": "\ud83e\ude99 Community / Piso Wi-Fi"
+            },
+            {
+              "id": "c35lnlmoq8k5cet1xi170q1n",
+              "content": "\u274c No regular internet"
+            }
+          ],
+          "outgoingEdgeId": "cip8ue7v8mt4lq892nvz03jm"
+        }
+      ]
+    },
+    {
+      "id": "cvxc5w1tats88tu6gg3fzzfz",
+      "title": "5. Stage 1 (Requirements)",
+      "graphCoordinates": {
+        "x": 1600,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "crb2r7s3bnc02nr3x57nn5pj",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udcc1 Stage 1 (Application): How did you verify that your submitted documents were complete and accepted?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cwxlnklgzbb9dcb8nja1zhfk",
+          "type": "choice input",
+          "options": {
+            "variableId": "cxe7j4zh56w5qrxquw9137xc",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cc3v69s71ubjkessbf2c2e24",
+              "content": "\u2705 Staff confirmed them immediately during campus submission"
+            },
+            {
+              "id": "c8qua5jtsg6uln621br2e6oy",
+              "content": "\u2753 Uncertain and worried about missing files until exam day"
+            },
+            {
+              "id": "c50o1juv5y7wj64o2vjah472",
+              "content": "\ud83d\udcac Had to message school Facebook / ask classmates"
+            },
+            {
+              "id": "colitf1u0ybzgz08rkw3jczi",
+              "content": "Other"
+            }
+          ],
+          "outgoingEdgeId": "c8sqii9ukqn54uwlwjed6do1"
+        }
+      ]
+    },
+    {
+      "id": "c8rqw7rla9nn8vlxays5r0zx",
+      "title": "6. Stage 2 (Exam & Scheduling)",
+      "graphCoordinates": {
+        "x": 1950,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cteyo481sjt892sggvviatsk",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udcc5 Stage 2 (Exam Schedule): How did you find out about your ICAT date and assigned batch?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c34j3ewy2yc8gkbysn95qmca",
+          "type": "choice input",
+          "options": {
+            "variableId": "c0zh8e81uljstbfss0a5s1y3",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cfcb0k8x7emf8baaccuio28t",
+              "content": "\ud83d\udce2 Official Facebook page post"
+            },
+            {
+              "id": "c439oqv6fb89ypd8uwge0ghe",
+              "content": "\ud83d\udc65 Classmate / Group chat"
+            },
+            {
+              "id": "cpu3bvtutf9ewp61o9rrb31m",
+              "content": "\ud83c\udfeb Went to campus in person to ask"
+            },
+            {
+              "id": "cs6e4bvo520be3wiqv5wt7cn",
+              "content": "\ud83d\udce9 Official SMS text / call from school"
+            }
+          ]
+        },
+        {
+          "id": "cu6oz2bkeslq4x3f0nrvj2xu",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Did you encounter any of these challenges with your exam schedule?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "crdqny1g5b0u5spy8axvpyb5",
+          "type": "choice input",
+          "options": {
+            "variableId": "czvdjrd0xvkjly5epq46kmr0",
+            "isMultipleChoice": true
+          },
+          "items": [
+            {
+              "id": "csbwbertt2m5ysdyqcbcdx7x",
+              "content": "\u26a0\ufe0f Schedule conflict (clashed with rehearsals, school, or trips)"
+            },
+            {
+              "id": "cvycd1ycaotpemupc6nb2boz",
+              "content": "\u23f3 Short notice (announced too close to exam date)"
+            },
+            {
+              "id": "c6fq7u5fztt7v9ughbke7ges",
+              "content": "\ud83d\udd04 Batch reallocation (batch was full, moved to another date)"
+            },
+            {
+              "id": "c530lwlqrxy9rz7wm9nf1q4l",
+              "content": "\u2728 Smooth schedule (no issues with date or time)"
+            }
+          ],
+          "outgoingEdgeId": "com1c88ll7nc0xo4nlegtehx"
+        }
+      ]
+    },
+    {
+      "id": "ciozzvmhi61245qk4a4ifl29",
+      "title": "7. Stage 3 (Results & Counseling)",
+      "graphCoordinates": {
+        "x": 2300,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cdec8n4en4wf2s6pd3ebqqd7",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udcca Stage 3 (Results): About how long did it take before your exam score was available?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cio5kfle4sk7xmfly0slm5vh",
+          "type": "choice input",
+          "options": {
+            "variableId": "ca7i0lk57e5iiklnq73eqm29",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "c52bwnvbymff4crskszo52vh",
+              "content": "\u26a1 Within 1 week"
+            },
+            {
+              "id": "c2ib3kkfoivmu0tj5ymawlyr",
+              "content": "\ud83d\uddd3\ufe0f 1 to 2 weeks"
+            },
+            {
+              "id": "cf0peive75gnuouy0yml2dkf",
+              "content": "\u23f3 More than 2 weeks"
+            },
+            {
+              "id": "cpdpzuarwcfxvdoxnlt11hcx",
+              "content": "\ud83d\udc40 Only found out on consultation day itself"
+            }
+          ]
+        },
+        {
+          "id": "c4433yezvxqgpjryo0rk3hpv",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "On consultation day, about how long did you wait in line before speaking with the Counselor?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cd0y95f57jdwyosgb9j0e250",
+          "type": "choice input",
+          "options": {
+            "variableId": "c8fvno175dsszduxxek7xzgh",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cpu9nuswjurs977rtxo3r3z2",
+              "content": "\ud83d\udfe2 Under 30 minutes (fast)"
+            },
+            {
+              "id": "ccsnff8ao4zeqlnlctenewj3",
+              "content": "\ud83d\udfe1 30 mins to 1 hour"
+            },
+            {
+              "id": "c726o5q3td0ojkivsparhu0x",
+              "content": "\ud83d\udfe0 1 to 2 hours"
+            },
+            {
+              "id": "cexktdq0ig5nyamjuuozvz8s",
+              "content": "\ud83d\udd34 More than 2 hours / spent half the day in queue"
+            }
+          ]
+        },
+        {
+          "id": "c8ltse3akibq15ryr0xn6uct",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "How would you describe your consultation advising session?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cwr1wnvwdhj1y3ul8wgv9yvd",
+          "type": "choice input",
+          "options": {
+            "variableId": "cgb4v5f532s5qx1ibqx91raa",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "ccruzjkbtj570vbxndl2dhis",
+              "content": "\ud83c\udfaf In-depth career advising based on my score and interests"
+            },
+            {
+              "id": "c8hlio7fbltj5deeybcz9gmg",
+              "content": "\u26a1 Brief score release (2\u20135 mins) due to the long queue"
+            },
+            {
+              "id": "c17uxse4knvt040h9lofcdyh",
+              "content": "\ud83d\udccb Just notified of pass/fail status with minimal counseling"
+            }
+          ],
+          "outgoingEdgeId": "c5fhj4cle213gvim210g3z1f"
+        }
+      ]
+    },
+    {
+      "id": "c5p3idpr26a3w22gwg4zo0rh",
+      "title": "8. Stage 4 (Enrollment) & Pain Ranking",
+      "graphCoordinates": {
+        "x": 2650,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "c5ptog3fom9jubsr8lyak38k",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83c\udf93 Stage 4 (Program Selection & Enrollment): How was your experience securing your program?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cb59bwy3s29dzmgexz0idtj6",
+          "type": "choice input",
+          "options": {
+            "variableId": "csle51p8hogqqdai650x1u5x",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cmv6cic24bge2q9axeqam58z",
+              "content": "\u2705 Direct admission (open program with no issues)"
+            },
+            {
+              "id": "cfwqjipch0f3ypqfctiy7u5y",
+              "content": "\ud83d\udcd1 Required specific qualifying score / interview"
+            },
+            {
+              "id": "c91fn5ae8rxxbwxxdzngo60c",
+              "content": "\u26a0\ufe0f First choice was full / limited sections; had to adjust course"
+            }
+          ]
+        },
+        {
+          "id": "cow893ilzbwpk7zzcbtooiv6",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Looking across your whole admission journey, which stage was the MOST DIFFICULT or tiring?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cqn3r30im3zvdf0zcly6q1y9",
+          "type": "choice input",
+          "options": {
+            "variableId": "czxg6fz0jskn47x430hmund9",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "c3og87uxfbrqot50f8ra4a49",
+              "content": "Stage 1: Documents & Requirements Submission"
+            },
+            {
+              "id": "crf5357l392zpa555ozfxd9b",
+              "content": "Stage 2: Exam Scheduling & Travel on Exam Day"
+            },
+            {
+              "id": "cse0eyf4lsh92byd0s03i8t5",
+              "content": "Stage 3: Result Waiting & Long Consultation Queue"
+            },
+            {
+              "id": "ciu0kyvx7ql6qofld8lk2yjh",
+              "content": "Stage 4: Program Slot Securing & Enrollment"
+            }
+          ],
+          "outgoingEdgeId": "c9npskw3w2ze24teuzribl1o"
+        }
+      ]
+    },
+    {
+      "id": "c9flqg9wz3qn04yipqan89ch",
+      "title": "9. Digital Feature Evaluation",
+      "graphCoordinates": {
+        "x": 3000,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cogne1fv6vke19q0237i9tuy",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udca1 Now, let's rate proposed digital features for NEXIAM!"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "How helpful would each feature be for incoming freshmen?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cwfz8dm9ykmmf5fwlww54n20",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "1\ufe0f\u20e3 Online Appointment & Slot Selection (choose your exam/consultation date online to avoid conflicts):"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cye0kjf1ljzykav9ynd2muif",
+          "type": "choice input",
+          "options": {
+            "variableId": "c2mo03b4wjhbk3yce4o554ez",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cwyassjqgthc4aget8vclpj7",
+              "content": "1 - Not Helpful"
+            },
+            {
+              "id": "czi8db12vupmnlxxb7523920",
+              "content": "2 - Slightly Helpful"
+            },
+            {
+              "id": "c7ro1x8ln5ww6nmyamri77tb",
+              "content": "3 - Neutral"
+            },
+            {
+              "id": "c26q10kssjla158pwauxenwl",
+              "content": "4 - Helpful"
+            },
+            {
+              "id": "cmxqpi89cf5zjel20xdb5iim",
+              "content": "5 - Extremely Helpful \u2b50"
+            }
+          ]
+        },
+        {
+          "id": "ct1us4dq6l18umfuawtiipqy",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "2\ufe0f\u20e3 Program Capacity & Quota Transparency (clearly see which courses have open vs. limited sections):"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c3263g6fpxy8wme5v8wpq61u",
+          "type": "choice input",
+          "options": {
+            "variableId": "czpy4zamdi6rlut85wtqgk9d",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cherj1sgjk6hl4x6me1q4ynu",
+              "content": "1 - Not Helpful"
+            },
+            {
+              "id": "ctz2gce17w541kpauv770zw1",
+              "content": "2 - Slightly Helpful"
+            },
+            {
+              "id": "coe7pbytsmzfoyauhcuilb0h",
+              "content": "3 - Neutral"
+            },
+            {
+              "id": "ci4dgkv9307hztf5p0diljed",
+              "content": "4 - Helpful"
+            },
+            {
+              "id": "cysidmfa29iw29kfwp9rtid4",
+              "content": "5 - Extremely Helpful \u2b50"
+            }
+          ]
+        },
+        {
+          "id": "ccr9qoji6uysy8yembumsb4b",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "3\ufe0f\u20e3 24/7 Applicant Status Portal (personal Reference ID to track verification and official score anytime):"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cluohivbn6zxh12d84zc7x3h",
+          "type": "choice input",
+          "options": {
+            "variableId": "ce7nbvh2ndcqfaa1xwd3c6g7",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "c2u6cfiyfp6r4shfpjca0u9o",
+              "content": "1 - Not Helpful"
+            },
+            {
+              "id": "cjpbos9roq8482mhwnc700nh",
+              "content": "2 - Slightly Helpful"
+            },
+            {
+              "id": "cr81sk7cywxcoj13o9lf5um3",
+              "content": "3 - Neutral"
+            },
+            {
+              "id": "ckr7ck18x42x4rrugd3zvttb",
+              "content": "4 - Helpful"
+            },
+            {
+              "id": "czl4lc4wsqqizb0dwb7agw07",
+              "content": "5 - Extremely Helpful \u2b50"
+            }
+          ]
+        },
+        {
+          "id": "clrm64qq9hu5wuwd7iampqgp",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "4\ufe0f\u20e3 24/7 FAQ & Policy Chatbot (instant answers to deadlines and requirements anytime):"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "cnph4e16ak67tvdbvx3cealw",
+          "type": "choice input",
+          "options": {
+            "variableId": "c5fg0o0oyawwy38p0tui1to9",
+            "isMultipleChoice": false
+          },
+          "items": [
+            {
+              "id": "cnegz34x16jfo4uwp7zxyq4o",
+              "content": "1 - Not Helpful"
+            },
+            {
+              "id": "c55m7dpcsb3dbrl0m7k61q41",
+              "content": "2 - Slightly Helpful"
+            },
+            {
+              "id": "cye6lplk4iat73u8zsyy66tn",
+              "content": "3 - Neutral"
+            },
+            {
+              "id": "cwdru5369ns5939yqv9xepty",
+              "content": "4 - Helpful"
+            },
+            {
+              "id": "chjjea7rmw5hm26q3rzufaqw",
+              "content": "5 - Extremely Helpful \u2b50"
+            }
+          ],
+          "outgoingEdgeId": "c6u267oofqh89x6y94l2tdzb"
+        }
+      ]
+    },
+    {
+      "id": "c7vqziw9bsfo675wiqkyry6b",
+      "title": "10. Open Feedback & Ideas",
+      "graphCoordinates": {
+        "x": 3350,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "c59mp94ewgl8rt33qoq0rb6q",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83d\udcad Almost done! Was there any memorable hitch, delay, or confusing moment during your admission? (Optional)"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c8zmfltpeupikiin0jvo8nge",
+          "type": "text input",
+          "options": {
+            "labels": {
+              "placeholder": "Feel free to share any details..."
+            },
+            "variableId": "c93npb6agcx6qq7rsiy1sv7p"
+          }
+        },
+        {
+          "id": "c9kdor3vybbsns0qmffhsnep",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83c\udf1f If you could suggest ONE improvement to make admissions smoother for future freshmen, what would it be?"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "ceqznktzh6edrgd8gnggbpbn",
+          "type": "text input",
+          "options": {
+            "labels": {
+              "placeholder": "Your idea or suggestion..."
+            },
+            "variableId": "cz37sgf7iivvy0lm2kfiur6y"
+          },
+          "outgoingEdgeId": "c1ofam3aqh7hyfql6zayg0gi"
+        }
+      ]
+    },
+    {
+      "id": "ck0yx1j0iaw3a3wobk9ckpr7",
+      "title": "11. Thank You & Finish",
+      "graphCoordinates": {
+        "x": 3700,
+        "y": 0
+      },
+      "blocks": [
+        {
+          "id": "cewp55j68y96fo852x0ckckt",
+          "type": "text",
+          "content": {
+            "richText": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "\ud83c\udf89 Maraming salamat sa iyong oras at tulong!"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Your responses will directly help shape NEXIAM into a faster, transparent, and stress-free admission system for ISPSC Tagudin."
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "We wish you all the best in your college journey! \u2728"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "cqsrz2sb0mo4x5d7q1mdisrh",
+      "from": {
+        "eventId": "crj3jp3kg6l5jwbys3bk104x"
+      },
+      "to": {
+        "groupId": "cw5fszzjv46dfbrkx0xm1gmi"
+      }
+    },
+    {
+      "id": "cxckk3mrcxvod1i8zgha6r3p",
+      "from": {
+        "blockId": "cnzzoaq7ddtks13uukl643oe"
+      },
+      "to": {
+        "groupId": "cq5pt422e6vawiytevhnl55x"
+      }
+    },
+    {
+      "id": "ctenwizzddjngbfhetas5dtw",
+      "from": {
+        "blockId": "ccogptu5ijnl758ffjo67hby"
+      },
+      "to": {
+        "groupId": "cfgwx7rqfbopz9pnbxwutfjp"
+      }
+    },
+    {
+      "id": "cdojsdehfe2jxoah0f1aq240",
+      "from": {
+        "blockId": "cvkpv256e83ng6xpu40qemtk"
+      },
+      "to": {
+        "groupId": "cplnremqvojqly47sa3ncjm3"
+      }
+    },
+    {
+      "id": "cip8ue7v8mt4lq892nvz03jm",
+      "from": {
+        "blockId": "c6po0d50doamwt78js852xo2"
+      },
+      "to": {
+        "groupId": "cvxc5w1tats88tu6gg3fzzfz"
+      }
+    },
+    {
+      "id": "c8sqii9ukqn54uwlwjed6do1",
+      "from": {
+        "blockId": "cwxlnklgzbb9dcb8nja1zhfk"
+      },
+      "to": {
+        "groupId": "c8rqw7rla9nn8vlxays5r0zx"
+      }
+    },
+    {
+      "id": "com1c88ll7nc0xo4nlegtehx",
+      "from": {
+        "blockId": "crdqny1g5b0u5spy8axvpyb5"
+      },
+      "to": {
+        "groupId": "ciozzvmhi61245qk4a4ifl29"
+      }
+    },
+    {
+      "id": "c5fhj4cle213gvim210g3z1f",
+      "from": {
+        "blockId": "cwr1wnvwdhj1y3ul8wgv9yvd"
+      },
+      "to": {
+        "groupId": "c5p3idpr26a3w22gwg4zo0rh"
+      }
+    },
+    {
+      "id": "c9npskw3w2ze24teuzribl1o",
+      "from": {
+        "blockId": "cqn3r30im3zvdf0zcly6q1y9"
+      },
+      "to": {
+        "groupId": "c9flqg9wz3qn04yipqan89ch"
+      }
+    },
+    {
+      "id": "c6u267oofqh89x6y94l2tdzb",
+      "from": {
+        "blockId": "cnph4e16ak67tvdbvx3cealw"
+      },
+      "to": {
+        "groupId": "c7vqziw9bsfo675wiqkyry6b"
+      }
+    },
+    {
+      "id": "c1ofam3aqh7hyfql6zayg0gi",
+      "from": {
+        "blockId": "ceqznktzh6edrgd8gnggbpbn"
+      },
+      "to": {
+        "groupId": "ck0yx1j0iaw3a3wobk9ckpr7"
+      }
+    }
+  ],
+  "variables": [
+    {
+      "id": "czncm3o2y5ldgotcg2yvyq5k",
+      "name": "course",
+      "isSessionVariable": true
+    },
+    {
+      "id": "c5npyvt1te15m66lptn7k94x",
+      "name": "municipality",
+      "isSessionVariable": true
+    },
+    {
+      "id": "cg1aoku7rdabkktayf2tkmmg",
+      "name": "device",
+      "isSessionVariable": true
+    },
+    {
+      "id": "cy8k6ktzekngy48ph2oadj0w",
+      "name": "internet",
+      "isSessionVariable": true
+    },
+    {
+      "id": "cxe7j4zh56w5qrxquw9137xc",
+      "name": "s1_verification",
+      "isSessionVariable": true
+    },
+    {
+      "id": "c0zh8e81uljstbfss0a5s1y3",
+      "name": "s2_notice_channel",
+      "isSessionVariable": true
+    },
+    {
+      "id": "czvdjrd0xvkjly5epq46kmr0",
+      "name": "s2_schedule_issues",
+      "isSessionVariable": true
+    },
+    {
+      "id": "ca7i0lk57e5iiklnq73eqm29",
+      "name": "s3_score_wait_time",
+      "isSessionVariable": true
+    },
+    {
+      "id": "c8fvno175dsszduxxek7xzgh",
+      "name": "s3_consultation_queue",
+      "isSessionVariable": true
+    },
+    {
+      "id": "cgb4v5f532s5qx1ibqx91raa",
+      "name": "s3_advising_quality",
+      "isSessionVariable": true
+    },
+    {
+      "id": "csle51p8hogqqdai650x1u5x",
+      "name": "s4_enrollment_status",
+      "isSessionVariable": true
+    },
+    {
+      "id": "czxg6fz0jskn47x430hmund9",
+      "name": "hardest_stage",
+      "isSessionVariable": true
+    },
+    {
+      "id": "c2mo03b4wjhbk3yce4o554ez",
+      "name": "rating_online_slots",
+      "isSessionVariable": true
+    },
+    {
+      "id": "czpy4zamdi6rlut85wtqgk9d",
+      "name": "rating_capacity_transparency",
+      "isSessionVariable": true
+    },
+    {
+      "id": "ce7nbvh2ndcqfaa1xwd3c6g7",
+      "name": "rating_status_portal",
+      "isSessionVariable": true
+    },
+    {
+      "id": "c5fg0o0oyawwy38p0tui1to9",
+      "name": "rating_policy_chatbot",
+      "isSessionVariable": true
+    },
+    {
+      "id": "c93npb6agcx6qq7rsiy1sv7p",
+      "name": "unexpected_hitch",
+      "isSessionVariable": true
+    },
+    {
+      "id": "cz37sgf7iivvy0lm2kfiur6y",
+      "name": "improvement_suggestion",
+      "isSessionVariable": true
+    }
+  ],
+  "theme": {},
+  "selectedThemeTemplateId": null,
+  "settings": {},
+  "createdAt": "2026-08-28T12:15:19.739Z",
+  "updatedAt": "2026-08-28T12:15:19.739Z",
+  "icon": null,
+  "folderId": null,
+  "publicId": null,
+  "customDomain": null,
+  "workspaceId": "proWorkspace",
+  "resultsTablePreferences": null,
+  "isArchived": false,
+  "isClosed": false,
+  "whatsAppCredentialsId": null
+}

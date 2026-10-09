@@ -1,0 +1,147 @@
+NEXIAM — ODT & ODP EDIT GUIDE
+================================================================================
+
+SOURCE FILES (look at these while editing):
+  NEXIAM.txt               → /home/user/Documents/NEXIAM - Capstone/NEXIAM.txt
+  Presentation text         → /home/user/Documents/NEXIAM - Capstone/NEXIAM-presentation.txt
+
+================================================================================
+ODT (MANUSCRIPT)
+================================================================================
+
+--- PROCTOR ROLE (2 places) ---
+
+Find:  the Proctor is one of the seven defined user roles
+Put:   the Proctor is a duty overlay assignable to any existing staff role
+       at administrative discretion
+
+Find:  NEXIAM supports seven distinct user roles: Applicant, Proctor,
+       Guidance Counselor, Guidance Administrator, Registrar Staff,
+       Registrar Administrator, and System IT Administrator.
+Put:   NEXIAM supports seven distinct user roles: Applicant, Program Head,
+       Guidance Counselor, Guidance Administrator, Registrar Staff,
+       Registrar Administrator, and System IT Administrator. An eighth
+       actor, Proctor, is a duty overlay assignable to any existing staff role.
+
+--- APPENDIX B ---
+
+Find:  Super Admin
+Put:   System IT Administrator
+
+--- TYPOS ---
+
+Find             →  Put
+optiomization    →  optimization
+Glosary          →  Glossary
+concering        →  concerning
+in replacement to → in replacement of
+data driven      →  data-driven   (do this 2 times)
+under utilized   →  under-utilized
+personel         →  personnel
+forApplicant     →  for Applicant
+
+--- GRAMMAR ---
+
+Find                        →  Put
+researcher's background     →  researchers' background
+measurable evidences        →  measurable evidence
+prove if                    →  prove whether
+In hindsight,               →  Compounding this,
+
+--- CITATIONS ---
+
+At data analysis section (near "Cohen's d"):
+  After "Cohen's d" → add "(Cohen, 1988)"
+
+At methodology (Peng et al. line):
+  Find:   to prevent architectural debt and align with productivity gains
+          documented in recent AI software engineering studies (Peng et al., 2023)
+  Put:    to ensure code quality. This AI-augmented workflow aligns with
+          productivity gains documented in recent software engineering
+          studies (Peng et al., 2023)
+
+--- GLOSSARY ---
+
+Open NEXIAM.txt. Copy from "Glossary" down to just before "REFERENCES".
+Paste over the old glossary in your ODT. Done.
+
+--- TAM PHRASING ---
+
+Find:  the current manual process reduces my overall workload
+Put:   the current process reduces my overall workload
+
+Find:  when using the current manual process
+Put:   when using the current process
+
+--- BACKGROUND: 2 GRAMMAR SPOTS ---
+
+Line 35 area:
+  "sits lacks"     → "sits lacking"
+  "provene"        → "proven"
+  "a admission"    → "an admission"
+
+Line 36 area (closing):
+  Find:  Finally to pin down what is brought out by this needs-finding, is
+         another fundamental question that is demanded to be asked.
+  Put:   Finally, this needs-finding surfaces a fundamental question that
+         must be asked.
+
+--- DASH YEAR ---
+
+Body says: Dash et al. (2024)
+Ref list says: Dash (2026)
+Pick one. Make them match.
+
+--- REMOVE FROM REF LIST (7 entries) ---
+
+Calfoforo & Raga (2024)
+Cenezan & Valdez (2023)
+Nafrees & Kariapper (2020)
+Neupane et al. (2024)
+Rutvik et al. (2024)
+Tamascelli et al. (2025)
+Van Deventer et al. (2024)
+
+================================================================================
+ODP (PRESENTATION)
+================================================================================
+
+Open NEXIAM-presentation.txt. Make your ODP slides match.
+
+--- SLIDE COUNT ---
+
+Was 13. Now 14. Slide 8 split into two:
+  Slide 8  = Research Design
+  Slide 9  = Software Model (with stats graphic)
+
+Old 9→10, 10→11, 11→12, 12→13, 13→14.
+
+--- SLIDE 5 (IPO) ---
+
+Input: 7 items. Include "ML decision-support models" and "Triage advisory notes."
+Output #4: "Decision-support triage" — NOT "Aptitude dashboards."
+
+--- SLIDE 6 ---
+
+Put: The proctoring interface is cloud-connected but maintains offline
+     resilience via service-worker caching for exam venues with intermittent
+     connectivity.
+
+--- SLIDE 9 (Software Model) ---
+
+Has a table with 85% / 51% / 41% / 59-41 split. Source line underneath.
+Speaker doesn't read the numbers. Just the visual.
+
+--- SLIDE 11 (Population) ---
+
+Title: "47 Purposive Evaluators — 46 TAM + 1 IT Expert"
+  30 First-Year Students
+  11 Program Heads
+  3 Registrar Staff
+  2 Guidance Staff
+  1 IT Expert
+  Total: 47
+
+================================================================================
+END
+================================================================================

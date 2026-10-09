@@ -1,0 +1,3083 @@
+ILOCOSSllRl'OLVTRCllNlCSTATECOLL :<a:
+11'n udltt<)11n1u1s, T.- udln, llocm1Sur
+17
+
+
+  The E,,nluntion phnse focused ol\ usscssing the accuracy, intcrprct:ability, and pt'ncHcal usefulness of the generated clusters. Cluster validation metrics, including the Cttlinski-Harabasz Index, Davies-Bouldin Index, and Silhouette Score, were used to measure clustering quality. In addition, academic staff: guidance counselors, and IT personnel reviewed the clustering results to determine whether the identified patterns accurately reflected student performance and were suitable for academic decision support.
+  Finally, in the Deployment phase, the validated clustering model was integrated into a web-based system with a user-friendly dashboard. The system allowed authorized users to upload ICAT scores, generate and visualize clusters, and access individual student profiles. This phase transformed the clustering model into a practical tool for real-time academic analysis and data-driven planning at ISPSC Tagudin Campus.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Guid·d by the RlSP-DM frnmewurk, the Uusincss Understanding phase focused on identii)1ing meaningful groupings from lCAT scores that could support personalized academic guidance. This phase involved defining project objectives such as detennining student eligibility for board courses and identifying cognitive strengths and weaknesses. Establishing these objectives ensmed that the system aligned with institutional priorities, including cmriculum improvement and the effective use of ICAT data for infonned academic decision-making.
+  The Data Understanding phase involved the collection of ICAT results for the academic years 2024-2025 and 2025-2026 from the ISPSC Guidance Office. During this phase, the dataset was examined to identify issues such as missing values, inconsistencies, and outliers. Gaining a comprehensive understanding of the dataset at this stage ensured the reliability and validity of subsequent analyses.
+  In the Data Preparation phase, the dataset was cleaned, normalized, and transformed into an analyzable format. This process included removing incomplete records, selecting the six ICAT cognitive components, and normalizing the scores. Proper data preparation was essential to produce consistent and reliable clustering results.
+  The Modeling phase applied the K-Means clustering algorithm to the prepared dataset to identify natural groupings among students. The Elbow Method was used to determine the optimal number of clusters by identifying the point at which additional clusters no longer significantly improved the model's performance. Based on the clustering output, learner groupings such as All-Around Strong, Cognitive-Oriented, and Practical-Oriented students emerged.
+
+
+
+
+ILOCOS StJll POLYTRCHNf(' S'T'A'f'r,: COLLl GR
+T11gudl11 Cnm1111s, T1, 1ulin, lloco11 Sur
+15
+
+
+dt.'.\ eloping a web-based dnshbunrd for datn uploading, onulysis, and visualization. The adoption of this model nddressed the institution's need for improved data utilization and evidence-based academic decision-making while ensuring data accuracy, integrity, and ethical handling of sl11dent information, as illustrated in Figure 2.
+
+
+
+
+
+Figure 2. CRISP-DM (Cross-Industry Standard Process for Data Mining)
+
+  Figure 2 presents the CRISP-OM model adopted in this study. The model consists of six iterative phases: Business Understanding, Data Understanding, Data Preparation,
+Modeling, Evaluation, and Deployment. These phases guided the entire development process of the clustering system from conceptualization to implementation.
+
+
+u  "'' ,	t H'	H	' I	"	(.
+·,, f' I fl  (	rnp J I ,
+
+
+
+
+
+
+
+,, ' "· i a yn11111 imlivid11ul1hi rn h pa . ion and d ·t ·nnillati.on in till' lkld oflnfomrntion Tcchnolog . 1k  is tin:[ t\1ud on ofMr. Froilan M. Yukee and Mr .
+,. s Jill M. Yukee, who havecontinuously supported
+
+  andguided him tlu-oughout his journey. He began his academic path with exceller c	t th	RegionalScience High School for Region I, where he was recognized a one of the most outstanding students.His dedication to academics and eagerness to learn provided him with a strong foundation in science and technology, shaping his confidence to pursue IT as his chosen field. From an early age, Azriel has shown curiosity and
+determination in learning new skills, particularly in programming and technology.
+
+     He dreams of excelling as an IT professional, open to any specialty where his dedication, persistence, and hard work can truly make a difference. Azriel is not only eager to learn but also embraces challenges as opportunities for growth. He believes that success comes through perseverance, humility, and a constant desire for improvement. His natural leadership abilities and strong social skills allow him to work effectively with others, making him both a collaborative team player and a capable leader. In every endeavor, Azriel strives to balance technical excellence with genuine human connection. His journey reflects the values of resilience, curiosity, and service.
+
+A.J.M.Y
+
+
+
+
+
+
+
+
+
+An · nr	n
+l?O(f/\11:J' tt,.fl<)1
+
+
+1'uw111ilr . lk 111rntip11cd 1hff /.1 ,tote in
+
+
+   On October 13, 2025, the project manager presented the system to the Guidance Counselor, providing a concise overview of its purpose and the specific features designed to support student monitoring and record management. The project manager demonstrated how to navigate the dashboard, access student information, generate reports, and utilize tools for tracking behavior or academic performance. Throughout the session, they explained each function clearly, addressed the Guidance Counselor's questions, and ensured the Guidance Counselor felt confident and prepared to use the system effectively.
+
+
+
+
+
+
+
+
+11,0('0S smt 1•01.v•n:,('1·11H', tA'rl',COf.U'.l,W,
+T11 111lln Cnmpu , T, y.1111111 l111co, Sur
+
+
+Al'PJt:Nl)IX 'N
+C1m.TIFlCAT'l1: <>'F STATtSTJC;IAN
+
+ILOCOS SUR POLYTECHNIC STAT!!r:OLLEGI•'.
+TAGUDIN CAMPUS
+Tagudin, llocos Sur
+
+
+
+COLLEGE OF ARTS AND SCIENCES
+
+
+
+CERTIFICATION
+
+   This is to certify that I have checked the capstone project manuscript copy of YUKEE, AZRIEL JON M., BONIFACIO, CHRISTINE LORENCE., SALVADOR, JOHN MARK A., MACABITAS, ARIES P. entitled "CLUSTERING STUDENT ICAT SCORE USING MACHINE LEARNING
+ALGORITHM" which has been required for graduation in the BSIT program.
+
+   This certification is issued on this 22nd day of December 2025, at ILOCOS SUR POLYTECHNIC STATE COLLEGE TAGUDIN CAMPUS, TAGUDIN, ILOCOS SUR.
+
+
+
+
+
+
+
+
+GEORGE R. VILLANUEVA JR, DTI 
+Statistician
+
+
+
+stmfont I rrformnncc tr nds, This design supports the study's objective of providing a J rncticnl, nl'ccssiblc, nnd dntu-driven tool for academic guidance and institutional dt:·ision-muldng at lSPSC Tagudin Campus. The overall research process was conducted in iterative phases, including data collection, preprocessing, model development, system implementation, and evaluation, ensuring both technical reliability and contextual relevance.
+  To evaluate the system's usability, the System Usability Scale (SUS) was utilized as the primary research instrument. The SUS was selected due to its reliability in assessing usability, efficiency, and user satisfaction in system-based applications. The instrument was administered to the Guidance Counselor and Guidance Clerk, who are the intended end users of the system. Despite the limited number of respondents, this approach is methodologically sound, as SUS focuses on usability feedback from actual users, providing context-specific and valid evaluation of the system's effectiveness in meeting the operational needs of the Guidance Office.
+Software Model
+
+  To ensure that the system development followed a systematic and data-driven approach, this study adopted the Cross-Industry Standard Process for Data Mining (CRISP-DM) as its software development paradigm. CRISP-DM is widely recognized for its structured and iterative framework, which emphasizes problem understanding, data preparation, model development, evaluation, and deployment. Unlike traditional software development models such as Rapid Application Development (RAD) or the Waterfall model, which focus primarily on user interface design or follow a strictly linear sequence of steps, CRISP-DM centers on data analysis and model-driven
+decision-making. This made it highly suitable for clustering ICAT scores and
+
+
+
+
+
+
+
+n.ocos s,m 1•01Nn <·rn H' "'t "''·. cq1.u:t:·.
+'l'" liclln ( 1on1111!! 't v.11111111 llo<.fJ . 11r
+
+
+        Al'l'li NJ>IXM PLAGIARISMa H'ITfit 'ATION
+
+
+
+CERTIFICATION ON PLAGIARISM VERIFICATION
+
+
+
+   This is to certify that the thesis manuscript entitled "Clustering Student ICAT Score Using Machine Learning Algorithm" has undergone plagiarism content checking on November 29, 2025, and obtained a similarity index of one point thirty­ seven percent (1.37%) using ZeroGPT plagiarism detection software.
+   Issued this 29th day of NOVEMBER 2025 at llocos Sur Polytechnic State College, Tagudin Campus - MIS Office.
+
+
+
+
+
+
+Person conducted the plagiarism test
+
+
+
+
+
+
+,\l'l'fl, UI	I I
+l'LA<,lMU  MlU',. 111:1
+
+
+
+
+
+ZeroGPT
+Your Text is Human Written
+
+
+
+1.37% Al GP,-.
+
+
+Chapter 1
+I TRODUCTION
+
+TI1e present scenuio of higher education rs faced with so much pressure to make decu:oru aoo'.;
+
+.ipllludes and cogniti\'e profiles effectively for educational plannmg and careei gmd.:nct. Yi!11ou-.1e 1-ed
+
+srud1es lm·e established the potential of clusterin!! in educational data analysis. hthanah (1022) howed tbt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ILO,OS stm POLY'JM-:Jli
+
+I	hT;\Tf COl,U,(; .
+
+TAG1Jl)IN CAMP
+Tagudin, lloco Sur
+
+
+
+COLLEGE OF ARTS AND SCIE CES
+
+
+
+CERTIFICATION
+
+   This is to certify that I have checked the capstone project manuscript copy of YUKEE, AZRIEL JON M., BONIFACIO, CHRISTINE LORENCE., SALVADOR, JOHN MARK A., MACABITAS, ARIES P. entitled "CLUSTERING STUDENT ICAT SCORE USING MACHINE LEARNlNG
+ALGORITHM" which has been required for graduation in the BSIT program.
+
+   This certification is issued on this 21st day of November 2025 at llocos Sur Polytechnic State College - Tagudin Campus, Tagudin, Ilocos Sur.
+
+
+
+
+
+
+
+RHODA CONEPCION 0. VILLAMOR, MSE
+English Critic
+
+
+
+
+
+
+
+
+
+
+
+
+
+11,0CO!-lSUit POI.V'l'l'.Ctl	IC I A'U'. <'.Of.UJW
+'l'111t111ll11CsuttJlllil, TR 111tln1 lloto, 811r
+n
+
+APl'ENDlX ,J
+SUS TABULATION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+11,0(0 MIIIJ'OLYffl,<l'l, I<"	f,A!f,<OU,Jl
+1 Rttdln <4 mriu•t 'f	11dln Ho,,rt,, ""
+
+
+Al'l'f.r DIX l
+ERTlFl  All!:o ·IMPLt:M :rn ATIO
+
+nt1,u111.1c or 1111'. PIIILIPIIIIIE'
+OCOS SUR 1'01.VHCIINIC 51fl'Tt CULl.[GE ,
+lflGUIJIN CflMPUS TflGUDIN. 11.0COS !,UR
+
+CERTIFICATE OF IMPLEMENTATION
+       This is to certify that the Capstone Project entitled: "Clustering Student ICAT Score Using Machine Learning Algorithm"
+was successfully implemented at !locos Sur Polytechnic State College, Tagudin Campus and satisfactorily met the user requirement of the developed system.
+  Developers: Azricl Jon M.Yukee
+Chistlne Lorence H. Bonifacio John Mark A.Salvador
+Aries P. Macabitas
+
+Adviser: Mr. George Villanueva
+This certification is issued this 22nd of October, 2025 al llocos Sur Polytechnic State College,Tagudin
+Dr. Omar C. Valenzuela	L	I
+Guidance Councelor	,
+'	/	/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+r
+
+
+
+
+be able to use this system.
+
+
+
+
+5. I found the various
+functions in this system were well integrated.
+6. I thought there was too much
+
+?	?	?	D
+
+inconsistency in this	D
+system.
+
+
+7. I would imagine that
+most people would
+learn to use this	D
+system very quickly.
+
+
+8. I found this system
+very awkward to use	?	D
+-9-. -I felt very confident
+using this sy tcm.	?	?	?	D	D
+W. I needed to ll'am a I t of thing bl'fort I could 1et ioin 1 with thi	y tem.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ILOCOS SUR POLYTECHNlC STATE COLLEGE
+Tagudin Campus, Tagudin, llocos Sur
+74
+
+
+APPENDIXH QUESTIONNAIRE (SUS)
+The following questions are designed to evaluate how acceptable and user-friendly the Clustering Student ICAT Score Using Machine Learning Algorithm is.The researchers used the System Usability Scale (SUS) to assess the system's performance and gather feedback for improvement. Please answer honestly based on your experience.
+
+
+Name (Optional): 	_
+
+Position: ---
+Rating:
+
+5 - Strongly Agree
+
+4-Agree 3- Neutral
+2 - Disagree
+
+1 - Strongly Disagree
+
+Sex: ---
+
+
+Instruction: Your feedback i ·c·'cntialinhelping us improve thesystem and ensure it meets your needs. Please rq ond h nc·1ly ba·cdonyour experience.
+
+tron ly	l)i·agret	'eutral	Agree	Strongly
+Di·11 rtt>		 A -r-ee
+I	2	3		4	 5	
+1. 1 think that l ,\ould like to use thi
+sy tem frequently.
+
+I found the sy t m unnecc saril complex.
+
+--		
+3. 1 thought this y t m
+\\a. easy to use.	?	?	?	?	?
+
+4.
+
+
+
+
+
+l1 '11.fi-i vr.mation P/;J
+
+
+
+
+
+
+
+l)Ji,PLO Mt	f 'I ·" 'I
+
+
+1 q•, •Ill 1, 1h 1·1,1,, r ,, ,
+II Ol (1',  lll 1'01.\ II f II  II "I HI ( !Ill IC,
+
+OR. OM"RC. V"LENZUELA
+Gu or·!!Ccun,e r
+
+
+l und!!rs ned Sluder.tsof tile ea::hc'orof Sc rv.c 1.0 In' your app:o\•a! for thed p'O)'Tll'.!n1ol ourC o,' oo Pro,"I2 llachineLearning Algonthm,' 10 b'l im ·ememed· lheGu
+(ISPSC) - T UllinC.rnpus.
+
+,		ihc deployment proce.ss w;tl IN:lude sys!em 11'..c;ta'ta:•on. conf,gur;n. cf 1 v. b , .,•-. administrative occoun:s. use: orenta:,on Md µ:'Cl 1es1109lm·o:-.io;i!,C'l'Ctl-dGu' ;
+faculty ITl!!moors. Ml dala10 b-J proces..S(':! w1ro lland'Cdv. th stocl confid nt,a',ty,! " "·;
+privacy po!ick.!saM ethcal staridatds
+
+
+
+::ono
+> ·..-.r.J , ('"! l' ,:1 "n
+r •. ,#,,, _...,,-,,•.,,,, '".J"1
+\. •'. < ' ' •.• ; ' : ,,')
+
+We sioccrcly apprr.ci.;t.1:you· sup;;c1 <'!f)1 ?.f.PlO\'ill 1 1!'1p'o1Jl(l our S)-Stcm. \\hCh v. Ile'
+significantly to 1srsc·son;J:),r.J-e:t;ns l(l 1n'.c'Ju1'.e oata-Orr,,en $olutionsin couc.it:enaro
+decision-ma ingproce
+
+Rospccl!t1lly your:.,
+
+f)[:V[LOP - EUT
+GO/\LS
+Om•  r.J  UIJ
+j
+O·
+I
+i
+I
+1
+l
+i
+A,
+
+
+AZRIEL,;_YUKEE
+/	Hesca:- 1icr
+/
+ARIES _yds<cABIT AS
+nc5'frctier
+
+
+Noted:
+
+C"/.
+CHRISllNE LO,Rt(izEH. BONIFACIO
+Rt/.ea.'t r
+
+
+·  }'	.e
+
+GEORGE VILLANUEVA.JR,DIT
+/	-,
+
+JIM-MAR FAfLOSREYES, MIT
+
+JOHALYN S.1l.ACAMBRA.PHO
+
+i R­
+I·
+{
+•D
+
+AdvisIer.,
+
+,,),
+
+P	liea1, BSlT
+
+Dean,Co!le<je ol Arts andSc,eoces
+
+. Appcy;e,;l'.	.
+s	'	\	'h;'r - "
+
+
+u
+
+p
+
+
+.
+\\ urJ
+
+DR."OJU.CR.VALENZUELA
+Gu' arce Counse: r
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+lCNTl'I'\' 10:LA'l lO SHll':OJM MM
+
+
+, 111d n\ 1	ords
+
+I•
+
+
+f mil 1_11 01 fit t_n me rniddl _n m sex
+general_ability verbal_aptitude numerical_aptitude spatial_aptitude perceptual_aptitude manual_dexterity cluster_group created_at updated_at
+strand course gwa date_taken created_by
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ll ,(}( (}S Sl11\ t•()I, 'If',( 11 1(	f A1 1/ ( (Jfr,, t	f
+T	uclln( 11mrn·t • ""'"' II °'n
+
+
+A'Pl•RN1Jl X 1-
+DA1'A'ILOWl>IAGRA	l,t	l',lr1
+
+
+
+  -  
+
+
+
+..--
+
+
+
+
+
+
+
+
+Text
+
+-ogin ()edential	
+
+
+
+
+Manage
+Admin
+Accounts
+
+
+
+
+Addi\Jpdate admMI d1I
+
+
+
+	I	
+r	'I
+3.0
+
+l\ecommend Course----.'-----.J
+
+St01e S1uden1 infoonation, ICATSc01e,CouBe Recommend	,.--,
+Student Records
+
+
+--ellieveStudent Record--
+
+
+
+1CATscor· ---
+
+" pload RecO!d ndanual En,tru	'
+
+
+
+
+RelrieveData
+
+
+
+
+
+
+
+----n·MayCluster Maps (Temporaiy
+
+\
+I	'I
+6.0
+Download
+csv
+"
+
+
+Upload Cleaned csvCEL
+
+
+
+
+Request A	Yer Oa\a
+
+-	·-
+
+
+L-----1!11erieCSVFte	-
+
+
+
+
+
+
+
+Af'f''.'	IH	l
+
+0 A1 A J• J)	flf A( MA f J,	\	.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Updatedlist ot m,
+
+
+
+
+
+APP.:NIJJX t;
+USE CAS't DIAGRAM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Gudil[!C.v,;81
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ILocos sun ro1. ·, ·<,,
+'1n	11tllr1( ""''"'	°'""•flo
+
+{ ,, ,.'
+
+
+
+Al'l'f	J>1	H
+ICAT I'll()( f(Ji  JILO	Uf ,\'M J
+
+
+1,t•n1lillr,l1tt1 of
+,n, •111tu•n• r, n1
+,,,.0	f
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+End/Return	l
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ll,oc.o	rnn·oL -,,., n, u
+1'  IJ!tlh (	ftlfll"  t	•,1111
+
+
+A'Pl'l 101  "-
+COM MlJ, 'WA'J'JO	I,·:.l
+
+
+
+
+
+
+
+·· ;tt
+
+
+
+It, p11hlH·,,, ,,,, rhil f rd i l
+11,lll'O  \'II !'Ill\ IUII 'I<	II ! 01 f I !,I
+
+
+
+OR. O 'Mt C,Vi\lENZUElA
+Gt• ';itc C nicl,·
+
+Ai r t• . DR.OMAR C. Vi\lENZ\JElA
+G  ,cc Cc 'lSCl{I!
+
+\\'in:::. rcct'u"·sc-e\ y- · a:,µro,a\tocet uc ;\f r 1'.:d rn• t!\  '.',.t'\ 1 it,:G11d 'l CttJ,,.) .'J" r/ OJ'' i/,' '....' (f" '",
+d ,.:v : e c.-rn: rr,ict-ccs ,ind cl13lc119 s m t·a. din; ICl,T \lloco1 SJr fl ','. r:, i· r:·,, •A .•• .
+ri:1,:J:.; .;t ISP5C r.1gud· C,1TpJs. in1; mee ng form, o , Ill o •r i,• ,, wo.r1 ;,:1.. • t', t-,,e,.:, ·.'r• ;
+R c.i·:. i.•c:·	I!'. tn'J"l11Jlto Tccnr,ology, u, e·:no 9ach !o 01 S:l r.•.1!1 l·.'wrn,'.::,., i ,.-:.,·.·rJ·r,rtr •·-:-
+The ;..,5,c..:s,•.efa:ti:?rfromlh,s C1SC\.!SSen \\illd rc t 7·in'cm'itt-.eCeve'.,p"Ti --1\ o' o·;rcrc-o-:.\ 1c...3:,·:i.r-: c.r .f!,:
+er.: ;=C•Js:erres uOent ICAi Score Usi.r.gMach·ne Learn:ngAl;or',:hils: ih am o :..i; o..o, -:: 1 :o c:::,'!':o
+a) :c:r,:ha! ao i es un!U04;IVIS, d ma h:ne teaming t :t-ni J Sspecf,i;31 , K...'.'tins Ct• j: ·:-iJ :o ?."'a'rz.e e...-:
+c..c;r s:..::E,:sb-asedentheirICATscoresln ateass1 :h as General Ab-\ity. \'croa\Ao•t...?:e.? :.l i-ea\ !;,.., ,;.:
+$:;:I.!' A:): :..r:e. Percep:1;alP..p\1tuCe.andtt.a41tla1Dt(t ri•iy,7h re':1J'ts 01·th:$di.is:e....r; i,,.,,b--,?J ';( ':: a:a:!-::"""tt
+r c:·--.:, co..:ne aC•.1smg ar.d reseaith pu.: =s. and may also tu:tp in \: n:; ngshJ-d n 1,.t-., na·1r2::.-_e
+'.: c:r tY \.,ho are e!1;i ,efor t ard•r l?. '!d ce<..:"Se'S.	·
+
+
+
+
+r1I..	
+Jll.l-!.IAR F.  LOS REYES,MIT
+Pr g;'  H :i SSli
+\..1'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{ I,
+
+
+
+
+\ ,l'l'.
+
+1' 1	y ('1() I).A. co1,11l11111'ivc 111111ly li.of 'II forit1 11l1roti hrn fo1·
+
+l.'nlkgc studo11ts' key compclcnclci;.
+
+r in
+
+
+Intlis. G.. Dimokns. N., & K1trvclis1 P. (2024). O,iv ·ilii1g uni er.ity · <J11pini : clustering analysis for ucndcmic rnnkings.
+f\ lSEd, K. C. (2025). Gardner's theory of multiple intelligences.
+
+N:ifmi, A. F..M. Sani N.S. Zainudin, N. F. A., Rahman,/\. H. A.,& Aliff M.(2022). Clustering analysis for classifying student academic performance in higher education. *Applied Sciences, 12*(19), 9467.
+Nils Lunden, E., Turanoglu Bekar, E., Skoogh, A., & Bokrantz, J. (2023). Domain knowledge in CRISP-DM: An application case in manufacturing.
+Perez Sanchez, E. A., Manzano Leon, A. M., Aguayo, L. M. A., & Alvarez, R. M. (2021). Educational data mining to identify the patterns of use made by the Moodie platform. *Journal of Applied Research on Learning, 13*(1), 4o-47.
+Regla, A. I., & Ballera, M. A. (2022). Understanding higher education institution (HEis) research productivity using clustering and keywords network analysis.
+Shanna, P. (2025). K-Means clustering algorithm. Analytics Vidhya.
+
+Suria, 0.(2024). A statistical analysis of System Usability Scale (SUS) evaluations in online learning platforms. *Journal ofinformation Systems and Informatics, 6*(2), 265-276.
+Wan, Y., Xiong, Q., & Qiu, Z. (2022). K-means clustering algorithm based on memristive chaotic system and sparrow search algorithm.
+Wang, Q., Liu, J., Zhou, L., Tian, J., Chen, X., Zhang, W., Wang, H., Zhou, W., & Gao,
+
+Y. (2022). Usability evaluation of mHealth apps for elderly individuals: A
+
+scoping review. *BMC Medical Informatics and Decision Making, 22*(1), 243.
+
+
+
+
+
+
+
+
+
+
+:\ ,Jrn. D.. Mcghji A. F.. & Bhnlli. S.(2023). Cius!·r. of 1m ·cc. : IJnva k,in	•qd rnl
+
+-It mis with K-menns clustering in cdm:ation. Res·archCM .
+
+lulnwi, S.. Mohd Shuhurnnee, I. N., & Mohd Jnmil, J. (2023). Clu'tcring 1t11dcnl performance data using K-means algorithms. *Journal of Computational Innovation and Analytics (JCIA), 2*(1), 41-55.
+Arpay, M. (2023). Student mining using K-means clustering: A basis for improving
+
+higher education marketing strategies.
+
+Blattgerste, J., Behrends, J., & pfeiffer, T. (2022). A web-based analysis toolkit for the System Usability Scale. In *Proceedings of PETRA '22*.
+Deckert, J. L., & Wilson, M. (2023). Descriptive research methods. In J. A. Gliner, G.
+
+A. Morgan, & N. L. Leech (Eds.), *Research methods in applied settings: An integrated approach to design and analysis* (3rd ed., pp. 153-165). University Press of Florida.
+Dutt, R., Aghabozrgi, A., & Ismail,H. (2016). Clustering algorithms in an educational context: An automatic approach. *Journal of Educational Data Mining, 8*(3), 1-20.
+Engineering, Technology & Applied Science Research. (n.d.). Enhanced System Usability Scale using the software quality standard approach.
+Fathanah, Y. (2022). The effectiveness of using clustering technique on students' descriptive text writing ability [Undergraduate thesis, Universitas Islam Negeri Walisongo].
+Golovnev, A., & Kaneva, 0. N. (2023). Application of the clustering algorithm for the allocation of academic disciplines to thematic areas.
+
+
+
+
+
+11.0(·os s1m 1·01. ·n·.<11, "· t,..	. , 01.1.,. .,.
+T11J1,1tdln (""mru•h	nt1tt1, ft	,
+
+
+
+di ,Wl'I' pnttl'nlS or groupings within dn1.n without p,cd fin d d "ir <l outo,m
+
+,,·l•b-Dascd System - A sollwRrc application which is II cc	ihl and omtroll IJI 'try
+
+.._t usc-r through a web browser over the intemel.
+
+
+·
+
+
+
+
+t-i\,n1nrcSclcrtion -A proccs!ior Identify in,1111d iwlcctl11 111m(• o:ll r ·lcv nt varit1hl
+
+to \:Onsicter for model development.
+
+(CAT - The standardized aptitude test udoplcd by the !locosur Polytechnic Sf11t
+
+College to gauge the cognitive and the psychornot.or abilities of all ir1coming student..<;,
+
+K-Menns Clustering Algorithm - An m1supervise<lmachine learning algorithm utilized to segment data into a certain number of groups, called clusters, based on the similarity of their features.
+Machine Learning - A branch of artificial intelligence that gives the ability to computers to learn from data without explicit programming and, hence, make predictions or decisions.
+Modeling Phase - The CRISP-DM phase in which machine learning algorithms are utilized to analyze and interpret data.
+Normalization - This is the process of scaling values in a dataset to a common range to avoid distortions caused by differences in value ranges.
+Percentile Rank - The score indicating a student's relative standing among peers, expressed as a percentage.
+Silhouette Analysis - A method to judge the quality of clustering based on a comparison between an object and its own cluster, versus other clusters.
+SUS (System Usability Scale) - A standardized questionnaire that allows assessing system usability based on user satisfaction, efficiency, and ease of use.
+
+
+
+
+
+
+r
+t	ILOCOS lJR POLYT(i!(;(JNJ(,'STATII, COLU'.or
+
+
+GLOSSARY
+
+Algorithm - An ordered process ot· set of' rules foor lving u particulur problem or performing a computation.
+K-Mcnns Clustering-A technique of unsupervised machine learning that groups data points based on similarities for the discovery of hidden patterns or relationships within a set of data.
+CRISP-OM - An acronym for Cross-Industry Standard Process for Data Mining, it is a widely used model of a systematic process in data mining and analytics. Its six stages are: Business Understanding, Data Understanding, Data Preparation, Modeling, Evaluation, and Deployment.
+Data Mining - The. process of analyzing large datasets to discover·patterns, relationships, and useful insights.
+Dataset-A collection of data that is organized and can be analyzed, possibly in tabular
+
+form with rows and columns.
+
+Descriptive Developmental Research Design - A research design that involves description and development in mapping out the design of systems or models using observed data.
+Elbow Method - It is a method adopted in the K-Means clustering to identify the number of clusters beyond which addition results in diminishing returns.
+E,•aluation Phase-The phase of the CRISP-OM model, during which the developed model's accuracy, validity, and usefulness are evaluated.
+
+
+
+
+
+
+4. Replication of this system with )urger dalusc1!., in ·orJ ,, 
+
+such as academic performance, attendnncc, and b·ha i<ff\	ir <11" 1,,,·1 ,
+
+recommended to develop more comprehensive student profil s.
+
+5. Wider testing across multiple ISPSC campuses is encouraged to validat performance, usability, and effectiveness, promoting broader adoption 'tnd ensuring that the system serves as a reliable tool for academic guidance and course recommendations.
+
+
+
+11,0t'ONN't 1H t'-OLVH:<fl 'fC.''f A IL('Ot.L 1, il'.
+'I11 11cH1 (' Ht1p11 .'hp1dlt1fl, 11 • ur·
+
+
+
+sy!-ltcm is gclll'rnlly llsflbk nnd tt cr-frk11dly1 r,·civln ,1tmwi (r•or < f 6Yi.'l
+
+
+the system an cffcclive dccisiorMupporl tool for ,uidancc co111,1Jor .
+
+Rel:ontmcudntions
+
+  Based on the findings and resulting conclusions, the following recommendalion are made. These suggested acts will ii.uther enhance performance, functionality, and institutional integration of the ICAT Clustering System. The recommendations are targeted at guiding future enhancements, enabling campus-wide adoption, and supporting the system's continued effectiveness in the management and analysis of educational data.
+1. ISPSC Tagudin Campus should formalize the adoption of the !CAT Clustering System in the Guidance Office to replace manual interpretation oflCAT results. This will improve accuracy, efficiency, and accessibility of student data, enabling faster report generation and better-informed academic advising.
+2. The system interface and features should be continuously refined to enhance usability for both technical and non-technical users. Periodic usability testing, training sessions, and maintenance by the ISPSC IT Department are recommended to ensure data security, operational stability, and long-term sustainability.
+3. Future research should explore the integration of additional machine learning algorithms, such as DBSCAN, Hierarchical Clustering, or Gaussian Mixture Models, to compare their perfonnance with K-Means clustering.
+
+
+
+
+
+
+(ondusion!i
+
+   This study wns condu'led to dc,;ign, dcv•lor, and cv11lt111t · lf1( r:lt1•1t•ring • 111<1·nt ll' T Scorl'SUsing MuchitrnLcnrning A lgotlth11s1, 1cmin!lllpport of ISP lC Ta urlin mnpus hJward better 111tt111:1gemcnt, unulysis, nod i11tcrprcllition of th re ulw from
+AT. Based on the research objectives, the following conclusionws eredrawn lo end:
+
+I. Thectment ICAT score interpretation processat lSPSCTagudinCampus i still perfonned manually. While accurate, it is time-consuming and limHs the efficient analysis of student performance trends. This highlights the need for an automated system to improve efficiency, reliability, and the usefulness of JCAT
+results in academic guidance.
+
+2. The K-Means clustering algorithm was successfully implemented following the CRISP-OM framework to automatically group students based on performance across six aptitude areas. The optimal number of clusters was determined using the Elbow Method and validated through the Silhouette Score, Calinski­ Harabasz Index, and Davies-Bouldin Index, confirming that the clusters were meaningful and accurately reflected student profiles.
+3. The developed web-based system effectively stores ICAT scores, generates dashboards, and recommends suitable academic programs according to student profiles. This supports data-driven decision-making and enhances academic guidance processes.
+4. The system has potential to assist in informed course recommendations and in assessing eligibility for board courses, providing a reliable tool for student profiling and curriculum planning.
+
+
+
+
+
+
+
+
+
+   Th results in Table 5 reveal that the overall mean twabHity.cor for th Clw ·"rm tud nt l AT Score System was 68.75, which falls within the grade B (GondJ rating 3 ·cording to the SUS interpretive standard. This also surpasses the benchmark average of 68 so the system adequately meets acceptable standards for usability and can be generally effective for the purpose it serves in clustering ICAT scores of students.
+   The calculated standard deviation of I.77 indicates a very small dispersion among the respondents' ratings, which should mean that all users have been consistent in their perceptions of the usability of the system. The minimum score of 67.5 and the maximum score of 70.0 show that all the responses are within the "Good" range. This consistency suggests that the users-regardless of how diverse in experience and background, or inexperienced with the system-find it reliable, easy to use, and functionally coherent.
+   Overall, the obtained mean score implies that the Clustering Student ICAT Score System is perceived as a usable and efficient tool to carry out educational data analysis. Users could easily work their way around the system and carry out tasks related to clustering effectively. Though the results indicate a very good usability perfonnance, a few minor enhancements in interface and user interaction would raise this rating from "Good" to "Excellent" in future versions.
+
+
+
+
+
+
+
+
+
+.,r 11111 hl' n1111si tl111 ,,ml1,)r,1H1 _
+
+\ fbltlh'll 1111\I tlr ip.rl pnlh'm, hd1l YH 1'' IHI ti,, (' t ·fr r1
+  In Jttt tiun 7. "I woo leiinwgin, tlwt most1 eopl oolrl1 I rn t( ,, ,"-h. 1-.• ,rt l't)' q11kkly." hnlh re.'pondcnt a ,recd or 81.rongly a ed. 'Ihi r .-111 'nkr ,i, , rhe s stem hos a low learning curvci hence users can qulckl und r.land it; r 
+"ithout extended training. The said learnabiJity isoneof the most import.ant ind·ca  r•
+
+of good usability.
+
+  For question 8, "I found the system very cumbersome to use," one strongly disagreed, while another disagreed. The sum of these disagreements signifies that none of the users found the system cumbersome or tiresome to use, indicating a system design that is efficient and responsive to support smooth task execution.
+   For Question 9, "I felt very confident using the system," both respondents agreed in their response. In essence, this unanimous agreement will mean that users felt comfortable and self-assured while interacting with the system. Confidence usually arises when perfonnance is sound and the interface clear and predictable.
+   Finally, Question 10, "I needed to learn a lot of things before I could get going with this system," both respondents disagreed. That consistent response would confirm that users found the system relatively easy to learn and did not require extensive prior knowledge. This is a reflection of strong initial usability and effective design, allowing new users to become productive quickly.
+   Overall, responses in Figure 6 show that users generally perceive the system as easy to use, consistent, and leamable, although some refinements in engagement and feature integration could further improve user satisfaction.
+
+
+
+
+
+
+
+
+
+
+
+h1r Qm-stion u. l folttHJ 1hc s st 'ltl 11nuc·'!'iSUtily compl x '1 cm,lht.v.c d n<i th
+
+othtr ngrced. Thiscanshow tlmt while th ·re wa rnuch cmic of navl atlon ofth(,1yatem for one user, another perceived some sense of cotnplexjty. These differing opjnions may stem from varying levels of technical experience; thus, cJearer jnstructions of
+simplified layouts might improve usability even for advanced users.
+
+   In Question 3, "I thought the system was easy to use," one strongly agreed, while the other agreed. Such unanimous positive feedback from the respondents indicates that the interface and functionality of the system are intuitive and user-friendly. Both users were
+able to complete tasks with minimal difficulty, which signifies strong usability in design.
+   In Question 4, "I think that I would need the support of a technical person to be able to use this system," one respondent strongly disagreed and the other disagreed. Their disagreement completely illustrates that both users felt able to operate the system themselves without any technical help. This suggests that the system is leamable and does not need specialized training.
+   In Question 5, "I found the various functions in this system were well integrated," one respondent agreed and the other was neutral. This shows that the components of the system are relatively cohesive, although some users still feel that there is some room for improvement in the integration of features. Continued refinement in how modules are connected could strengthen user satisfaction even more.
+For Question 6, "I thought there was too much inconsistency in this system/ botlJ
+
+re"pondents disagreed. From this strong consensus, users found the interface of th
+
+
+
+
+
+
+lLOt O	tm NH, 'tl',r('II'flU,L ,'.J ',I ii Utltf'I: (	,,,,,... • 'f4U10'
+
+
+
+intn n11mrri lmcs1 tu muk.e th' ifil • . uttnhlc for pro<·' i irw h 1+, KM m1',.lr1·1·,:rine nlg.orithm. In this wny I it mukcs <lulu pl ·p11rntlo11<'n. h r urul •n,11r : fhat the uhr crln c.mt.come will 1 ·muLn os uccurntc 1111d cottslstcnt 11s pw! jhlc.
+Usabili1)'E,111lu11Hon of the [CAT CliJstcring System
+
+  Figure 20 presents the distribution of user responses for each of the ten jtems jn the System Usability Scale (SUS) questionnaire. The data reveal varying degrees of agreement across all statements, indicating differing perceptions of the system's usability.
+
+Q10
+
+Q9
+QB Q7 Q6
+QS
+
+Q4 Q3 Q2
+Ql
+
+0	20	40	60	80	100	120
+¦ Strongly Disgree  ¦ Disagree	Neutral  ¦Agree	Strongly Agree
+
+Figure 20. SUS Distribution Responses
+
+  In question I, "I think that I would like to use this system frequently," both subjects expressed a negative view. That means users at this stage were not yet willing to use the system regularly, probably because of limited exposure or early-stage interaction
+
+
+
+
+
+
+
+
+
+
+
+whrn lht 11rli ,n r1111(' f ·nni.
+
+cl lttnln identifies th user r·s1onsihl·-lo thi. "'-' 1, n r r 1afjr,. <Jiiid tlc (' ,,1w· J<,
+
+clear indication at a glance regarding (he type of action that has b n p rformed., h Target colunm shows what was affected; in this case, an "Adm in Account."
+Additional inforn1ation like deleted account name and email may be provided in the Description column, which provides clarity and supports proper auditing. The IP Address column to the far-right tracks where the action originated, helping find unusual
+or unauthorized activity.
+
+
+Plate 14. Download Clean CSV Page
+  Plate 14 presents the Download Clean CSV page, where administrators can export a preprocessed dataset that is ready for clustering. The users can select either an academic year or All Years if they want to download it all at once. The system cleans
+
+
+
+
+
+
+
+
+
+
+
+:tlldrcss. On the for right, lhe Action: column ln ·fu<k. t o . trongJy'ol,,r d buttrm for ead1 account: a blue Edit button to update any admin information and a r d Del p, button to remove an accmmt if necessary. The distinct coloration doesn't ca, . e confusion and makes the admins' management fast and easy.
+
+
+Timmttmp	Admln	AtUon	1,,g1t	DfmlpUon
+
+
+
+No,·1.1. 202
+0Cts.(:i7
+
+
+
+Nev lA, 2025
+OOcSt:13
+
+
+
+Nov 14. 202S
+t'O:S.::OS
+
+
+
+Gukfanc:l' Counulor Guld.anc:e CounHlor Gi.11•.!.n C.C,.,,11t,:ct
+
+
+Guidance Coun.. lor
+Guidance Counsffl>r
+L..j•n..":tCO:.:.r.JEb
+
+
+Guld.ancc Cownulor Gukfance Counseior G :e rouna.lo,
+
+
+
+Admln	Otltttd ad1ni111mount UH-16-0', Wf-2 -<Y..
+Account	(Mmln2@om,11f.<omJ
+
+
+Admin	Oeltt<•d Jdmin Jccoun:: Supc,P,1:1t0,d1?.3te•
+Accounl	Supt1P m•;o1dt2l!G• (Adrn1n101e'9:n,.tcom)
+
+
+
+Admin	Dtltttd ,1dmt,n:counte: "rfcur(four{;gm,111,e.omJ Account
+
+
+
+Mov 14. 2025
+00cSJ:5e
+
+
+
+No·, 14. 202S OC:53:SO
+
+
+Nov u. 202s
+CO-.Sl:4S
+
+
+
+N v 14, 2025 0OcSJ:39
+
+
+Guidance Coun11lor Guidance Counsdor Gi,:,mi: "'5t'.::
+
+Guidance Coumek>r Guldanc• Coun,elor wio.tr,.eCCU"'
+
+
+Guklanc, Coun11lor Guklance Cou11selor G i..i.2 c( Cc:.;r,1,t',:t
+
+GukfaRU Counwlor Guidance Counwlor G...r.:,1, Cc.!. ..:C:
+
+
+
+1/2te-dadm,ircount Az ielJo Yuktt (dororo:hedtrnon@gr.uilcom}
+
+
+
+
+  Deleted admin ltcount: Admin One {Adr.iinS:·9m.1il.C::l":l)
+
+Deleted admin u·count: wan w.Jn (wan@gmai:.com)
+
+
+
+:rr..:.:u
+
+
+
+
+I
+
+
+
+
+Plate 13. Audit Logs
+
+Plate 13 shows the Audit Logs page displays all the administrative actions occurring
+
+· on the ICAT system for transparency and tracking purposes. The left dark green sidebar is the same as that on every other page of the system and allows quick access to other pages such as Dashboard, Upload CSV/Excel, Manual Entry, Clustering Results, Manage Students, Add New Ad.min, Download Clean CSV, and Logout. Above, the main area shows a big, neatly formatted table listing every activity that has been logged.
+The dark green table header contains columns like Timestamp, Admin, Action, Target,
+@ifuJtlc1'fhfJTUJ(} t,n, f,yu matwfll
+
+
+
+
+
+
+
+
+
+'	,,..11.,....	,.. ._.	Nil>/HII	-	, ....
+-- -  ---   _._-_	-- --- "--1 -  "-	- - -- - cc =--------
+
+
+
+
+........1	,.,••
+
+
+
+
+
+
+
+
+
+
+Plate 12. Registered Admins
+
+   Plate 12 shows the Registered Admins page, where all the administrative accounts in the ICAT system are displayed in a clean and organized layout. The left dark green sidebar remains visible for quick access to other modules of interest, including Dashboard, Upload CSV/Excel, Manual Entry, Clustering Results, Manage Students, Add New Admin, Download Clean CSV, and Logout.
+   The title Registered Admins is written at the top of the main content area with a multi-user icon next to it, showing that this page is used for managing admin accounts. Just below the header is a search bar that allows users to quickly find an admin by typing in their name, email, or even position. A Search button beside it makes filtering fast and easy. On the right side of the header, a small label indicates the current list count here displayed as "l - 6 of 6 admins" so users know how many admin profiles are stored in the system.
+   On this main part of the page, a neatly designed table with a green header and columns for Number, First Name, Last Name, Position, Email, and Actions can be found. Each row represents an administrator registered under the program, shown by
+
+
+
+
+
+
+
+
+
+
+' ( .
+
+[( \ 't
+
+
+mc.u in 1 thl' lPtt' h, 'lllT ·ntl., 01 the 11t:l,n'n ·r·i,tion pas,·.
+
+   The he::Hkr (. rrak N ·w A.dm,in ut 'th· top of the 11wit1 pa,ni.,  ic'--m fc 1' crenting.a user,	ry cleurly states the purpose of th · pa c.'JI i· infcrf-3 1 1 dh'ided into two sections: Personal lnfonnation and Account Security both pl	rf inlJi
+soft, \\rhite panels that keep a clean, professional look and feel.
+
+   In the Personal Infonnation section, the form asks for basic personal information to create a new admin account. First Name, Last Name, and Middle Name are alJ provided with placeholder texts that guide a person's input. A dropdown menu labeled Position allows the selection of the admin's role, such as 'Guidance Counselor.' An Email Address field, highlighted with a distinct background color, ensures that important contact infonnation is clearly visible. All fields are well-spaced to make the form easy to follow.
+   Below the Account Security section is where the user provides the password for the new admin. The Password field contains a visibility toggle icon. A Confinn Password field is available to ensure the password is correct. A small note below reminds users of the password criteria-a minimum of 8 characters that should include uppercase, lowercase, a number, and a special character.
+  A create account button in green at the bottom submits the fonn to complete the registration, while the yellow Reset Form clears all the inputs if the user wants to start over. Overall, the design is intuitive and user-friendly, clearly structured to guide the administrator through adding a new account without confusion.
+
+
+
+
+
+
+
+1LOCON 1,n 1•01iY'I w 11Nr<· STA'l'ri cot 11lr,:uri:
+TnJ(udln ( '11mp111o1, 'l'HJ,tUclln, rloroHSur
+
+
+Nmnber. Admi,n,vhn performed I.he updutc, Field 'hm1ged, ulorw with Old Value, New Value, and Chnngl: Type. These coltmm!-l make sure thut filll t.ram1parcncy and accountability in all updntes mnde in the system arc realized.
+   At the top o.fthe modal, the toggle indicator shows all system modification Jogs are being displayed on the page. Since no updates have yet been recorded, a friendly message in the center says, "No modification logs found", with an icon for elucidation to help administrators immediately understand that no changes exist so far.
+  A basic Close button positioned at the bottom right allows the user to close the modal and return to the Student Records table. The overall design is minimal, tidy, focused on the core purpose of reliably tracking changes in data, and supports the security and responsibility required in managing student records effectively.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Plate 11. Add New Admin Page
+   Plate 11 presents the Add New Ad.min page, which gives a clean and clear interface for registration of the new administrative account in the ICAT system. On the left, a dark green vertical navigation panel lists options such as Dashboard, Upload
+
+
+
+II. OCON stm POLV'l'l1:CHNIC STA'l't,: COLLl!'.(a:
+T11 11cll11 Cu111p11R, 'l'11J.(tHll11, lloto Sur
+
+
+t\itmnml Dl:xtority infonnntion lo support thescrccninp of'u ·adcmic performance. Every t\lW nlso exhibits a column showing Dute Tukc11, und two action hultons: a hluc View i on for checking full student details nnd II yellow Edit icon for modifying records. Color-coded badges make fields such as Sex, St.nmd, and Course visually different, and keep the table clear and easy to navigate.
+  The left sidebar provides consistent navigation, allowing users to seamlessly move through modules like Dashboard, CSV Upload, Manual Entry, Clustering Results, Manage Students, Add New Admin, and Download Clean CSV. The interface in general has been designed to make large volumes of student data management easy, organized, and user-friendly.
+
+Plate 10. Modification Logs
+
+  Plate 10 presents the Modification Logs window, which is a single location for administrators in the ICAT Admin System to review all changes to student records. The modal displays a table with an easy-to-understand structure and includes columns for
+capturing essential audit information: Timestamp of modification, Student, Application
+
+
+
+
+
+H.t ( ONNl IU t·or' H'{ Jil	J.(''··r,.\ u .( 'OLU;J;
+' prrUti (	m·Jt11!r1 t I Hell	Ut,
+
+
+
+Plate 9. Manage Student Records Page
+
+   Plate 9 shows the Manage Student Records page, which serves as a focal point where all student entries can be viewed and managed in the ICAT Admin System. The top part contains a search bar where administrators will be able to perform quick searches among students by using keywords such as Application Number, Name, Strand, or Course. A green Search button is conveniently placed beside it for the execution of queries.
+   Below the search section, there are two action buttons: View All Logs, which allows users to access the records of the system activities, and Download File, which offers various options to export student information in different formats. On the right-hand side of the header, there is a summary badge indicating the total number of student records present in the system for the administrator's quick view.
+  The main section houses a well-structured table of the essential details for each
+student. The columns include Application Number, Name, Sex, Strand, Course, and all of the test scores on ICAT: General Ability, Verbal, Numerical, Spatial, Perceptual, and
+
+
+
+
+
+
+
+
+ILOCOS SUit l'OLVTECIINIC STATF. COLLf GI
+Tngudiu C,unr,us, Tngudin, lloco Sur
+46
+
+interface displays the resulting student clusters and provides access to analytical tools such as visual analytics and pattern recognition. These tools allow administrators to see how students are grouped based on their lCAT scores and to identify noticeable patterns in academic performance. A button labeled "Open Clustering Dashboard" lets users explore the data further through interactive visualization and deeper analysis.
+
+fof1. 0  !
+
+
+
+K-Means Clustering: Sex & Course vs Aptitude Scores
+
+
+01,l,&Jnd d1op Mc h rc
+-	l,-·!,'•:..•·1, .... ••I.'·  ;.•	8rcw1.cfilcs
+
+
+
+
+
+
+
+
+
+
+
+
+Plate 8. Clustering Results Page
+
+Plate 8 shows the K-Means	Ju tering web interface, implemented using Streamlit
+
+ and titled "K-.Means Clusterino: Sex & Course vs Aptitude Scores." This page allows users to upload CSV or Excel files containing student data in order to create cluster maps for further analysis. It includes a drag-and-drop upload area with indicated file fonnat and size limits, as well as an option to manually browse and select a file.
+
+
+
+
+11;0( OS smt t n,	r ·,, H ,, '"·'Au·.('(,),f'.if. J .
+TA .u1Un ( .JOl1flll.,	11,u.,t "{ I	1 f
+
+
+I t<
+
+
+where the admin will input lh, student's r · 11ilts fhr ·a h ptit11d	• fr ,, . n;im Jy Geneml Ability Verbal Aptitude, Numerical Aptitude, Spatial /\ptitudcf P r c oaf Aptitude, and Manual Dexterity. The design makes use of moderncard- tyl container with icons for added clarity, while the form is spaced and grouped in a manner Iha provides smooth and intuitive data entry.
+  The left-side navigation sidebar enables administrators to easily switch between Dashboard, Upload CSV/Excel, Clustering Results, Manage Students, Add New Admin, Export Clean CSV, and Logout, hence providing a full-cycle administrative workflow within one consistent interface. On the whole, the page structure would
+facilitate accuracy, organization, and usability by staff managing student records.
+
+
+Plate 7. Access Clustering Dashboard Page
+  Plate 7 shows the Access Clustering Dashboard page, where the system presents the output of its machine learning process using the K-Means clustering algorithm. This
+
+@lfaMO?'-rj{1JMTUJ(} in J,yo-,:malum
+
+
+
+
+H,O(1O Stltt POLV'l"l•;C'llNU' S'l'A'f't, COl1f J,:<H•1
+T,, t•dln ( 'nmpu., '1'1 udln, lloN,. Sur
+44
+
+
+Plntt:' 5 displnys thl' Uploud 8t.udcnt Duin pn w 111 l'h · I< 'AT Acl111it1 interface. I Jere,
+
+the ad.min cun uplond CSV or Exe ·I files ·ont11i11i11g tud ·nt information for clustering and tmalysis. Th .. central nreu foulurcs ll green drng-nn<l-drop box with im upload icon, and an alternative Browse Files button. At the bottom, there is an Upload & Process button that processes the uploaded file for use within the system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Plate 6. Manual Entry Page
+
+   Plate 6 presents a neat, organized interface for manually adding a student record to the ICAT Admin System. The complete sh1dent information appears in the form on the page. The header of the page explicitly tells the admin that they add a new student record. All the identifying personal and academic details of the student exist within the section Student Information. These are the Application Number, Family Name, First Name, and Middle Name. Also, dropdowns include Sex, Strand, Course, and a date picker for the Date Taken. An entry solely for the GWA of the student provides for recording all the information pertaining to the student.
+
+
+
+
+
+Plate 4. Admin Dashboard
+
+   Plate 4 presents the Admin Dashboard, which is the control center of the ICAT Admin system. It shows a summarized view of the key system metrics, one of them being the Total Number of Students, present at the top. There is a graphical representation called "Student Entrants by Year," where the admin can review the student trend in various time dimensions such as yearly, monthly, or quarterly. The format is clear and concise to make sure that administrators easily track key information
+briefly.
+
+
+Plate 5. Upload CSV/Excel Page
+
+
+
+
+
+
+
+
+h,,mc pu1c bchjn I the moclnl, th· .. , km tlfle "l111·Iii	nt ,'twl •nr Clw	rinv, &
+
+, nnlytics," it intn_,duttory 111cN1-m1r, nnd fr11tnr · ·nrcl. for Hulk J)r1tft l'mport}	;'1n11;1I
+
+Entry. m1d K Mcans	lustering orient the user within th· int ·rfo · .
+
+   Overall, the login 1nodal provides a focused, accessible, and ecurc point <1f entry for system administrators while preserving the context of the main interface.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Plate 3. Registration Form
+
+   Plate 3 shows the Registration Form asks for the most basic information of a user, which includes First Name, Middle Name, Last Name, Position, and Email. It also has a Password field with details on password requirements below the password input field. At the bottom, there is a large, accent-colored Register button for users to submit their registration details.
+
+
+
+
+
+
+
+
+
+U 0(  o , t 11t t•	< , ''t t\·,n1, < 'OJ.1,1·',<Hi',
+.,	1utln,	uHn flt fO	••r
+
+
+
+
+the general structure of the system.
+
+  At the top of the modal, there's a large blue header with "Admin Login" written on it, hinting pretty clearly that access is restricted to those with some sort of clearance. A small "X" icon positioned on the upper right provides a quick option for closing the modal and returning to the view of the homepage.
+  The form section includes three well-structured input elements: one field for entering the First Name of an administrator, another one for selecting their Role inside the institution from a dropdown menu, and a secure password field. Every input element is placed with proper spacing to maintain readability and lower possible encoding errors, thus making a login smooth.
+@lfadulo,,:f<?/ neebnf,y°"'maJwn,
+
+
+
+
+
+
+11,oco. Nlllt ro1, ·n,.cu  u	• ·rA'O· <:OJ',LJ",.< ..:
+'1 , udl 1 ( Jt'ttl(HI. TJ.tJ(•1tdl·", t.lf r,, 8 r
+
+
+
+modt:m nnd da(a-drh en utmosphcrc V¥itho11l overwhelmin r the layout. /\ gold ''Learn tore" button is centrally plac·d to guide users who would want to explore the y:--tem further. As the user scrolls down, this interface transhions into the System Features section. This section briefly outlines how the platform supports efficient analysis and
+clustering of student aptitude data.
+
+   Three feature cards, each describing a key functionality of the system, are presented in a column below the introductory text. The "Bulk Data Import" feature allows users to upload multiple student records simultaneously using Excel or CSV files. The "Manual Entry" feature allows for the encoding of individual student information through a user-friendly input form. Meanwhile, the "K-Means Clustering" feature mentions the system's ability to automatically segment students, based on aptitude scores, through intelligent clustering. All the feature cards are styled with clean green designs and straightforward icons to support an organized, easy-to-understand visual structure. In all, the Landing Page offers an easy, smooth introduction to the ICAT Clustering System, accessible yet professional and institutional.
+
+
+
+
+I oc 01 .lH ,.,';f, j{I
+',·1"" ('
+
+
+
+
+
+
+
+Plate 1. Landing Page
+
+  Plate 1 shows the Landing Page of the ICAT Clustering System, the main entry interface to the system-is structured in such a way that it provides clear and organized information for the users. Serving as a point of first contact, the page is designed to be simple and inviting, and highly navigable, to allow users to quickly get acquainted with what the system is about and what can be done with it.
+   A green header at the top of the interface displays the ISPSC logo, along with a title saying "ICAT Clustering-ISPSC Tagudin," establishing the official association of the system with the institution. On the right side of this header are the main navigation options: Features, About, How It Works, and a clearly visible Login button that allows users to quickly find major sections of the application or go directly to account access. Below the header is a wide banner section that introduces the core identity of the system. The title "Intelligent Student Clustering & Analytics" is in bold and striking format, while a short description is attached, highlighting the system's role in improving
+educational assessment at ISPSC Tagudin through modem clustering algorithms.
+
+
+
+	
+
+
+• I'  ',,
+
+II t:fl
+
+,, '•7.
+
+.:-rlo.
+
+tl. 7
+
+0.4 0
+
+
+0.42S
+
+0.IIO0
+
+0.375
+
+	V
+2	3	4	5	6	7	8	9
+k
+
+
+Figure 19. Davies-Bouldin Index vs k
+
+
+Development of the Web-Based ICAT Clustering System
+
+   The system was developed to automate the management and clustering of ICAT scores. It integrates a machine learning algorithm that classifies students into clusters based on performance in six aptitude areas: General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude, Perceptual Aptitude, and Manual Dexterity. The system consists of several major components that function together to streamline uploading, managing, analyzing, and visualizing student data.
+The following plates illustrate the main interfaces and functionalities of the system:
+
+
+
+
+
+
+
+
+
+hll[j{I
+
+
+101!'
+
+7000
+
+0000
+
+5000
+
+4000
+
+3000
+
+2000
+2	3	4	5	6	7	8	9
+k
+
+
+Figure 18. Calinski-Harabasz Index vz k
+
+   The Davies-Bouldin Index was also computed to measure the average similarity between each cluster and its most similar neighboring cluster. As displayed in the Davies-Bouldin Index graph in Figure X below, the model yielded a low value of 0.488, signifying low inter-cluster similarity. Since lower Davies-Bouldin values correspond to better clustering performance, this result confirms that the identified clusters were
+distinct and well isolated.
+
+
+
+
+
+u.)t"n . H  f'OL ,- ·., n	,, · '1'A'f 1, cor,r, ·,tw
+'t -  u'Jl,i. f 1onri'" '.f. A mUn f1, N	• u
+
+
+
+
+
+
+
+
+commonly Hsed internal•luster vnlidation n1 ·tric w •re ·x ttnit1•<I. The Silhouette Coeilfoient ,, as used to LW0lu11tc how well each student tccord fit within j s as igned clust r compared to other clusters. As shown in the Silhouette Score graph presented in Figure 17 below, the model achieved a Silhouette value of 0.648 at k::::4, indicating
+high intra-cluster similarity and clear separation between clusters. This result suggests that the formed clusters were well defined with minimal overlap among student groupings.
+
+Silhouette Score vs k
+
+
+0.72
+
+
+0.70
+
+
+0.68
+
+
+0.66
+
+
+0.64
+2	3	4	5	6	7	8	9
+k
+
+
+Figure 17. Silhouette Score vs k
+
+   The effectiveness of the clustering configuration was further supported by the Calinski-Harabasz Index, which measures the ratio of between-cluster variance to within-cluster variance. As illustrated in the Calinski-Harabasz Index graph shown in
+Figure 18 below, the clustering model produced a high value of 3,596.34 at k = 4,
+
+reflecting compact and well-separated clusters. Higher index values indicate improved
+<Mo- 1'{l/aten itn,J'3/
+
+tLOCO	un POI, 'IF.(·11, 'IC STATfi, COLI ,J-:(ai,
+T11, uclin ( 11mpu , 'f'14 11,1ln, n,,'o!ISur
+35
+
+
+
+
+
+
+1n rl1os = l I
+ rang!'( , 11)
+
+r k in K_r nge:
+kneans_test " Kl1eans(n_ wt  r=k, rando 1_'. il 1!"1,'l, n_lrii ·:1) kmeans_test.f1t(dfl[y_co\, x_col)]) inertias.append(kmeans_test.lnertla_)
+
+knee= Kneelocator(K_range, inertias, curve=·conveK", direc ian="d  ea 1 g•)
+best_k = knee.knee if knee.knee else 3	r·fnutt •o i 11 ·•
+
+     Figure 15. K-Means clustering with automatic k selection and evaluation Finally, the clustering function was executed across multiple ICAT aptitude scores using sex and course as grouping variables. This enabled comprehensive analysis of student performance patterns based on demographic and academic characteristics. The execution of clustering scenarios is presented in Figure 16.
+
+!I--·- ---'""·:·	. --,--,,-,:,--..-
+J7(;	z; t,l ,. ,..  •· 1.,·; ·d1[  ';Lr:ii,
+;/ :; ,:.=,-: :-::.;-:-;;•;;. ;.,- :..:;:- .::::.;
+st.needer("? SL:< v1 AputuOt- Sccres") cluster_anll_plot( · -:,: ·• en ral_&b:.titv•·,  /.'"'A "H•",
+
+
+
+
+
+
+"K•MfbllS C\u•.itttr tte:p (Sn  v;, G•meret .6.bHlty)·•, yJ.:itv1• "S x (1::FeN:1. , 2= nle)"l
+
+ct.uster_And_plot(, t""'I "v rbnl_aotitude'", ).,.:::,: .. so:'•, t•nl. "')(-Nuns Clust"r l111p (Sn  v !/ttrlJl\l 4ptitvd"}", r...:-11.r:-; "Su	(l-:-Fecin\•, 2:1\<l';.@)""l
+clutter _and_plot ( • OJ "nuuricot.apt ltudP",  )' <•... ·sex". !.';11 "){-!'eMs Ch1sr,r Hap {S@'lo ·,s.!lui;:;":rica\ AJlt\Tud )", y_:)t-,r;:l "Su {l::S:-ee,11.P. J::.fkl\@)")
+cluster_end_plot( ....... ·  .. !.:po, hl_aoti Ld,..., ;:;,·"!.CA",  tte "K·K<'!ns Clv:.ter Ktp (Su  v  :ipMia\ l.ptitudt>)",  )'_13r- • .. Se)( O.= e ,l.o, 2-=tll'lh '")
+ctostcr_and_plot(, ... J "JlCrceptu l_llpt1tutle",  )_,:o:· •·:e1'',  :111: "'K-Mc M C\ustc;r l'l;ip (Sn \I!. Pcrc::ept1.iit\ ti.tut!!!)",  ;.•z ,:-t "Sn  (1:re::i.:)\q, 2:.1'\;,\e)"')
+clustcr_o1nd_plot( ,_c.'I ..r..in a\_dntcr1ty"',  y ,r:· ''seic·,  Lt'< "l<-NtaJ\! Custer  ap {Sex v  t1Mua\ Oextf'rit•t) .., ;.r r.,._, ..Sex O:=-f=C/ti<l\.ll, 2-:t'l-,\.ia-}")
+
+
+,t.ht-adtr("  COC S( v  Aptitude Scor·t: '")
+c\.ust'er_and_plot( 1,,..,..'" .. gtrer t..!01l1t,•·, 1.t-"'' .. cc1.orse.. , ·.1 -t "'t-:-KH05 C\usttr ?\ap (Ccuru v!> G:tneral kb1\H'f)'', ,_ 1 'Cour·st Code.")
+clusttr_and_ptot( ,.._·• · w-r!:c\_..,;>t!tu!!t"",  ,_r,....cG-.;r:;e",  -:-:- "'K-Nu.ns Clusar- flap (Couru  V!i \'er-btl 11.p'.1.tu:.!e}",  ,_;.,1: •; .. Coo1•st C d, ..)
+ctusttr_and_ptot( .._ :-..,  "'nv1.trlc.,Le.:,t1 tudt'". _..	--courH .. , 111!-K-1'1t!n?: C\1J5ar ?p ltc r e !i Hu tr1ce\ l.pt1tude)··, '·'""'·· "'C \'I'! Co t"')
+c\.vstfr_end_p\.ct( • ·  'spctht .,.t1tv:1t .., -;3  ,r ·cc-ur-Si", t,'•  ..ii.-f"uns nusur ne.r, (Cocr-se- \'S s,,t1?,\. :. t1.tuc6).., ·,i..  ..Co:.,rn Cl!d•"'l
+c\u,ttr _and_plot( _:<"l. •·per:.eotua.1..apti tudi'", -.u: ..cot:r-s,.., , ..1.1c: .. tt-Heiins ClvHErr l'\a;i (t:,vr-H v P!t!'ctDt'J \ A. t!!uQt)", 1.. ,-:, , "Co\J-- t' Ccd1J')
+ctvsttr- nd.plot(  "' ...riarJol.dra;ttrity•, i c-c- "'c urs.,•, 'u.. "li: l'!f!ll'\5 C\un,:- ap (C?unt "'! H..im•4\ OestH1ti)•, ) ·- • ..C01.:ru C1.•:Jt')
+
+e\!,e:
+st.1nfo("?\t.t!:e vvtc,d v 1Jr nv H b.c.e\ fi\t ta g,l\trate ttlt c\un:el"'oeps.'")
+
+
+
+Figure 16. Execution of clustering across sex and course variables
+
+
+(	,  ,	1 ft J' l f ,	I · 'f ·fl
+·,	' '"''" (	tnl,HI	'
+
+
+
+
+, lui-tc1.' t't', \IIts int 1  mcnnint lh'I 1, -
+
+tm,I inf 'rpr·t ,icm . ·rhi	f11n .ti<in
+ort< with h	o,	mil
+
+
+dataset	Oll"tlll	to	encrotc	intcq r table	insights	for	lu er. The implementation of the insight generator is shown in Figure 14.
+l'"" s•·11t>1f',\ . l--i'-11;r•t(P.._!.!ol, v_t:ol, evyk1, &vv.vi ov,r·etl_reM_l): J., ,,_co\ - ...·. •:
+\•_lebli\ ::: ..;."'"i!!l" if e\'9-Y c. t.  elu '1'1'1\e>"
+derugreph}c_lnsJght. - f"'lhl• llUsl!I' h  t.Ot'IJ'J ecJ rf)IJ\\V uf ••(y_leb!\l•• •tu '!r\ , ...
+,,\1f v_co\ :::::: ..'CIJ\!rt'i .. :
+cto.. st.cod•, Q!n(courso_ opplng.kevsO, kev•\oohdo c: obs(c • evg_y))
+course_na , = cour,,_ epping{closrst_codel
+de,:;ograph1c_1ns1ght::: f'"Th1 cluster \s c.oeir,1Jl'i•11 rio t\y of totud@n ,.,roll•d In ••{c.nurse_nn11e}••.··
+el ·e:
+denographic_1ns1ght = f"The ave,•oge ""lue for {v_col} 1G {avg_y: .2f}."
+
+if ovg_x ,. overal\_aean_x:
+ebillty_lnsight :. f"Th!:! cve1·elje "'•{x_col,rep\ece(' _' 1' ')}"* sto1·e (-..{evg_x: .2n?,,.) h ..•higher•• than tlu• overotl r@{tn.'"
+else:
+ab1l1ty_1ns1ght = f .. Tho iJvcrago ""{x_co\.rcp\ecc('.. ','  'H *core (-.11•{&vg_x:.2f},.o1!) 1 ,.,.,.lo.ier " tturn th<' 011eral\ .oan.·
+
+overall= f"""
+• + -DeMgroph1cs: •• {deMgroph1c_1ns1ghtf
+• - u?t>i·for<>tJ::ince Trend:•* {ebl\ity_insight
+• • -Interpretation:•" This suggests t1u1t u{y_label if y_col==-'sex' else couf'se_nar2e if y_col:::::::'cour!.e' e1.se y_coli+-,-tu !nH,
+tend to heve { 'strange · if nvg_x > overatt_mean_x else '\"/ea\cer' } perfc!'iHmce in
+·u{x_col. replace(•_·,' 'H*"' aptitude cor,ipared to other groups.
+
+rerurn overall
+
+
+Figure 14. Automated insight generation function
+
+The clustering process was encapsulated in a helper function that performed K-
+
+\1eans clustering, automatically determined the optimal number of clusters using the lbow method, evaluated clustering quality using standard metrics, and generated visual 1utputs. This function formed the core analytical component of the system. The lustering and evaluation implementation is shown in Figure 15.
+
+t1.o• n , • lit NU /v·, n.n H	't At f,c·01.U•',(,:ti'.
+ m1 11	"f	11tHti 11nm .. 'Of
+
+
+
+
+
+''\11'" t I  Ii 11 I,  ",
+"l'r: 1 I _ •\1\ I 111, '',
+''11111I 11 1 1•11\ JI \flh "1
+"!•l•,\111l  11U\\1tlP",
+''p 1·rr1lt 101._(lp'  111{1,,",
+''TT'111lllCll.tJ  l I il\'"1
+
+
+missi11g = le for c l11required_cols if c not ln df.co\unnG)
+if  missing:
+st,er1'or(f1' X ir.ci111J col 111111c: { 1  '.join(miosing)}'')
+st.write("Yuu,, fil, co11to1"s:'". llst(tH.columns))
+st. stop()
+
+
+
+Figure 11. Required column validation
+
+   Records with missing values in critical fields were removed to improve the reliability of clustering outcomes. Additionally, the course attribute was converted into an integer data type to ensure compatibility with numerical clustering operations. The handling of missing values and data type conversion is shown in Figure 12.
+
+df = df.dropna(subset=required_cols)
+
+':,	df["COUl'Se"] = df["COUl'Se"].astype(int)
+
+Figure 12. Removal of missing values and course type conversion
+
+   To provide users with a clear reference for interpreting clustering results, the course code mapping was displayed in a tabular format within the system interface. This table presentation is illustrated in Figure 13.
+
+st.subheader(n	Course Code Mapping")
+st. teble(pd. OataFrame(list (course_mapping. items()), columns=["Code", ''Course"l))
+
+
+
+Figure 13. Display of course mapping table
+
+
+
+
+
+
+
+
+
+
+
+
+'.
+
+
+
+'I '
+
+, , , , r
+l"I
+
+
+
+
+
+
+
+
+Figure 9. Reading uploaded data. et with rror handling
+
+One	the  dataset  was  successfully  loaded,  preproces ing  was  performed
+
+randardize column names. This included trimming extra spaces, converting text to owercase, and replacing spaces with underscores. These steps were necessary to naintain consistency and prevent errors during variable referencing in the clustering rocess.  The  column  standardization  procedure  is  presented  in  Figure  10.
+
+df.columns  =  df.columns.str.strip().str.replace("  ",  "_").str.lower()
+
+
+Figure 10. Column name standardization process
+
+The system validated the presence of all required attributes necessary for clustering,
+
+:Juding demographic variables and ICAT aptitude scores. If any required column was
+
+.sing, the system displayed an error message and stopped further execution to ensure
+
+1 integrity and analytical accuracy. This validation process is shown in Figure 11.
+
+
+
+
+
+'l lh, '  i 11	  
+
+
+
+
+
+
+
+
+
+,,:
+
+
+'	hr , ll I' I f	i fl(.
+
+(,:  'B •11 101'	f Ar·
+i,;11elur 0	Ar
+'  achelo1· of Ar s
+9:  'B chelo1' of Sci.enc	in Ent,, 1>rn1rnurship',
+10: 'Bachelor· of Science in Information Technology',
+11: 'Bacllelo1' of Public Administration'
+}
+
+Figure 7. Course code to academic program mapping
+
+   The system allowed users to upload datasets through a file uploader that supports both CSV and Excel file formats. This mechanism ensured flexibility in data input and compatibility  with  commonly  used  data  storage  formats.  The  file  upload
+implementation	IS	illustrated	m	Figure	8.
+
+r: - - - - Fil E Upload - - - -
+uploaded_file = st. file_uploader("	Upload your CSV or Excel file", type=["csv", "xlsx"])
+
+
+Figure 8. Dataset file uploader implementation
+
+  After a dataset was uploaded, the system automatically identified the file format and Daded the data using Pandas. A try-except structure was implemented to handle
+,ossible file-reading errors, ensuring that the system terminated safely when invalid or orrupted files were provided. This data loading and error-handling process is shown
+
+
+
+
+
+
+\T .. i 1 . "	ilr. 111tph tlil
+
+
+
+t ir ·ks, Tl i np1l 1w111 ti,,.inµ. th· Sdkit-lc;1m fihrnr . Addif-iorwll . th•K 1
+fon·ti,, {hn\ the kneed librnry wn	0pplhl to automa i"II id ntif	1·h
+
+,rr .- ,,
+
+
+nm h r of duster using the elbow method. Th implementation of the" lihrari " i,
+
+sh wn in Figure 5.
+
+1 • hnal_def.py
+
+inpol'tstreamlit as st inport pandasas pd
+iP1port matplotlib.pyplot as plt fron sklearn.cluster import KHeans
+from sklearn.metricsimportsilhouette.score, calinski_harabasz_score, davies_bouldin_score froakneed import Kneelocator
+
+
+Figure 5. Importation of required Python libraries
+
+   To ensure a user-friendly and visually appropriate interface for data analysis, the system page was configured using Streamlit's page setup function. A wide layout was selected to accommodate multiple visualizations, and a descriptive title was displayed o clearly indicate the purpose of the system. This configuration allowed users to easily interpret clustering outputs and evaluation metrics. The page configuration and title display are presented in Figure 6.
+
+st.set_page_config(page_title="K·fieans Clustering",layout="'l.'ide") st.title("Clustering Student .CAT Score Using Machine Learning Algoritho")
+
+
+Figure 6. Streamlit page configuration and system title
+
+A fixed course code mapping was defined to convert numerical course identifiers
+
+
+
+
+
+
+
+)
+
+
+
+
+
+I ,dr l'O m dd Jc, clopmcnt1tlw dlHus 'l und·rw •nt data ·leaning an<l pr pr , ·efv in tn uddre-ss tili ·sing nlues, remove inconsistencies, and prepare the data for cJu. t ring analysis. Afi'er the ICAT dataset was prepared, it was processed using the K-Mean'
+ ·lustering algorithm. To determine the most appropriate number of cJusters, the Elbow Method was applied by evaluating the within-cluster sum of squares across varying cluster counts. This procedure enabled the identification of an optimal balance between model simplicity and clustering perfonnance. As illustrated in Figure 4, the results indicated that four (4) clusters provided the most suitable structure for grouping students based on similarities in their ICAT aptitude profiles.
+
+Elbow Method
+
+
+
+
+
+
+
+
+-E
+Cl/
+£
+
+
+
+
+
+
+2	3	4	6	8	9
+k
+
+
+Figure 4. Elbow Method
+
+  The development of the ICAT clustering system required the integration of several ython libraries to support data processing, machine learning, visualization, and web-
+1ased interaction. Streamlit was utilized to create an interactive web interface for
+
+
+
+
+
+
+
+1-h\t \ intcqwctntkm	lo rnsurc ac ·urn·y ·onfidcntiality and pr<ip r u.e (Jf 'h
+
+assessment outcl1mes.
+
+   Using the official l AT conversion table, the Guidance Office converted student 111," scores from the six aptitude areas General Ability, Verbal Aptitude, NumerjcaJ Aptitude, Spatial Aptitude,	Perceptual	Aptitude,	and	Manual	Dexterity	into standardized stanine scores and percentile ranks. These percentiles indicate a student's relative standing among test-takers and became the primary basis for determining academic suitability and course recommendations. Due to institutional policy and test security guidelines, the specific computation and conversion . procedures were not disclosed publicly and were handled exclusively by authorized guidance personnel.
+  After the conversion and interpretation of scores, students underwent a one-on-one counseling session with a guidance counselor. During this session, the counselor explained the meaning of the student's percentile results, discussed strengths and areas for improvement, and recommended appropriate academic programs based on the student's aptitude profile. Only after this individualized counseling process did students proceed to the Registrar's Office for enrollment, ensuring that course selection was guided by both standardized assessment results and professional judgment.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\1
+
+
+
+
+   k y fi ature of the developed . st m. It forth r di LI" ·
+
+im I m ntation of the K-Means clustering algorithm	 techniques, the validation of clustering accuracy through estabJi hed evalua ion metrics, and the results of the system's usability assessment. Plates of the system are included to illustrate its major functionalities and user interface design. Finally, this chapter concludes with insights drawn from the findings and provides recommendations for future system enhancements.
+Findings
+
+The following are the findings related to the research questions that guided the study:
+Analysis of the Existing ICAT Score Interpretation Method
+
+  At ISPSC Tagudin Campus, the interpretation of ICAT (Institutional College Admission Test) results followed a structured and systematic process.prior to the development of the automated system. The procedure began with the submission of required documents from the Registrar's Office to the Guidance Office. Students then accomplished the ICAT application form, which was reviewed and approved by guidance personnel. After approval, students were scheduled for the ICAT examination and took the test on the assigned date.
+
+
+
+
+• .ot ON,. ,, , or, ·•··,co H · • r A','..t·<
+'I ,HuO • (	"ttHt	T RUCUn	fo o	1
+
+
+. ( --5 l :t\'t' mtcd D (Pom), 1111d 1ho · b •low 38 rec •Iv• fill F (J\ wfulJ	r:1 I • br,t.h i11dit·nting thal substantial in1provcmcnl.s are needed to en. urc . afoifa tory	u:'er
+_ ·penenc .
+
+  By integrating both quantitative measures from the SUS results and qualitative nsights from user feedback, the study provided a comprehensive evaluation of the lustering system's usability and effectiveness. This dual approach ensured that the ystem 's overall performance was assessed not only through statistical data but also rough the actual experiences and perceptions of its users, resulting in a well-balanced
+_d data-driven assessment of system quality.
+
+
+
+
+
+I 1 -Idi ·1t• "'l j(  ,f dd
+11 \)\\I ,,, I ,1, I I,, I I 11,
+"'"" ' q11
+ •tMHi ll, 1i 1f1 I
+
+.t:11n1i,1t1  lh	,11idR1H ' A . { 
+
+• ·,·11,.:, c	( l  1u11, kmcnt th , q Antifati	L ult I r TO i hng ;:iddi int1al i
+- •,( tn darity ti· ability and practical re'!'Vance.
+
+ble 4.	djective Rating on the Level ofU ability of the ICAT Clu t ring 'y.,,t m
+
+	~		·--- - ·- - - --	---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   This table presents the usability_gradii!g scale based on the System Usability Scale US) scores. Each score range corresponds to a specific letter grade and descriptive 1ting. A SUS score of80.3 and above receives a grade of A (Excellent), indicating that te system is highly user-friendly and.perfonns exceptionally well in meeting user pectations. Scores between 68 and 80.3 are graded as B (Good), signifying that the
+·stem is generally efficient but may still benefit from minor enhancements. Scores [thin the 51-68 range correspond to a C (OK) rating, suggesting that the system is
+
+
+
+
+
+
+
+irt 11.
+
+i '"	I	. I ) I'	(' 1llw ('H fl' ,,
+
+ t !'f'l1 h,	Hllf 1 ·	1' ;1Ji,f:	
+\ l'' ll!Hl{rm1111 't1 dL''ILi1111	'th fh ( ,11irhn 'f'
+
+
+  C' :l\lnsdot'. 1 hr 1	data
+
+,c,
+
+an· 1 z ,<J lo id ri if	
+
+
+dures and limitation in the utilization ofJ;AT re ·ult , c tabli. hin · a ba:· linP fr(
+
+·_·stem ,d	elopment.
+
+  To analyze the ICAT scores of students, the K-Means clustering algorhhmwas pplied to the six aptitude components measured by the ICAT. Prior to clustering, the ata was prepared and normalized to ensure consistency across variables. The algorithm ouped students based on similarities in their aptitude profiles, enabling the dentification of performance-based categories that reflect dominant cognitive and
+practical abilities.
+   To evaluate the accuracy and performance of the K-Means clustering model, internal cluster validation metrics were utilized, namely the Silhouette Score, Calinski­ Harabasz Index, and Davies-Bouldin Index. These metrics were analyzed to assess
+:;luster cohesion, separation, and overlap, determining the reliability and validity of the
+
+enerated clusters.
+
+  To analyze the functionality of the developed web-based system, system-generated lata	such as stored	ICAT records, cluster assignments, academic	program
+·ecommendations, and dashboard visualizations were examined. The analysis focused m verifying the correctness, consistency, and accuracy of system outputs in supporting
+:tudent profiling and academic guidance.
+
+
+
+
+
+
+
+
+1 k: " m nrnl that lht ttsitbility ussc.sm 111 r ·fl, ·t ·d pni ·Licrtl, real-world wiag • and
+
+:widt·d rnlid fccdbnck on1hcyst 'Ill s cJl'cctivcncss1 cfficicncy1 and suitability for i ·,·
+h t -nded pmpose.
+
+esrarch lnstt·uments
+
+   To evaluate the usability and effectiveness of the clustering system, this study used the System Usability Scale (SUS) as its primary research instrument. The SUS is a standardized and widely accepted tool for measuring system usability, chosen because it provides a quick and reliable assessment of user-friendliness, efficiency, and overall ser experience important factors for evaluating an educational decision-support
+;ystem such as the ICAT Clustering System. The SUS was administered to the Guidance Counselor and the Guidance Clerk, who are the system's only intended end IIsers. This is methodologically acceptable, even as the number of respondents is small,
+,ecause SUS measures usability from actual users rather than a broad population, and tudies such as Wang et al. (2022) support that meaningful usability insights can still
+e achieved with small samples. The feedback provides a correct and context-specific valuation of how well the system meets the operational needs of the Guidance Office.
+.ccording to Suria (2024), the SUS is a statistically reliable tool in evaluating academic 1line systems, hence suitable for assessing satisfaction, ease of navigation, and Jerational efficiency.
+
+
+
+
+
+
+
+
+
+
+
+
+
+t·H.. ,d,cd11111.:kr"  o Co11t·sri" J 'Pl' I\ •nfi11.	ho dld hot moll aH r , kit	.
+
+
+T blc J. Breakdown of ICAT e ominces by course for Academic Year 202	2026
+
+
+-	-
+Academic Program	Number of Student
+
+Bachelor of Public Administrntion
+
+Bachelor of Science in Information Technology Bachelor of Science in Entrepreneurship Bachelor of Arts in Social Science
+Bachelor of Arts in Psychology Bachelor of Arts in English Language Bachelor of Science in Mathematics
+Bachelor of Science in Business Administration Bachelor of Physical Education
+Bachelor of Elementary Education Bachelor of Secondary Education No Course (Did Not Enroll) TOTAL
+
+
+
+47
+
+126
+
+75
+
+126
+
+77
+
+31
+
+8
+
+257
+
+26
+
+27
+
+126
+
+62
+
+1,001
+
+
+
+
+The usability of the proposed system was evaluated using the System Usability Scale
+
+(SUS), with the Guidance Counselor and Guidance Associate serving as the primary
+@1I' !f {?/w1Wem .Y,yMmatum, l!Mw
+
+		
+' ..
+
+
+
+
+
+
+
+ 
+, chekr or 11, in P. ·choh g
+
+. ·,r,
+
+7'l
+
+
+Bal:h lor of . tts in "nglisb Language
+
+Bachelor of Science in Mathematics
+
+Bachelor of Science in Business Administration
+2 7Bachelor of Physical Education26Bachelor of Elementary Education27Bachelor of Secondary Education126No Course (Did Not Enroll)62TOTAL1,001
+
+
+   Table 3 shows the breakdown of ICAT examinees by course for Academic Year 2025-2026, based on a total of 510 student records. For this academic year, 14 students enrolled in the Bachelor of Public Administration, while 100 students pursued the Bachelor of Science in Information Technology. The Bachelor of Science in Entrepreneurship recorded 8 students, and 91 students enrolled in the Bachelor of Arts in Social Science. Moreover, 27 students pursued Bachelor of Arts in Psychology, and
+9 students enrolled in Bachelor of Arts in English Language. Notably, no students
+
+enrolled in the Bachelor of Science in Mathematics during this academic year. The
+@raeA,d!f  e/elW(}/,n J,y(J,Mna/i(};n, PJ;;/,;,
+
+
+
+
+
+
+
+
+
+
+
+1ith at 1-l d 1	
+
+h, ti '<tI 'mi, '	ar, 4 7 ·tu cnt w r	t1H lkd in th   I hli.	llllrll-..1  1f10 ,
+
+,	hil 12€i/)tudcnt 1ur:ucd the Bad1cl r r.·cicn·c in Inform tin T· h1111l11Jy.	1•
+
+
+Hachel()r of S'ience in Entrepreneurship program recorded 7  enrollee·. · n,d
+
+r10 h ·r
+
+
+l 26 ·tudcnts were enrolled in the Bachelor of Arts in Social Sci nc·. dditionally, 77 students took Bachelor of A1ts in Psychology, whereas 31 stud nt enrolled in Bach ·!or of Arts in English Language. The Bachelor of Science in Mathematics had the smalle t enrollment with 8 students. In contrast, the Bachelor of Science in Business Administration recorded the highest number of enrollees at 257 students, indicating strong student preference for the program. Meanwhile, 26 students enrolled in Bachelor of Physical Education, 27 students in Bachelor of Elementary Education, and 126 students in Bachelor of Secondary Education. Fmthermore, 62 examinees did not
+proceed with enrollment and were classified under HNo Course," providing insight into
+
+
+
+
+
+
+
+
+
+Legend:
+
+Business
+
+?Data
+
+?Data
+
+?Modelling	E-valuatio?n	Deployment
+
+Understanding Understanding Preparation
+
+Figure 3. Project Schedule
+
+  Figure 3 illustrates the complete project schedule, showing the start and end dates of key activities, their interdependencies, and the overall progression of the project from inception to completion.
+
+
+
+
+
+
+
+
+
+
+
+
+
+cs.arch D si n
+
+  Thi· st11dy	mployed a Descriptive Developmental R-ecar h De , n. wh,:h ,­ appropriate for the development and evaluation of an educational s stem that int. r data analysis and system implementation. The descriptive component fi cw;ed on examining archived ICAT results to identify patterns and trends in student performance without manipulating the original data. These findings served as the empfrical basis for designing the clustering model and determining relevant performance indicators.
+   The developmental component involved the design, implementation, and refinement of a machine learning-based clustering system using Python and the Scikit-leam library's K-Means algorithm. Insights derived from the descriptive analysis infonned 10w the algorithm grouped students based on similarities in their ICAT perfonnance. rhrough this approach, descriptive analysis and machine learning complemented each ther, with descriptive findings guiding model development and K-Means clustering merating meaningful student groupings.
+The developed system presents its outputs through a web-based dashboard that
+
+lows authorized users to upload ICAT results, view cluster assignments, and analyze
+@I'a dc!f r;/'w11(Jf} in,  f,y;- Pld
+
+
+
+I/.
+
+11. 1  ti	, ,\ ,,, 1· ti, •I n, 1 1
+
+
+
+
+ fli W11l fl d
+
+!-\ii lt,11L , !,, , 1ny r -q11i11
+
+
+
+<I t1it il
+
+
+
+c L  l't' r ur c8 and 'LtPI 011 th	
+
+p	ams, lendin  to more i11fonned amJ timely inter ention .
+
+iii
+
+
+  The tudy also benefits Teachers and Administrators by generating orga:ni ed '-tudent profiles and clustering results. These outputs allow the institution lo deliver faster, more responsive, and evidence-based student services, reducing reliance on manual interpretation and improving the overall accuracy of academic evaluation.
+   The Community will benefit from this study as it promotes proper student placement based on academic merit and aptitude. This contributes to the development of well-prepared graduates who are more capable of contributing positively to national growth and workforce development.
+   The Future Researchers may use the results of this study as a foundation for further research in educational data mining, artificial intelligence, and machine learning applications in academic _profiling. The system and methodology may be enhanced by integrating additional datasets or applying other clustering algorithms to further improve the analysis and understanding of student performance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'r'I ,,rt It I  tit k 1 I n lili111 
+
+Th . tudy	n, l uti!iz . th' 1 -.	
+
+c. a1, u . It d . 11 t in Jud data H m oth r ampu	or d ta from,	th	urt --:. will als not consid rasp els uch as personality, famil income le-veli nd		havi This study shall only focus on the grouping of students concerning their t:i gnifive
+aptitude. The veracity of the system's clustering output is only as good as the completeness and validity of the ICAT data provided to the system. Since this is a web­ based system, a stable internet connection is needed for the system to work at jts best performance and for better access. In addition, the system is only designed for academjc guidance and research purposes; thus, it does not supplant existing institutional evaluation or admission procedures. Possible future enhancements in the system include the integration of other datasets, the inclusion of other machine learning algorithms like DBSCAN or GMM, and its expansion to other campuses oflSPSC for
+wider validation and analysis.
+
+Importance of the Study
+
+   Importance of the Study the ICAT Clustering System for ISPSC Tagudin Campus was developed to provide a data-driven approach in understanding student aptitude through the application of machine learning algorithms. This system supports the institution by offering a clearer, more objective assessment of students' cognitive
+
+
+
+
+
+
+
+
+
+
+	
+1 ' I 11\1i q l. 111 I II :
+
+Ir•
+
+
+lkF-1q rmd dcnhp 1:1 ·h,1-t· rin  rnuJ •I u uir Hi· K-' 1, w al ·rrirh ,1 1(1 e, t ori· i:;tudent based on their JCAT re·ults and d fin   gt ,u in .\
+3. m a ure th accuracy and perfonnance of the K-Means clu tering algorithm using cluster validation metrics such as the Silhouette Score, Calinskj-Harabasz Index, and Davies-Bouldin Index;
+4. develop a web-based system for the Guidance Office that stores JCAT scores, recommends suitable academic programs based on student profiles, and provides a dashboard that visualizes clustering results; and,
+5. evaluate the usability and effectiveness of the developed system in generating
+
+meaningful and accurate student profiles for academic guidance.
+
+Scope and Limitation of the Study
+
+   This study is concerned with the design, development, and implementation of a web­ based system that clusters students of Ilocos Sur Polytechnic State College (ISPSC) Tagudin Campus based on their ICAT percentile scores. The proposed system uses the K-Means Clustering Algorithm to analyze the results of the students in six cognitive 1reas, namely: General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude,
+>erceptual Aptitude, and Manual Dexterity. From this clustering process, the system
+
+rill show a pattern of strengths and weaknesses among the students that could be useful
+
+1 academic advising, course recommendation, and institutional planning. The study
+
+@lfcuJa'o,;ry(i}/cieneei,n,f
+
+
+
+111. I' I	l'h,,
+
+II, 1\1I · 1h,  1•1 l, i!tp th, I'  
+' lrn-tcrin  hi h: Ill I r\'I
+ ·1thcrnl I " T Llntn wrtT pn c 'f- d ft r . imil:-1, f c  among the students. 'lhc al 101ithm  aptitude pattern in all six lCAT ar a  o that th cl 
+could define his strengths and learning tendencies.
+
+  The Output Phase showed the result from the clustering proce . In thi c :. . i1 included the created categorized student clusters based on the dominant aptjtu patterns and individual student profiles that highlighted strengths and risks.These were made possible by an administrative dashboard that was shown to enable viewing and interpretation of clustering outcomes. Using the system, the students qualified to enter board programs were identified, academic tracks or courses should be recommended, and a data-driven decision support system should be established to help the Guidance Office and academic units in academic planning and decision making.
+Objectives of the Study
+
+   The main objective of this study, titled "Clustering Student ICAT Scores Using Machine Learning Algorithm," was to develop and implement a web-based system that analyzed and grouped the ICAT scores of students at Ilocos Sur Polytechnic State allege (ISP C) Tagudin Campus using machine learning techniques. The system was '". ign d to identify and categorize students according to their dominant cognitive
+,	iliti . nd I	ming pr files, providing a data-driven basis for academic guidance and n:-. Furthermore the study sought to assist in determining student
+
+
+
+
+Figure 1. Conceptual Framework
+
+  As shown in figure 1, The Input Phase of the study involved the ICAT percentile scores over six big aptitude areas, namely: General Ability, Verbal Aptitude, Numerical Aptitude, Spatial Aptitude, Perceptual Aptitude, and Manual Dexterity. In addition to these test results, student information regarding SHS strand, GWA, and course or program applied to, along with existing policies and procedures, were also prepared. All of the data were gathered from the ISPSC Guidance Office for accuracy and confidentiality. All these served as the input basis for the analysis of aptitude and academic background of students in a data-driven manner.
+
+
+
+
+
+
+
+sin:	rlh. W\:3 .11ess. and I 0n1ing tendency. 'JJ1c	u put	f	h
+
+en	m asst::	l:3l"(;'g  rical student clusters that under core differing co .nitive pr
+
+aJ ng with potential acade1uic risks. These outputs are designed to	uppor the I P Tagudin Campus in devising targeted academic interventions, improved guidance services, and the adoption of advising strategies that better mirror the students' learning
+:)()tential. Furthennore, the framework encourages data-informed decision-making by nsuring that administrators and faculty stakeholders are provided with unbiased nalysis outcomes. It also allows for the timely detection of students who need extra
+=aming support or special attention. Overall, the framework developed using IPO sures a systematic and sustainable methodology for institutional action that stems
+• m assessment data.
+
+	
+
+
+
+
+
+
+II 11\111.1,.,	l
+
+if I	d
+
+
+I	,fil  ,.	ht·,· 1 111:11I	1--tr n 1th r 1
+
+1 h \'-, lbi ·l11f:t rin, t1pprnA1.:h allo	for rt n c,	l,	Ji-:. i< -11d	1	1r•fil1111e	1/
+ni{\in n t  nly ar ::is ftr n th but al o I arnin, llaf-  ha rn	
+
+:-;upp J1 r guidanc . By u ing K-Means clusterin a the core an lyti I m h d. h
+
+ -tudy enabl the automatic grouping of students based on simjlarity in apti ude p- e n-.; without relying on predefo1ed academic categories. ICAT scores serve as the prjrnary input data, allowing the system to discover natural groupings that reflect actual student performance characteristics. As a result, this approach supports objective, data-driven, and scalable student profiling that can enhance academic advising, course aJignrnent, and institutional decision-making.
+   Ultimately, it contributes to a smarter and more adaptive education system, one that aligns the strengths of students with the appropriate learning paths and even future career trajectories.
+Conceptual Framework of the Study
+
+   This study adopts the Input-Process-Output Model as a conceptual framework, providing an organized structure of how the data of students are transfonned into actionable academic insights. The input would be the ICAT percentile scores and the corresponding student background information gathered from the ISPSC Guidance Office, which serves as the foundational dataset to be analyzed. The process involves machine learning techniques, particularly the use of the K-Means Clustering Algorithm
+to analyze the results of the ICAT in order to uncover any hidden patterns and for the
+
+
+
+
+
+
+* I	\II 1r1 11\	           
+
+1i1 h I\: pl 11\: i l"t y 111d thr r imm diflt,	11, ;,,,	
+
+t \I  ti 111:1 I tit'!i1 an th	1.n.1 v11p d 111 rHl f r d 1a-c·fri	
+
+'- du ':Jti n, tl re i. a n ed t tran,fonn lt ditir ml	
+ii ight . Thi study recognize that manual int q •wti n 
+
+IC T data to reveal deeper patterns of students' cogniti e and p
+
+By applying machine learning specifically K-Means clustering thi re ·earch airned automate student profiling, uncover latent groupings within ICAT scores, and provide a more holistic understanding of student aptitude. Ultimately, the capstone project was undertaken to enhance academic guidance, support evidence-based curriculum planning, and contribute to a more adaptive and personalized educational system aligned with students' inherent capabilities and learning potential.
+   Addressing this shortfall, this research proposes a machine learning-based clustering approach to analyze and group students according to their ICAT scores. Rather than focusing solely on overall test results, the proposed method examines patterns of strengths and weaknesses across the six ICAT aptitude areas to provide a deeper and more meaningful interpretation of student abilities. Through this approach, students can be organized into distinct groups that reflect their cognitive and practical tendencies. For example, All-Around Performers demonstrate consistently balanced perforn1ance across all aptitude areas, while Cognitive-Oriented Learners show stronger capabilities in analytical and reasoning-based domains such as General Abilit) Verbal Aptitude, and Numerical Aptitude. In contrast, Practical-Oriented
+Learners tend to perform better in hands-on and applied domains, particularly Manual
+
+
+
+
+
+
+
+
+
+
+t lhH·. ,,\I  l 11,	11111, i ,,, I r-1 11 l 1(1 . lt 1
+
+T -" in	nm1IIH 'UHi k ·1, th(' r · ord ( f, II i	
+
+n, p rsonal data rnd ta s ·ore of	ud nt ar manually
+
+* , nnn-rt d into percentile ranks using the official JCAT man 1al c mtainin
+
+ ta li·hed ·coring nom1s. These nonns enable counseJors to interpret the re ult a curately as infonned guidance for the students. Usually, those who obtained scores at or above the 33rd percentile in the core cognitive areas such as General Ability, Verbal Aptitude, and Numerical Aptitude qualify in the board courses. Furthermore, the student's Senior High School General Weighted Average is considered in recommending them to suitable academic programs. Practically, after taking the ICAT, the students' test results are encoded into a digital template after their personal data and raw scores have been manually verified. These are then printed and given, one copy for the student and one copy each for the academic department concerned and one for the official record in the Guidance Office. In this procedure, although accurate documentation'is ensured, the results were then underutilized; it tends to be used only
+for admission purposes and not for deeper analyses that may reveal meaningful insights nto the potentials for learning among students.
+  This capstone project was conducted to address the existing gap between the ollection ofICAT results and their meaningful utilization for student development and
+nstitutional decision-making at Ilocos Sur Polytechnic State College-Tagudin
+p$aRfuft"" r/0/ewnee iffbf,yo mam;n Pr
+
+
+
+
+
+r1r thl' ll' T. '1he le, l "1l'll llt'l'h., 1tknl.' cupnhility It, six.ttlnjor nrcM: Oct1cml /\ bility,
+
+\ rrl,111 I 11\\ldc, N111wric11I Aptitude, M11t1110) 1Jcxtcrity1patial .l\ptitude and
+
+\-ct'Cl'ploal ptitltdc. Unlike trndiliorlul tests that dct·rmine what students have learned nlretldy, the lCAT examines their potentials to learn and to perform a particular task given proper teaching and training. As explained by MSEd (2024), '1an aptihtde test is designed to assess what a person is capable of doing or to predict what a person js able to learn or do give the right education and instruction." Hence, the purpose of the ICAT is not to label the students but to serve as a guide for teachers about the students' potentials for learning and development. According to the ISPSC Guidance Office, the ICAT has several subtests, each with a distinct area of ability that it seeks to measure. General Ability measures logical thinking and problem-solving skills. It offers a general overview of a student's intellectual potential. Verbal Aptitude will determine understanding of words, reading comprehension, and communication skills; all are vital in language and communication-related courses. Nwnerical Aptitude tests the ability to reason with numbers and to solve mathematical problems, which are essential reasoning skills in most analytical and quantitative courses. Spatial Aptitude measures the capacity to visualize and manipulate shapes and patterns, an ability important in architecture, design, and engineering studies. In the field of technical and data-related fields, Perceptual Aptitude measures alertness, accuracy, and attention to detail. Lastly, Manual Dexterity measures coordination and fine motor control, reflecting one's capability to perform practical and hands-on tasks efficiently. In sum, these subtests generate a complete profile of the cognitive and psychomotor capabilities of each
+
+
+. t' 1t H i(' , i;\1fif1 f'OU,It ti
+
+
+
+
+     t the na,\ni nl level, lh i11c1·eRsi11g availahility of stu<lcnt-r lat c.l dafa in hi . r education institutions has encouraged the adoption of data-driven approache to b tter understand learner performance and competencies. Several studies have demonstrated the effecth eness of clustering teclmiques in analyzing educational datasets and supporting academicdecision-making.Lee and Lee (2024) examined various clustering algorithms for segmenting college students based on competency indicators and found K-Means clustering to be the most stable and reliable approach for grouping students with similar characteristics. Similarly, Golovnev and Kaneva (2023) illustrated how clustering methods can be used to systematically organize academic disciplines into meaningful thematic groups, highlighting the flexibility and applicability of such techniques in handling large and complex educational data. In response to recognized limitations of traditional K-Means clustering, Wan et al. (2022) proposed an enhanced version of the algorithm that improved analytical accuracy in student-related data analysis. These studies collectively emphasize the growing role of machine learning and clustering methods in educational research and institutional planning. Drawing from these national and international research efforts, the present study applies K­ Means clustering to the analysis of ICAT results in order to automate and enhance student profiling. By utilizing a data-driven framework, the study seeks to contribute to more personalized academic advising, infonned curriculum development, and
+evidence-based decision-making within higher education institutions in the Philippines.
+
+
+
+
+
+
+
+·tmPOL 'f?TU .'I'(', 't A'tfi'. C'.OLU· (W
+,p,11lln ( '1ttn111111 'I p,u,Hn tin,,. 'or
+
+
+
+('hnpf r f
+
+I' TlHH>lJCTJON
+
+B1n-lq!round of the Study
+
+   The present scenario of higher education is faced with so much pressure lo make decisions about students' aptitudes and cognitive profiles effectively for educational planning and career guidance. Various related studies have established the potential of clustering in educational data analysis. Fathanah (2022) showed that there was an enhancement in the performance of students' writing after being exposed to clustering techniques, which helped them to organize ideas more coherently, hence its potential to support learning. Similarly, Nafuri et al. (2022) applied K-Means clustering to group B40 students in Malaysia based on academic outcomes, identifying patterns in dropout risk and graduation rate. Their study showed that optimized clustering models may present performance trends informative in educational planning. Agha, Meghji, and Bhatti (2023) also applied K-Means to analyze the grades of students at Mehran University of Engineering and Technology, identifying distinct academic patterns across different subjects. Their findings highlighted that clustering was key in finding the hidden relationships within student performance data. Kaban et al. (2023) further compared several clustering algorithms and found that on normalized datasets of educational data, K-Means performed well, though algorithm performances depend on dataset complexity. This stresses the importance of choosing the right techniques to get accurate results. The theoretical underpinning of this approach to clustering is influenced by Howard Gardner's Theory of Multiple Intelligences, which states that
+individuals possess various types of intellectual capabilities, such as logical­
+
+mathematical, verbal-linguistic, bodily-kinesthetic, and spatial intelligence (MSEcl,
+
+
+
+
+
+
+
+
+
+
+I J
+
+
+,11:;in l'Ht:C.,...  ...................................... ·•···· ...· ·
+
+R	i {r1(i n !· n,	I'
+dn1i11 l	rd	.. -'.!
+Joad '.	/13 ·el Pa	J
+
+1anual J2ntry Page	, J
+Access Clustering Dashboard Page	5
+Clustering Results Page	46
+9	Manage Student Records Page	47
+l O	Modification Logs	48
+11	Add New Ad.min Page	49
+'. 2	Registered Admins	51
+.3 Audit Logs	52
+4	Download CSV Page	53
+
+ILOCOS Sl R POLVTF.CHNIC STATll: COLLCtGE
+Tngudin Caunpus, Tngudln, llocos Sur
+
+
+
+
+.Figure	Page
+
+1 Conceptual Fra1nework	8
+
+2 Cross-Industry Standard Process for Data Mining	15
+
+3 Project Schedule	18
+
+4 Elbow Method	29
+
+5 Importation of required Python libraries	30
+
+6 Streamlit page configuration and system title	30
+
+7 Course code to academic program mapping	31
+
+8 Dataset file uploader implementation	31
+
+9 Reading uploaded dataset with error handling	32
+
+IO	Colwnn name standardization process	32
+
+11 Required colmnn validation	33
+
+12 Removal of missing values and course type conversion	33
+
+13 Display of course mapping table	33
+
+14 Automated insight generation function	34
+
+15 K-Means clustering with automatic k selection and evaluation	35
+
+16 Execution of clustering across sex and course variables	35
+
+17 Silhouette Score vs k	36
+
+18 Calinski-Harabasz Index vz k	37
+
+19 Davies-Bouldin Index vs k	38
+
+20 SUS Distribution Responses	54
+
+
+
+
+
+
+
+
+LIST OF TABLES
+
+Table	Page
+1 Project Assign1nents	19
+2 Breakdown ofICAT examinees by course for
+Academic Year 2024-2025	21
+2	Breakdown ofICAT examinees by course for
+Academic Year 2025-2026	22
+4 Adjective Rating on the Level of Usability of the ICAT Clustering System	25
+5 Level of Usability of the Clustering Student ICAT Score Using Machine Leaming Algorithm	53
+
+
+
+
+
+
+
+LIST OF APPENDICES
+
+Ap1wndix	I',, ,,
+
+1-\	Con1n1unication Letter	,,,,.,, I•
+
+B !CAT Process Flowchart ..................................................................,..,,  l,U
+
+C Use Case Diagran1	,n
+
+D Data Flow Diagram Level 0	Ill
+
+E Data Flow Diagram Level 1........................................................""""'.,, I
+
+F Entity Relationship Diagram	':
+
+G Deploy1nent Letter ...............................................................................,.. /,I
+
+H Questionnaire	i I
+I Certificate of Implementation	'.•<'
+
+J SUS Tabulation	,·
+
+K Certificate of English Critic....................................................................
+
+L Plagiarism Check ....................................................................................
+
+M Plagiarism Cert1fication ..........................................................................
+
+N Certificate of Statistician	i
+
+0	Documentation ...............••··..•·••·•·•......................................................_ ..:.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2 METIIOl)OLOGY
+Rcscnrch l)csign	13
+Sollwarc Model	14
+Project Plan	18
+Project Assigntnents	19
+Population and Locale of the Study	20
+Research lnstru,nents	23
+Data Analysis	24
+3 RESULT AND DISCUSSION
+Findings	24
+Features of the developed system	39
+Conclusion	58
+Recommendations	59
+GLOSSARY	61
+REFERENCES	64
+APPENDICES	66
+BIOGRAPHICAL SKETCH	87
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ILOCOS SUR POLYTECHNIC STATE COLLEGE
+Tagudin Campus, Tagudin, llocos Sur
+
+
+TABLE OF CONTENTS
+
+
+Page
+T[TLE PAGE	i
+APPROVAL SHEET	ii
+ABSTRACT	iii
+ACKNOWLEDGEMENT	iv
+DEDfCATION	v
+TABLE OF CONTENTS	ix
+LIST OF APPENDICES	xi
+LIST OF TABLES	xii
+LIST OF FIGURES	xiii
+LIST OF PLATES	xiv
+CHAPTER
+1	INTRODUCTION
+Background of the Study	1
+Conceptual Framework of the Study	6
+Objectives of the Study	9
+Scope and Limitation of the Study	10
+Importance of the Study	11
+(pjj teh,-!}/ ie1woi/11, f6,pma/i()l11,:!?Jd,,nok ,?
+ix
+
+	
+DEDICATION
+
+   This work is :1 testament to my growth as an Information Technology student and a reOect ion of my continuous journey toward becoming a professional in the IT industry. It symbolizes the lessons, challenges, and experiences that have shaped me both academically and personally.
+   To my parents, thank you for your unwavering support, constant belief in my abilities, sacrifices, and endless encouragement. You have been my greatest source of strength and motivation throughout this journey.
+  To the Atelo family, I am deeply grateful for the friendship, inspiration, and for being one of the reasons I strive to grow and improve myself each day.
+   Lastly, to Almighty God, for the wisdom, guidance, and blessings that made all of this possible this achievement is dedicated to you.
+
+
+Azriel Jon M. Yukee
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+elie/4  !/' c1L(J()/;/1,,f1}/6,,,malion, ol°!JJ'
+V
+
+·
+"•,'
+
+
+IpI
+
+ILOCOS stm POLVTI<:CIINIC STATF. COLLEGE
+
+, .1-;	Tnguclln Cnmpus, Tngudln, llocos Sur
+'
+
+
+ACKNOWLEDGEMENT
+
+     The researchers sincerely thank Almighty God for granting them wisdom, guidance, and strength to accomplish this study. His presence has been their source of perseverance and inspiration.
+They extend their heartfelt gratitude to Dr. George 0. Villanueva, DIT, their
+
+adviser, for his continuous support, guidance, and valuable insights that contributed greatly to this research.
+    Appreciation is also given to the Guidance Office Staff of Ilocos Sur Polytechnic State College - Tagudin Campus for their cooperation and valuable feedback through the Google Form survey, which was essential in evaluating the system's usability and effectiveness.
+    Special thanks to Dr. Joy G. Bea, DIT, their subject instructor, for her patience, guidance, and constructive feedback throughout the capstone process.
+    Lastly, the researchers thank their parents and families for their unwavering love, support, and understanding, which served as their foundation in completing this study.
+A.J.M.Y
+
+C.L.H.B
+
+J.M.A.S A.P.M
+
+
+
+
+
+
+
+@ifaelgl(i}/ai,e,w(}hi J,y/JM1wlio1,iww,1/1
+iv
+
+
+
+ABSTRACT
+
+YUKEE, AZRIEL JON M., BONIFACIO, CHRISTINE LORENCE., SALVADOR, JOHN MARK A., MACABITAS, ARIES P., A "CLUSTERING STUDENT ICAT SCORE USING MACHINE LEARNING ALGORITHM,"
+llocos Sur Polytechnic State College, Tagudin, Ilocos Sur, November 3, 2025. Adviser: GEORGE VILLANUEVA, DIT
+The study developed and evaluated a web-based system that utilized a machine
+learning clustering algorithm applied to the students' !CAT scores in order to find patterns in academic pe,formance. It was designed to help an institution, through the Guidance office and faculty, to classify students based on competency levels and understand their academic strength and weakness. Following the framework of the CRISP-DM, analysis of existing !CAT score interpretation practices, clustering system development, applying the K-Means algorithm, and assessment of system usability were conducted. The sum result of the archived !CAT data at !locos Sur Polytechnic State College-Tagudin Campus was used/or the analysis. Analysis on the usability test using the System Usability Scale gave a mean score of 68.75 with good ratings on effectiveness, efficiency, and user satisfaction. The K-Means algorithm showed successful determination of optimal clusters into four based on aptitude components, the number of clusters confirmed by the Elbow method, and cluster quality on valuation metrics with a strong meaning. In general, the findings confirm that the system developed in this study is effective in generating meaningful groupings about student performance, supportive of data-driven academic profiling, guidance, placement, and institutional decision-making.
+Keywords: Clustering, Machine Learning Algorithm, Ilocos Sur Polytechnic State College College Admission Test (ICAT), CRISP-DM, System Usability Scale (SUS)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@faeltdo'Fgl0/den(J() bn, $_,/J1Fma.tio1l!'!!i;;Jlllwf°cf#'
+111
+
+
+
+ti ' ' f
+f
+
+
+
+
+
+
+r	I<, 1 ·rr,,i1 11.1 1r.
+
+
+
+
+
+
+SALVI DOR, ARIES I'. MACA lffl AS inf	rtial fulfill ll"I\I r,( th, r•'YI JW111 nl;  r,,r
+the degree of Bachelor of Science in Information T chnolc•:y. and h:l h,- n 'IP.m1m:rl and recommended for acceptance by the Oral Examination	'omrn1t,	/r H·r·J qn November 3, 2025, composed of:
+GEOR	VA JR, ))JT
+
+
+SREYES,MIT
+
+f'.,()/1',UJ.IN--
+RHODA CONEP<iION 0. VILLAMOR, MSE	GEOR
+English Critic
+
+
+
+
+
+Accepted and approved in partial fulfillment of the requirements of Bachelor
+
+of Science in Information Technology program.
+
+JONALY	AMBRA, PhD
+Dean, College of Arts and Sciences
+
+DANIEL	IREZ, PhD
+Campus Director
+
+
+
+
+
+@fa.ekw,,!!/(j/wnee h1t JrppmalilY11!!1Te;/1.l/lOioj#'
+11
+
+
+
+
+
+
+OR O A C. Vf\LENZUELA
+('  •")" I 1
+
+
+
+i	,,-?'.?  r"1 s· c,,:?;; c'	8	I rSct- t'l ,I ..,  ,.,.  n l : .	' . y {tv·:l)r ·,. , , f•,-•-.:"' •.
+. ,r-- -.·al':,• '"€ d fG	t c' er;•Ca :;•	Prt), -<:l I st	( I:' :>.:-·'.cl 1J:.'. r	c:l1J•::r V_:r T $: • U-,	•
+,.•a- :lol:? lea·n g 1-1 :; ·- : ob'? :r:,'err1:r:e-J	t t! Gu	"Co <Yf<: 011'  o <:u• ro';!t.-: n-: S	r: Cc·  ,•"!
+(ISPSC) - Ta ,:'iCam;1J3
+ire deploym':?n p OC'.?s:i .,.,.J ,:-ch.!'.!	sys e-n i-.s:a·1a: n. ccmf. 'Jrm n ct t .., v-cb c1p '"'.r. n. c a n
+a1mn;stra· elf: a::cc-..: ::; u:e: c;-1(:r.ta:,y, and:cl t.zst rt? irwo ing sc: ted Gu··ancc f	"'r!.o. r-Ql a.
+tacu!t'f m!:mbcrs f..:: da:a 1:i be p.-OC5:-l';':i .... -JooMn1'C1v.>1:h s:r-ct confi '.)n a',ty. fo"	"· ;.i n;t:u cn, d :a pnvacy po'ic s a.1!,-;ca' s· :\'j.::ds
+
+We sinccrc!y i1"'r,recia-e yo,.:· su ;:c"t a--.t ?-::;,:r; ,:\ G':!:' r.r'9 cur system, \\-tldl we be! -. '"'--;n contr ::1J t,; s,gn1hcantl1 to 1S.PSC's Of"t;; :r.] e Y t:in •).31 cata-crr.,en sclut!ZY-lSin eoucm:oo Md im ovc 3:-cC deers.ion-ma\:•!"':)prc,:e
+
+Rcspcc_tfo:ly yo ,rs.
+
+
+
+AZRtE	'M. YUKEE
+Hc;;ea t:t · r
+
+r,,-r
+CttRts11we.LORtrizEH. BO'?IFACIO	J
+R0--.,1..;.l-:b•:·
+
+
+
+AAK	SALVADOR
+
+ARJES74fttcA.enAS R	her
+
+
+Noted·
+
+G. EORGE VIUANUEVA JR. OIT
+Adviser,,.,.,..	-
+/
+
+
+
+
+
+
+
+
+. ,-:-..:-
+JONAlYH- S.!U. AMBRA. PHO
+Dean,Cc\1/2ge c1 /.r	arid Sc·-i.:rc
+
+
+
+- At;i:-trie-1
+o:'"f - .4..
+DR OMAR C. VALENZUELA
+G-1.i.dar-c.eCose·-:-r
