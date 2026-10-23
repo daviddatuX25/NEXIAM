@@ -23,18 +23,18 @@
   <Link
     href={href}
     class={cn(
-      'block glass-panel p-6 rounded-2xl stat-card relative overflow-hidden group',
+      'block rounded-[var(--radius,0.5rem)] border border-border/80 bg-card p-6 shadow-sm dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] motion-safe:hover:-translate-y-0.5 hover:border-primary/40 transition-all duration-200 relative overflow-hidden group',
       className
     )}
   >
     <div class="flex justify-between items-start mb-4 relative">
       <div>
-        <p class="text-sm font-medium text-muted-foreground mb-1">{label}</p>
-        <h3 class="text-3xl font-bold tracking-tight text-foreground">{value}</h3>
+        <p class="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
+        <h3 class="text-3xl font-extrabold font-mono tabular-nums tracking-tight text-foreground">{value}</h3>
       </div>
       {#if Icon}
-        <div class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-primary ring-1 ring-primary/20">
-          <Icon class="w-6 h-6" />
+        <div class="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <Icon class="size-5" />
         </div>
       {/if}
     </div>
@@ -59,18 +59,18 @@
 {:else}
   <div
     class={cn(
-      'glass-panel p-6 rounded-2xl stat-card relative overflow-hidden group',
+      'rounded-[var(--radius,0.5rem)] border border-border/80 bg-card p-6 shadow-sm dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-all duration-200 relative overflow-hidden',
       className
     )}
   >
     <div class="flex justify-between items-start mb-4 relative">
       <div>
-        <p class="text-sm font-medium text-muted-foreground mb-1">{label}</p>
-        <h3 class="text-3xl font-bold tracking-tight text-foreground">{value}</h3>
+        <p class="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
+        <h3 class="text-3xl font-extrabold font-mono tabular-nums tracking-tight text-foreground">{value}</h3>
       </div>
       {#if Icon}
-        <div class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-primary ring-1 ring-primary/20">
-          <Icon class="w-6 h-6" />
+        <div class="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <Icon class="size-5" />
         </div>
       {/if}
     </div>

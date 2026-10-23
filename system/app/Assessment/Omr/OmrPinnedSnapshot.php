@@ -2,12 +2,13 @@
 
 namespace App\Assessment\Omr;
 
+use App\Assessment\Omr\Queries\OmrReviewGeometryQuery;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
-use App\Models\Assessment\OmrQuestionBookletQuestion;
+use App\Models\Assessment\OmrBookletSet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
-use App\Models\Assessment\OmrTemplateQuestion;
 use RuntimeException;
 
+use function array_map;
 use function array_unique;
 use function is_array;
 use function preg_match;
@@ -45,6 +46,7 @@ final readonly class OmrPinnedSnapshot
         public string $configHash,
         public string $bookletHash,
         public array $nativeTemplate,
+        public string $nativeConfigJson,
         public array $nativeConfig,
         public array $nativeBundleMetadata,
         public array $reviewManifest,
@@ -57,23 +59,30 @@ final readonly class OmrPinnedSnapshot
         public array $pageTemplates,
         public array $pageIdentityRegions,
         public array $nativeAssets = [],
-    ) {
-    }
+        public array $formalSubtestIdsByPosition = [],
+    ) {}
 
     /**
      * Build the pin from the batch's immutable template and booklet versions.
-     * Loaded relations required: template areas with aptitudeArea and
-     * questions.options; booklet questions with templateQuestion and aptitudeArea.
+     * Version-owned projection rows are the sole source of answer geometry;
+     * booklet questions contribute only area/position coverage and correct
+     * options through `OmrReviewGeometryQuery`.
      *
      * @throws RuntimeException when the pin is incomplete
      */
     public static function pin(
         OmrAnswerSheetTemplateVersion $templateVersion,
         OmrQuestionBookletVersion $bookletVersion,
+        ?OmrBookletSet $set = null,
+        ?array $kitContext = null,
     ): self {
         $nativeBundleHash = (string) $templateVersion->native_bundle_hash;
         $manifestHash = (string) $templateVersion->review_manifest_hash;
         $configHash = (string) $templateVersion->config_hash;
+        $pinnedBundle = NativeBundle::loadForVersion($templateVersion);
+        if (($pinnedBundle->fileHashes['config.json'] ?? null) !== $configHash) {
+            throw new RuntimeException('The pinned OMR config hash does not match its immutable config.json bytes.');
+        }
         $engineName = (string) $templateVersion->engine_name;
         $patchIdentity = (string) $templateVersion->patch_identity;
         $manifest = $templateVersion->review_manifest_json;
@@ -120,36 +129,65 @@ final readonly class OmrPinnedSnapshot
 
         $areas = [];
         $areaIdsByCode = [];
-        $areaCodeByTemplateAreaId = [];
+        if ($kitContext === null) {
+            foreach ($templateVersion->areas->sortBy('display_order') as $templateArea) {
+                $code = $templateArea->aptitudeArea?->code;
 
-        foreach ($templateVersion->areas->sortBy('display_order') as $templateArea) {
-            $code = $templateArea->aptitudeArea?->code;
+                if ($code === null || $code === '') {
+                    throw new RuntimeException('A pinned template area is missing its aptitude area code.');
+                }
 
-            if ($code === null || $code === '') {
-                throw new RuntimeException('A pinned template area is missing its aptitude area code.');
+                $areas[$code] = (int) $templateArea->max_items;
+                $areaIdsByCode[$code] = (int) $templateArea->aptitude_area_id;
             }
-
-            $areas[$code] = (int) $templateArea->max_items;
-            $areaIdsByCode[$code] = (int) $templateArea->aptitude_area_id;
-            $areaCodeByTemplateAreaId[(int) $templateArea->id] = $code;
         }
 
         $items = [];
-        $correctOptionsByPosition = [];
-
-        foreach ($bookletVersion->questions->sortBy('question_position') as $bookletQuestion) {
-            $templateQuestion = $bookletQuestion->templateQuestion;
-
-            if ($templateQuestion === null) {
-                throw new OmrTemplateProjectionException(
-                    'pair_geometry_coverage_mismatch',
-                    'A booklet question is missing its pinned template question.',
-                );
+        $formalSubtestIdsByPosition = [];
+        $projectedItems = app(OmrReviewGeometryQuery::class)->itemsFor($templateVersion, $bookletVersion, $set, $kitContext);
+        if ($kitContext !== null) {
+            foreach ($projectedItems as $projected) {
+                $code = (string) $projected['area_code'];
+                $subtestId = (int) $projected['formal_subtest_id'];
+                if ($code === '' || $subtestId < 1) {
+                    throw new RuntimeException('The saved Kit composition does not resolve a formal subtest for its native area.');
+                }
+                $areaIdsByCode[$code] ??= $subtestId;
+                $areas[$code] = ($areas[$code] ?? 0) + 1;
+                $formalSubtestIdsByPosition[(int) $projected['position']] = $subtestId;
             }
-
-            $code = self::areaCodeFor($bookletQuestion, $templateQuestion, $areaCodeByTemplateAreaId);
-            $items[] = self::geometryItem($bookletQuestion, $templateQuestion, $code);
-            $correctOptionsByPosition[(int) $bookletQuestion->question_position] = (string) $bookletQuestion->correct_option_code;
+        }
+        foreach ($projectedItems as $projected) {
+            $options = array_map(
+                static fn (array $option): OmrOptionGeometry => new OmrOptionGeometry(
+                    code: (string) $option['code'],
+                    region: new OmrRegion(
+                        (float) $option['region']['x'],
+                        (float) $option['region']['y'],
+                        (float) $option['region']['w'],
+                        (float) $option['region']['h'],
+                    ),
+                    displayOrder: (int) ($option['display_order'] ?? 0),
+                ),
+                (array) ($projected['options'] ?? []),
+            );
+            $questionNo = (int) $projected['question_no'];
+            $items[] = new OmrItemGeometry(
+                position: (int) $projected['position'],
+                areaCode: (string) $projected['area_code'],
+                questionNo: $questionNo,
+                nativeLabel: (string) ($projected['native_label'] ?? sprintf('%s_Q_%d', $projected['area_code'], $questionNo)),
+                region: new OmrRegion(
+                    (float) $projected['region']['x'],
+                    (float) $projected['region']['y'],
+                    (float) $projected['region']['w'],
+                    (float) $projected['region']['h'],
+                ),
+                options: $options,
+                pageNo: (int) $projected['page_no'],
+                physicalItemUid: isset($projected['physical_item_uid']) ? (string) $projected['physical_item_uid'] : null,
+            );
+            $correctOptionsByPosition[(int) $projected['position']] = (string) $projected['correct_option_code'];
         }
 
         if ($areas === [] || $items === []) {
@@ -182,14 +220,8 @@ final readonly class OmrPinnedSnapshot
         // bytes come from the immutable on-disk bundle (declared in the
         // hash-covered files map); a declared-but-missing asset fails closed.
         $nativeAssets = [];
-        $markerMetadata = \App\Assessment\Omr\OmrCapturePolicy::markerMetadata($nativeBundle['template'] ?? []);
+        $markerMetadata = OmrCapturePolicy::markerMetadata($nativeBundle['template'] ?? []);
         if ($markerMetadata !== null) {
-            $manifestCode = $nativeBundle['manifest']['template_code'] ?? null;
-            $manifestVersion = (int) ($nativeBundle['manifest']['template_version'] ?? 0);
-            if (! is_string($manifestCode) || $manifestCode === '' || $manifestVersion <= 0) {
-                throw new RuntimeException('A pinned marker-bearing OMR template is missing its bundle identity.');
-            }
-            $pinnedBundle = NativeBundle::load($manifestCode, $manifestVersion);
             $nativeAssets[$markerMetadata['asset_name']] = $pinnedBundle->assetBytes($markerMetadata['asset_name']);
         }
 
@@ -202,11 +234,12 @@ final readonly class OmrPinnedSnapshot
             nativeBundleHash: $nativeBundleHash,
             manifestHash: $manifestHash,
             configHash: $configHash,
-            bookletHash: (string) $bookletVersion->answer_key_hash,
+            bookletHash: (string) ($set?->answer_key_hash ?? $bookletVersion->answer_key_hash),
             nativeTemplate: $nativeBundle['template'],
-            nativeConfig: $nativeBundle['config'],
+            nativeConfigJson: $pinnedBundle->assetBytes('config.json'),
+            nativeConfig: $pinnedBundle->config,
             nativeBundleMetadata: [
-                'files' => $nativeBundle['files'],
+                'files' => $pinnedBundle->fileHashes,
                 'engine' => $nativeBundle['manifest']['engine'] ?? null,
                 'bundle_version' => $nativeBundle['manifest']['bundle_version'] ?? null,
             ],
@@ -220,6 +253,7 @@ final readonly class OmrPinnedSnapshot
             pageTemplates: $pageTemplates,
             pageIdentityRegions: $pageIdentityRegions,
             nativeAssets: $nativeAssets,
+            formalSubtestIdsByPosition: $formalSubtestIdsByPosition,
         );
     }
 
@@ -279,6 +313,7 @@ final readonly class OmrPinnedSnapshot
         foreach ($labels as $label) {
             if (str_starts_with($label, 'APPLICANT_NUMBER_')) {
                 $grouped['APPLICANT_NUMBER'][] = $label;
+
                 continue;
             }
             if (preg_match('/^([A-Z0-9_]+)_Q_\d+$/', $label, $matches) === 1) {
@@ -287,56 +322,5 @@ final readonly class OmrPinnedSnapshot
         }
 
         return $grouped;
-    }
-
-    /** @param array<int, string> $areaCodeByTemplateAreaId */
-    private static function areaCodeFor(
-        OmrQuestionBookletQuestion $bookletQuestion,
-        OmrTemplateQuestion $templateQuestion,
-        array $areaCodeByTemplateAreaId,
-    ): string {
-        $fromTemplateArea = $areaCodeByTemplateAreaId[(int) $templateQuestion->template_area_id] ?? null;
-
-        if ($fromTemplateArea !== null && $fromTemplateArea !== '') {
-            return $fromTemplateArea;
-        }
-
-        $code = $bookletQuestion->aptitudeArea?->code;
-
-        if ($code !== null && $code !== '') {
-            return $code;
-        }
-
-        throw new RuntimeException("Booklet question at position {$bookletQuestion->question_position} has no resolvable area code.");
-    }
-
-    private static function geometryItem(
-        OmrQuestionBookletQuestion $bookletQuestion,
-        OmrTemplateQuestion $templateQuestion,
-        string $areaCode,
-    ): OmrItemGeometry {
-        $options = $templateQuestion->options
-            ->sortBy('display_order')
-            ->values()
-            ->map(fn ($option): OmrOptionGeometry => new OmrOptionGeometry(
-                code: (string) $option->code,
-                region: self::regionOf($option->region_x, $option->region_y, $option->region_w, $option->region_h),
-                displayOrder: (int) $option->display_order,
-            ))->all();
-
-        return new OmrItemGeometry(
-            position: (int) $bookletQuestion->question_position,
-            areaCode: $areaCode,
-            questionNo: (int) ($templateQuestion->question_no ?? $bookletQuestion->question_position),
-            pageNo: (int) ($templateQuestion->page_no ?? 1),
-            nativeLabel: sprintf('%s_Q_%d', $areaCode, (int) ($templateQuestion->question_no ?? $bookletQuestion->question_position)),
-            region: self::regionOf($templateQuestion->region_x, $templateQuestion->region_y, $templateQuestion->region_w, $templateQuestion->region_h),
-            options: $options,
-        );
-    }
-
-    private static function regionOf(float $x, float $y, float $w, float $h): OmrRegion
-    {
-        return new OmrRegion((float) $x, (float) $y, (float) $w, (float) $h);
     }
 }

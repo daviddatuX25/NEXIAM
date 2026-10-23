@@ -21,9 +21,4 @@ class PrivacyPolicy extends Model
             'is_active' => 'boolean',
         ];
     }
-
-    public static function active(): ?self
-    {
-        return static::query()->where('is_active', true)->latest('id')->first();
-    }
 }

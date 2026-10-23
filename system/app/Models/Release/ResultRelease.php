@@ -3,6 +3,7 @@
 namespace App\Models\Release;
 
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\ResultSheet\ResultDocumentPrintReceipt;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,8 +19,14 @@ class ResultRelease extends Model
         'released_at',
         'unreleased_at',
         'unrelease_reason',
+        'superseded_at',
         'idempotency_key',
         'mode',
+        'channel',
+        'handover_counselor_user_id',
+        'physical_handover_at',
+        'consultation_decision_id',
+        'print_receipt_id',
     ];
 
     /**
@@ -31,7 +38,9 @@ class ResultRelease extends Model
             'is_current' => 'boolean',
             'released_at' => 'datetime',
             'unreleased_at' => 'datetime',
+            'superseded_at' => 'datetime',
             'result_printed_at' => 'datetime',
+            'physical_handover_at' => 'datetime',
         ];
     }
 
@@ -57,5 +66,29 @@ class ResultRelease extends Model
     public function releasedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'released_by_user_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function handoverCounselor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_counselor_user_id');
+    }
+
+    /**
+     * @return BelongsTo<ConsultationDecision, $this>
+     */
+    public function consultationDecision(): BelongsTo
+    {
+        return $this->belongsTo(ConsultationDecision::class);
+    }
+
+    /**
+     * @return BelongsTo<ResultDocumentPrintReceipt, $this>
+     */
+    public function printReceipt(): BelongsTo
+    {
+        return $this->belongsTo(ResultDocumentPrintReceipt::class);
     }
 }

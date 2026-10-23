@@ -36,8 +36,15 @@ final class EligibleTaRecipients
 
     public function canDelegate(User $actor, User $target): bool
     {
+        $actorInstitutionId = $actor->actorScope()->institutionId;
+        $targetInstitutionId = $target->staffProfile?->institution_id;
+        $sameInstitution = $actorInstitutionId === null
+            || $targetInstitutionId === null
+            || (int) $actorInstitutionId === (int) $targetInstitutionId;
+
         return $this->authorizer->allows($actor, CapabilityCatalog::GUIDANCE_TA_DELEGATE)
             && $actor->id !== $target->id
+            && $sameInstitution
             && $this->isEligible($target);
     }
 
@@ -50,7 +57,7 @@ final class EligibleTaRecipients
             return 'inherent';
         }
 
-        return $this->hasDelegatedTa($user) ? 'delegated' : 'none';
+        return ($this->hasDelegatedTa($user) || $this->hasLegacyDelegatedTa($user)) ? 'delegated' : 'none';
     }
 
     public function hasDelegatedTa(User $user): bool
@@ -59,14 +66,28 @@ final class EligibleTaRecipients
             return false;
         }
 
-        foreach (CapabilityCatalog::testAdministratorCapabilities() as $capability) {
-            if (! $this->authorizer->allows($user, $capability)) {
+        foreach (CapabilityCatalog::delegatedTestAdministratorCapabilities() as $capability) {
+            if (! $user->hasDirectPermission($capability)) {
                 return false;
             }
         }
 
-        // Marker: proctor.assign is not on clerk/support role helpers — only via direct grant.
-        return $this->authorizer->allows($user, CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN);
+        return true;
+    }
+
+    public function hasLegacyDelegatedTa(User $user): bool
+    {
+        if (! $this->isEligible($user)) {
+            return false;
+        }
+
+        foreach (CapabilityCatalog::legacyTestAdministratorCapabilities() as $capability) {
+            if (! $user->hasDirectPermission($capability)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

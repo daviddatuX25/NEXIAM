@@ -15,8 +15,7 @@ final class SaveOmrCanonicalOverlay
         private readonly OmrOverlaySpec $spec,
         private readonly OmrAuthoringDraftService $drafts,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $overlay */
     public function handle(OmrTemplateAuthoringDraft $draft, User $actor, array $overlay, int $expectedLockVersion): OmrTemplateAuthoringDraft

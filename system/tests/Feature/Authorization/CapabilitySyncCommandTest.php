@@ -1,7 +1,11 @@
 <?php
 
+use App\Authorization\CapabilityCatalog;
 use App\Models\User;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 test('capabilities:sync restores a capability row that drifted out of the database', function (): void {
     seedE2Foundation();
@@ -12,12 +16,19 @@ test('capabilities:sync restores a capability row that drifted out of the databa
 
     // Simulate a database that predates the capability (permission row missing).
     Permission::query()->where('name', 'notify.read.own')->delete();
-    app(Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     expect(fn () => $staff->fresh()->hasPermissionTo('notify.read.own'))
-        ->toThrow(Spatie\Permission\Exceptions\PermissionDoesNotExist::class);
+        ->toThrow(PermissionDoesNotExist::class);
+
+    $authState = $staff->staffProfile->authenticationState;
+    $staffSession = [
+        'auth.surface' => 'staff',
+        'auth.session_version' => (int) $authState->session_version,
+    ];
 
     $this->actingAs($staff)
+        ->withSession($staffSession)
         ->get(route('notifications.index'))
         ->assertForbidden();
 
@@ -28,18 +39,30 @@ test('capabilities:sync restores a capability row that drifted out of the databa
         ->and($staff->fresh()->hasPermissionTo('notify.read.own'))->toBeTrue();
 
     $this->actingAs($staff)
+        ->withSession($staffSession)
         ->get(route('notifications.index'))
         ->assertOk();
 });
 
-test('capabilities:sync is idempotent and keeps every role grant set aligned', function (): void {
+test('capabilities:sync purges forbidden registrar support grants and preserves allowed grants', function (): void {
     seedE2Foundation();
+
+    $role = Role::query()->where('name', 'registrar_support_staff')->firstOrFail();
+    $forbidden = [
+        CapabilityCatalog::REGISTRAR_APPLICATIONS_DISMISS,
+        CapabilityCatalog::REGISTRAR_APPLICATIONS_IMPORT,
+        CapabilityCatalog::REGISTRAR_ADMISSION_CLEARANCE_REOPEN,
+        CapabilityCatalog::COMMUNICATIONS_ANNOUNCEMENTS_MANAGE,
+        CapabilityCatalog::KNOWLEDGE_SOURCES_MANAGE,
+    ];
+    $role->givePermissionTo($forbidden);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     $this->artisan('capabilities:sync')->assertExitCode(0);
 
-    foreach (\App\Authorization\CapabilityCatalog::roleHelperGrants() as $roleName => $capabilities) {
-        $role = \Spatie\Permission\Models\Role::query()->where('name', $roleName)->firstOrFail();
-        expect($role->permissions()->pluck('name')->sort()->all())
-            ->toBe(collect($capabilities)->sort()->all());
-    }
+    $synced = $role->fresh()->permissions()->pluck('name')->all();
+    expect($synced)
+        ->not->toContain(...$forbidden)
+        ->toContain(CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT)
+        ->toContain(CapabilityCatalog::REGISTRAR_ADMISSION_CLEARANCE_CONFIRM);
 });

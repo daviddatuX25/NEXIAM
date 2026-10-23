@@ -29,6 +29,10 @@ final class PageCapabilityPackRegistry
             return null;
         }
 
+        if (str_starts_with($routeName, 'knowledge.')) {
+            return $this->byRoute['knowledge.index'] ?? null;
+        }
+
         return $this->byRoute[$routeName] ?? null;
     }
 
@@ -71,21 +75,63 @@ final class PageCapabilityPackRegistry
                 key: 'staff.workspace.home@1',
                 version: 1,
                 pageIdentity: 'staff.home',
-                allowedModes: ['inquiry'],
-                defaultMode: 'inquiry',
                 privacyClass: 'staff_operational_minimized',
                 surface: SurfaceProfileKey::Staff,
+                capabilities: [
+                    'workspace.summary@1',
+                    'exams.sessions.today@1',
+                    'setup.readiness.read@1',
+                    'result_sheet.templates.list@1',
+                    'results.release.overview@1',
+                    'knowledge.search@1',
+                    'consultation.sessions.list@1',
+                    'exams.rooms.available@1',
+                    'foundation.academic_cycles.list@1',
+                    'consultation.session.create@1',
+                    'consultation.session.reservation.open@1',
+                ],
                 uiIntents: [
                     ['type' => 'navigate', 'route_key' => 'setup.index', 'label' => 'Open Setup readiness'],
+                ],
+            ),
+            new PageCapabilityPack(
+                key: 'staff.consultation.sessions.index@1',
+                version: 1,
+                pageIdentity: 'consultation.sessions.index',
+                privacyClass: 'staff_operational_minimized',
+                surface: SurfaceProfileKey::Staff,
+                capabilities: [
+                    'consultation.sessions.list@1',
+                    'exams.rooms.available@1',
+                    'foundation.academic_cycles.list@1',
+                    'consultation.session.create@1',
+                    'consultation.session.reservation.open@1',
+                    'knowledge.search@1',
+                ],
+                uiIntents: [
+                    ['type' => 'navigate', 'route_key' => 'consultation.sessions.index', 'label' => 'Release Day Scheduling'],
                 ],
             ),
             new PageCapabilityPack(
                 key: 'staff.setup.readiness@1',
                 version: 1,
                 pageIdentity: 'setup.index',
-                allowedModes: ['inquiry'],
-                defaultMode: 'inquiry',
                 privacyClass: 'staff_operational_minimized',
+                capabilities: [
+                    'setup.readiness.read@1',
+                    'workspace.summary@1',
+                    'result_sheet.templates.list@1',
+                    'results.release.overview@1',
+                    'knowledge.search@1',
+                    'setup.rooms.create_draft@1',
+                    'setup.rooms.update@1',
+                    'setup.cycles.create_draft@1',
+                    'setup.cycles.activate@1',
+                    'setup.quotas.upsert@1',
+                    'setup.notifications.update_admission@1',
+                    'setup.notifications.update_exam@1',
+                    'setup.windows.store@1',
+                ],
                 surface: SurfaceProfileKey::Staff,
                 uiIntents: [
                     ['type' => 'navigate', 'route_key' => 'setup.index', 'label' => 'Stay on Setup'],
@@ -95,8 +141,6 @@ final class PageCapabilityPackRegistry
                 key: 'applicant.schedule@1',
                 version: 1,
                 pageIdentity: 'applicant.schedule',
-                allowedModes: ['inquiry', 'assistant'],
-                defaultMode: 'assistant',
                 privacyClass: 'applicant_own_minimized',
                 surface: SurfaceProfileKey::Applicant,
                 capabilities: [
@@ -110,12 +154,49 @@ final class PageCapabilityPackRegistry
                 ],
             ),
             new PageCapabilityPack(
+                key: 'applicant.portal@1',
+                version: 1,
+                pageIdentity: 'applicant.portal',
+                privacyClass: 'applicant_own_minimized',
+                surface: SurfaceProfileKey::Applicant,
+                capabilities: [
+                    'admission.office_inquiries.options@1',
+                    'admission.office_inquiries.open@1',
+                    'admission.office_inquiries.reply@1',
+                ],
+            ),
+            new PageCapabilityPack(
+                key: 'applicant.inquiries.index@1',
+                version: 1,
+                pageIdentity: 'applicant.inquiries.index',
+                privacyClass: 'applicant_own_minimized',
+                surface: SurfaceProfileKey::Applicant,
+                capabilities: [
+                    'admission.office_inquiries.options@1',
+                    'admission.office_inquiries.open@1',
+                    'admission.office_inquiries.reply@1',
+                ],
+            ),
+            new PageCapabilityPack(
+                key: 'applicant.inquiries.show@1',
+                version: 1,
+                pageIdentity: 'applicant.inquiries.show',
+                privacyClass: 'applicant_own_minimized',
+                surface: SurfaceProfileKey::Applicant,
+                capabilities: [
+                    'admission.office_inquiries.options@1',
+                    'admission.office_inquiries.open@1',
+                    'admission.office_inquiries.reply@1',
+                ],
+            ),
+            new PageCapabilityPack(
                 key: 'staff.knowledge.sources@1',
                 version: 1,
                 pageIdentity: 'knowledge.index',
-                allowedModes: ['inquiry'],
-                defaultMode: 'inquiry',
                 privacyClass: 'staff_operational_minimized',
+                capabilities: [
+                    'knowledge.search@1',
+                ],
                 surface: SurfaceProfileKey::Staff,
                 uiIntents: [
                     ['type' => 'navigate', 'route_key' => 'knowledge.index', 'label' => 'Open Knowledge'],
@@ -125,16 +206,20 @@ final class PageCapabilityPackRegistry
                 key: 'staff.exams.sessions.index@1',
                 version: 1,
                 pageIdentity: 'exams.sessions.index',
-                allowedModes: ['inquiry', 'assistant'],
-                defaultMode: 'inquiry',
                 privacyClass: 'staff_operational_minimized',
                 surface: SurfaceProfileKey::Staff,
                 capabilities: [
                     'exams.sessions.list@1',
                     'exams.session.show@1',
+                    'exams.session.create@1',
+                    'exams.rooms.available@1',
+                    'foundation.academic_cycles.list@1',
+                    'scheduling.candidate_pool.list@1',
                     'exams.session.reservation.open@1',
                     'exams.session.assign@1',
                     'exams.session.publish@1',
+                    'setup.notifications.update_exam@1',
+                    'knowledge.search@1',
                 ],
                 skills: ['schedule.exam_session@1'],
                 uiIntents: [
@@ -146,16 +231,19 @@ final class PageCapabilityPackRegistry
                 key: 'staff.exams.sessions.show@1',
                 version: 1,
                 pageIdentity: 'exams.sessions.show',
-                allowedModes: ['inquiry', 'assistant'],
-                defaultMode: 'inquiry',
                 privacyClass: 'staff_operational_minimized',
                 surface: SurfaceProfileKey::Staff,
                 capabilities: [
                     'exams.sessions.list@1',
                     'exams.session.show@1',
+                    'exams.session.create@1',
+                    'exams.rooms.available@1',
+                    'foundation.academic_cycles.list@1',
+                    'scheduling.candidate_pool.list@1',
                     'exams.session.reservation.open@1',
                     'exams.session.assign@1',
                     'exams.session.publish@1',
+                    'knowledge.search@1',
                 ],
                 skills: ['schedule.exam_session@1'],
                 uiIntents: [

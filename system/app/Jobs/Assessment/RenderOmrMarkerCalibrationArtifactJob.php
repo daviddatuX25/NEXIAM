@@ -25,8 +25,7 @@ final class RenderOmrMarkerCalibrationArtifactJob implements ShouldQueue
         public readonly int $profileId,
         public readonly array $evidence,
         public readonly int $actorId,
-    ) {
-    }
+    ) {}
 
     public function handle(
         OmrMarkerCalibrationArtifactGenerator $generator,

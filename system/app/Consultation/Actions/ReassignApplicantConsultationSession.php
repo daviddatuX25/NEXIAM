@@ -2,11 +2,14 @@
 
 namespace App\Consultation\Actions;
 
+use App\Assessment\Support\IndividualScoringReadiness;
 use App\Foundation\Actions\RecordAuditEvent;
+use App\Models\Admission\AdmissionAttempt;
 use App\Models\Consultation\ConsultationAssignment;
 use App\Models\Consultation\ConsultationSession;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Scheduling\AssignmentPlanningMutex;
+use App\Testing\PracticePurpose;
 use RuntimeException;
 
 /**
@@ -14,7 +17,11 @@ use RuntimeException;
  */
 class ReassignApplicantConsultationSession
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
+    public function __construct(
+        private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly IndividualScoringReadiness $scoringReadiness,
+        private readonly AssignmentPlanningMutex $planningMutex,
+    ) {}
 
     public function handle(
         ConsultationSession $fromSession,
@@ -23,13 +30,25 @@ class ReassignApplicantConsultationSession
         User $actor,
         ?string $reason = null,
     ): ConsultationAssignment {
-        return DB::transaction(function () use ($fromSession, $assignment, $toSession, $actor, $reason): ConsultationAssignment {
-            $fromSession = ConsultationSession::query()->lockForUpdate()->findOrFail($fromSession->id);
-            $toSession = ConsultationSession::query()->lockForUpdate()->findOrFail($toSession->id);
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_CONSULTATION, (int) $fromSession->academic_cycle_id, function () use ($fromSession, $assignment, $toSession, $actor, $reason): ConsultationAssignment {
+            $firstId = min((int) $fromSession->id, (int) $toSession->id);
+            $secondId = max((int) $fromSession->id, (int) $toSession->id);
+            $first = ConsultationSession::query()->lockForUpdate()->findOrFail($firstId);
+            $second = ConsultationSession::query()->lockForUpdate()->findOrFail($secondId);
+            $fromSession = (int) $fromSession->id === $firstId ? $first : $second;
+            $toSession = (int) $toSession->id === $firstId ? $first : $second;
+            $attempt = AdmissionAttempt::query()->whereKey($assignment->admission_attempt_id)->lockForUpdate()->firstOrFail();
+            if (! $this->scoringReadiness->forAttempt($attempt)['ready']) {
+                throw new RuntimeException('Release Day reassignment requires complete individual scoring.');
+            }
             $assignment = ConsultationAssignment::query()->lockForUpdate()->findOrFail($assignment->id);
 
+            if ((int) $assignment->admission_attempt_id !== (int) $attempt->id) {
+                throw new RuntimeException('Assignment does not belong to the locked admission attempt.');
+            }
+
             if ((int) $assignment->consultation_session_id !== (int) $fromSession->id) {
-                throw new RuntimeException('Assignment does not belong to this session.');
+                throw new RuntimeException('Release Day assignment does not belong to this session.');
             }
 
             if (! $assignment->isActive()) {
@@ -37,29 +56,30 @@ class ReassignApplicantConsultationSession
             }
 
             if ((int) $fromSession->id === (int) $toSession->id) {
-                throw new RuntimeException('Choose a different consultation session for reassignment.');
+                throw new RuntimeException('Choose a different Release Day session for reassignment.');
             }
 
             if (in_array($fromSession->status, [ConsultationSession::STATUS_COMPLETED, ConsultationSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Cannot reassign from a terminal session.');
+                throw new RuntimeException('Cannot reassign from a terminal Release Day session.');
             }
 
             if (in_array($toSession->status, [ConsultationSession::STATUS_COMPLETED, ConsultationSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Cannot reassign to a terminal session.');
+                throw new RuntimeException('Cannot reassign to a terminal Release Day session.');
             }
 
             if ((int) $fromSession->academic_cycle_id !== (int) $toSession->academic_cycle_id) {
-                throw new RuntimeException('Target session must be in the same academic year.');
+                throw new RuntimeException('Target Release Day session must be in the same academic year.');
             }
 
-            $activeOnTarget = ConsultationAssignment::query()
-                ->active()
-                ->where('consultation_session_id', $toSession->id)
-                ->count();
+            $activeOnTarget = PracticePurpose::attempts(
+                ConsultationAssignment::query()->active()->where('consultation_session_id', $toSession->id),
+                'admission_attempt_id',
+                $attempt->practice_fixture_set_id,
+            )->count();
 
             $capacity = (int) $toSession->room()->value('capacity');
             if ($activeOnTarget >= $capacity) {
-                throw new RuntimeException('Target consultation session is full.');
+                throw new RuntimeException('Target Release Day session is full.');
             }
 
             $endReason = trim((string) $reason);

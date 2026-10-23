@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Admission;
 use App\Admission\Actions\AcceptAdmissionAttempt;
 use App\Admission\Actions\ArchiveAdmissionAttempt;
 use App\Admission\Actions\AuthorizeAcceptedAdmissionAmendment;
+use App\Admission\Actions\BulkVerifyAdmissionAttemptDocuments;
 use App\Admission\Actions\CorrectAdmissionAttempt;
 use App\Admission\Actions\DismissAdmissionAttempt;
+use App\Admission\Actions\EnsureAttemptRequirementChecklist;
 use App\Admission\Actions\ReconsiderAdmissionAttempt;
 use App\Admission\Actions\ReissueApplicantAccessKey;
 use App\Admission\Actions\ReopenAdmissionAttempt;
 use App\Admission\Actions\RequestApplicationCorrection;
+use App\Authorization\CapabilityAuthorizer;
+use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admission\AcceptAdmissionRequest;
 use App\Http\Requests\Admission\ArchiveAdmissionRequest;
@@ -22,13 +26,15 @@ use App\Http\Requests\Admission\ReissueAccessKeyRequest;
 use App\Http\Requests\Admission\ReopenAdmissionRequest;
 use App\Http\Requests\Admission\RequestApplicationCorrectionRequest;
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\Foundation\Institution;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use RuntimeException;
 
 /**
- * Admission-attempt state transitions. Each method is a thin delegate to a
- * domain Action; versioning and capability gates live in the Form Requests
- * and route middleware respectively (GF-21 — never role labels).
+ * Admission-attempt state transitions. Each method delegates to a domain
+ * Action after enforcing fresh, resource-scoped Registrar authorization.
  */
 class AdmissionActionController extends Controller
 {
@@ -36,8 +42,50 @@ class AdmissionActionController extends Controller
         AcceptAdmissionRequest $request,
         AdmissionAttempt $attempt,
         AcceptAdmissionAttempt $action,
+        CapabilityAuthorizer $authorizer,
+        BulkVerifyAdmissionAttemptDocuments $bulkVerify,
+        EnsureAttemptRequirementChecklist $ensureChecklist,
     ): RedirectResponse {
-        $action->handle($attempt, $request->user(), $request->integer('expected_version'));
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT);
+
+        $verifyDocuments = $request->boolean('verify_documents');
+        if ($verifyDocuments) {
+            $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_DOCUMENTS_VERIFY);
+        }
+
+        $accepted = $action->handle($attempt, $request->user(), $request->integer('expected_version'));
+
+        if ($verifyDocuments) {
+            $accepted->refresh();
+            $set = $ensureChecklist->handle($accepted, $request->user());
+            if ($set !== null) {
+                $unverifiedItems = $set->items()
+                    ->whereDoesntHave('latestVerification', fn ($q) => $q->where('status', 'verified'))
+                    ->get();
+
+                if ($unverifiedItems->isNotEmpty()) {
+                    $itemsPayload = $unverifiedItems->map(fn ($item) => [
+                        'requirement_item_id' => (int) $item->id,
+                        'expected_latest_verification_id' => $item->latestVerification?->id,
+                    ])->all();
+
+                    $bulkVerify->handle(
+                        attempt: $accepted,
+                        requirementSetId: (int) $set->id,
+                        items: $itemsPayload,
+                        actor: $request->user(),
+                        expectedVersion: (int) $accepted->version,
+                        idempotencyKey: 'accept-verify-'.$accepted->id.'-'.$accepted->version,
+                    );
+
+                    $verifiedCount = $unverifiedItems->count();
+
+                    return back()->with('status', "Application accepted and {$verifiedCount} document requirement(s) verified.");
+                }
+            }
+
+            return back()->with('status', 'Application accepted and all document requirements verified.');
+        }
 
         return back()->with('status', 'Application accepted.');
     }
@@ -46,7 +94,9 @@ class AdmissionActionController extends Controller
         DismissAdmissionRequest $request,
         AdmissionAttempt $attempt,
         DismissAdmissionAttempt $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_DISMISS);
         $action->handle(
             $attempt,
             $request->user(),
@@ -61,7 +111,9 @@ class AdmissionActionController extends Controller
         CorrectAdmissionRequest $request,
         AdmissionAttempt $attempt,
         CorrectAdmissionAttempt $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         $payload = $request->correctionPayload();
         $wasNeedsCorrection = $attempt->status === AdmissionAttempt::STATUS_NEEDS_CORRECTION;
 
@@ -80,14 +132,16 @@ class AdmissionActionController extends Controller
             ? 'Office fix recorded — application returned to pending review.'
             : 'Application fields updated.';
 
-        return back()->with('status', $message);
+        return redirect()->route('admissions.show', $attempt)->with('status', $message);
     }
 
     public function requestCorrection(
         RequestApplicationCorrectionRequest $request,
         AdmissionAttempt $attempt,
         RequestApplicationCorrection $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         try {
             $action->handle(
                 $attempt,
@@ -106,7 +160,9 @@ class AdmissionActionController extends Controller
         AuthorizeAcceptedAmendmentRequest $request,
         AdmissionAttempt $attempt,
         AuthorizeAcceptedAdmissionAmendment $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         $payload = $request->amendmentPayload();
 
         try {
@@ -121,7 +177,7 @@ class AdmissionActionController extends Controller
             return back()->withErrors(['version' => $e->getMessage()]);
         }
 
-        return back()->with(
+        return redirect()->route('admissions.show', $attempt)->with(
             'status',
             'Authorized amendment recorded. Application stays accepted — exam assignment does not require a retake.',
         );
@@ -131,7 +187,9 @@ class AdmissionActionController extends Controller
         ReconsiderAdmissionRequest $request,
         AdmissionAttempt $attempt,
         ReconsiderAdmissionAttempt $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         try {
             $action->handle(
                 $attempt,
@@ -153,7 +211,9 @@ class AdmissionActionController extends Controller
         ReopenAdmissionRequest $request,
         AdmissionAttempt $attempt,
         ReopenAdmissionAttempt $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         try {
             $action->handle(
                 $attempt,
@@ -172,7 +232,9 @@ class AdmissionActionController extends Controller
         ArchiveAdmissionRequest $request,
         AdmissionAttempt $attempt,
         ArchiveAdmissionAttempt $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         try {
             $action->handle($attempt, $request->user(), $request->integer('expected_version'));
         } catch (RuntimeException $e) {
@@ -186,7 +248,9 @@ class AdmissionActionController extends Controller
         ReissueAccessKeyRequest $request,
         AdmissionAttempt $attempt,
         ReissueApplicantAccessKey $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        $this->requireScopedCapability($request, $attempt, $authorizer, CapabilityCatalog::REGISTRAR_APPLICATIONS_CORRECT);
         try {
             $result = $action->handle(
                 $attempt,
@@ -198,9 +262,36 @@ class AdmissionActionController extends Controller
             return back()->withErrors(['version' => $e->getMessage()]);
         }
 
+        $request->session()->put('reissued_access_key', $result['access_token']);
+        $request->session()->put('credential_handoff', $result['credential_handoff']);
+
         return redirect()
             ->route('admissions.show', $result['attempt'])
-            ->with('status', 'Access key reissued. Copy it now — it will not be shown again.')
-            ->with('reissued_access_key', $result['access_token']);
+            ->with('status', 'Access key reissued. Copy it now — it will not be shown again.');
+    }
+
+    private function requireScopedCapability(
+        Request $request,
+        AdmissionAttempt $attempt,
+        CapabilityAuthorizer $authorizer,
+        string $capability,
+    ): void {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
+        $actorInstitutionId = $user->staffProfile?->institution_id ?? Institution::current()->id;
+        $scopedAttempt = AdmissionAttempt::query()
+            ->forWorkspace()
+            ->whereKey($attempt->getKey())
+            ->where('institution_id', $actorInstitutionId)
+            ->whereHas('academicCycle', fn ($cycle) => $cycle->where('institution_id', $actorInstitutionId))
+            ->firstOrFail();
+
+        abort_unless($authorizer->decideFresh($user, $capability, [
+            'institution_id' => (int) $scopedAttempt->institution_id,
+            'office' => 'registrar',
+        ])->allowed, 403);
     }
 }

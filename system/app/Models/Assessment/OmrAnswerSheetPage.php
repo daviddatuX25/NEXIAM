@@ -7,12 +7,40 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OmrAnswerSheetPage extends Model
 {
-    protected $table = 'omr_answer_sheet_pages';
-
     protected $fillable = [
-        'template_version_id', 'page_no', 'width', 'height',
-        'page_manifest_json', 'page_manifest_hash',
+        'template_version_id',
+        'page_no',
+        'width',
+        'height',
+        'page_manifest_json',
+        'page_manifest_hash',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(static function (self $page): void {
+            $page->assertCompiledParentMutable();
+        });
+
+        static::deleting(static function (self $page): void {
+            $page->assertCompiledParentMutable();
+        });
+    }
+
+    private function assertCompiledParentMutable(): void
+    {
+        $versionIds = array_unique(array_filter([
+            $this->exists ? $this->getRawOriginal('template_version_id') : null,
+            $this->template_version_id,
+        ]));
+
+        if (OmrAnswerSheetTemplateVersion::query()
+            ->whereIn('id', $versionIds)
+            ->where('status', OmrAnswerSheetTemplateVersion::STATUS_COMPILED)
+            ->exists()) {
+            throw new \RuntimeException('Compiled answer-sheet pages are immutable.');
+        }
+    }
 
     protected function casts(): array
     {

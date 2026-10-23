@@ -11,5 +11,5 @@ interface DocxToPdfConverter
 {
     public function isAvailable(): bool;
 
-    public function convert(string $documentPath): string;
+    public function convert(string $documentPath, ?float $timeoutSeconds = null): string;
 }

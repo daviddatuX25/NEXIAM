@@ -6,7 +6,7 @@ use App\Admission\Actions\AcknowledgeAssistedProgramSelection;
 use App\Admission\Actions\CancelApplicantProgramSelection;
 use App\Admission\Actions\SelectApplicantProgram;
 use App\Admission\Actions\TransferApplicantProgramSelection;
-use App\Consultation\Queries\ConsultationAdmissionSupportQuery;
+use App\Applicant\Support\ApplicantProgramChoiceProjection;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admission\AcknowledgeProgramSelectionRequest;
 use App\Http\Requests\Admission\CancelProgramSelectionRequest;
@@ -20,7 +20,7 @@ use RuntimeException;
 
 class ApplicantProgramChoiceController extends Controller
 {
-    public function show(Request $request, ConsultationAdmissionSupportQuery $support): Response
+    public function show(Request $request, ApplicantProgramChoiceProjection $projection): Response
     {
         $attempt = $this->attemptFor($request);
 
@@ -30,7 +30,7 @@ class ApplicantProgramChoiceController extends Controller
 
         return Inertia::render('Applicant/ProgramChoice', [
             'page_state' => 'ready',
-            'support' => $support->for($attempt),
+            'support' => $projection->for($attempt),
         ]);
     }
 
@@ -50,7 +50,7 @@ class ApplicantProgramChoiceController extends Controller
             return back()->withErrors(['selection' => $exception->getMessage()]);
         }
 
-        return back()->with('status', 'Advised default acknowledged.');
+        return back()->with('status', 'Guidance Recommendation acknowledged.');
     }
 
     public function select(

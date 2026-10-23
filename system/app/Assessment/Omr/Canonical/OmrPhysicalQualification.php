@@ -5,9 +5,9 @@ namespace App\Assessment\Omr\Canonical;
 final readonly class OmrPhysicalQualification
 {
     /**
-     * @param array{0:float|int,1:float|int} $measuredMarkerCenterMm
-     * @param array{0:float|int,1:float|int} $expectedMarkerCenterMm
-     * @param array<string, string> $outcomes
+     * @param  array{0:float|int,1:float|int}  $measuredMarkerCenterMm
+     * @param  array{0:float|int,1:float|int}  $expectedMarkerCenterMm
+     * @param  array<string, string>  $outcomes
      */
     public function __construct(
         public string $rendererVersion,
@@ -17,8 +17,7 @@ final readonly class OmrPhysicalQualification
         public array $measuredMarkerCenterMm,
         public array $expectedMarkerCenterMm,
         public array $outcomes,
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function toArray(): array

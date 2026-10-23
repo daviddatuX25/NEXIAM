@@ -1,9 +1,11 @@
 <?php
 
-use App\Authorization\CapabilityCatalog;
 use App\Assessment\Omr\NativeBundle;
+use App\Authorization\CapabilityCatalog;
 use App\Console\Commands\Assessment\OmrCanonicalParityCommand;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\OmrDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -11,8 +13,13 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $this->withoutVite();
+});
+
 test('parity command passes on seeded blueprint versions and writes durable parity status', function (): void {
-    $this->seed(\Database\Seeders\DatabaseSeeder::class);
+    (new DatabaseSeeder)->run(DatabaseSeeder::testSeeders());
+    (new OmrDemoSeeder)->run();
     $exitCode = Artisan::call('omr:canonical-parity', ['--json' => true]);
     $output = Artisan::output();
     $disk = Storage::disk((string) config('omr.canonical.storage.disk', 'local'));
@@ -49,7 +56,7 @@ test('builder route redirects to canonical workflow when flag is enabled and par
     $user->givePermissionTo(CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG);
 
     $response = $this->actingAs($user)->get(route('setup.omr.templates.builder'));
-    $response->assertRedirect(route('setup.omr.templates.canonical.index'));
+    $response->assertRedirect(route('setup.exam-materials.answer-sheets.index'));
 });
 
 test('historical markerless template scan path is unchanged', function (): void {

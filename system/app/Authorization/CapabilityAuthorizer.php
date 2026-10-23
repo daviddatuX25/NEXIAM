@@ -3,6 +3,7 @@
 namespace App\Authorization;
 
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
@@ -44,6 +45,29 @@ class CapabilityAuthorizer
     }
 
     /**
+     * Resolve a persisted principal again before checking permissions and scope.
+     *
+     * Direct Actions and replay paths use this boundary so loaded role/permission
+     * relations on a caller's User instance cannot preserve revoked grants.
+     *
+     * @param  array<string, mixed>  $scope
+     */
+    public function decideFresh(?Authenticatable $actor, string $capability, array $scope = []): AuthorizationDecision
+    {
+        if (! $actor instanceof User) {
+            return $this->decide($actor, $capability, $scope);
+        }
+
+        $principal = User::query()->find($actor->getKey());
+
+        if ($principal === null) {
+            return AuthorizationDecision::deny('capability_missing', $capability);
+        }
+
+        return $this->decide($principal, $capability, $scope);
+    }
+
+    /**
      * @param  array<string, mixed>  $scope
      */
     public function allows(?Authenticatable $actor, string $capability, array $scope = []): bool
@@ -66,6 +90,39 @@ class CapabilityAuthorizer
         }
 
         return false;
+    }
+
+    /**
+     * Authorize user has capability or throw AuthorizationException.
+     *
+     * @param  array<string, mixed>  $scope
+     *
+     * @throws AuthorizationException
+     */
+    public function authorize(?Authenticatable $actor, string $capability, array $scope = []): void
+    {
+        $decision = $this->decide($actor, $capability, $scope);
+
+        if (! $decision->allowed) {
+            throw new AuthorizationException("User does not have required capability: {$capability}");
+        }
+    }
+
+    /**
+     * Authorize user has capability or throw AuthorizationException.
+     *
+     * @param  array<string, mixed>  $scope
+     *
+     * @throws AuthorizationException
+     */
+    public static function authorizeUser(User $actor, string $capability, array $scope = []): void
+    {
+        $authorizer = app(self::class);
+        $decision = $authorizer->decide($actor, $capability, $scope);
+
+        if (! $decision->allowed) {
+            throw new AuthorizationException("User does not have required capability: {$capability}");
+        }
     }
 
     /**

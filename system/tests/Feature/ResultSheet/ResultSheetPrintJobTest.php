@@ -1,36 +1,54 @@
 <?php
 
+use App\Assessment\Actions\RecordScores;
+use App\Authorization\CapabilityCatalog;
+use App\Foundation\Actions\RecordAuditEvent;
 use App\Jobs\Printing\RenderPrintJob;
-use App\Models\Assessment\GradingSession;
+use App\Models\Foundation\AuditEvent;
 use App\Models\Printing\PrintJob;
 use App\Models\Release\ResultDocument;
 use App\Models\Release\ResultRelease;
+use App\Models\ResultSheet\ResultDocumentPrintReceipt;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\Models\User;
+use App\Printing\PrintRenderer;
+use App\Release\Actions\PrepareResultDocument;
 use App\ResultSheet\Actions\RequestResultSheetPrint;
+use App\Support\SensitiveAssetStore;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
+
+require_once __DIR__.'/../../Support/NormConversionFixtures.php';
 
 function resultSheetTemplateSeed(): ResultSheetTemplate
 {
-    $template = ResultSheetTemplate::query()->first();
+    $template = ResultSheetTemplate::query()->where('mode', ResultSheetTemplate::MODE_HTML)->first();
 
     if ($template === null) {
         $template = ResultSheetTemplate::query()->create([
             'name' => 'Seed HTML',
-            'mode' => 'html',
+            'mode' => ResultSheetTemplate::MODE_HTML,
             'paper_size' => 'a4',
             'orientation' => 'portrait',
             'logical_unit' => 'full',
             'content' => '<h1>{{institution_name}}</h1><p>{{applicant_name}} ({{applicant_reference}})</p>'
                 .'<table><tbody class="scores-rows-placeholder"></tbody></table>',
-            'is_active' => true,
+            'is_active' => false,
         ]);
-    } elseif (! $template->is_active) {
-        $template->update(['is_active' => true]);
     }
 
-    return $template;
+    // Print-pipeline tests intentionally exercise the HTML seam; make that
+    // choice explicit now that the official DOCX template is the seed default.
+    ResultSheetTemplate::query()
+        ->whereKey($template->id)
+        ->update(['is_active' => true]);
+    ResultSheetTemplate::query()
+        ->where('id', '!=', $template->id)
+        ->update(['is_active' => false]);
+
+    return $template->fresh();
 }
 
 function releasedScoredAttempts(TestCase $test, int $count = 1): array
@@ -38,23 +56,27 @@ function releasedScoredAttempts(TestCase $test, int $count = 1): array
     $fixture = buildGradingFixture($test, applicantCount: $count);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
+    $guidance->givePermissionTo([
+        CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG,
+        CapabilityCatalog::GUIDANCE_SCORING_MANUAL,
+    ]);
+    $profile = createTestApprovedProfileVersion($test, $guidance, 'PRINT-JOB-'.Str::upper(Str::random(10)));
+    $kit = createTestActiveKitVersion($guidance, $profile);
 
     foreach ($fixture['attempts'] as $attempt) {
-        $scores = collect(activeAreas())->map(fn (int $id): array => [
-            'aptitude_area_id' => $id,
-            'score' => 85,
-        ])->all();
-
-        $test->actingAs($guidance)
-            ->put(route('grading.sessions.attempts.scores.update', [$grading, $attempt]), [
-                'scores' => $scores,
-                'idempotency_key' => 'k-rel-'.$attempt->id,
-            ])
-            ->assertRedirect();
-
-        $test->actingAs($guidance)
-            ->post(route('grading.finalize', $grading), ['expected_version' => $grading->version])
-            ->assertRedirect();
+        app(RecordScores::class)->handle(
+            gradingSession: $grading,
+            attempt: $attempt,
+            scores: [[
+                'metric_code' => 'RAW_A',
+                'typed_outputs' => ['percentile_rank' => '82', 'stanine' => '7'],
+                'external_provenance' => 'Synthetic software-only result; no institutional claim',
+            ]],
+            actor: $guidance,
+            idempotencyKey: 'print-job-'.$attempt->id.'-'.Str::uuid(),
+            scoringMode: 'manual_converted',
+            testKitVersionId: (int) $kit->id,
+        );
     }
 
     resultSheetTemplateSeed();
@@ -82,7 +104,7 @@ function releasedScoredAttempts(TestCase $test, int $count = 1): array
             ->firstOrFail();
     }
 
-    return ['guidance' => $guidance, 'attempts' => $fixture['attempts'], 'releases' => $releases];
+    return ['guidance' => $guidance, 'attempts' => $fixture['attempts'], 'releases' => $releases, 'grading' => $fixture['grading']];
 }
 
 function releasedScoredAttempt(TestCase $test): array
@@ -98,15 +120,14 @@ test('requesting a result sheet print creates a queued job with pinned inputs', 
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], copies: 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], copies: 1);
 
     expect($job->artifact_type)->toBe(PrintJob::ARTIFACT_RESULT_SHEET)
         ->and($job->status)->toBe(PrintJob::STATUS_QUEUED)
         ->and($job->pinned_input_json['release_ids'])->toBe([$release->id])
         ->and($job->pinned_input_json['copies'])->toBe(1)
-        ->and($job->pinned_input_json['template_id'])->toBe(resultSheetTemplateSeed()->id);
-
-    Queue::assertPushed(RenderPrintJob::class);
+        ->and($job->pinned_input_json['template_id'])->toBe(resultSheetTemplateSeed()->id)
+        ->and($job->items()->count())->toBe(1);
 });
 
 test('duplicate requests return the existing job', function (): void {
@@ -115,11 +136,11 @@ test('duplicate requests return the existing job', function (): void {
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
 
-    $first = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
-    $second = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $first = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
+    $second = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
 
-    expect($second->id)->toBe($first->id);
-    Queue::assertPushed(RenderPrintJob::class, 1);
+    expect($second->id)->toBe($first->id)
+        ->and($second->items()->count())->toBe(1);
 });
 
 test('online releases can be printed', function (): void {
@@ -129,10 +150,10 @@ test('online releases can be printed', function (): void {
 
     $release->update(['mode' => 'online']);
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
 
-    expect($job)->toBeInstanceOf(\App\Models\Printing\PrintJob::class)
-        ->and($job->status)->toBe('queued');
+    expect($job->status)->toBe(PrintJob::STATUS_QUEUED)
+        ->and($job->items()->count())->toBe(1);
 });
 
 test('no active template refuses printing', function (): void {
@@ -142,38 +163,40 @@ test('no active template refuses printing', function (): void {
 
     ResultSheetTemplate::query()->update(['is_active' => false]);
 
-    expect(fn () => app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1))
+    expect(fn () => app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1))
         ->toThrow(RuntimeException::class, 'template');
 });
 
-test('render job produces a ready pdf and sets result_printed_at idempotently', function (): void {
+test('render job produces a ready pdf without confirming physical printing', function (): void {
     Queue::fake();
     $fixture = releasedScoredAttempt($this);
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
+    $document = ResultDocument::query()->findOrFail($release->result_document_id);
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$document->id], 1);
     (new RenderPrintJob($job->id))->handle(
-        app(App\Printing\PrintRenderer::class),
-        app(App\Support\SensitiveAssetStore::class),
-        app(App\Foundation\Actions\RecordAuditEvent::class),
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
 
     $job->refresh();
+    $document->refresh();
     expect($job->status)->toBe(PrintJob::STATUS_READY)
         ->and($job->file_path)->not->toBeNull()
         ->and($job->file_checksum)->toHaveLength(64)
-        ->and($release->fresh()->result_printed_at)->not->toBeNull();
+        ->and($document->artifact_manifest['pdf']['status'])->toBe('ready')
+        ->and($release->fresh()->result_printed_at)->toBeNull();
 
-    // Idempotent: a second render keeps the printed timestamp.
-    $printedAt = $release->fresh()->result_printed_at;
     $job->update(['status' => PrintJob::STATUS_QUEUED, 'file_path' => null, 'file_checksum' => null]);
     (new RenderPrintJob($job->id))->handle(
-        app(App\Printing\PrintRenderer::class),
-        app(App\Support\SensitiveAssetStore::class),
-        app(App\Foundation\Actions\RecordAuditEvent::class),
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
-    expect($release->fresh()->result_printed_at->eq($printedAt))->toBeTrue();
+
+    expect($release->fresh()->result_printed_at)->toBeNull();
 });
 
 test('bulk job renders a merged pdf with progress and per-item manifest', function (): void {
@@ -181,18 +204,18 @@ test('bulk job renders a merged pdf with progress and per-item manifest', functi
     $fixture = releasedScoredAttempts($this, 2);
     $guidance = $fixture['guidance'];
 
-    $releaseIds = array_column($fixture['releases'], 'id');
+    $documentIds = array_column($fixture['releases'], 'result_document_id');
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, $releaseIds, copies: 2);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, $documentIds, copies: 2);
 
     expect($job->progress_total)->toBe(2)
         ->and($job->pinned_input_json['copies'])->toBe(2);
 
     $job->update(['status' => PrintJob::STATUS_QUEUED, 'progress_done' => 0]);
     (new RenderPrintJob($job->id))->handle(
-        app(App\Printing\PrintRenderer::class),
-        app(App\Support\SensitiveAssetStore::class),
-        app(App\Foundation\Actions\RecordAuditEvent::class),
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
 
     $job->refresh();
@@ -202,15 +225,15 @@ test('bulk job renders a merged pdf with progress and per-item manifest', functi
         ->and(collect($job->per_item_manifest)->every(fn ($item) => ($item['status'] ?? '') === 'ready'))->toBeTrue();
 });
 
-test('a failed item yields ready-with-partial and lists the failure', function (): void {
+test('a prepared print job retains its frozen template when the live template becomes unavailable', function (): void {
     Queue::fake();
     $fixture = releasedScoredAttempt($this);
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
 
-    // Point the active template at a missing document so rendering fails.
+    // Rendering must use the prepared document's pinned bytes, not this replacement.
     ResultSheetTemplate::query()->update([
         'mode' => 'docx',
         'content' => null,
@@ -219,19 +242,19 @@ test('a failed item yields ready-with-partial and lists the failure', function (
         'is_active' => true,
     ]);
 
-    try {
-        (new RenderPrintJob($job->id))->handle(
-            app(App\Printing\PrintRenderer::class),
-            app(App\Support\SensitiveAssetStore::class),
-            app(App\Foundation\Actions\RecordAuditEvent::class),
-        );
-    } catch (Throwable) {
-        // expected failure path
-    }
+    (new RenderPrintJob($job->id))->handle(
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
+    );
 
     $job->refresh();
-    expect($job->status)->toBe(PrintJob::STATUS_FAILED)
-        ->and($job->safe_error)->not->toBeNull();
+    $bytes = app(SensitiveAssetStore::class)->read($job->file_path);
+    expect($job->status)->toBe(PrintJob::STATUS_READY)
+        ->and(str_starts_with($bytes, '%PDF-'))->toBeTrue()
+        ->and(ResultDocumentPrintReceipt::query()
+            ->where('result_document_id', $release->result_document_id)
+            ->where('operation', 'confirmed')->count())->toBe(0);
 });
 
 test('download re-authorizes, verifies checksum, and is audited', function (): void {
@@ -240,11 +263,11 @@ test('download re-authorizes, verifies checksum, and is audited', function (): v
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
     (new RenderPrintJob($job->id))->handle(
-        app(App\Printing\PrintRenderer::class),
-        app(App\Support\SensitiveAssetStore::class),
-        app(App\Foundation\Actions\RecordAuditEvent::class),
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
 
     $response = $this->actingAs($guidance)
@@ -259,45 +282,60 @@ test('download re-authorizes, verifies checksum, and is audited', function (): v
         ->get(route('printing.jobs.download', $job))
         ->assertForbidden();
 
-    expect(App\Models\Foundation\AuditEvent::query()
+    expect(AuditEvent::query()
         ->where('event_type', 'printing.job_downloaded')
         ->whereJsonContains('payload', ['print_job_id' => $job->id])
         ->exists())->toBeTrue();
 });
 
-test('retry refuses when the pinned release was superseded', function (): void {
+test('a print worker rejects a prepared document superseded after the request', function (): void {
     Queue::fake();
     $fixture = releasedScoredAttempt($this);
     $guidance = $fixture['guidance'];
     $attempt = $fixture['attempt'];
     $release = $fixture['release'];
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
 
-    // Supersede the release (new release version) so the pinned version is stale.
-    $this->actingAs($guidance)
-        ->post(route('release.store', $attempt), [
-            'idempotency_key' => 'rel-2-'.$attempt->id,
-            'mode' => 'f2f',
-        ])
-        ->assertRedirect();
+    $template = resultSheetTemplateSeed();
+    $template->update(['content' => $template->content.'<p>Synthetic template revision.</p>']);
+    $replacement = app(PrepareResultDocument::class)->handle($attempt->fresh(), $guidance);
+    expect($replacement->id)->not->toBe($release->result_document_id);
 
-    $release->update(['is_current' => false]);
-
-    try {
-        (new RenderPrintJob($job->id))->handle(
-            app(App\Printing\PrintRenderer::class),
-            app(App\Support\SensitiveAssetStore::class),
-            app(App\Foundation\Actions\RecordAuditEvent::class),
-        );
-    } catch (Throwable) {
-        // expected failure path
-    }
+    (new RenderPrintJob($job->id))->handle(
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
+    );
 
     $job->refresh();
     expect($job->status)->toBe(PrintJob::STATUS_FAILED)
-        ->and($job->safe_error)->toBe('all_items_failed')
-        ->and($job->per_item_manifest[$release->id]['safe_error'])->toBe('release_stale');
+        ->and($job->safe_error)->toBe('document_stale')
+        ->and($job->items()->firstOrFail()->safe_error)->toBe('document_stale');
+});
+
+test('a print worker rejects tampered frozen template bytes rather than substituting a live template', function (): void {
+    Queue::fake();
+    $fixture = releasedScoredAttempt($this);
+    $guidance = $fixture['guidance'];
+    $release = $fixture['release'];
+
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
+    $document = ResultDocument::query()->findOrFail($release->result_document_id);
+    $snapshot = $document->snapshot_payload_json;
+    $snapshot['_template_source']['bytes_base64'] = base64_encode('<p>Synthetic tampered source.</p>');
+    $document->update(['snapshot_payload_json' => $snapshot]);
+
+    (new RenderPrintJob($job->id))->handle(
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
+    );
+
+    $job->refresh();
+    expect($job->status)->toBe(PrintJob::STATUS_FAILED)
+        ->and($job->safe_error)->toBe('render_failed')
+        ->and($job->items()->firstOrFail()->safe_error)->toBe('render_failed');
 });
 
 test('prune command deletes expired ready artifacts and audits the cleanup', function (): void {
@@ -306,23 +344,39 @@ test('prune command deletes expired ready artifacts and audits the cleanup', fun
     $guidance = $fixture['guidance'];
     $release = $fixture['release'];
 
-    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->id], 1);
+    $job = app(RequestResultSheetPrint::class)->handle($guidance, [$release->result_document_id], 1);
     (new RenderPrintJob($job->id))->handle(
-        app(App\Printing\PrintRenderer::class),
-        app(App\Support\SensitiveAssetStore::class),
-        app(App\Foundation\Actions\RecordAuditEvent::class),
+        app(PrintRenderer::class),
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
     );
+    $item = $job->items()->firstOrFail();
+    $docxBytes = 'filled-docx';
+    $docxPath = 'print-jobs/'.$job->id.'/items/'.$item->id.'-docx.docx';
+    app(SensitiveAssetStore::class)->store($docxBytes, $docxPath);
+    $item->update([
+        'docx_path' => $docxPath,
+        'docx_checksum' => hash('sha256', $docxBytes),
+    ]);
 
     $job->refresh();
-    $job->update(['completed_at' => now()->subDays(60)]);
-    expect($job->file_path)->not->toBeNull();
+    $job->completed_at = now()->subDays(60);
+    $job->save();
+    expect($job->file_path)->not->toBeNull()
+        ->and($item->fresh()->docx_path)->toBe($docxPath);
+
+    $this->artisan('result-sheet:prune --dry-run')
+        ->assertSuccessful();
+    expect($item->fresh()->docx_path)->toBe($docxPath)
+        ->and(Storage::disk('sensitive')->exists($docxPath))->toBeTrue();
 
     $this->artisan('result-sheet:prune')
-        ->expectsOutputToContain('pruned')
-        ->assertExitCode(0);
+        ->assertSuccessful();
 
     expect($job->fresh()->file_path)->toBeNull()
-        ->and(App\Models\Foundation\AuditEvent::query()
+        ->and($item->fresh()->docx_path)->toBeNull()
+        ->and(Storage::disk('sensitive')->exists($docxPath))->toBeFalse()
+        ->and(AuditEvent::query()
             ->where('event_type', 'printing.job_pruned')
             ->whereJsonContains('payload', ['print_job_id' => $job->id])
             ->exists())->toBeTrue();

@@ -1,0 +1,849 @@
+{
+  "metadata": {
+    "catalogVersion": "2026-10-18.region-i.2",
+    "reviewedAt": "2026-10-18",
+    "scope": "Reviewed Region I school-name snapshots and partial course suggestions; never an eligibility allowlist or current accreditation registry.",
+    "coverage": {
+      "schools": "Original curated aliases plus DepEd Region I public enrollment names (LIS as of 2023-01-10), the supplied private-school PDF (2025-07-01), and all 153 observed HEIDA Region I directory rows (accessed 2026-10-18). Equivalent display names are merged; historical/current completeness is not guaranteed.",
+      "programs": "Original source-backed course examples plus the 12 titles observed in HEIDA's Region I program filter. A partial title list, not a national program/major catalogue or an institution-offering mapping.",
+      "legacyShs": "Selected historical K–12 tracks, strands, TVL sectors, and specialization examples; not a school-offering or active-qualification list.",
+      "currentShs": "Strengthened SHS tracks and elective clusters as published for SY 2026–27; not a list of available electives at any particular school."
+    },
+    "behavior": "Freeform applicant text remains valid and is not replaced or canonicalized by suggestions; standard request middleware may trim surrounding whitespace.",
+    "runtime": "Reviewed local seeder sources; application runtime reads saved database lists without external requests.",
+    "supplements": {
+      "schools": [
+        "region-i-hei-suggestions.json",
+        "region-i-private-school-suggestions.json",
+        "region-i-public-school-suggestions.json"
+      ],
+      "programs": [
+        "ched-course-suggestions.json"
+      ]
+    },
+    "previousSeeds": {
+      "schools": [
+        {"revision": 1, "hash": "ca9ec73013d843b9be7f866ed90a1a96aa22d648f8944cf808266730ef50b1b8"},
+        {"revision": 2, "hash": "3b5207eb314fd9adedd73012a05f29becd8db9f1f9f5d8354abdc67f7a4d552a"}
+      ],
+      "programs": [
+        {"revision": 1, "hash": "5be6a1e02eb72a20cfeaa05c45666bd4f09007c43df24e6901a0d25842fa4e8a"}
+      ]
+    }
+  },
+  "lists": {
+    "schools": [
+      {
+        "key": "ched-r1-abe-dagupan",
+        "label": "ABE International College of Business and Accountancy (Dagupan)",
+        "aliases": [
+          "ABE Dagupan"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-abe-urdaneta",
+        "label": "ABE International College of Business and Accountancy-Urdaneta City, Inc.",
+        "aliases": [
+          "ABE Urdaneta"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-abe-economics-dagupan",
+        "label": "ABE International College of Business and Economics-Dagupan",
+        "aliases": [
+          "ABE Dagupan Business and Economics"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-access-villasis",
+        "label": "Access Villasis Pangasinan Computer and Technical Colleges",
+        "aliases": [
+          "Access Villasis"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-agoo-computer",
+        "label": "Agoo Computer College Philippines",
+        "aliases": [
+          "Agoo Computer College"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-aie-college",
+        "label": "AIE College, Inc.",
+        "aliases": [
+          "AIE College"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-ama-laoag",
+        "label": "AMA Computer College - Laoag City, Inc.",
+        "aliases": [
+          "AMA Laoag",
+          "AMA Computer College Laoag"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-ama-pangasinan",
+        "label": "AMA Computer College - Pangasinan Inc.",
+        "aliases": [
+          "AMA Pangasinan",
+          "AMA Dagupan"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-ama-la-union",
+        "label": "AMA Computer College-La Union, Inc.",
+        "aliases": [
+          "AMA La Union"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      },
+      {
+        "key": "ched-r1-asbury-anda",
+        "label": "Asbury College, Inc.",
+        "aliases": [
+          "Asbury College Anda"
+        ],
+        "category": "ched-higher-education-institution",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 page review",
+        "sourceVersion": "HEIDA Region I directory; page snapshot"
+      }
+    ],
+    "shs": [
+      {
+        "key": "legacy-track-academic",
+        "label": "Academic Track (legacy K–12)",
+        "aliases": [
+          "Academic",
+          "old Academic track"
+        ],
+        "category": "legacy-shs-track",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/academic-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical K–12 taxonomy"
+      },
+      {
+        "key": "legacy-track-tvl",
+        "label": "Technical-Vocational-Livelihood Track (legacy K–12)",
+        "aliases": [
+          "TVL",
+          "Technical Vocational Livelihood"
+        ],
+        "category": "legacy-shs-track",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/technology-and-livelihood-education-tle-and-technical-vocational-livelihood-tvl-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical K–12 taxonomy"
+      },
+      {
+        "key": "legacy-track-arts-design",
+        "label": "Arts and Design Track (legacy K–12)",
+        "aliases": [
+          "Arts and Design",
+          "Arts & Design"
+        ],
+        "category": "legacy-shs-track",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/arts-and-design-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical K–12 taxonomy"
+      },
+      {
+        "key": "legacy-track-sports",
+        "label": "Sports Track (legacy K–12)",
+        "aliases": [
+          "Sports"
+        ],
+        "category": "legacy-shs-track",
+        "sourceUrl": "https://www.depedmisor.com/senior-high-school.html",
+        "sourceAsOf": "Historical track; page reviewed 2026-10-08",
+        "sourceVersion": "DepEd Misamis Oriental SHS curriculum links"
+      },
+      {
+        "key": "legacy-strand-abm",
+        "label": "Accountancy, Business and Management",
+        "aliases": [
+          "ABM",
+          "Accountancy Business Management"
+        ],
+        "category": "legacy-shs-strand",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/academic-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical Academic strand"
+      },
+      {
+        "key": "legacy-strand-humss",
+        "label": "Humanities and Social Sciences",
+        "aliases": [
+          "HUMSS",
+          "Humanities Social Sciences"
+        ],
+        "category": "legacy-shs-strand",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/academic-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical Academic strand"
+      },
+      {
+        "key": "legacy-strand-stem",
+        "label": "Science, Technology, Engineering and Mathematics",
+        "aliases": [
+          "STEM",
+          "Science Technology Engineering Mathematics"
+        ],
+        "category": "legacy-shs-strand",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/academic-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical Academic strand"
+      },
+      {
+        "key": "legacy-strand-gas",
+        "label": "General Academic Strand",
+        "aliases": [
+          "GAS"
+        ],
+        "category": "legacy-shs-strand",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/academic-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical Academic strand"
+      },
+      {
+        "key": "legacy-pathway-maritime",
+        "label": "Pre-Baccalaureate Maritime",
+        "aliases": [
+          "Pre-Bac Maritime",
+          "Maritime"
+        ],
+        "category": "legacy-shs-strand",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/academic-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical Academic pathway; not one of the four standard strands"
+      },
+      {
+        "key": "legacy-tvl-sector-afa",
+        "label": "Agri-Fishery Arts",
+        "aliases": [
+          "AFA",
+          "Agri Fishery Arts"
+        ],
+        "category": "legacy-tvl-sector",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/technology-and-livelihood-education-tle-and-technical-vocational-livelihood-tvl-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical TVL specialization sector"
+      },
+      {
+        "key": "legacy-tvl-sector-he",
+        "label": "Home Economics",
+        "aliases": [
+          "HE"
+        ],
+        "category": "legacy-tvl-sector",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/technology-and-livelihood-education-tle-and-technical-vocational-livelihood-tvl-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical TVL specialization sector"
+      },
+      {
+        "key": "legacy-tvl-sector-ia",
+        "label": "Industrial Arts",
+        "aliases": [
+          "IA"
+        ],
+        "category": "legacy-tvl-sector",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/technology-and-livelihood-education-tle-and-technical-vocational-livelihood-tvl-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical TVL specialization sector"
+      },
+      {
+        "key": "legacy-tvl-sector-ict",
+        "label": "Information and Communications Technology",
+        "aliases": [
+          "ICT",
+          "Information Communications Technology"
+        ],
+        "category": "legacy-tvl-sector",
+        "sourceUrl": "https://www.deped.gov.ph/k-to-12/about/k-to-12-basic-education-curriculum/technology-and-livelihood-education-tle-and-technical-vocational-livelihood-tvl-track/",
+        "sourceAsOf": "Established K–12 curriculum; page reviewed 2026-10-08",
+        "sourceVersion": "Historical TVL specialization sector"
+      },
+      {
+        "key": "legacy-tvl-afa-crops-nc2",
+        "label": "Agricultural Crops Production (NC II)",
+        "aliases": [
+          "Crops Production NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-afa-aquaculture-nc2",
+        "label": "Aquaculture (NC II)",
+        "aliases": [
+          "Aquaculture NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-he-bread-pastry-nc2",
+        "label": "Bread and Pastry Production (NC II)",
+        "aliases": [
+          "Bread and Pastry NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-he-cookery-nc2",
+        "label": "Cookery (NC II)",
+        "aliases": [
+          "Cookery NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-ia-automotive-nc2",
+        "label": "Automotive Servicing (NC II)",
+        "aliases": [
+          "Automotive Servicing NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-ia-electrical-nc2",
+        "label": "Electrical Installation and Maintenance (NC II)",
+        "aliases": [
+          "EIM",
+          "Electrical Installation NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-ict-animation-nc2",
+        "label": "Animation (NC II)",
+        "aliases": [
+          "Animation NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "legacy-tvl-ict-css-nc2",
+        "label": "Computer Systems Servicing (NC II)",
+        "aliases": [
+          "CSS",
+          "Computer Systems Servicing NC II"
+        ],
+        "category": "legacy-tvl-specialization",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/2019/01/revised-list-of-TVL-specializations.pdf",
+        "sourceAsOf": "2019 published list; reviewed 2026-10-08",
+        "sourceVersion": "DepEd revised TVL specializations PDF"
+      },
+      {
+        "key": "current-sshs-academic",
+        "label": "Academic Track (Strengthened SHS)",
+        "aliases": [
+          "Academic"
+        ],
+        "category": "current-sshs-track",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "DepEd Strengthened SHS Key Features"
+      },
+      {
+        "key": "current-sshs-techpro",
+        "label": "Technical Professional Track (TechPro)",
+        "aliases": [
+          "TechPro",
+          "Technical Professional"
+        ],
+        "category": "current-sshs-track",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "DepEd Strengthened SHS Key Features"
+      },
+      {
+        "key": "current-cluster-academic-arts-humanities",
+        "label": "Arts, Social Sciences, and Humanities",
+        "aliases": [
+          "Arts Social Sciences Humanities"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "Academic elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-academic-business",
+        "label": "Business and Entrepreneurship",
+        "aliases": [
+          "Business Entrepreneurship"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "Academic elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-academic-stem",
+        "label": "Science, Technology, Engineering, and Mathematics (STEM)",
+        "aliases": [
+          "STEM",
+          "Science Technology Engineering Mathematics"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "Academic elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-academic-sports",
+        "label": "Sports, Health, and Wellness",
+        "aliases": [
+          "Sports Health Wellness"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "Academic elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-aesthetic",
+        "label": "Aesthetic, Wellness, and Human Care",
+        "aliases": [
+          "Aesthetic Wellness Human Care"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-agri-fishery",
+        "label": "Agri-Fishery and Food Innovation",
+        "aliases": [
+          "Agri Fishery Food Innovation"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-business-artisanry",
+        "label": "Business and Artisanry and Creative Enterprise",
+        "aliases": [
+          "Business Artisanry Creative Enterprise"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-automotive",
+        "label": "Automotive and Small Engine Technologies",
+        "aliases": [
+          "Automotive Small Engine Technologies"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-construction",
+        "label": "Construction and Building Technologies",
+        "aliases": [
+          "Construction Building Technologies"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-creative-arts",
+        "label": "Creative Arts and Design Technologies",
+        "aliases": [
+          "Creative Arts Design Technologies"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-hospitality",
+        "label": "Hospitality and Tourism",
+        "aliases": [
+          "Hospitality Tourism"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-ict",
+        "label": "ICT Support and Computer Programming Technologies",
+        "aliases": [
+          "ICT",
+          "ICT Support Computer Programming"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-industrial",
+        "label": "Industrial Technologies",
+        "aliases": [
+          "Industrial Technology"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      },
+      {
+        "key": "current-cluster-techpro-maritime",
+        "label": "Maritime Transport",
+        "aliases": [
+          "Maritime"
+        ],
+        "category": "current-sshs-elective-cluster",
+        "sourceUrl": "https://www.deped.gov.ph/wp-content/uploads/SSHS-Key-Features.pdf",
+        "sourceAsOf": "SY 2026–27 full implementation; reviewed 2026-10-08",
+        "sourceVersion": "TechPro elective cluster; not a strand"
+      }
+    ],
+    "programs": [
+      {
+        "key": "program-accountancy",
+        "label": "Bachelor of Science in Accountancy",
+        "aliases": [
+          "BSA",
+          "BS Accountancy"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2017/10/CMO-27-s-2017.pdf",
+        "sourceAsOf": "2017 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 27, s. 2017"
+      },
+      {
+        "key": "program-management-accounting",
+        "label": "Bachelor of Science in Management Accounting",
+        "aliases": [
+          "BSMA",
+          "Management Accounting"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional examples"
+      },
+      {
+        "key": "program-accounting-information-system",
+        "label": "Bachelor of Science in Accounting Information System",
+        "aliases": [
+          "BSAIS",
+          "BS Accounting Information Systems"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional examples"
+      },
+      {
+        "key": "program-business-administration",
+        "label": "Bachelor of Science in Business Administration",
+        "aliases": [
+          "BSBA",
+          "Business Administration"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2017/10/CMO-17-s-2017.pdf",
+        "sourceAsOf": "2017-2018 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 17, s. 2017; majors are institution-specific"
+      },
+      {
+        "key": "program-entrepreneurship",
+        "label": "Bachelor of Science in Entrepreneurship",
+        "aliases": [
+          "BS Entrepreneurship"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional examples"
+      },
+      {
+        "key": "program-office-administration",
+        "label": "Bachelor of Science in Office Administration",
+        "aliases": [
+          "BSOA",
+          "Office Administration"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional examples"
+      },
+      {
+        "key": "program-information-technology",
+        "label": "Bachelor of Science in Information Technology",
+        "aliases": [
+          "BSIT",
+          "BS Information Technology"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2017/10/CMO-no.-25-s.-2015.pdf",
+        "sourceAsOf": "2015 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 25, s. 2015"
+      },
+      {
+        "key": "program-computer-science",
+        "label": "Bachelor of Science in Computer Science",
+        "aliases": [
+          "BSCS",
+          "BS Computer Science"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2017/10/CMO-no.-25-s.-2015.pdf",
+        "sourceAsOf": "2015 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 25, s. 2015"
+      },
+      {
+        "key": "program-information-systems",
+        "label": "Bachelor of Science in Information Systems",
+        "aliases": [
+          "BSIS",
+          "BS Information Systems"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2017/10/CMO-no.-25-s.-2015.pdf",
+        "sourceAsOf": "2015 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 25, s. 2015"
+      },
+      {
+        "key": "program-computer-engineering",
+        "label": "Bachelor of Science in Computer Engineering",
+        "aliases": [
+          "BSCpE",
+          "BS Computer Engineering"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional examples"
+      },
+      {
+        "key": "program-entertainment-multimedia",
+        "label": "Bachelor of Science in Entertainment and Multimedia Computing",
+        "aliases": [
+          "BSEMC",
+          "BS Entertainment and Multimedia Computing"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional examples"
+      },
+      {
+        "key": "program-associate-computer-technology",
+        "label": "Associate in Computer Technology",
+        "aliases": [
+          "ACT",
+          "Associate Computer Technology"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/CMO-No.-13-S.-2021.pdf",
+        "sourceAsOf": "2021 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 13, s. 2021"
+      },
+      {
+        "key": "program-elementary-education",
+        "label": "Bachelor of Elementary Education",
+        "aliases": [
+          "BEEd",
+          "B Elementary Education"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional example"
+      },
+      {
+        "key": "program-secondary-education",
+        "label": "Bachelor of Secondary Education",
+        "aliases": [
+          "BSEd",
+          "B Secondary Education"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; major varies"
+      },
+      {
+        "key": "program-early-childhood-education",
+        "label": "Bachelor of Early Childhood Education",
+        "aliases": [
+          "BECEd",
+          "B Early Childhood Education"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; regional example"
+      },
+      {
+        "key": "program-technical-vocational-teacher-education",
+        "label": "Bachelor of Technical-Vocational Teacher Education",
+        "aliases": [
+          "BTVTEd",
+          "BTVTED"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; major varies"
+      },
+      {
+        "key": "program-nursing",
+        "label": "Bachelor of Science in Nursing",
+        "aliases": [
+          "BSN",
+          "BS Nursing"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 directory review",
+        "sourceVersion": "CHED HEIDA Region I directory program filter; regional example"
+      },
+      {
+        "key": "program-criminology",
+        "label": "Bachelor of Science in Criminology",
+        "aliases": [
+          "BSCrim",
+          "BS Criminology"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2018/05/CMO-No.-05-s.-2018-PSG-for-BS-Criminology.pdf",
+        "sourceAsOf": "2018 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 5, s. 2018"
+      },
+      {
+        "key": "program-hospitality-management",
+        "label": "Bachelor of Science in Hospitality Management",
+        "aliases": [
+          "BSHM",
+          "BS Hospitality Management"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory includes historical BSHRM variant"
+      },
+      {
+        "key": "program-hotel-restaurant-management",
+        "label": "Bachelor of Science in Hotel and Restaurant Management",
+        "aliases": [
+          "BSHRM",
+          "Hotel and Restaurant Management"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://ro11.ched.gov.ph/programs-inventory/",
+        "sourceAsOf": "2023-09-25 page modification; reviewed 2026-10-08",
+        "sourceVersion": "CHEDRO XI Programs Inventory; historical title variant"
+      },
+      {
+        "key": "program-tourism-management",
+        "label": "Bachelor of Science in Tourism Management",
+        "aliases": [
+          "BSTM",
+          "BS Tourism Management"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 directory review",
+        "sourceVersion": "CHED HEIDA Region I directory program filter; regional example"
+      },
+      {
+        "key": "program-travel-management",
+        "label": "Bachelor of Science in Travel Management",
+        "aliases": [
+          "BS Travel Management"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+        "sourceAsOf": "2026-10-08 directory review",
+        "sourceVersion": "CHED HEIDA Region I directory program filter; regional example"
+      },
+      {
+        "key": "program-mathematics",
+        "label": "Bachelor of Science in Mathematics",
+        "aliases": [
+          "BS Mathematics",
+          "BS Math"
+        ],
+        "category": "transferee-program",
+        "sourceUrl": "https://legacy.ched.gov.ph/wp-content/uploads/2017/10/CMO-48-s-2017.pdf",
+        "sourceAsOf": "2017 PSG example; reviewed 2026-10-08",
+        "sourceVersion": "CHED CMO 48, s. 2017"
+      }
+    ]
+  }
+}

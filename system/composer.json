@@ -15,9 +15,12 @@
         "ezyang/htmlpurifier": "^4.17",
         "fpdf/fpdf": "^1.90",
         "inertiajs/inertia-laravel": "^3.0",
-        "laravel/ai": "^0.10.3",
+        "laravel/ai": "^0.11.2",
+        "laravel/fortify": "^1.40",
         "laravel/framework": "^13.23",
+        "laravel/socialite": "^5.31",
         "laravel/tinker": "^3.0",
+        "phpoffice/phpspreadsheet": "^5.10",
         "phpoffice/phpword": "^1.1",
         "setasign/fpdi": "^2.6",
         "spatie/laravel-permission": "^8.0"

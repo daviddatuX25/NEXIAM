@@ -25,21 +25,38 @@ class RevokeTestAdministratorCapabilities
             throw new RuntimeException('ta_delegate_denied');
         }
 
-        if (! $this->eligible->isEligible($target)) {
+        if (! $this->eligible->isEligible($target) || ! $this->eligible->canDelegate($actor, $target)) {
             throw new RuntimeException('ta_recipient_ineligible');
         }
 
         return DB::transaction(function () use ($actor, $target): User {
-            $caps = CapabilityCatalog::testAdministratorCapabilities();
-            $target->revokePermissionTo($caps);
+            $freshActor = User::query()->find($actor->getKey());
+            if ($freshActor === null || ! $this->authorizer->allows($freshActor, CapabilityCatalog::GUIDANCE_TA_DELEGATE)) {
+                throw new RuntimeException('ta_delegate_denied');
+            }
+
+            $freshTarget = User::query()
+                ->with(['roles', 'permissions', 'staffProfile'])
+                ->whereKey($target->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            if (! $this->eligible->isEligible($freshTarget) || ! $this->eligible->canDelegate($freshActor, $freshTarget)) {
+                throw new RuntimeException('ta_recipient_ineligible');
+            }
+            if (! $this->eligible->hasDelegatedTa($freshTarget) && ! $this->eligible->hasLegacyDelegatedTa($freshTarget)) {
+                throw new RuntimeException('ta_not_designated');
+            }
+
+            $caps = CapabilityCatalog::delegatedTestAdministratorCapabilities();
+            $freshTarget->revokePermissionTo($caps);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             $this->recordAuditEvent->handle('staff.ta_capabilities_revoked', [
-                'user_id' => $target->id,
+                'user_id' => $freshTarget->id,
                 'capabilities' => $caps,
-            ], (string) $actor->id);
+            ], (string) $freshActor->id);
 
-            return $target->fresh(['roles', 'permissions', 'staffProfile']) ?? $target;
+            return $freshTarget->fresh(['roles', 'permissions', 'staffProfile']) ?? $freshTarget;
         });
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Admission\Actions;
 
+use App\Admission\Exceptions\AttemptClearanceConfirmedException;
+use App\Admission\Support\AttemptProgramFacts;
 use App\Admission\Support\CommandIdempotency;
 use App\Admission\Support\QuotaReservation;
 use App\Admission\Support\SelectionGuard;
@@ -10,6 +12,7 @@ use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ProgramPool;
 use App\Models\Admission\ProgramSelection;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -25,6 +28,7 @@ class SelectApplicantProgram
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -46,9 +50,16 @@ class SelectApplicantProgram
         if ($replayed !== null) {
             return $replayed;
         }
+        if (AttemptProgramFacts::isClearanceConfirmed($attempt)) {
+            throw new AttemptClearanceConfirmedException('Cannot modify program selection while admission clearance is confirmed. Reopen clearance first.');
+        }
 
-        return DB::transaction(function () use ($attempt, $applicant, $programCode, $idempotencyKey): ProgramSelection {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): ProgramSelection => DB::transaction(function () use ($attempt, $applicant, $programCode, $idempotencyKey): ProgramSelection {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+
+            if (AttemptProgramFacts::isClearanceConfirmed($locked)) {
+                throw new AttemptClearanceConfirmedException('Cannot modify program selection while admission clearance is confirmed. Reopen clearance first.');
+            }
 
             SelectionGuard::assertSelectable($locked, 'Changing your program choice');
 
@@ -73,10 +84,25 @@ class SelectApplicantProgram
             $standing = SelectionGuard::lockStandingSelection($locked);
 
             if ($standing !== null && $standing->program_id === $programId) {
-                // Same program: acknowledge-as-active when it was a pending default.
+                // Same program: acknowledge a pending default or an active PH-cleared selection.
                 if ($standing->status === ProgramSelection::STATUS_PENDING_ACKNOWLEDGEMENT) {
                     $standing->forceFill([
                         'status' => ProgramSelection::STATUS_ACTIVE,
+                        'source' => ProgramSelection::SOURCE_STUDENT_SELF,
+                        'actor_user_id' => $applicant->id,
+                        'applicant_acknowledged_at' => now(),
+                        'idempotency_key' => $idempotencyKey,
+                        'updated_at' => now(),
+                    ])->save();
+                    $this->audit($locked, $standing, 'program.selection_acknowledged');
+
+                    return $standing;
+                }
+                if (
+                    $standing->status === ProgramSelection::STATUS_ACTIVE
+                    && $standing->applicant_acknowledged_at === null
+                ) {
+                    $standing->forceFill([
                         'source' => ProgramSelection::SOURCE_STUDENT_SELF,
                         'actor_user_id' => $applicant->id,
                         'applicant_acknowledged_at' => now(),
@@ -114,7 +140,7 @@ class SelectApplicantProgram
             $this->audit($locked, $selection, 'program.selection_created');
 
             return $selection;
-        });
+        }));
     }
 
     private function audit(AdmissionAttempt $attempt, ProgramSelection $selection, string $event): void

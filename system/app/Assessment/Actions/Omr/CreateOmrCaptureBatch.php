@@ -5,40 +5,35 @@ namespace App\Assessment\Actions\Omr;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\GradingSession;
 use App\Models\Assessment\OmrCaptureBatch;
-use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 final class CreateOmrCaptureBatch
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(
         GradingSession $gradingSession,
         User $actor,
-        int $templateVersionId,
-        int $bookletVersionId,
         string $idempotencyKey,
     ): OmrCaptureBatch {
-        return DB::transaction(function () use ($gradingSession, $actor, $templateVersionId, $bookletVersionId, $idempotencyKey): OmrCaptureBatch {
+        return DB::transaction(function () use ($gradingSession, $actor, $idempotencyKey): OmrCaptureBatch {
             $session = GradingSession::query()->lockForUpdate()->findOrFail($gradingSession->id);
 
             if ($session->status === GradingSession::STATUS_FINALIZED) {
                 throw new RuntimeException('Grading session is finalized; OMR capture is closed.');
             }
 
-            $pair = OmrTemplateBookletPair::query()
-                ->with(['templateVersion', 'bookletVersion'])
-                ->where('template_version_id', $templateVersionId)
-                ->where('booklet_version_id', $bookletVersionId)
-                ->first();
-
-            if ($pair === null || ! $pair->isUsable()) {
-                throw new RuntimeException('The selected OMR template and booklet pair is not active.');
+            $examSession = $session->examSession()
+                ->with('currentMaterialSnapshot')
+                ->firstOrFail();
+            $snapshot = $examSession->currentMaterialSnapshot;
+            if ($snapshot === null || $snapshot->template_version_id === null || $snapshot->booklet_version_id === null) {
+                throw new RuntimeException('The published exam session has no complete pinned OMR material.');
             }
+            $templateVersionId = (int) $snapshot->template_version_id;
+            $bookletVersionId = (int) $snapshot->booklet_version_id;
 
             $active = OmrCaptureBatch::query()
                 ->where('grading_session_id', $session->id)

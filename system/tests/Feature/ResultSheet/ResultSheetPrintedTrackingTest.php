@@ -1,26 +1,33 @@
 <?php
 
+use App\Models\Foundation\AuditEvent;
 use App\Models\Release\ResultDocument;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\Models\User;
 use App\Release\Actions\PrepareResultDocument;
 use App\ResultSheet\Actions\MarkResultSheetsPrinted;
 
+require_once __DIR__.'/ResultSheetDataProviderTest.php';
+require_once __DIR__.'/ResultSheetPrintJobTest.php';
 test('mark printed sets the timestamp and audits each record', function (): void {
     $fixture = releasedScoredAttempts($this, 2);
     $guidance = $fixture['guidance'];
-    $releaseIds = array_column($fixture['releases'], 'id');
+    $documentIds = array_map(
+        static fn ($release): int => (int) $release->result_document_id,
+        $fixture['releases'],
+    );
 
     expect($fixture['releases'][0]->result_printed_at)->toBeNull();
 
-    $count = app(MarkResultSheetsPrinted::class)->handle($guidance, $releaseIds, true);
+    $count = app(MarkResultSheetsPrinted::class)->handle($guidance, $documentIds, true);
 
     expect($count)->toBe(2)
         ->and($fixture['releases'][0]->fresh()->result_printed_at)->not->toBeNull()
         ->and($fixture['releases'][1]->fresh()->result_printed_at)->not->toBeNull();
 
-    foreach ($releaseIds as $releaseId) {
-        $event = App\Models\Foundation\AuditEvent::query()
+    foreach ($fixture['releases'] as $release) {
+        $releaseId = $release->id;
+        $event = AuditEvent::query()
             ->where('event_type', 'release.result_printed_toggled')
             ->whereJsonContains('payload', ['release_id' => $releaseId])
             ->first();
@@ -34,9 +41,10 @@ test('mark printed clears the timestamp', function (): void {
     $fixture = releasedScoredAttempts($this, 1);
     $guidance = $fixture['guidance'];
     $release = $fixture['releases'][0];
+    $documentId = (int) $release->result_document_id;
 
     $release->update(['result_printed_at' => now()]);
-    app(MarkResultSheetsPrinted::class)->handle($guidance, [$release->id], false);
+    app(MarkResultSheetsPrinted::class)->handle($guidance, [$documentId], false);
 
     expect($release->fresh()->result_printed_at)->toBeNull();
 });
@@ -46,7 +54,7 @@ test('staff without the release capability cannot toggle printed status', functi
     $registrar = User::query()->where('email', 'registrar.admin@nexiam.test')->firstOrFail();
     $release = $fixture['releases'][0];
 
-    expect(fn () => app(MarkResultSheetsPrinted::class)->handle($registrar, [$release->id], true))
+    expect(fn () => app(MarkResultSheetsPrinted::class)->handle($registrar, [(int) $release->result_document_id], true))
         ->toThrow(RuntimeException::class);
 });
 

@@ -2,8 +2,10 @@
 
 namespace App\Ai\Skills;
 
+use App\Admission\Support\ApplicantScope;
 use App\Ai\Grants\TaskGrantService;
-use App\Models\Ai\NexiTaskGrant;
+use App\Models\Admission\AdmissionAttempt;
+use App\Models\Ai\XiamTaskGrant;
 use App\Models\User;
 use RuntimeException;
 
@@ -21,7 +23,7 @@ final class SkillEngine
         ?string $originPackKey = null,
         ?int $originPackVersion = null,
         ?int $sessionId = null,
-    ): NexiTaskGrant {
+    ): XiamTaskGrant {
         $institutionId = $actor->staffProfile()?->institution_id
             ?? $actor->actorScope()->institutionId;
 
@@ -54,9 +56,23 @@ final class SkillEngine
         ?string $originPackKey = null,
         ?int $originPackVersion = null,
         ?int $attemptId = null,
-    ): NexiTaskGrant {
-        $institutionId = $actor->applicantAccount()?->institution_id
-            ?? $actor->actorScope()->institutionId;
+    ): XiamTaskGrant {
+        $account = $actor->applicantAccount()->with('identity')->first();
+        $institutionId = $account?->identity?->institution_id;
+
+        $identityId = ApplicantScope::identityIdForUser($actor);
+        if ($attemptId !== null) {
+            $attempt = AdmissionAttempt::query()->find($attemptId);
+            if ($attempt === null || ! ApplicantScope::attemptBelongsToUser($attempt, $actor)) {
+                throw new RuntimeException('grant_target_mismatch');
+            }
+        } elseif ($identityId !== null) {
+            $resolvedAttemptId = AdmissionAttempt::query()
+                ->where('applicant_identity_id', $identityId)
+                ->orderByDesc('id')
+                ->value('id');
+            $attemptId = $resolvedAttemptId !== null ? (int) $resolvedAttemptId : null;
+        }
 
         return $this->grants->issue(
             actorType: 'applicant',
@@ -79,7 +95,10 @@ final class SkillEngine
         );
     }
 
-    public function assertToolAllowed(NexiTaskGrant $grant, string $capabilityId): void
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    public function assertToolAllowed(XiamTaskGrant $grant, string $capabilityId, array $input = []): void
     {
         if (! $grant->isUsable()) {
             throw new RuntimeException('grant_unusable');
@@ -105,9 +124,85 @@ final class SkillEngine
         if (! in_array($capabilityId, $legal, true)) {
             throw new RuntimeException('capability_illegal_for_cursor');
         }
+
+        if ($input !== [] && ! $this->hasForbiddenExecutionField($input)) {
+            $this->assertTargetAllowed($grant, $capabilityId, $input);
+        }
     }
 
-    public function advanceCursor(NexiTaskGrant $grant, string $cursor): void
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    public function assertTargetAllowed(XiamTaskGrant $grant, string $capabilityId, array $input): void
+    {
+        $bounds = is_array($grant->scope_bounds) ? $grant->scope_bounds : [];
+
+        $boundSessionId = isset($bounds['exam_session_id']) && (int) $bounds['exam_session_id'] > 0
+            ? (int) $bounds['exam_session_id']
+            : (isset($bounds['session_id']) && (int) $bounds['session_id'] > 0 ? (int) $bounds['session_id'] : null);
+
+        if ($boundSessionId !== null) {
+            if (array_key_exists('session_id', $input) && (int) $input['session_id'] !== $boundSessionId) {
+                throw new RuntimeException('grant_target_mismatch');
+            }
+
+            if (array_key_exists('exam_session_id', $input) && (int) $input['exam_session_id'] !== $boundSessionId) {
+                throw new RuntimeException('grant_target_mismatch');
+            }
+        } elseif (
+            (string) $grant->skill_key === ExamSessionSchedulingSkill::KEY
+            && in_array($capabilityId, [
+                'exams.session.reservation.open@1',
+                'exams.session.assign@1',
+                'exams.session.publish@1',
+            ], true)
+        ) {
+            throw new RuntimeException('grant_target_mismatch');
+        }
+
+        $boundAttemptId = isset($bounds['admission_attempt_id']) && (int) $bounds['admission_attempt_id'] > 0
+            ? (int) $bounds['admission_attempt_id']
+            : null;
+
+        if ($boundAttemptId !== null) {
+            if (array_key_exists('admission_attempt_id', $input) && (int) $input['admission_attempt_id'] !== $boundAttemptId) {
+                throw new RuntimeException('grant_target_mismatch');
+            }
+        } elseif (
+            (string) $grant->skill_key === ApplicantChooseSlotSkill::KEY
+            && $capabilityId === 'exams.slot.reserve@1'
+        ) {
+            throw new RuntimeException('grant_target_mismatch');
+        }
+
+        if (isset($bounds['version_id']) && is_string($bounds['version_id']) && $bounds['version_id'] !== '') {
+            if (array_key_exists('version_id', $input) && (string) $input['version_id'] !== $bounds['version_id']) {
+                throw new RuntimeException('grant_target_mismatch');
+            }
+        }
+
+        if (isset($bounds['source_id']) && is_string($bounds['source_id']) && $bounds['source_id'] !== '') {
+            if (array_key_exists('source_id', $input) && (string) $input['source_id'] !== $bounds['source_id']) {
+                throw new RuntimeException('grant_target_mismatch');
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function hasForbiddenExecutionField(array $input): bool
+    {
+        foreach (['execute', 'command', 'command_kind', 'command_name', 'confirmation_token'] as $field) {
+            if (array_key_exists($field, $input)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function advanceCursor(XiamTaskGrant $grant, string $cursor): void
     {
         $transitions = match ((string) $grant->skill_key) {
             ApplicantChooseSlotSkill::KEY => ApplicantChooseSlotSkill::legalTransitions(),
@@ -123,7 +218,7 @@ final class SkillEngine
         $grant->forceFill(['scope_bounds' => $bounds])->save();
     }
 
-    public function markAwaitingConfirm(NexiTaskGrant $grant, string $proposalId): void
+    public function markAwaitingConfirm(XiamTaskGrant $grant, string $proposalId): void
     {
         $bounds = $grant->scope_bounds ?? [];
         $bounds['cursor'] = ExamSessionSchedulingSkill::CURSOR_AWAITING_CONFIRM;
@@ -131,10 +226,12 @@ final class SkillEngine
         $grant->forceFill(['scope_bounds' => $bounds])->save();
     }
 
-    public function clearAwaitingConfirm(NexiTaskGrant $grant): void
+    public function clearAwaitingConfirm(XiamTaskGrant $grant): void
     {
         $bounds = $grant->scope_bounds ?? [];
-        $bounds['cursor'] = ExamSessionSchedulingSkill::CURSOR_SESSION_LOADED;
+        $bounds['cursor'] = (string) $grant->skill_key === ApplicantChooseSlotSkill::KEY
+            ? ApplicantChooseSlotSkill::CURSOR_SLOTS_LOADED
+            : ExamSessionSchedulingSkill::CURSOR_SESSION_LOADED;
         unset($bounds['pending_proposal_id']);
         $grant->forceFill(['scope_bounds' => $bounds])->save();
     }

@@ -7,7 +7,9 @@ use App\Admission\Support\SelectionGuard;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ProgramSelection;
+use App\Models\Foundation\Operation;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -20,6 +22,7 @@ class AcknowledgeAssistedProgramSelection
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -27,10 +30,23 @@ class AcknowledgeAssistedProgramSelection
         User $applicant,
         string $idempotencyKey,
     ): ProgramSelection {
-        $this->idempotency->claim($applicant, 'applicant.program.acknowledge', 'attempt:'.$attempt->id, [], $idempotencyKey);
+        $operation = $this->idempotency->claim($applicant, 'applicant.program.acknowledge', 'attempt:'.$attempt->id, [], $idempotencyKey);
 
-        return DB::transaction(function () use ($attempt, $applicant, $idempotencyKey): ProgramSelection {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): ProgramSelection => DB::transaction(function () use ($attempt, $applicant, $idempotencyKey, $operation): ProgramSelection {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+
+            $operation->refresh();
+
+            $payload = $operation->getAttribute('payload');
+            if (is_array($payload) && array_key_exists('selection_id', $payload)) {
+                $selection = ProgramSelection::query()->find($payload['selection_id']);
+
+                if ($selection === null) {
+                    throw new RuntimeException('The acknowledged program selection receipt references a missing selection.');
+                }
+
+                return $selection;
+            }
 
             SelectionGuard::assertSelectable($locked, 'Acknowledging the advised default');
 
@@ -41,6 +57,8 @@ class AcknowledgeAssistedProgramSelection
             }
 
             if ($selection->idempotency_key === $idempotencyKey && $selection->status === ProgramSelection::STATUS_ACTIVE) {
+                $this->persistSelectionReceipt($operation, $selection);
+
                 return $selection;
             }
 
@@ -58,7 +76,18 @@ class AcknowledgeAssistedProgramSelection
                 'program_id' => $selection->program_id,
             ], (string) $applicant->id);
 
+            $this->persistSelectionReceipt($operation, $selection);
+
             return $selection;
-        });
+        }));
+    }
+
+    private function persistSelectionReceipt(Operation $operation, ProgramSelection $selection): void
+    {
+        $payload = $operation->getAttribute('payload');
+
+        $operation->forceFill([
+            'payload' => [...(is_array($payload) ? $payload : []), 'selection_id' => $selection->id],
+        ])->save();
     }
 }

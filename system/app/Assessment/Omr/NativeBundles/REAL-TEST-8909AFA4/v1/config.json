@@ -1,0 +1,28 @@
+{
+  "dimensions": {
+    "display_width": 2000,
+    "display_height": 2828,
+    "processing_width": 2000,
+    "processing_height": 2828
+  },
+  "alignment_params": {
+    "auto_align": true,
+    "match_col": 5,
+    "max_steps": 30,
+    "stride": 8,
+    "thickness": 2
+  },
+  "threshold_params": {
+    "GAMMA_LOW": 0.9,
+    "MIN_GAP": 30,
+    "MIN_JUMP": 50,
+    "PAGE_TYPE": "NORMAL",
+    "GLOBAL_PAGE_THRESHOLD_WHITE": 200,
+    "GLOBAL_PAGE_THRESHOLD_BLACK": 100
+  },
+  "outputs": {
+    "show_image_level": 0,
+    "save_image_level": 0,
+    "save_detections": false
+  }
+}

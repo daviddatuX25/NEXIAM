@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/Support/TestKitPostgresAcceptanceBootstrap.php"
+         colors="true"
+         failOnRisky="true"
+>
+    <testsuites>
+        <testsuite name="Test Kit PostgreSQL contract acceptance">
+            <file>tests/Unit/Assessment/TestKitPostgresContractTest.php</file>
+            <file>tests/Unit/Assessment/TestKitHttpContractTest.php</file>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <ini name="memory_limit" value="1G"/>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_HOST" value="postgres" force="true"/>
+        <env name="DB_PORT" value="5432" force="true"/>
+        <env name="DB_USERNAME" value="nexiam" force="true"/>
+        <env name="DB_PASSWORD" value="nexiam-local-only" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="NEXIAM_TEST_KIT_SOURCE_DATABASE" value="nexiam" force="true"/>
+        <env name="NEXIAM_TEST_PIN_SQLITE" value="0" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="PULSE_ENABLED" value="false" force="true"/>
+        <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
+        <env name="PEST_BROWSER_ENABLED" value="false" force="true"/>
+    </php>
+</phpunit>

@@ -1,0 +1,338 @@
+{
+  "schema": 1,
+  "evidence": "Current source review only; evaluation accounts, fixtures, outputs, scope and institutional approval are UNVERIFIED.",
+  "tasks": [
+    {
+      "task_id": "A1",
+      "goal": "Sign in to the assigned applicant account",
+      "workspace": "/applicant/login → /applicant/portal",
+      "capability": "Access key + matching birthdate; applicant own-account scope",
+      "scope": "Own identity only; key remains reusable until revoked/reissued",
+      "prerequisites": "Assigned synthetic identity and active access challenge",
+      "outcome": "Authenticated own portal session",
+      "limitations": "Authentication is not inquiry eligibility. Login defaults are not verified evaluation credentials; no mobile-use proof.",
+      "source": [
+        "system/app/Admission/Actions/AuthenticateApplicantWithAccessKey.php:15-99",
+        "system/app/Http/Controllers/Applicant/ApplicantPortalController.php:44-121"
+      ]
+    },
+    {
+      "task_id": "A2",
+      "goal": "Locate current application status",
+      "workspace": "/applicant/portal; own application detail",
+      "capability": "Authenticated applicant own-record access",
+      "scope": "Own ApplicantIdentity and admission attempt",
+      "prerequisites": "Assigned account and actual synthetic attempt",
+      "outcome": "Current status/milestones are displayed",
+      "limitations": "A status label depends on real fixture state; the guide does not set it.",
+      "source": [
+        "system/app/Applicant/Support/ApplicantPortalProjection.php:48-115",
+        "system/app/Http/Controllers/Applicant/ApplicantPortalController.php:117-158"
+      ]
+    },
+    {
+      "task_id": "A3",
+      "goal": "Ask the supplied admission question and read its reply",
+      "workspace": "/applicant/inquiries",
+      "capability": "Applicant office-inquiry capability plus explicit synthetic actor registration",
+      "scope": "Own inquiry; allowed Registrar/Guidance destination and active eligible attempt",
+      "prerequisites": "Purpose-specific inquiry actor registration, matching institution/cycle and permitted staff counterpart",
+      "outcome": "An inquiry/message is created and a permitted reply can be read",
+      "limitations": "Ordinary portal demo accounts are not automatically registered for inquiries. Unregistered index is unavailable; private resources/writes fail closed. Reply and evaluation actor readiness are unverified.",
+      "source": [
+        "system/app/Admission/Support/ApplicantOfficeInquiryAccess.php:25-95,145-210",
+        "system/app/Http/Controllers/Admission/ApplicantOfficeInquiryController.php:37-82,99-165"
+      ]
+    },
+    {
+      "task_id": "A4",
+      "goal": "Read the prepared portal notice",
+      "workspace": "/applicant/portal",
+      "capability": "Applicant own-portal read",
+      "scope": "Own current attempt notice projection",
+      "prerequisites": "A synthetic state that actually produces the required notice",
+      "outcome": "The relevant notice is visible",
+      "limitations": "A normal pending/accepted account may have no notice. Absence is unavailable fixture, not a Neutral rating.",
+      "source": [
+        "system/app/Applicant/Support/ApplicantPortalProjection.php:89-102"
+      ]
+    },
+    {
+      "task_id": "A5",
+      "goal": "Locate assigned examination schedule",
+      "workspace": "/applicant/portal; /applicant/schedule",
+      "capability": "Authenticated applicant own-assignment read",
+      "scope": "Own eligible attempt and assignment",
+      "prerequisites": "Accepted synthetic attempt with the prepared exam assignment/session",
+      "outcome": "Assigned date, room and permit information are readable",
+      "limitations": "Research task is schedule inspection, not applicant slot booking. Missing assignment must remain unavailable.",
+      "source": [
+        "system/app/Applicant/Support/ApplicantPortalProjection.php:243-300",
+        "system/app/Http/Controllers/Applicant/ApplicantScheduleController.php:35-100"
+      ]
+    },
+    {
+      "task_id": "A6",
+      "goal": "Read the physical result sheet in face-to-face consultation",
+      "workspace": "Physical paper provided by authorized staff; not an online result route",
+      "capability": "Approved face-to-face physical artifact handling",
+      "scope": "Assigned synthetic paper only",
+      "prerequisites": "Actual generated and printed result sheet from prepared ordinary scoring",
+      "outcome": "Participant reads the supplied paper information",
+      "limitations": "No online score-view substitute. A generated PDF or print receipt alone does not prove delivery. Physical output remains unverified.",
+      "source": [
+        "system/app/Applicant/Support/ApplicantPortalProjection.php:325-350",
+        "system/app/ResultSheet/Actions/MarkResultSheetsPrinted.php:17-18,31-118"
+      ]
+    },
+    {
+      "task_id": "B1",
+      "goal": "Review assigned intake record",
+      "workspace": "/admissions",
+      "capability": "registrar.applications.view",
+      "scope": "Current permitted institution/office/cycle records",
+      "prerequisites": "Assigned synthetic intake and Registrar account with current grant",
+      "outcome": "Intake list/detail is readable",
+      "limitations": "Job title does not grant authority. Actual account and fixture scope still require purpose-specific verification.",
+      "source": [
+        "system/app/Http/Controllers/Admission/AdmissionReviewController.php:33-112"
+      ]
+    },
+    {
+      "task_id": "B2",
+      "goal": "Inspect record-management information",
+      "workspace": "/admissions/{assigned-attempt}",
+      "capability": "registrar.applications.view",
+      "scope": "Permitted admission dossier, not confidential assessment or counselling data",
+      "prerequisites": "Synthetic identity/attempt and required intake/consent relationships",
+      "outcome": "Permitted dossier and current record state are shown",
+      "limitations": "Technical read only. Do not widen this to raw scores or clinical notes.",
+      "source": [
+        "system/app/Http/Controllers/Admission/AdmissionReviewController.php:73-112",
+        "system/app/Admission/Queries/ShowAdmissionAttemptQuery.php:14-87"
+      ]
+    },
+    {
+      "task_id": "B3",
+      "goal": "Inspect enrollment-eligibility information",
+      "workspace": "/registrar/enrollment-eligibility",
+      "capability": "registrar.enrollment.eligibility",
+      "scope": "Permitted milestone facts and eligibility, not raw assessment/clinical fields",
+      "prerequisites": "Assigned synthetic attempt in a state meaningful for the task",
+      "outcome": "Eligibility and missing milestones are shown",
+      "limitations": "Lookup does not enroll the applicant or prove milestones complete. The query search/card shown here has no actor institution/cycle filter; route capability alone does not prove row-level isolation. Verify isolation before evaluation and record this gap, do not widen access.",
+      "source": [
+        "system/app/Consultation/Queries/EnrollmentEligibilityQuery.php:25-151",
+        "system/app/Http/Controllers/Registrar/EnrollmentEligibilityController.php:36-60"
+      ]
+    },
+    {
+      "task_id": "B4",
+      "goal": "Request an allowed application correction",
+      "workspace": "/admissions/{assigned-attempt}; correction action",
+      "capability": "registrar.applications.correct",
+      "scope": "Permitted pending attempt with matching expected version",
+      "prerequisites": "A separate pending correction fixture and a valid reason",
+      "outcome": "Allowed correction request changes state to needs_correction",
+      "limitations": "An accepted case prepared for eligibility is not necessarily eligible for correction. Preserve stale/state denial, do not change the case to force success.",
+      "source": [
+        "system/app/Admission/Actions/RequestApplicationCorrection.php:1-80",
+        "system/app/Http/Controllers/Admission/AdmissionActionController.php:79-96"
+      ]
+    },
+    {
+      "task_id": "B5",
+      "goal": "Review authorized Guidance handoff facts",
+      "workspace": "/registrar/enrollment-eligibility/{assigned-attempt}",
+      "capability": "registrar.enrollment.eligibility",
+      "scope": "Authorized lifecycle/program/follow-up facts only",
+      "prerequisites": "Prepared synthetic milestones and allowed handoff data",
+      "outcome": "Permitted readiness and handoff facts are readable",
+      "limitations": "Registrar is not a private Guidance/academic thread participant. Do not infer thread content or grant access from this task. The eligibility query's row-level institution/cycle filtering is not established; approved isolated synthetic case readiness is still required.",
+      "source": [
+        "system/app/Consultation/Queries/EnrollmentEligibilityQuery.php:70-151",
+        "system/app/Admission/Support/RecordThreadService.php:300-355"
+      ]
+    },
+    {
+      "task_id": "B6",
+      "goal": "Use permitted office-coordination facts/action",
+      "workspace": "Assigned eligibility/handoff view; Registrar inquiry queue only if explicitly part of the prepared case",
+      "capability": "Registrar eligibility grant or current Registrar office-inquiry handling authority",
+      "scope": "Current office and assigned synthetic case",
+      "prerequisites": "Owner-approved coordination fixture and exact allowed action",
+      "outcome": "Permitted status coordination or office inquiry outcome is observed",
+      "limitations": "The protocol permits information OR action; no broad messaging right is implied. Exact prepared path and eligibility query row-level isolation remain unverified; no private counselling thread substitute.",
+      "source": [
+        "system/app/Consultation/Queries/EnrollmentEligibilityQuery.php:70-151",
+        "system/app/Http/Controllers/Admission/ApplicantOfficeInquiryController.php:44-50,99-165"
+      ]
+    },
+    {
+      "task_id": "C1",
+      "goal": "Create staff-managed exam session and inspect capacity",
+      "workspace": "/exams/sessions/create; /exams/sessions",
+      "capability": "guidance.exam.schedule",
+      "scope": "Allowed institution/cycle/room and session lifecycle",
+      "prerequisites": "Configured active cycle and valid room/layout/material prerequisites",
+      "outcome": "Draft session and capacity information can be inspected",
+      "limitations": "No applicant self-booking in this scenario. Draft creation is not publication or readiness proof.",
+      "source": [
+        "system/app/Http/Controllers/Examination/ExamSessionController.php:124-205",
+        "system/app/Examination/Actions/CreateExamSession.php:38-115"
+      ]
+    },
+    {
+      "task_id": "C2",
+      "goal": "Use prepared ordinary scoring",
+      "workspace": "/grading; assigned grading session OMR workspace",
+      "capability": "guidance.scoring.omr; manual access only for its separate permitted operation",
+      "scope": "Closed eligible roster and frozen institutional material binding",
+      "prerequisites": "Prepared synthetic sheet/capture, current material pair and eligible grading context",
+      "outcome": "Ordinary scoring output is inspected",
+      "limitations": "Not template calibration, uncertain-mark adjudication or accuracy evaluation. Missing material/identity/eligible roster is blocked; software fixtures do not establish physical qualification.",
+      "source": [
+        "system/app/Http/Controllers/Assessment/GradingController.php:140-205,480-496",
+        "system/app/Assessment/Queries/GradingOmrCapturePresenter.php:38-115"
+      ]
+    },
+    {
+      "task_id": "C3",
+      "goal": "Review prepared TabPFN match information",
+      "workspace": "/consultation/applicants/{assigned-attempt}",
+      "capability": "Current Guidance support-workspace authority",
+      "scope": "Assigned institution/cycle/applicant and permitted advising projection",
+      "prerequisites": "Finalized profile and approved current benchmark/provider output",
+      "outcome": "Advisory match options and explanations can be reviewed",
+      "limitations": "Provider code can report in_process_heuristics or in_process_fallback when the HTTP sidecar fails. These are not verified TabPFN outputs; confirm prepared inference provenance and do not substitute or claim model performance.",
+      "source": [
+        "system/app/Http/Controllers/Admission/AdmissionSupportController.php:53-125",
+        "system/app/AdmissionEngine/Providers/TabFmPairwiseProvider.php:460-501"
+      ]
+    },
+    {
+      "task_id": "C4",
+      "goal": "Review admission/testing status",
+      "workspace": "/consultation; assigned applicant support workspace",
+      "capability": "guidance.consultation.decide and current permitted query scope",
+      "scope": "Assigned accepted applicant/queue within allowed institution and cycle",
+      "prerequisites": "Prepared attempt, assignment and grading/readiness facts",
+      "outcome": "Current testing/consultation milestones are readable",
+      "limitations": "Read-only status does not grant Registrar intake edits. Current data/privacy scope and fixture still require verification.",
+      "source": [
+        "system/app/Http/Controllers/Consultation/ConsultationDashboardController.php:34-85",
+        "system/app/Consultation/Queries/ConsultationDashboardQuery.php:25-145"
+      ]
+    },
+    {
+      "task_id": "C5",
+      "goal": "Send assigned synthetic case message and read leader reply",
+      "workspace": "Assigned applicant internal case thread in Consultation/Program Workspace; not /communications announcements",
+      "capability": "record.thread.participate plus current Guidance plan/schedule authority",
+      "scope": "Active institution/cycle/program, current case relationship and permitted thread type",
+      "prerequisites": "Approved same-case thread, current eligible parties and separate browser identities",
+      "outcome": "Permitted message/reply exchange is recorded",
+      "limitations": "Paired with D4. No Registrar/private-clinical access or assumed Guidance+PH+Dean membership. Actual thread eligibility is unverified.",
+      "source": [
+        "system/app/Admission/Support/RecordThreadService.php:300-355",
+        "system/routes/web.php:1339-1357"
+      ]
+    },
+    {
+      "task_id": "C6",
+      "goal": "Record permitted face-to-face consultation outcome",
+      "workspace": "/consultation/applicants/{assigned-attempt}; consultation decision action",
+      "capability": "guidance.consultation.decide; additional pool/referral grants for those branches",
+      "scope": "Accepted current-ready pre-enrollment case and permitted counselling purpose",
+      "prerequisites": "Prepared current result, active F2F context and attributable current print evidence as required",
+      "outcome": "Allowed consultation decision and related receipt are recorded",
+      "limitations": "Prepared PDF is not physical print evidence. No online/Jitsi substitution. Branch scope, current evidence and state gates remain authoritative.",
+      "source": [
+        "system/app/Http/Controllers/Consultation/ConsultationDecisionController.php:16-55",
+        "system/app/Release/Actions/RecordConsultationDecision.php:49-202"
+      ]
+    },
+    {
+      "task_id": "C7",
+      "goal": "Deliver physical result sheet and inspect permitted record",
+      "workspace": "/release/print/batches/{assigned-grading-session}; assigned result sheet",
+      "capability": "guidance.results.release for physical print confirmation",
+      "scope": "Current authorized result document and F2F purpose",
+      "prerequisites": "Finalized grades, current generated document/template, actual printed paper and permitted delivery context",
+      "outcome": "Physical sheet is delivered; allowed print-confirmation record can be inspected",
+      "limitations": "MarkResultSheetsPrinted records print confirmations/corrections, not an independently observed recipient handover. Do not call a print receipt proof of delivery or use online release; exact delivery evidence remains a task-readiness gate.",
+      "source": [
+        "system/app/ResultSheet/Actions/MarkResultSheetsPrinted.php:17-18,31-118",
+        "system/app/Http/Controllers/Release/ReleasePrintController.php:245-261"
+      ]
+    },
+    {
+      "task_id": "C8",
+      "goal": "Inspect assigned roster and record attendance",
+      "workspace": "/exams/sessions/{assigned-session}/monitoring",
+      "capability": "Current permitted conduct capability/duty through ProctorDutyGate",
+      "scope": "Assigned session/examinee and allowed attendance window",
+      "prerequisites": "Prepared nonterminal session/assignment and verified actor duty",
+      "outcome": "Permitted attendance outcome is recorded",
+      "limitations": "Scheduling access alone must not be assumed sufficient for every duty/state. No grading overwrite or setup task substitution.",
+      "source": [
+        "system/app/Http/Controllers/Examination/ProctorDutyController.php:50-80",
+        "system/routes/web.php:852-867"
+      ]
+    },
+    {
+      "task_id": "D1",
+      "goal": "Review own-program capacity",
+      "workspace": "/staff/programs/{assigned-program}",
+      "capability": "program.head.view with current program/academic ownership scope",
+      "scope": "Only currently assigned or owned active program/department",
+      "prerequisites": "Purpose-specific academic account and current synthetic quota/cycle facts",
+      "outcome": "Permitted capacity/commitment/headroom information is readable",
+      "limitations": "A Program Head or Dean title does not authorize the full institution catalog or all quota mutations.",
+      "source": [
+        "system/app/Http/Controllers/ProgramHead/ProgramHeadController.php:48-105"
+      ]
+    },
+    {
+      "task_id": "D2",
+      "goal": "Locate assigned applicant in program list",
+      "workspace": "/staff/programs/{assigned-program}; assigned applicant view",
+      "capability": "program.head.view and current relationship/privacy query boundary",
+      "scope": "In-scope accepted candidate and allowed displayed fields",
+      "prerequisites": "Synthetic accepted case matching permitted preference/pool/selection relationship",
+      "outcome": "The allowed candidate entry and state can be inspected",
+      "limitations": "Pre-accepted identities and foreign programs must not be inferred or exposed. Full raw scoring/clinical fields are not implied.",
+      "source": [
+        "system/app/ProgramHead/Queries/ProgramHeadCandidateListsQuery.php:22-120",
+        "system/app/Http/Controllers/ProgramHead/ProgramHeadController.php:50-120"
+      ]
+    },
+    {
+      "task_id": "D3",
+      "goal": "Review assigned referral",
+      "workspace": "Assigned Program Workspace follow-up queue",
+      "capability": "program.head.view; resolution is a separate capability/action",
+      "scope": "Only referral targeted to current program/academic ownership",
+      "prerequisites": "Prepared open ProgramFollowUp and eligible scoped actor",
+      "outcome": "Permitted referral information is readable",
+      "limitations": "Review is not clearance/resolution. Missing targeted referral is unavailable, not an invented case.",
+      "source": [
+        "system/app/ProgramHead/Queries/ProgramHeadCandidateListsQuery.php:68-95"
+      ]
+    },
+    {
+      "task_id": "D4",
+      "goal": "Read Guidance message and reply on the same approved case",
+      "workspace": "Assigned internal case thread through Program Workspace/applicant support",
+      "capability": "record.thread.participate with current permitted program party",
+      "scope": "Active institution/cycle/program and current case relationship",
+      "prerequisites": "Paired C5 case/thread, actual permitted membership and separate actor session",
+      "outcome": "Academic leader reads and sends the permitted reply",
+      "limitations": "Only eligible PH OR Dean for the approved case. No role impersonation, Registrar access, three-party widening or privacy certification from the role label.",
+      "source": [
+        "system/app/Admission/Support/RecordThreadService.php:300-355",
+        "system/app/Http/Controllers/ProgramHead/ProgramHeadActionController.php:75-115"
+      ]
+    }
+  ]
+}

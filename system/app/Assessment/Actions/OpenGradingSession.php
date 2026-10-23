@@ -12,9 +12,7 @@ use RuntimeException;
 
 class OpenGradingSession
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     /**
      * Open (or return the existing) grading session for an exam session.

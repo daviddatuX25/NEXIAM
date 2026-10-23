@@ -6,7 +6,6 @@ use ZipArchive;
 
 use function config;
 use function file_get_contents;
-use function file_exists;
 use function filesize;
 use function finfo_close;
 use function finfo_file;
@@ -17,19 +16,16 @@ use function is_array;
 use function is_file;
 use function is_numeric;
 use function pathinfo;
-use function preg_match;
 use function str_contains;
 use function str_ends_with;
 use function strtolower;
 
 final class OmrSourcePreflight
 {
-    public function __construct(private readonly OmrHtmlSanitizer $htmlSanitizer)
-    {
-    }
+    public function __construct(private readonly OmrHtmlSanitizer $htmlSanitizer) {}
 
     /**
-     * @param array{declared_mime?:string,page_count?:int,width_mm?:float,height_mm?:float} $context
+     * @param  array{declared_mime?:string,page_count?:int,width_mm?:float,height_mm?:float}  $context
      */
     public function check(string $kind, string $sourcePath, array $context = []): OmrSourcePreflightResult
     {

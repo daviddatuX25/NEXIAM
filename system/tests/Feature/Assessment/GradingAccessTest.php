@@ -1,12 +1,25 @@
 <?php
 
-use App\Models\User;
+test('guidance counselor with manual scoring capability can access scoring routes', function (): void {
+    $fixture = buildGradingFixture($this);
 
-test('grading index requires manual scoring capability', function (): void {
-    seedE2Foundation();
-    $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
+    $this->actingAs($fixture['guidance'])
+        ->get('/scoring')
+        ->assertOk();
 
-    $this->actingAs($registrar)
-        ->get(route('grading.index'))
+    $this->actingAs($fixture['guidance'])
+        ->get('/scoring/sessions/'.$fixture['session']->id)
+        ->assertOk();
+});
+
+test('a user without scoring capability is forbidden from scoring routes', function (): void {
+    $fixture = buildGradingFixture($this);
+
+    $this->actingAs($fixture['registrar'])
+        ->get('/scoring')
+        ->assertForbidden();
+
+    $this->actingAs($fixture['registrar'])
+        ->get('/scoring/sessions/'.$fixture['session']->id)
         ->assertForbidden();
 });

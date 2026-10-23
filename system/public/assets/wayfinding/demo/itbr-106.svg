@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" role="img" aria-labelledby="title desc">
+  <title id="title">ITBR 106 Computer Lab entrance</title>
+  <desc id="desc">Modern college computer lab door with room plaque and yellow floor caution line.</desc>
+  <defs>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#e9eff2"/><stop offset="1" stop-color="#cbd6dc"/></linearGradient>
+    <linearGradient id="door" x2="1" y2="1"><stop stop-color="#38566a"/><stop offset="1" stop-color="#1d3444"/></linearGradient>
+    <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#d7f1f3"/><stop offset="1" stop-color="#83bdc9"/></linearGradient>
+  </defs>
+  <path fill="#172a38" d="M0 0h300v400H0z"/>
+  <path fill="url(#wall)" d="M18 18h264v342H18z"/>
+  <path fill="#b9c6cc" d="M18 342h264v18H18z"/>
+  <path fill="#273f50" d="M52 73h196v269H52z"/>
+  <path fill="#d9e1e4" d="M60 81h180v253H60z"/>
+  <path fill="url(#door)" d="M72 91h156v243H72z"/>
+  <path fill="url(#glass)" stroke="#d5e8ec" stroke-width="5" d="M89 111h121v125H89z"/>
+  <path fill="#f1f7f7" d="M104 129h91v69h-91z" opacity=".85"/>
+  <path fill="#29495a" d="M116 139h67v42h-67z"/>
+  <path fill="#8cc5cf" d="M122 145h55v29h-55z"/>
+  <path fill="#38566a" d="M139 181h20v5h-20zM130 186h38v4h-38z"/>
+  <path fill="#c6d6da" d="M150 111v125h5V111z" opacity=".6"/>
+  <rect x="198" y="251" width="7" height="34" rx="3.5" fill="#d6b96e"/>
+  <circle cx="201.5" cy="267" r="2" fill="#fff0bd"/>
+  <path fill="#253f50" d="M78 45h144v32H78z"/>
+  <path fill="#f4f6f4" d="M83 49h134v24H83z"/>
+  <text x="150" y="60" fill="#243c4a" font-family="Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle">ITBR 106 - COMPUTER LAB</text>
+  <text x="150" y="69" fill="#607681" font-family="Arial,sans-serif" font-size="5.5" letter-spacing="1.2" text-anchor="middle">INFORMATION TECHNOLOGY</text>
+  <path fill="#384c57" d="M28 360h244v24H28z"/>
+  <path fill="#f6c845" d="M35 364h230v7H35z"/>
+  <path stroke="#263d4a" stroke-width="4" d="m39 371 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7"/>
+  <path fill="#132632" d="M0 384h300v16H0z"/>
+</svg>

@@ -10,6 +10,7 @@ use App\Models\Admission\ProgramFollowUp;
 use App\Models\Admission\ProgramPool;
 use App\Models\Foundation\Program;
 use App\Models\User;
+use App\ProgramHead\Support\AcademicReferralNotice;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -24,6 +25,7 @@ class OpenProgramFollowUp
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AcademicReferralNotice $academicReferralNotice,
     ) {}
 
     public function handle(
@@ -66,7 +68,10 @@ class OpenProgramFollowUp
                 throw new RuntimeException('New follow-ups can only be opened before enrollment processing starts.');
             }
 
-            $program = Program::query()->where('code', $programCode)->firstOrFail();
+            $program = Program::query()
+                ->where('institution_id', $locked->institution_id)
+                ->where('code', $programCode)
+                ->firstOrFail();
 
             $pool = ProgramPool::currentFor($locked->id);
             $poolOption = $pool?->options()->where('program_id', $program->id)->exists();
@@ -103,6 +108,7 @@ class OpenProgramFollowUp
                 'program_id' => $program->id,
                 'reason' => $reason,
             ], (string) $guidance->id);
+            $this->academicReferralNotice->handle($followUp);
 
             return $followUp;
         });

@@ -53,4 +53,6 @@ test('the real ICAT docx template fills and converts to pdf', function (): void 
     @unlink($temp);
 
     expect($text)->toContain('Juan');
+    expect($text)->not->toContain('{{')
+        ->and($text)->not->toContain('general_ability');
 });

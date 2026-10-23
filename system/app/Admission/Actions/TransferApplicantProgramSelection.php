@@ -10,6 +10,7 @@ use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ProgramPool;
 use App\Models\Admission\ProgramSelection;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -23,6 +24,7 @@ class TransferApplicantProgramSelection
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -45,7 +47,7 @@ class TransferApplicantProgramSelection
             return $replayed;
         }
 
-        return DB::transaction(function () use ($attempt, $applicant, $programCode, $idempotencyKey): ProgramSelection {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): ProgramSelection => DB::transaction(function () use ($attempt, $applicant, $programCode, $idempotencyKey): ProgramSelection {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
             SelectionGuard::assertSelectable($locked, 'Transferring your program choice');
@@ -105,6 +107,6 @@ class TransferApplicantProgramSelection
             ], (string) $applicant->id);
 
             return $selection;
-        });
+        }));
     }
 }

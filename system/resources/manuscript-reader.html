@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'none'; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Manuscript Review Reader</title>
+  <link rel="stylesheet" href="reader.css">
+  <script src="reader.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#document-content">Skip to manuscript</a>
+  <header class="topbar">
+    <div class="brand">
+      <h1>NEXIAM Manuscript Review</h1>
+    </div>
+    <div class="topbar-actions">
+      <button id="annotations-toggle-btn" class="annotations-toggle-btn" aria-expanded="false" aria-controls="annotations-drawer">
+        <span class="btn-icon">💬</span> Review Notes <span id="annotations-badge" class="annotations-badge">0</span>
+      </button>
+      <p class="snapshot-notice">Published snapshot · edits appear after republication</p>
+    </div>
+  </header>
+  <main class="reader-layout">
+    <aside class="sidebar" aria-label="Manuscript navigation">
+      <label class="mobile-selector-label" for="document-selector">Choose a chapter or section</label>
+      <select id="document-selector" class="document-selector" aria-label="Choose a chapter or section"></select>
+      <nav id="document-navigation" class="document-navigation" aria-label="Chapters and sections"></nav>
+      <section id="reference-navigation-group" class="navigation-group reference-navigation-group" aria-labelledby="reference-navigation-title" hidden>
+        <h3 id="reference-navigation-title">References</h3>
+        <ul><li><button id="reference-open-btn" class="reference-open-btn" type="button" aria-haspopup="dialog" aria-controls="reference-dialog" aria-expanded="false">YuKee · Original research</button></li></ul>
+      </section>
+    </aside>
+    <section class="reading-pane" aria-labelledby="document-title">
+      <div class="document-toolbar">
+        <div>
+          <h2 id="document-title">Loading manuscript…</h2>
+          <p class="publication-status"><span id="publication-time"></span> · <span id="draft-status">Review draft</span></p>
+        </div>
+        <div class="download-actions">
+          <a id="download-selected" class="download-button" aria-label="Download selected Markdown" download>Download Markdown</a>
+          <details class="chapter-downloads">
+            <summary>Chapter downloads</summary>
+            <div id="chapter-download-links"></div>
+          </details>
+          <p id="download-status" class="publication-status" role="status"></p>
+        </div>
+      </div>
+      <section id="generation-panel" class="generation-panel" aria-labelledby="generation-title" hidden>
+        <div class="generation-heading">
+          <div>
+            <h2 id="generation-title">Generated document</h2>
+            <p id="generation-notice" class="publication-status"></p>
+          </div>
+          <p id="generation-status" class="publication-status" role="status" aria-live="polite"></p>
+        </div>
+        <p id="generation-metadata" class="publication-status"></p>
+        <div class="generation-actions">
+          <button id="generation-preview-button" class="download-button" type="button">Preview PDF</button>
+          <button id="generation-download-pdf" class="generation-control" type="button">Download PDF</button>
+          <button id="generation-download-docx" class="generation-control" type="button">Download Word document</button>
+          <a id="generation-drive-link" class="generation-control" target="_blank" rel="noopener noreferrer" hidden>Open Drive review folder</a>
+        </div>
+        <div id="generation-preview" class="generation-preview" hidden>
+          <div class="generation-preview-heading">
+            <h3>PDF preview</h3>
+            <a id="generation-open-pdf" target="_blank" rel="noopener noreferrer">Open PDF separately</a>
+            <button id="generation-close-preview" class="generation-control" type="button">Close preview</button>
+          </div>
+          <iframe id="generation-pdf-frame" title="Generated manuscript PDF preview" hidden></iframe>
+          <p id="generation-preview-error" class="generation-error" role="alert" hidden></p>
+        </div>
+      </section>
+      <section class="reader-search" aria-label="Find in manuscript">
+        <label for="manuscript-search-input">Find in this section</label>
+        <div class="reader-search-controls">
+          <input id="manuscript-search-input" type="search" autocomplete="off">
+          <button id="manuscript-search-previous" type="button" aria-label="Previous manuscript match" disabled>Previous</button>
+          <button id="manuscript-search-next" type="button" aria-label="Next manuscript match" disabled>Next</button>
+          <output id="manuscript-search-count" role="status" aria-live="polite">Enter text to find.</output>
+        </div>
+      </section>
+      <div class="content-grid">
+        <article id="document-content" class="markdown-content" tabindex="-1" aria-live="polite">
+          <p>Loading selected document…</p>
+        </article>
+        <nav class="outline" aria-label="Headings in this document">
+          <h3>On this page</h3>
+          <ol id="heading-outline"></ol>
+        </nav>
+      </div>
+    </section>
+  </main>
+  <dialog id="reference-dialog" class="reference-dialog" aria-labelledby="reference-dialog-title" aria-describedby="reference-disclaimer">
+    <div class="reference-dialog-shell">
+      <header class="reference-dialog-header">
+        <div>
+          <h2 id="reference-dialog-title">YuKee · Original research</h2>
+          <p id="reference-disclaimer">Compare against the original scanned pages. Extracted text may contain PDF text-extraction or OCR errors; the scan is authoritative.</p>
+        </div>
+        <button id="reference-close-btn" class="reference-close-btn" type="button">Close</button>
+      </header>
+      <div id="reference-load-error" class="reference-load-error" role="alert" hidden>
+        <p id="reference-load-error-message"></p>
+        <button id="reference-retry-index" class="reference-control-button" type="button">Retry loading reference index</button>
+      </div>
+      <p id="reference-load-status" class="reference-load-status" role="status" aria-live="polite"></p>
+      <section id="reference-index-notes" class="reference-index-notes" aria-label="Reference pagination notes" hidden>
+        <p id="reference-missing-pages-note"></p>
+        <ul id="reference-notes-list"></ul>
+      </section>
+      <div class="reference-toolbar">
+        <label for="reference-page-select">Original page</label>
+        <select id="reference-page-select" aria-label="Choose an original reference page" disabled></select>
+        <button id="reference-page-previous" class="reference-control-button" type="button" aria-label="Previous reference page" disabled>Previous page</button>
+        <button id="reference-page-next" class="reference-control-button" type="button" aria-label="Next reference page" disabled>Next page</button>
+        <div class="reference-zoom-controls" aria-label="Scan zoom controls">
+          <button id="reference-zoom-out" class="reference-control-button" type="button" aria-label="Zoom out" disabled>−</button>
+          <output id="reference-zoom-level" aria-live="polite">100%</output>
+          <button id="reference-zoom-in" class="reference-control-button" type="button" aria-label="Zoom in" disabled>+</button>
+        </div>
+        <button id="reference-pdf-download" class="reference-control-button" type="button" disabled>Download original PDF</button>
+        <p id="reference-download-status" class="reference-load-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="reference-dialog-main">
+        <section class="reference-scan-panel" aria-labelledby="reference-scan-heading">
+          <h3 id="reference-scan-heading">Scanned original</h3>
+          <p id="reference-page-metadata" class="reference-page-metadata"></p>
+          <div class="reference-scan-frame">
+            <p id="reference-image-loading" role="status">Open a page to load its scan.</p>
+            <img id="reference-page-image" alt="" loading="lazy" decoding="async" hidden>
+            <div id="reference-image-error" class="reference-image-error" role="alert" hidden>
+              <p id="reference-image-error-message"></p>
+              <button id="reference-retry-image" class="reference-control-button" type="button">Retry scan</button>
+            </div>
+          </div>
+        </section>
+        <section class="reference-text-panel" aria-labelledby="reference-text-heading">
+          <h3 id="reference-text-heading">Extracted text</h3>
+          <p class="reference-text-caution">PDF text and OCR are aids to comparison, not a substitute for the scan.</p>
+          <div class="reference-search" role="group" aria-label="Find in reference text">
+            <label for="reference-search-input">Find in original text</label>
+            <input id="reference-search-input" type="search" autocomplete="off">
+            <div class="reference-search-controls">
+              <button id="reference-search-previous" class="reference-control-button" type="button" aria-label="Previous reference text match" disabled>Previous</button>
+              <button id="reference-search-next" class="reference-control-button" type="button" aria-label="Next reference text match" disabled>Next</button>
+              <output id="reference-search-count" role="status" aria-live="polite">Load the reference index to search.</output>
+            </div>
+          </div>
+          <p id="reference-text-status" class="reference-text-status" role="status" aria-live="polite"></p>
+          <div id="reference-page-text" class="reference-page-text" tabindex="0"></div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+  <aside id="annotations-drawer" class="annotations-drawer" aria-label="Review annotations" hidden>
+    <div class="annotations-drawer-header">
+      <h3>Review Notes</h3>
+      <button id="annotations-close-btn" class="drawer-close-btn" aria-label="Close notes">&times;</button>
+    </div>
+    <div class="annotations-drawer-toolbar">
+      <span id="annotations-doc-label" class="doc-filter-label">Current Document</span>
+      <button id="annotations-create-btn" class="create-note-btn">+ Add Note</button>
+    </div>
+    <div id="annotations-list" class="annotations-list" role="feed">
+      <p class="empty-notes-notice">No annotations on this document yet. Select text or click '+ Add Note' to create one.</p>
+    </div>
+  </aside>
+  <div id="annotation-popover" class="annotation-popover" hidden>
+    <button id="popover-create-btn" class="popover-create-btn">💬 Add Note</button>
+  </div>
+  <dialog id="annotation-dialog" class="annotation-dialog">
+    <form id="annotation-dialog-form" method="dialog">
+      <h4 id="annotation-dialog-title">New Review Note</h4>
+      <div id="annotation-quote-box" class="annotation-quote-box" hidden></div>
+      <div class="form-field">
+        <label for="annotation-author-input">Reviewer Name</label>
+        <input id="annotation-author-input" type="text" placeholder="e.g. Matt, Amelia, Reviewer" required maxlength="100">
+      </div>
+      <div class="form-field">
+        <label for="annotation-category-select">Category</label>
+        <select id="annotation-category-select">
+          <option value="todo">To-Do / Action Item</option>
+          <option value="clarification">Clarification</option>
+          <option value="methodology">Methodology / RAD</option>
+          <option value="factual">Factual / Terminology</option>
+          <option value="formatting">Formatting / Style</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="annotation-comment-input">Comment</label>
+        <textarea id="annotation-comment-input" rows="4" placeholder="Write feedback, question, or change note..." required maxlength="4000"></textarea>
+      </div>
+      <div class="dialog-actions">
+        <button id="annotation-cancel-btn" type="button" class="btn-cancel">Cancel</button>
+        <button id="annotation-submit-btn" type="submit" class="btn-save">Save Note</button>
+      </div>
+    </form>
+  </dialog>
+  <footer>Shared link access depends on network reachability. This page is not an authenticated institutional portal.</footer>
+</body>
+</html>

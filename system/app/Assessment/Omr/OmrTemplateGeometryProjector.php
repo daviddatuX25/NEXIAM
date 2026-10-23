@@ -11,19 +11,22 @@ use App\Models\Foundation\AptitudeArea;
 use Illuminate\Database\Eloquent\Collection;
 use RuntimeException;
 
-    use function array_filter;
-    use function array_map;
-    use function array_values;
-    use function count;
-    use function hash;
-    use function is_array;
-    use function json_encode;
-    use function ksort;
-    use function max;
-    use function min;
-    use function preg_match;
-    use function sprintf;
-    use function str_starts_with;
+use function array_filter;
+use function array_map;
+use function array_values;
+use function count;
+use function hash;
+use function is_array;
+use function is_finite;
+use function is_numeric;
+use function is_string;
+use function json_encode;
+use function ksort;
+use function max;
+use function min;
+use function preg_match;
+use function sprintf;
+use function str_starts_with;
 
 /**
  * Typed geometry-projection failure. The error codes named in the shared
@@ -63,8 +66,7 @@ final class GeometryProjectionResult
         public readonly array $questions,
         public readonly array $projectedQuestions,
         public readonly bool $reused,
-    ) {
-    }
+    ) {}
 }
 
 /**
@@ -146,6 +148,59 @@ final class OmrTemplateGeometryProjector
     }
 
     /**
+     * Project worker-registered pixel rectangles into the normalized evidence
+     * coordinate space. Invalid or incomplete provider geometry is omitted so
+     * callers retain their pinned manifest regions.
+     *
+     * @return array<string, array{x:float,y:float,w:float,h:float}>
+     */
+    public static function registeredOptionRegions(OmrLayoutVerificationResult $layout): array
+    {
+        $width = $layout->alignedImage['width'] ?? null;
+        $height = $layout->alignedImage['height'] ?? null;
+        if (! is_numeric($width) || ! is_numeric($height) || (float) $width <= 0.0 || (float) $height <= 0.0) {
+            return [];
+        }
+
+        $width = (float) $width;
+        $height = (float) $height;
+        $regions = [];
+        foreach ((array) ($layout->itemEvidence ?? []) as $item) {
+            if (! is_array($item) || ! is_string($item['label'] ?? null) || $item['label'] === '') {
+                continue;
+            }
+            foreach ((array) ($item['options'] ?? []) as $option) {
+                if (! is_array($option)) {
+                    continue;
+                }
+                $code = $option['option'] ?? null;
+                $rect = $option['rect'] ?? null;
+                if (! is_string($code) || $code === '' || ! is_array($rect)) {
+                    continue;
+                }
+                $values = [$rect['x'] ?? null, $rect['y'] ?? null, $rect['w'] ?? null, $rect['h'] ?? null];
+                if (array_filter($values, static fn (mixed $value): bool => ! is_numeric($value)) !== []) {
+                    continue;
+                }
+                [$x, $y, $rectWidth, $rectHeight] = array_map(static fn (mixed $value): float => (float) $value, $values);
+                if (! is_finite($x) || ! is_finite($y) || ! is_finite($rectWidth) || ! is_finite($rectHeight)
+                    || $x < 0.0 || $y < 0.0 || $rectWidth <= 0.0 || $rectHeight <= 0.0
+                    || $x + $rectWidth > $width || $y + $rectHeight > $height) {
+                    continue;
+                }
+                $regions[$item['label'].'|'.$code] = [
+                    'x' => $x / $width,
+                    'y' => $y / $height,
+                    'w' => $rectWidth / $width,
+                    'h' => $rectHeight / $height,
+                ];
+            }
+        }
+
+        return $regions;
+    }
+
+    /**
      * Derive the canonical projection payload (pages, areas, questions with
      * declared options) from a review manifest. Scorable labels must carry
      * their semantic area code (`AREA_Q_NNN`) and be contiguous from 1 per
@@ -161,7 +216,7 @@ final class OmrTemplateGeometryProjector
     private function deriveProjection(array $reviewManifest, OmrAnswerSheetTemplateVersion $version): array
     {
         $questions = [];
-
+        $globalPositions = [];
         foreach ((array) ($reviewManifest['fields'] ?? []) as $field) {
             $label = (string) ($field['label'] ?? '');
 
@@ -172,6 +227,7 @@ final class OmrTemplateGeometryProjector
             if (preg_match('/^([A-Z0-9_]+)_Q_(\d{1,3})$/', $label, $matches) !== 1) {
                 throw new RuntimeException(sprintf('Native manifest contains an undeclared field label: %s.', $label));
             }
+            $globalPositions[$label] ??= count($globalPositions) + 1;
 
             $questions[$matches[1]][(int) $matches[2]]['options'][] = $field;
         }
@@ -210,10 +266,13 @@ final class OmrTemplateGeometryProjector
                     ];
                 }
 
+                $nativeLabel = (string) ($question['options'][0]['label'] ?? '');
                 $questionShapes[] = [
                     'area_code' => $areaCode,
                     'question_no' => $questionNo,
                     'page' => (int) ($question['options'][0]['page'] ?? 1),
+                    'native_label' => $nativeLabel,
+                    'global_position' => $globalPositions[$nativeLabel],
                     'region' => self::unionRegions(array_map(
                         static fn (array $option): array => $option['region'],
                         $options,
@@ -232,6 +291,69 @@ final class OmrTemplateGeometryProjector
                     $questionShapes,
                 )),
             ];
+        }
+        $inventory = (array) data_get($version->authoring_manifest, 'physical_inventory', []);
+        $sectionsByUid = collect((array) ($inventory['sections'] ?? []))
+            ->filter(fn (mixed $section): bool => is_array($section) && is_string($section['printed_section_uid'] ?? null))
+            ->keyBy('printed_section_uid');
+        $itemsByLabel = [];
+        $physicalUids = [];
+        foreach ((array) ($inventory['sections'] ?? []) as $section) {
+            if (! is_array($section)
+                || ! is_string($section['printed_section_uid'] ?? null)
+                || ! is_string($section['name'] ?? null)
+                || trim($section['name']) === ''
+                || count((array) ($section['items'] ?? [])) !== (int) ($section['expected_item_count'] ?? -1)) {
+                throw new RuntimeException('Physical inventory section metadata is incomplete.');
+            }
+            foreach ((array) ($section['items'] ?? []) as $item) {
+                if (! is_array($item) || ! is_string($item['native_label'] ?? null) || $item['native_label'] === '') {
+                    throw new RuntimeException('Physical inventory contains an item without its exact native label.');
+                }
+                $label = $item['native_label'];
+                $uid = (string) ($item['physical_item_uid'] ?? '');
+                if (isset($itemsByLabel[$label]) || isset($physicalUids[$uid])
+                    || $uid === '' || ! isset($sectionsByUid[$section['printed_section_uid']])) {
+                    throw new RuntimeException('Physical inventory has duplicate labels, UIDs, or an unknown Printed section.');
+                }
+                $physicalUids[$uid] = true;
+                $itemsByLabel[$label] = [
+                    ...$item,
+                    'printed_section_uid' => (string) $section['printed_section_uid'],
+                ];
+            }
+        }
+        if ($inventory !== []) {
+            $questionsByLabel = [];
+            foreach ($projectedQuestions as $index => $question) {
+                $label = (string) $question['native_label'];
+                if ($label === '' || isset($questionsByLabel[$label])) {
+                    throw new RuntimeException('Native geometry has a missing or duplicate physical label.');
+                }
+                $questionsByLabel[$label] = $index;
+            }
+            $itemLabels = array_keys($itemsByLabel);
+            $questionLabels = array_keys($questionsByLabel);
+            sort($itemLabels);
+            sort($questionLabels);
+            if ($itemLabels !== $questionLabels) {
+                throw new RuntimeException('Physical inventory must cover exactly the compiled native response locations.');
+            }
+            foreach ($itemsByLabel as $label => $item) {
+                $index = $questionsByLabel[$label];
+                $question = $projectedQuestions[$index];
+                $tokens = array_values(array_map(static fn (array $option): string => (string) $option['code'], $question['options']));
+                $section = $sectionsByUid->get($item['printed_section_uid']);
+                if ((string) ($item['physical_item_uid'] ?? '') === ''
+                    || (int) ($item['page_no'] ?? 0) !== (int) $question['page']
+                    || ! is_array($section)
+                    || (int) ($section['page_no'] ?? 0) !== (int) $question['page']
+                    || array_values((array) ($item['option_tokens'] ?? [])) !== $tokens) {
+                    throw new RuntimeException(sprintf('Physical inventory identity does not match native location %s.', $label));
+                }
+                $projectedQuestions[$index]['physical_item_uid'] = (string) $item['physical_item_uid'];
+                $projectedQuestions[$index]['printed_section_uid'] = (string) $item['printed_section_uid'];
+            }
         }
 
         $pages = [];
@@ -383,6 +505,7 @@ final class OmrTemplateGeometryProjector
                 $projectedQuestions[] = [
                     'template_question_id' => (int) $question->id,
                     'area_id' => (int) $area->aptitude_area_id,
+                    'area_display_order' => (int) $area->display_order,
                     'area_code' => $code,
                     'area_name' => (string) ($area->aptitudeArea?->name ?? 'Aptitude area'),
                     'question_no' => (int) $question->question_no,
@@ -444,7 +567,13 @@ final class OmrTemplateGeometryProjector
         }
 
         foreach ($projection['areas'] as $areaData) {
-            $catalogArea = $catalogAreas->get($areaData['code']);
+            $catalogArea = $catalogAreas->get($areaData['code'])
+                ?? match ($areaData['code']) {
+                    'COMPUTATION' => $catalogAreas->get('QUANT'),
+                    'WORD_COMP' => $catalogAreas->get('MEMORY'),
+                    'VOCABULARY' => $catalogAreas->get('VERBAL'),
+                    default => null,
+                };
             if (! $catalogArea instanceof AptitudeArea) {
                 throw new RuntimeException(sprintf('Native manifest area %s is not an active aptitude area.', $areaData['code']));
             }
@@ -462,8 +591,13 @@ final class OmrTemplateGeometryProjector
             foreach (array_values(array_filter($projection['questions'], static fn (array $question): bool => $question['area_code'] === $areaData['code'])) as $questionData) {
                 $question = OmrTemplateQuestion::query()->create([
                     'template_area_id' => $area->id,
+                    'template_version_id' => isset($questionData['physical_item_uid']) ? $version->id : null,
                     'page_no' => (int) ($questionData['page'] ?? 1),
                     'question_no' => $questionData['question_no'],
+                    'physical_item_uid' => $questionData['physical_item_uid'] ?? null,
+                    'printed_section_uid' => $questionData['printed_section_uid'] ?? null,
+                    'native_label' => $questionData['native_label'],
+                    'global_position' => $questionData['global_position'] ?? null,
                     ...$this->regionColumns($questionData['region']),
                     'projection_manifest_hash' => $hash,
                     'projection_source' => self::PROJECTION_SOURCE,

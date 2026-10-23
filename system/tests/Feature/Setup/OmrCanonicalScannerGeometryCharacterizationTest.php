@@ -13,8 +13,8 @@ use App\Models\Assessment\OmrQuestionBooklet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateArea;
 use App\Models\Assessment\OmrTemplateAsset;
-use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
+use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Assessment\OmrTemplateQuestion;
 use App\Models\Assessment\OmrTemplateQuestionOption;
 use App\Models\Foundation\AptitudeArea;
@@ -148,10 +148,8 @@ test('grading Capture template items carry exact projected regions and declared 
     $bookletVersion = OmrQuestionBookletVersion::query()->create([
         'booklet_id' => $booklet->id,
         'version' => 1,
-        'status' => OmrQuestionBookletVersion::STATUS_ACTIVE,
+        'status' => OmrQuestionBookletVersion::STATUS_DRAFT,
         'answer_key_hash' => hash('sha256', 'scanner-gap-key'),
-        'activated_by_user_id' => $guidance->id,
-        'activated_at' => now(),
     ]);
     $area = AptitudeArea::query()->where('code', 'LOGIC')->firstOrFail();
     // Booklet questions are authored independently — no `template_question_id`
@@ -166,6 +164,13 @@ test('grading Capture template items carry exact projected regions and declared 
         'question_position' => 2,
         'correct_option_code' => 'B',
     ]);
+    // Activate only after authoring: the DB trigger forbids adding booklet
+    // descendants to an already-activated version (PostgreSQL runtime).
+    $bookletVersion->forceFill([
+        'status' => OmrQuestionBookletVersion::STATUS_ACTIVE,
+        'activated_by_user_id' => $guidance->id,
+        'activated_at' => now(),
+    ])->save();
 
     OmrTemplateBookletPair::query()->create([
         'template_version_id' => $version->id,
@@ -175,13 +180,7 @@ test('grading Capture template items carry exact projected regions and declared 
         'approved_at' => now(),
     ]);
 
-    app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $version->id,
-        (int) $bookletVersion->id,
-        'scanner-gap-'.uniqid(),
-    );
+    app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'scanner-gap-'.uniqid());
 
     $projectedQuestion = OmrTemplateQuestion::query()
         ->whereHas('area', fn ($query) => $query->where('template_version_id', $version->id))
@@ -193,7 +192,7 @@ test('grading Capture template items carry exact projected regions and declared 
         ->firstOrFail();
 
     $this->actingAs($guidance)
-        ->get(route('grading.sessions.omr', $grading))
+        ->get(route('scoring.sessions.omr', $grading->examSession))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Assessment/Omr/Capture')

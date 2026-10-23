@@ -44,6 +44,11 @@ final readonly class OmrDetectionSuccess
         public ?int $imageHeight = null,
         public ?string $birthdateProposal = null,
         public array $providerDiagnostics = [],
-    ) {
-    }
+        public ?array $rectification = null,
+        public ?string $registrationMode = null,
+        public ?int $templateVersionId = null,
+        public ?string $candidateTargetId = null,
+        public ?int $expectedPageNo = null,
+        public ?array $sourceImage = null,
+    ) {}
 }

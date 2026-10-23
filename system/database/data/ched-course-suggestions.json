@@ -1,0 +1,120 @@
+{
+  "source": {
+    "url": "https://heida.ched.gov.ph/hei-directory/1",
+    "publisher": "Commission on Higher Education (CHED), Higher Education Institution Data Analytics (HEIDA)",
+    "asOf": "Accessed 2026-10-18; filter displays no publication date",
+    "retrievedAt": "2026-10-18",
+    "coverage": "The 12 program titles actually displayed in HEIDA’s Region I All Programs filter. This is a regional filter list, not a complete national program catalogue and does not assert that every Region I HEI offers any listed program.",
+    "extraction": "Opened the rendered All Programs filter on the Region I directory and copied displayed program option titles verbatim."
+  },
+  "records": [
+    {
+      "key": "ched-course-heida-region-i-01",
+      "label": "Bachelor of Elementary Education",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-02",
+      "label": "Bachelor of Science in Business Administration",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-03",
+      "label": "Bachelor of Science in Criminology",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-04",
+      "label": "Bachelor of Science in Hospitality Management",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-05",
+      "label": "Bachelor of Science in Information Management",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-06",
+      "label": "Bachelor of Science in Information Technology",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-07",
+      "label": "Bachelor of Science in Nursing",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-08",
+      "label": "Bachelor of Science in Technical Teacher Education",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-09",
+      "label": "Bachelor of Science in Tourism Management",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-10",
+      "label": "Bachelor of Science in Travel Management",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-11",
+      "label": "Diploma in Midwifery",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    },
+    {
+      "key": "ched-course-heida-region-i-12",
+      "label": "Nursing",
+      "aliases": [],
+      "category": "transferee-program",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (filter accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I All Programs filter"
+    }
+  ]
+}

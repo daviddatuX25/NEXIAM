@@ -2,7 +2,7 @@
 
 namespace App\Admission\Actions;
 
-use App\Admission\Support\SyncAdmissionAttemptGrades;
+use App\Admission\Support\SyncApplicantIdentity;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\User;
@@ -17,7 +17,7 @@ class ResubmitApplicationCorrection
 {
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
-        private readonly SyncAdmissionAttemptGrades $syncGrades,
+        private readonly SyncApplicantIdentity $syncIdentity,
     ) {}
 
     /**
@@ -34,7 +34,6 @@ class ResubmitApplicationCorrection
      *   zip_code?: string|null,
      *   last_school_enrolled?: string|null,
      *   strand?: string|null,
-     *   grades?: array<string, string>,
      *   resubmission_notes?: string|null,
      * }  $changes
      */
@@ -50,6 +49,8 @@ class ResubmitApplicationCorrection
             if ($attempt->status !== AdmissionAttempt::STATUS_NEEDS_CORRECTION) {
                 throw new RuntimeException('Attempt is not awaiting correction.');
             }
+
+            $identityResult = $this->syncIdentity->handle($attempt, $changes, allowBirthdate: false);
 
             $fillable = [
                 'contact_email',
@@ -77,19 +78,14 @@ class ResubmitApplicationCorrection
                 }
             }
 
-            if (isset($payload['program_preference_1_code'])) {
-                $payload['preferred_program_code'] = $payload['program_preference_1_code'];
+            foreach ($identityResult['synced_attempt_contact'] as $contactField => $contactValue) {
+                if (! array_key_exists($contactField, $payload) || (string) ($payload[$contactField] ?? '') === (string) ($attempt->{$contactField} ?? '')) {
+                    $payload[$contactField] = $contactValue;
+                }
             }
 
-            $grades = is_array($changes['grades'] ?? null) ? $changes['grades'] : [];
-            $grades = array_filter(
-                $grades,
-                fn ($value, $code) => is_string($code) && $value !== null && $value !== '',
-                ARRAY_FILTER_USE_BOTH,
-            );
-
-            if (isset($grades['GWA'])) {
-                $payload['gwa'] = $grades['GWA'];
+            if (isset($payload['program_preference_1_code'])) {
+                $payload['preferred_program_code'] = $payload['program_preference_1_code'];
             }
 
             $notes = trim((string) ($changes['resubmission_notes'] ?? ''));
@@ -101,16 +97,21 @@ class ResubmitApplicationCorrection
             $attempt->fill($payload);
             $attempt->save();
 
-            $gradeCodes = $this->syncGrades->handle($attempt, $grades);
-
-            $this->recordAuditEvent->handle('admission.correction_resubmitted', [
+            $auditPayload = [
                 'attempt_id' => $attempt->id,
                 'reference_code' => $attempt->reference_code,
                 'actor_user_id' => $actor->id,
-                'grade_codes' => $gradeCodes,
-            ], (string) $actor->id);
+                'identity_fields' => array_keys($identityResult['changed']),
+            ];
 
-            return $attempt->fresh(['gradeValues']);
+            if ($identityResult['changed'] !== []) {
+                $auditPayload['before_identity'] = $identityResult['before'];
+                $auditPayload['after_identity'] = $identityResult['after'];
+            }
+
+            $this->recordAuditEvent->handle('admission.correction_resubmitted', $auditPayload, (string) $actor->id);
+
+            return $attempt->fresh(['identity', 'gradeValues']);
         });
     }
 }

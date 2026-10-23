@@ -27,12 +27,26 @@ RUN composer install \
 FROM php:8.4-cli-bookworm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl libpq-dev libsqlite3-dev libzip-dev procps unzip \
+    && apt-get install -y --no-install-recommends curl postgresql-client libpq-dev libsqlite3-dev libzip-dev procps unzip \
        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libwebp-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pcntl pdo_pgsql pdo_sqlite sockets zip gd exif \
-    && apt-get install -y --no-install-recommends libreoffice-writer-nogui poppler-utils \
+    && apt-get install -y --no-install-recommends \
+        libreoffice-writer-nogui poppler-utils fontconfig \
+        fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 \
+    && mkdir -p /etc/fonts/conf.avail /etc/fonts/conf.d \
+    && printf '%s\n' \
+        '<?xml version="1.0"?>' \
+        '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
+        '<fontconfig>' \
+        '  <alias><family>Calibri</family><prefer><family>Carlito</family></prefer></alias>' \
+        '  <alias><family>Cambria</family><prefer><family>Caladea</family></prefer></alias>' \
+        '</fontconfig>' \
+        > /etc/fonts/conf.avail/99-nexiam-word-fonts.conf \
+    && ln -sf /etc/fonts/conf.avail/99-nexiam-word-fonts.conf /etc/fonts/conf.d/99-nexiam-word-fonts.conf \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /var/www/html
 
@@ -55,7 +69,7 @@ RUN if [ ! -f .env ]; then cp .env.example .env; fi \
         'OMR_WORKER_ENABLED=true' \
         'OMR_WORKER_ENDPOINT=http://inference:8100' \
         "OMR_WORKER_SIGNING_SECRET=$OMR_WORKER_SIGNING_SECRET" \
-        'OMR_WORKER_CONTRACT_VERSION=nexiam.omr.detection.v2' \
+        'OMR_WORKER_CONTRACT_VERSION=nexiam.omr.detection.v3' \
         'OMR_WORKER_ENGINE_NAME=OMRChecker' \
         'OMR_WORKER_ENGINE_COMMIT=de3f6982822895491be760325fd43e65e90fa293' \
         'OMR_WORKER_PATCH_IDENTITY=nexiam-headless-overlay-v1' >> .env \
@@ -65,6 +79,10 @@ RUN if [ ! -f .env ]; then cp .env.example .env; fi \
 
 # Scan uploads: raise PHP upload/post limits (defaults reject >2M files).
 COPY docker/php/conf.d/uploads.ini /usr/local/etc/php/conf.d/99-uploads.ini
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 EXPOSE 8000
 

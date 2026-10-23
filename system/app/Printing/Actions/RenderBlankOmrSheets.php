@@ -10,7 +10,6 @@ use App\Jobs\Printing\RenderPrintJob;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Printing\PrintJob;
 use App\Models\User;
-use App\Support\SensitiveAssetStore;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -24,8 +23,7 @@ final class RenderBlankOmrSheets
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     public function handle(OmrAnswerSheetTemplateVersion $templateVersion, User $actor): PrintJob
     {
@@ -43,10 +41,12 @@ final class RenderBlankOmrSheets
             }
         }
 
-        $bundle = NativeBundle::load((string) $templateVersion->template->code, (int) $templateVersion->version);
+        $bundle = NativeBundle::loadForVersion($templateVersion);
 
         $pinnedInput = [
-            'template_version_id' => $templateVersion->id,
+            'template_version_id' => (int) $templateVersion->id,
+            'institution_id' => (int) $templateVersion->template->institution_id,
+            'template_id' => (int) $templateVersion->template_id,
             'bundle_code' => $bundle->code,
             'bundle_version' => $bundle->version,
             'bundle_hash' => $bundle->bundleHash,

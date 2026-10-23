@@ -3,17 +3,20 @@
 namespace Database\Seeders;
 
 use App\Assessment\Actions\Omr\ActivateOmrConfiguration;
+use App\Assessment\Actions\Omr\RetireOmrConfiguration;
+use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
+use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
+use App\Assessment\Omr\Fiducial\OmrFiducial;
 use App\Assessment\Omr\NativeBundle;
 use App\Assessment\Omr\NativeManifestDeriver;
+use App\Assessment\Omr\OmrTemplateGeometryProjector;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrQuestionBooklet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
-use App\Assessment\Actions\Omr\RetireOmrConfiguration;
-use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
-use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
-use App\Models\Foundation\AptitudeArea;
 use App\Models\Assessment\OmrTemplateBookletPair;
+use App\Models\Foundation\AptitudeArea;
+use App\Models\Foundation\Institution;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -76,14 +79,15 @@ class OmrDemoSeeder extends Seeder
         ));
         $identityRegion = $this->identityRegionsPayload($identityFields);
 
-        [$templateVersionId, $seededBookletVersionId] = DB::transaction(function () use ($bundle, $actor, $identityRegion, $bundleVersion, $bookletVersion, $keyLabel): array {
+        [$templateVersionId, $seededBookletVersionId] = DB::transaction(function () use ($bundle, $identityRegion, $bundleVersion, $bookletVersion): array {
+            $institutionId = Institution::query()->firstOrFail()->id;
             $template = OmrAnswerSheetTemplate::query()->updateOrCreate(
                 ['code' => 'SYN-OMR-ONE-PAGE'],
-                ['name' => 'Synthetic native one-page aptitude sheet', 'is_synthetic' => true],
+                ['institution_id' => $institutionId, 'name' => 'Synthetic native one-page aptitude sheet', 'is_synthetic' => true],
             );
             $booklet = OmrQuestionBooklet::query()->updateOrCreate(
                 ['code' => 'SYN-OMR-BOOKLET-A'],
-                ['name' => 'Synthetic native aptitude booklet A'],
+                ['institution_id' => $institutionId, 'name' => 'Synthetic native aptitude booklet A', 'is_synthetic' => true],
             );
 
             $templateVersion = OmrAnswerSheetTemplateVersion::query()->updateOrCreate(
@@ -119,10 +123,21 @@ class OmrDemoSeeder extends Seeder
 
             return [(int) $templateVersion->id, (int) $seededBookletVersion->id];
         });
+        $templateVersion = OmrAnswerSheetTemplateVersion::query()->findOrFail($templateVersionId);
+        $projection = app(OmrTemplateGeometryProjector::class)->project($templateVersion, $derived['manifest']);
+        $areaIds = AptitudeArea::query()->where('is_active', true)->pluck('id', 'code');
+        $seededBookletVersion = OmrQuestionBookletVersion::query()->findOrFail($seededBookletVersionId);
+        foreach ($projection->projectedQuestions as $index => $question) {
+            $seededBookletVersion->questions()->create([
+                'aptitude_area_id' => $areaIds[$question['area_code']],
+                'question_position' => $index + 1,
+                'correct_option_code' => ['A', 'B', 'C', 'D'][$index % 4],
+            ]);
+        }
 
         app(ActivateOmrConfiguration::class)->handle(
-            OmrAnswerSheetTemplateVersion::query()->findOrFail($templateVersionId),
-            OmrQuestionBookletVersion::query()->findOrFail($seededBookletVersionId),
+            $templateVersion,
+            $seededBookletVersion,
             $actor,
         );
 
@@ -168,7 +183,7 @@ class OmrDemoSeeder extends Seeder
 
         $bundleDir = base_path('app/Assessment/Omr/NativeBundles/'.$code.'/v5');
         $directory = dirname(__DIR__, 2).'/app/Assessment/Omr/NativeBundles/'.$code.'/v5';
-        $durableExists = \Illuminate\Support\Facades\Storage::disk('local')->exists('omr-bundles/'.$code.'/v5');
+        $durableExists = Storage::disk('local')->exists('omr-bundles/'.$code.'/v5');
         if (! $durableExists && ! is_dir($bundleDir)) {
             // Builder-author path: writes the canonical bundle and creates the draft row.
             $draft = app(SaveAuthoredTemplateDraft::class)->handle(
@@ -185,7 +200,7 @@ class OmrDemoSeeder extends Seeder
 
             $template = OmrAnswerSheetTemplate::query()->updateOrCreate(
                 ['code' => $code],
-                ['name' => 'Synthetic long-bond answer sheet (birthdate)', 'is_synthetic' => true],
+                ['institution_id' => Institution::query()->firstOrFail()->id, 'name' => 'Synthetic long-bond answer sheet (birthdate)', 'is_synthetic' => true],
             );
             $draft = OmrAnswerSheetTemplateVersion::query()->updateOrCreate(
                 ['template_id' => $template->id, 'version' => 5],
@@ -220,7 +235,7 @@ class OmrDemoSeeder extends Seeder
         $bookletCode = 'SYN-OMR-BOOKLET-C';
         OmrQuestionBooklet::query()->updateOrCreate(
             ['code' => $bookletCode],
-            ['name' => 'Synthetic aptitude booklet C (two-page long bond)'],
+            ['institution_id' => Institution::query()->firstOrFail()->id, 'name' => 'Synthetic aptitude booklet C (two-page long bond)', 'is_synthetic' => true],
         );
 
         $questions = [];
@@ -365,9 +380,9 @@ class OmrDemoSeeder extends Seeder
             );
         }
 
-        $booklet = OmrQuestionBooklet::query()->firstOrCreate(
+        $booklet = OmrQuestionBooklet::query()->updateOrCreate(
             ['code' => $bookletCode],
-            ['name' => 'Synthetic compact aptitude profile answer key'],
+            ['institution_id' => Institution::query()->firstOrFail()->id, 'name' => 'Synthetic compact aptitude profile answer key', 'is_synthetic' => true],
         );
         $questions = [];
         $position = 1;
@@ -446,7 +461,7 @@ class OmrDemoSeeder extends Seeder
             // mutating any active data.
             $latest = $markerDrafts->sortByDesc('version')->first();
             $blueprint = is_array($latest->layout_blueprint_json) ? $latest->layout_blueprint_json : [];
-            $assetName = \App\Assessment\Omr\Fiducial\OmrFiducial::ASSET_NAME;
+            $assetName = OmrFiducial::ASSET_NAME;
             $usesOfficialAsset = is_array($latest->native_bundle_json)
                 && isset($latest->native_bundle_json['template']['pages'][0]['markers']['asset_name'])
                 && $latest->native_bundle_json['template']['pages'][0]['markers']['asset_name'] === $assetName
@@ -545,6 +560,7 @@ class OmrDemoSeeder extends Seeder
 
         return is_array($template['markers'] ?? null);
     }
+
     /**
      * Seeds an unpaired QUANT-only draft booklet (all-A key) so the
      * "unpaired drafts" banner and draft editing have live data.
@@ -652,7 +668,7 @@ class OmrDemoSeeder extends Seeder
     }
 
     /**
-     * @param list<array<string, mixed>> $identityFields
+     * @param  list<array<string, mixed>>  $identityFields
      * @return array<string, mixed>
      */
     private function identityRegionsPayload(array $identityFields): array

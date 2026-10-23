@@ -3,6 +3,7 @@
 namespace App\Assessment\Actions\Omr;
 
 use App\Assessment\Omr\OmrDetectionRequest;
+use App\Assessment\Omr\Queries\OmrRunStatusSnapshot;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Jobs\Assessment\AnalyzeOmrCaptureSheetJob;
 use App\Models\Assessment\OmrCaptureBatch;
@@ -27,16 +28,23 @@ final class RetryOmrCaptureSheet
     public function __construct(
         private readonly SensitiveAssetStore $assetStore,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
-    public function handle(OmrCaptureSheet $sheet, User $actor, int $pageNo = 1): OmrProcessingRun
-    {
-        $run = DB::transaction(function () use ($sheet, $actor, $pageNo): OmrProcessingRun {
+    public function handle(
+        OmrCaptureSheet $sheet,
+        User $actor,
+        int $pageNo = 1,
+        ?int $expectedRevision = null,
+    ): OmrProcessingRun {
+        $run = DB::transaction(function () use ($sheet, $actor, $pageNo, $expectedRevision): OmrProcessingRun {
+            $batch = OmrCaptureBatch::query()
+                ->lockForUpdate()
+                ->findOrFail($sheet->batch_id);
             $sheet = OmrCaptureSheet::query()
                 ->with(['batch.templateVersion', 'batch.bookletVersion', 'processingRuns', 'pages'])
                 ->lockForUpdate()
                 ->findOrFail($sheet->id);
+            $this->assertExpectedRevision($batch, $expectedRevision);
 
             if ($sheet->batch?->status !== OmrCaptureBatch::STATUS_OPEN) {
                 throw new RuntimeException('Sheets can only be retried while the batch is open.');
@@ -92,6 +100,9 @@ final class RetryOmrCaptureSheet
                 'status' => OmrProcessingRun::STATUS_PENDING,
                 'page_no' => $pageNo,
                 'provider_name' => $providerName,
+                'page_revision' => $page instanceof OmrCaptureSheetPage
+                    ? max(1, (int) $page->current_revision)
+                    : 1,
                 'provider_version' => $providerVersion,
                 'provider_commit' => $providerCommit,
                 'request_version' => OmrDetectionRequest::ENVELOPE_VERSION,
@@ -126,5 +137,19 @@ final class RetryOmrCaptureSheet
         AnalyzeOmrCaptureSheetJob::dispatch($run->id)->afterCommit();
 
         return $run;
+    }
+
+    private function assertExpectedRevision(OmrCaptureBatch $batch, ?int $expectedRevision): void
+    {
+        if ($expectedRevision === null) {
+            return;
+        }
+
+        $revision = app(OmrRunStatusSnapshot::class)
+            ->forBatch($batch->load(['sheets.pages', 'sheets.issues', 'sheets.processingRuns']))['revision'];
+
+        if ($revision !== $expectedRevision) {
+            throw new RuntimeException('The OMR run changed after validation. Refresh the current status before continuing.');
+        }
     }
 }

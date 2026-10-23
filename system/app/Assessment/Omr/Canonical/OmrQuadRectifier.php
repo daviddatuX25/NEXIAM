@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-use function abs;
 use function hash;
 use function hash_equals;
 use function hash_hmac;
@@ -22,16 +21,13 @@ use function time;
 final readonly class OmrQuadRectificationResult
 {
     /** @param array<string, mixed> $metrics */
-    public function __construct(public string $bytes, public string $mime, public array $metrics, public string $resultHash)
-    {
-    }
+    public function __construct(public string $bytes, public string $mime, public array $metrics, public string $resultHash) {}
 }
 
 final class OmrQuadRectifier
 {
     /**
-     * @param list<array{0:int|float,1:int|float}> $points
-     * @return OmrQuadRectificationResult
+     * @param  list<array{0:int|float,1:int|float}>  $points
      */
     public function rectify(string $imageBytes, string $imageMime, array $points, int $targetWidth, int $targetHeight): OmrQuadRectificationResult
     {
@@ -107,10 +103,10 @@ final class OmrQuadRectifier
         if (preg_match('/boundary=([^;]+)/', $contentType, $matches) !== 1) {
             throw new RuntimeException('worker_response_invalid');
         }
-        $boundary = trim($matches[1], "\" ");
+        $boundary = trim($matches[1], '" ');
         $parts = [];
         foreach (explode('--'.$boundary, $body) as $part) {
-            if ($part === '' || $part === "--\r\n" || $part === "--") {
+            if ($part === '' || $part === "--\r\n" || $part === '--') {
                 continue;
             }
             $segments = explode("\r\n\r\n", ltrim($part, "\r\n"), 2);

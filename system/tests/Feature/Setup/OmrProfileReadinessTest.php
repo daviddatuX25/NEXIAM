@@ -2,7 +2,9 @@
 
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
 use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
+use App\Assessment\Omr\Canonical\OmrBlankInstanceService;
 use App\Assessment\Omr\NativeBundle;
+use App\Jobs\Assessment\AnalyzeOmrCaptureSheetJob;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrCaptureBatch;
@@ -14,7 +16,6 @@ use App\Printing\BundleRenderer;
 use Database\Seeders\OmrDemoBatchSeeder;
 use Database\Seeders\OmrDemoMultiStateBatchSeeder;
 use Database\Seeders\OmrDemoSeeder;
-use App\Jobs\Assessment\AnalyzeOmrCaptureSheetJob;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -155,7 +156,7 @@ test('profile capture seed exposes all review states without fake confidence', f
     expect($batch->fresh()->sheets()->count())->toBe(3);
 
     $this->actingAs($guidance)
-        ->get(route('grading.sessions.omr', $fixture['grading']))
+        ->get(route('scoring.sessions.omr', $fixture['grading']->examSession))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Assessment/Omr/Capture')
@@ -188,7 +189,7 @@ test('default batch seed is a focused single-examinee dataset', function (): voi
     expect($batch->fresh()->sheets()->count())->toBe(1);
 
     $this->actingAs($guidance)
-        ->get(route('grading.sessions.omr', $fixture['grading']))
+        ->get(route('scoring.sessions.omr', $fixture['grading']->examSession))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Assessment/Omr/Capture')
@@ -210,18 +211,23 @@ test('single-page profile upload carries the asset mirror and queues analysis', 
         ->whereHas('templateVersion.template', fn ($query) => $query->where('code', 'SYN-OMR-PROFILE-150'))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'profile-upload-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'profile-upload-'.uniqid());
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
     $setId = (string) Str::uuid();
-    $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1);
-
+    $displayCode = null;
+    $manualConfirmed = false;
+    if ($pair->templateVersion->authoring_manifest !== null || $pair->templateVersion->blankInstances()->exists()) {
+        $instance = app(OmrBlankInstanceService::class)->createPrintedSet(
+            $pair->templateVersion,
+            $guidance,
+            1,
+            [hash('sha256', $bytes)],
+        );
+        $displayCode = $instance->display_code;
+        $manualConfirmed = true;
+    }
+    $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1, null, 'absent', $displayCode, $manualConfirmed);
     // Regression: `omr_capture_sheets_asset_check` requires the asset mirror
     // on the sheet row at insert time for single-page bundles.
     expect($sheet->status)->toBe(OmrCaptureSheet::STATUS_QUEUED)
@@ -233,7 +239,7 @@ test('single-page profile upload carries the asset mirror and queues analysis', 
     Queue::assertPushed(AnalyzeOmrCaptureSheetJob::class, fn ($job) => $job->runId === $sheet->processingRuns()->first()->id);
 
     // Same client capture id is rejected as already uploaded.
-    expect(fn () => app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1))
+    expect(fn () => app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1, null, 'absent', $displayCode, $manualConfirmed))
         ->toThrow(RuntimeException::class);
 });
 
@@ -248,7 +254,7 @@ test('capture reports the configured live OMR provider', function (): void {
     ]);
 
     $this->actingAs($guidance)
-        ->get(route('grading.sessions.omr', $fixture['grading']))
+        ->get(route('scoring.sessions.omr', $fixture['grading']->examSession))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('provider.name', 'OMRChecker')

@@ -1,7 +1,6 @@
 <?php
 
 use App\Assessment\Omr\OmrCapturePolicy;
-use App\Assessment\Omr\OmrDetectionRequest;
 
 /*
  * Frozen nexiam.omr.capture-policy.v1 contract: loaded from

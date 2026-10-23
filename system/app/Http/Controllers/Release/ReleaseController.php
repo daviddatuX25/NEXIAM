@@ -4,17 +4,18 @@ namespace App\Http\Controllers\Release;
 
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
-use App\Consultation\Queries\ConsultationAdmissionSupportQuery;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Release\ConsultationDecisionRequest;
 use App\Http\Requests\Release\ReleaseResultRequest;
+use App\Http\Requests\Release\UnreleaseResultRequest;
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\Foundation\Institution;
 use App\Models\Release\ResultDocument;
 use App\Models\Release\ResultRelease;
+use App\Models\ResultSheet\ResultSheetTemplate;
 use App\Release\Actions\PrepareResultDocument;
-use App\Release\Actions\RecordConsultationDecision;
 use App\Release\Actions\ReleaseResult;
 use App\Release\Actions\UnreleaseResult;
+use App\ResultSheet\Queries\ReleaseOverviewQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,70 +23,41 @@ use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 
+/**
+ * Domain 7: Results Release, Printing & University Enrollment Clearance (Part 1: Results Release)
+ *
+ * Controls the formal publication and dissemination of candidate entrance examination results.
+ *
+ * Two-Stage Release Protocol:
+ * 1. Verification Stage: Testing Officers audit raw OMR bubble scores and verify result sheet renders.
+ * 2. Executive Release Stage: Authorizers sign off on the batch release, unlocking online viewing for applicants.
+ *
+ * Pedagogical / Interactive Walkthrough Pairing:
+ * - Paired with 'release-batch-releasing' tour via Xiam NPC (staff-copilot persona).
+ */
 class ReleaseController extends Controller
 {
-    public function consultation(Request $request, CapabilityAuthorizer $authorizer, \App\Consultation\Queries\ConsultationDashboardQuery $dashboard): Response|\Illuminate\Http\RedirectResponse
+    public function prepareDocument(Request $request, AdmissionAttempt $attempt, PrepareResultDocument $action): RedirectResponse|JsonResponse
     {
-        if (! $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_CONSULTATION_DECIDE)) {
-            return Inertia::render('Release/Consultation', ['page_state' => 'denied', 'dashboard' => null]);
-        }
-
-        $cycle = $request->user()->actorScope()->activeCycleCode;
-        $query = trim((string) $request->string('q'));
-
-        $searchResults = [];
-        if ($query !== '') {
-            $matches = AdmissionAttempt::query()
-                ->where('status', AdmissionAttempt::STATUS_ACCEPTED)
-                ->where(function ($inner) use ($query) {
-                    $inner->where('reference_code', 'ilike', "%{$query}%")
-                        ->orWhereHas('identity', fn ($id) => $id
-                            ->where('first_name', 'ilike', "%{$query}%")
-                            ->orWhere('last_name', 'ilike', "%{$query}%"));
-                })
-                ->limit(20)
-                ->with('identity')
-                ->get();
-
-            if ($matches->count() === 1) {
-                return redirect()->route('admission-support.show', $matches->first());
+        try {
+            $document = $action->handle($attempt, $request->user());
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'status' => 'prepared',
+                    'document_id' => $document->id,
+                    'attempt_id' => $attempt->id,
+                ]);
+            }
+        } catch (RuntimeException $exception) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'error' => 'prepare_failed',
+                    'message' => $exception->getMessage(),
+                ], 422);
             }
 
-            $searchResults = $matches->map(fn (AdmissionAttempt $a) => [
-                'attempt_id' => $a->id,
-                'reference_code' => $a->reference_code,
-                'name' => $a->identity ? trim($a->identity->first_name.' '.$a->identity->last_name) : $a->reference_code,
-            ])->values()->all();
+            return back()->withErrors(['prepare' => $exception->getMessage()])->with('page_state', 'validation');
         }
-
-        return Inertia::render('Release/Consultation', [
-            'page_state' => 'ready',
-            'dashboard' => $dashboard->for($cycle),
-            'search_query' => $query,
-            'search_results' => $searchResults,
-            'can_plan' => $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_CONSULTATION_PLAN),
-        ]);
-    }
-
-    public function recordDecision(
-        ConsultationDecisionRequest $request,
-        AdmissionAttempt $attempt,
-        RecordConsultationDecision $action,
-    ): RedirectResponse {
-        $action->handle(
-            $attempt,
-            $request->user(),
-            $request->string('decision_type')->toString(),
-            $request->input('notes'),
-            $request->string('idempotency_key')->toString(),
-        );
-
-        return back()->with('status', 'Consultation decision recorded.');
-    }
-
-    public function prepareDocument(Request $request, AdmissionAttempt $attempt, PrepareResultDocument $action): RedirectResponse
-    {
-        $action->handle($attempt, $request->user());
 
         return back()->with('status', 'Result document prepared.');
     }
@@ -95,8 +67,12 @@ class ReleaseController extends Controller
         $document = ResultDocument::query()
             ->where('admission_attempt_id', $attempt->id)
             ->where('status', ResultDocument::STATUS_READY)
-            ->latest()
-            ->firstOrFail();
+            ->latest('id')
+            ->first();
+
+        if ($document === null) {
+            return back()->withErrors(['release' => 'No ready result document found for this admission attempt.'])->with('page_state', 'validation');
+        }
 
         try {
             $action->handle(
@@ -113,50 +89,47 @@ class ReleaseController extends Controller
         return back()->with('status', 'Release accepted; notification queued.');
     }
 
-    public function unrelease(Request $request, ResultRelease $release, UnreleaseResult $action): RedirectResponse
+    public function unrelease(UnreleaseResultRequest $request, ResultRelease $release, UnreleaseResult $action): RedirectResponse
     {
-        $action->handle($release, $request->user(), $request->string('reason')->toString());
+        try {
+            $action->handle($release, $request->user(), $request->string('reason')->toString());
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['unrelease' => $exception->getMessage()]);
+        }
 
         return back()->with('status', 'Result unreleased.');
     }
 
-    public function index(Request $request, CapabilityAuthorizer $authorizer): Response
+    public function index(Request $request, CapabilityAuthorizer $authorizer, ReleaseOverviewQuery $overviewQuery): Response
     {
-        if (! $authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_RESULTS_RELEASE)) {
-            return Inertia::render('Release/Index', ['page_state' => 'denied', 'sessions' => [], 'active_template' => null]);
+        if (! $authorizer->allowsAny($request->user(), [CapabilityCatalog::GUIDANCE_RESULTS_RELEASE, CapabilityCatalog::GUIDANCE_RESULTS_PREPARE])) {
+            return Inertia::render('Release/Index', [
+                'page_state' => 'denied',
+                'sessions' => [],
+                'sort_options' => ReleaseOverviewQuery::sortOptions(),
+                'filters' => ['search' => '', 'status' => 'unprinted', 'sort' => 'exam_date', 'dir' => 'desc'],
+                'active_template' => null,
+                'can_manage_templates' => false,
+            ]);
         }
 
-        $template = \App\Models\ResultSheet\ResultSheetTemplate::active();
+        $template = ResultSheetTemplate::active();
 
-        $sessions = \App\Models\Assessment\GradingSession::query()
-            ->with(['examSession.room'])
-            ->latest('id')
-            ->get()
-            ->map(function (\App\Models\Assessment\GradingSession $gs) {
-                $attemptIds = $gs->scoreRecords()->select('admission_attempt_id')->distinct()->pluck('admission_attempt_id');
-                $total = $attemptIds->count();
-                $released = \App\Models\Release\ResultRelease::query()
-                    ->whereIn('admission_attempt_id', $attemptIds)
-                    ->where('is_current', true)
-                    ->whereNull('unreleased_at')
-                    ->count();
+        $filters = [
+            'search' => trim((string) $request->input('search', '')),
+            'status' => in_array($request->input('status'), ['unprinted', 'printed', 'all'], true) ? (string) $request->input('status') : 'unprinted',
+            'sort' => (string) $request->input('sort', 'exam_date'),
+            'dir' => strtolower((string) $request->input('dir', 'desc')) === 'asc' ? 'asc' : 'desc',
+        ];
 
-                return [
-                    'id' => $gs->id,
-                    'exam_code' => (string) ($gs->examSession?->code ?? "Session #{$gs->id}"),
-                    'room_name' => (string) ($gs->examSession?->room?->name ?? '—'),
-                    'starts_at' => $gs->examSession?->starts_at?->format('M d, Y h:i A') ?? '—',
-                    'status' => $gs->status,
-                    'examinees_count' => $total,
-                    'released_count' => $released,
-                ];
-            })
-            ->values()
-            ->all();
+        $institutionId = (int) ($request->user()?->actorScope()?->institutionId ?? Institution::query()->value('id') ?? 1);
+        $overview = $overviewQuery->forInertia($institutionId, 50, $filters);
 
         return Inertia::render('Release/Index', [
             'page_state' => 'ready',
-            'sessions' => $sessions,
+            'sessions' => array_values($overview['sessions'] ?? $overview),
+            'sort_options' => $overview['sort_options'] ?? ReleaseOverviewQuery::sortOptions(),
+            'filters' => $overview['filters'] ?? $filters,
             'active_template' => $template ? [
                 'id' => $template->id,
                 'name' => $template->name,

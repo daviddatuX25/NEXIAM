@@ -2,10 +2,10 @@
 
 namespace App\Assessment\Omr\Canonical;
 
-use Symfony\Component\Process\Process;
 use RuntimeException;
+use Symfony\Component\Process\Process;
+use Throwable;
 
-use function file_exists;
 use function filesize;
 use function getimagesize;
 use function glob;
@@ -14,12 +14,11 @@ use function is_array;
 use function is_file;
 use function mkdir;
 use function sys_get_temp_dir;
-use function tempnam;
 
 final class OmrPdfPageRasterizer
 {
     /**
-     * @param array{width_mm?:float|null,height_mm?:float|null,width_px?:int|null,height_px?:int|null,ppi?:int} $context
+     * @param  array{width_mm?:float|null,height_mm?:float|null,width_px?:int|null,height_px?:int|null,ppi?:int}  $context
      * @return list<array{page_no:int,path:string,mime:string,bytes:int,sha256:string,width:int,height:int,width_mm:float|null,height_mm:float|null,orientation:string,metadata:array<string,mixed>}>
      */
     public function rasterize(string $pdfPath, array $context = []): array
@@ -32,52 +31,61 @@ final class OmrPdfPageRasterizer
             throw new RuntimeException('raster_temp_unavailable');
         }
         $prefix = $directory.'/page';
-        $ppi = (int) ($context['ppi'] ?? 300);
-        $targetWidth = (int) ($context['width_px'] ?? 0);
-        $targetHeight = (int) ($context['height_px'] ?? 0);
-        $command = ['pdftoppm', '-png', '-r', (string) $ppi];
-        if ($targetWidth > 0 && $targetHeight > 0) {
-            $command = [
-                ...$command,
-                '-scale-to-x', (string) $targetWidth,
-                '-scale-to-y', (string) $targetHeight,
-            ];
-        }
-        $process = new Process([...$command, $pdfPath, $prefix]);
-        $process->setTimeout((float) config('omr.canonical.limits.conversion_timeout_seconds_per_page', 300));
-        $process->run();
-        if (! $process->isSuccessful()) {
-            throw new RuntimeException('pdf_rasterization_failed: '.$process->getErrorOutput());
-        }
-
-        $files = glob($prefix.'-*.png') ?: glob($prefix.'.png') ?: [];
-        sort($files, SORT_NATURAL);
-        if ($files === []) {
-            throw new RuntimeException('pdf_rasterization_empty');
-        }
-        $pages = [];
-        foreach ($files as $index => $path) {
-            $dimensions = @getimagesize($path);
-            if (! is_array($dimensions)) {
-                throw new RuntimeException('raster_dimensions_unavailable');
+        try {
+            $ppi = (int) ($context['ppi'] ?? 300);
+            $targetWidth = (int) ($context['width_px'] ?? 0);
+            $targetHeight = (int) ($context['height_px'] ?? 0);
+            $command = ['pdftoppm', '-png', '-r', (string) $ppi];
+            if ($targetWidth > 0 && $targetHeight > 0) {
+                $command = [
+                    ...$command,
+                    '-scale-to-x', (string) $targetWidth,
+                    '-scale-to-y', (string) $targetHeight,
+                ];
             }
-            $widthMm = isset($context['width_mm']) ? (float) $context['width_mm'] : null;
-            $heightMm = isset($context['height_mm']) ? (float) $context['height_mm'] : null;
-            $pages[] = [
-                'page_no' => $index + 1,
-                'path' => $path,
-                'mime' => 'image/png',
-                'bytes' => (int) filesize($path),
-                'sha256' => (string) hash_file('sha256', $path),
-                'width' => (int) $dimensions[0],
-                'height' => (int) $dimensions[1],
-                'width_mm' => $widthMm,
-                'height_mm' => $heightMm,
-                'orientation' => $dimensions[0] >= $dimensions[1] ? 'landscape' : 'portrait',
-                'metadata' => ['ppi' => $ppi],
-            ];
-        }
+            $process = new Process([...$command, $pdfPath, $prefix]);
+            $process->setTimeout((float) config('omr.canonical.limits.conversion_timeout_seconds_per_page', 300));
+            $process->run();
+            if (! $process->isSuccessful()) {
+                throw new RuntimeException('pdf_rasterization_failed: '.$process->getErrorOutput());
+            }
 
-        return $pages;
+            $files = glob($prefix.'-*.png') ?: glob($prefix.'.png') ?: [];
+            sort($files, SORT_NATURAL);
+            if ($files === []) {
+                throw new RuntimeException('pdf_rasterization_empty');
+            }
+            $pages = [];
+            foreach ($files as $index => $path) {
+                $dimensions = @getimagesize($path);
+                if (! is_array($dimensions)) {
+                    throw new RuntimeException('raster_dimensions_unavailable');
+                }
+                $widthMm = isset($context['width_mm']) ? (float) $context['width_mm'] : null;
+                $heightMm = isset($context['height_mm']) ? (float) $context['height_mm'] : null;
+                $pages[] = [
+                    'page_no' => $index + 1,
+                    'path' => $path,
+                    'mime' => 'image/png',
+                    'bytes' => (int) filesize($path),
+                    'sha256' => (string) hash_file('sha256', $path),
+                    'width' => (int) $dimensions[0],
+                    'height' => (int) $dimensions[1],
+                    'width_mm' => $widthMm,
+                    'height_mm' => $heightMm,
+                    'orientation' => $dimensions[0] >= $dimensions[1] ? 'landscape' : 'portrait',
+                    'metadata' => ['ppi' => $ppi],
+                ];
+            }
+
+            return $pages;
+        } catch (Throwable $exception) {
+            foreach (glob($directory.'/*') ?: [] as $path) {
+                @unlink($path);
+            }
+            @rmdir($directory);
+
+            throw $exception;
+        }
     }
 }

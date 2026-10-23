@@ -2,7 +2,7 @@
 
 namespace App\Admission\Actions;
 
-use App\Admission\Support\SyncAdmissionAttemptGrades;
+use App\Admission\Support\SyncApplicantIdentity;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\User;
@@ -18,7 +18,7 @@ class CorrectAdmissionAttempt
 {
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
-        private readonly SyncAdmissionAttemptGrades $syncGrades,
+        private readonly SyncApplicantIdentity $syncIdentity,
     ) {}
 
     /**
@@ -37,7 +37,6 @@ class CorrectAdmissionAttempt
      *   city?: string|null,
      *   province?: string|null,
      *   zip_code?: string|null,
-     *   grades?: array<string, string>,
      * }  $changes
      */
     public function handle(AdmissionAttempt $attempt, User $actor, int $expectedVersion, array $changes): AdmissionAttempt
@@ -55,6 +54,8 @@ class CorrectAdmissionAttempt
             ], true)) {
                 throw new RuntimeException('Attempt is not eligible for correction.');
             }
+
+            $identityResult = $this->syncIdentity->handle($attempt, $changes, allowBirthdate: true);
 
             $priorStatus = $attempt->status;
             $returnedToPending = $priorStatus === AdmissionAttempt::STATUS_NEEDS_CORRECTION;
@@ -87,37 +88,40 @@ class CorrectAdmissionAttempt
                 }
             }
 
-            if (isset($payload['program_preference_1_code']) && ! isset($payload['preferred_program_code'])) {
-                $payload['preferred_program_code'] = $payload['program_preference_1_code'];
+            foreach ($identityResult['synced_attempt_contact'] as $contactField => $contactValue) {
+                if (! array_key_exists($contactField, $payload) || (string) ($payload[$contactField] ?? '') === (string) ($attempt->{$contactField} ?? '')) {
+                    $payload[$contactField] = $contactValue;
+                }
             }
 
-            $grades = is_array($changes['grades'] ?? null) ? $changes['grades'] : [];
-            if (isset($grades['GWA']) && $grades['GWA'] !== '') {
-                $payload['gwa'] = $grades['GWA'];
+            if (isset($payload['program_preference_1_code']) && ! isset($payload['preferred_program_code'])) {
+                $payload['preferred_program_code'] = $payload['program_preference_1_code'];
             }
 
             $attempt->fill($payload);
             $attempt->save();
 
-            $gradeCodes = $this->syncGrades->handle($attempt, $grades);
+            $fields = array_values(array_diff(array_keys($payload), ['version', 'status']));
 
-            $fields = array_keys(array_diff_key($payload, ['version' => true, 'status' => true]));
-            if ($gradeCodes !== []) {
-                $fields[] = 'grades';
-            }
-
-            $this->recordAuditEvent->handle('admission.attempt_corrected', [
+            $auditPayload = [
                 'attempt_id' => $attempt->id,
                 'reference_code' => $attempt->reference_code,
                 'fields' => $fields,
-                'grade_codes' => $gradeCodes,
+                'identity_fields' => array_keys($identityResult['changed']),
                 'actor_kind' => 'registrar',
                 'visibility' => 'registrar_inplace',
                 'prior_status' => $priorStatus,
                 'returned_to_pending' => $returnedToPending,
-            ], (string) $actor->id);
+            ];
 
-            return $attempt->fresh(['gradeValues']);
+            if ($identityResult['changed'] !== []) {
+                $auditPayload['before_identity'] = $identityResult['before'];
+                $auditPayload['after_identity'] = $identityResult['after'];
+            }
+
+            $this->recordAuditEvent->handle('admission.attempt_corrected', $auditPayload, (string) $actor->id);
+
+            return $attempt->fresh(['identity', 'gradeValues']);
         });
     }
 }

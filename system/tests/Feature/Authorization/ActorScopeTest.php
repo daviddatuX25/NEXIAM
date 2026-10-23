@@ -33,15 +33,19 @@ test('authorizer enforces office scope mismatch', function (): void {
         ->and($denied->reason)->toBe('scope_mismatch');
 });
 
-test('guidance counselor receives guidance + shared setup grants via helper role (D-087)', function (): void {
+test('institutional admin owns setup while operational office leads do not by default', function (): void {
     seedE2Foundation();
-    $user = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+    $admin = User::query()->where('email', 'admin.lead@nexiam.test')->firstOrFail();
+    $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+    $registrar = User::query()->where('email', 'registrar.admin@nexiam.test')->firstOrFail();
 
-    expect($user->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_RELEASE))->toBeTrue()
-        // D-087: registrar.setup.manage is shared institutional setup (Registrar AND Guidance).
-        ->and($user->hasPermissionTo(CapabilityCatalog::REGISTRAR_SETUP_MANAGE))->toBeTrue()
-        // D-087: intake authorization is NOT merged into Guidance.
-        ->and($user->hasPermissionTo(CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT))->toBeFalse()
-        ->and($user->actorScope()->office)->toBe('guidance')
-        ->and($user->actorScope()->activeCycleCode)->toBe('SYN-CYCLE-2026');
+    expect($admin->actorScope()->office)->toBe('admin')
+        ->and($admin->hasPermissionTo(CapabilityCatalog::SETUP_INSTITUTION_MANAGE))->toBeTrue()
+        ->and($admin->hasPermissionTo(CapabilityCatalog::SETUP_PROGRAMS_MANAGE))->toBeTrue()
+        ->and($guidance->hasPermissionTo(CapabilityCatalog::SETUP_INSTITUTION_MANAGE))->toBeFalse()
+        ->and($registrar->hasPermissionTo(CapabilityCatalog::SETUP_INSTITUTION_MANAGE))->toBeFalse()
+        ->and($guidance->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_RELEASE))->toBeTrue()
+        ->and($guidance->hasPermissionTo(CapabilityCatalog::REGISTRAR_APPLICATIONS_ACCEPT))->toBeFalse()
+        ->and($guidance->actorScope()->office)->toBe('guidance')
+        ->and($guidance->actorScope()->activeCycleCode)->toBe('SYN-CYCLE-2026');
 });

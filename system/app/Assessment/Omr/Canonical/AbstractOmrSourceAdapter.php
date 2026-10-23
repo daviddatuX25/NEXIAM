@@ -9,9 +9,7 @@ abstract class AbstractOmrSourceAdapter implements OmrSourceAdapter
 {
     protected ?OmrSourceIngestionResult $lastResult = null;
 
-    public function __construct(protected readonly OmrSourcePreflight $preflightService)
-    {
-    }
+    public function __construct(protected readonly OmrSourcePreflight $preflightService) {}
 
     public function preflight(string $sourcePath, array $context = []): OmrSourcePreflightResult
     {

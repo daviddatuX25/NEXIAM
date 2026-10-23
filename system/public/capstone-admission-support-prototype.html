@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Admission Support & Consultation Interactive Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b18;
+      --panel: #0e1528;
+      --panel-alt: #141f38;
+      --line: #223152;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --ok: #34d399;
+      --ok-glow: rgba(52, 211, 153, 0.15);
+      --warn: #fbbf24;
+      --warn-glow: rgba(251, 191, 36, 0.15);
+      --danger: #f87171;
+      --gold: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 10% 0%, #172554 0, transparent 40rem), var(--bg);
+      color: var(--text);
+      font: 14px/1.55 system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 5rem;
+    }
+    header.topbar {
+      border-bottom: 1px solid var(--line);
+      background: rgba(14, 21, 40, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1.1rem; }
+    .brand span.badge { background: var(--accent); color: #030712; font-size: 0.7rem; font-weight: 800; padding: 0.15rem 0.45rem; border-radius: 4px; text-transform: uppercase; }
+    .role-switcher { display: flex; align-items: center; gap: 0.4rem; background: #070b18; border: 1px solid var(--line); padding: 0.25rem; border-radius: 8px; font-size: 0.8rem; }
+    .role-btn { background: transparent; border: none; color: var(--muted); padding: 0.35rem 0.65rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+    .role-btn.active { background: var(--panel-alt); color: var(--accent); border: 1px solid var(--accent); }
+    
+    main.workspace { width: min(1120px, calc(100% - 2rem)); margin: 2rem auto 0; }
+    
+    /* APPLICANT BANNER */
+    .applicant-hero {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .applicant-info h1 { font-size: 1.4rem; font-weight: 700; }
+    .applicant-meta { display: flex; flex-wrap: wrap; gap: 0.8rem; font-size: 0.82rem; color: var(--muted); margin-top: 0.25rem; }
+    .applicant-meta span.code { font-family: ui-monospace, monospace; color: var(--accent); font-weight: 600; }
+    .hero-actions { display: flex; gap: 0.6rem; align-items: center; }
+    .btn {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--panel-alt);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.primary { background: var(--accent); color: #030712; border-color: var(--accent); }
+    .btn.primary:hover { opacity: 0.9; }
+    .btn.gold { background: var(--gold); color: #030712; border-color: var(--gold); }
+    
+    /* NAV TABS */
+    .nav-tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; overflow-x: auto; }
+    .nav-tab {
+      padding: 0.65rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+    .nav-tab:hover { color: var(--text); }
+    .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    
+    /* WORKSPACE SECTIONS */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* CARDS & GRIDS */
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
+    .card-title { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    
+    /* SIDE-BY-SIDE SPLIT */
+    .model-split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem; }
+    .model-split-grid.single-column { grid-template-columns: 1fr; }
+    
+    /* CRITERIA CHECKLIST */
+    .checklist-item { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.88rem; }
+    .check-icon.ok { color: var(--ok); font-weight: bold; }
+    .check-icon.warn { color: var(--warn); font-weight: bold; }
+    .check-icon.fail { color: var(--danger); font-weight: bold; }
+    
+    /* RADAR SVG */
+    .radar-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem; }
+    svg.radar-chart { overflow: visible; width: 260px; height: 260px; }
+    
+    /* PROGRAM SELECTION CHIPS (CLICK-TO-POOL) */
+    .pool-chips-container { min-height: 54px; background: #070b18; border: 1px dashed var(--line); border-radius: 10px; padding: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+    .pool-chip {
+      background: var(--panel-alt);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      animation: popIn 0.15s ease-out;
+    }
+    .pool-chip.is-default {
+      background: color-mix(in srgb, var(--gold) 15%, var(--panel-alt));
+      border-color: var(--gold);
+      color: #fef08a;
+    }
+    .pool-chip .chip-star { color: var(--gold); cursor: pointer; }
+    .pool-chip .chip-close { color: var(--muted); cursor: pointer; font-weight: 700; margin-left: 0.2rem; }
+    .pool-chip .chip-close:hover { color: var(--danger); }
+    
+    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    
+    /* PROGRAM SELECTABLE LIST */
+    .catalog-list { display: grid; gap: 0.6rem; }
+    .catalog-item {
+      background: var(--panel-alt);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .catalog-item:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--panel-alt)); }
+    .catalog-item.selected { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--panel-alt)); }
+    .catalog-item.selected.is-default { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, var(--panel-alt)); }
+    
+    .badge { padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+    .badge.ok { background: var(--ok-glow); color: var(--ok); border: 1px solid var(--ok); }
+    .badge.warn { background: var(--warn-glow); color: var(--warn); border: 1px solid var(--warn); }
+    .badge.accent { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+    .badge.gold { background: rgba(245, 158, 11, 0.2); color: #fde047; border: 1px solid var(--gold); }
+    
+    /* CONTROLS TOGGLE */
+    .view-toggles { display: flex; gap: 0.5rem; font-size: 0.8rem; }
+    
+    /* NOTICE & BRIDGING */
+    .bridging-box {
+      background: color-mix(in srgb, var(--warn) 8%, var(--panel));
+      border: 1px solid color-mix(in srgb, var(--warn) 30%, var(--line));
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span>NEXIAM</span>
+    <span class="badge">Live Prototype</span>
+    <span style="color:var(--muted); font-weight:400; font-size:0.85rem;">· Admission Support Workspace</span>
+  </div>
+  
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <div class="role-switcher">
+      <span style="padding:0 0.4rem; color:var(--muted); font-size:0.75rem;">ROLE LENS:</span>
+      <button class="role-btn active" onclick="setRole('guidance')">Guidance Counselor</button>
+      <button class="role-btn" onclick="setRole('program_head')">Program Head</button>
+      <button class="role-btn" onclick="setRole('student')">Applicant Portal</button>
+    </div>
+    
+    <a href="/capstone/office-guide" class="btn" style="font-size:0.8rem;">Field Guide ↗</a>
+  </div>
+</header>
+
+<main class="workspace">
+
+  <!-- APPLICANT HERO BANNER -->
+  <div class="applicant-hero">
+    <div class="applicant-info">
+      <h1>DELA CRUZ, JUAN A.</h1>
+      <div class="applicant-meta">
+        <span>App No: <span class="code">APP-2026-0042</span></span>
+        <span>·</span>
+        <span>Senior High: <strong>STEM</strong> (GWA 88.5)</span>
+        <span>·</span>
+        <span class="badge ok">✓ Result Released</span>
+        <span>·</span>
+        <span class="badge accent">Consultation Advised</span>
+      </div>
+    </div>
+    
+    <div class="hero-actions">
+      <a href="#setup-tab" class="btn" onclick="switchTab('setup')">⚙️ Setup Criteria</a>
+      <button class="btn primary" onclick="alert('Consultation decision confirmed & recorded into immutable audit chain.')">✓ Record Consultation</button>
+    </div>
+  </div>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('admission_support')">
+      <span>🎯</span> Admission Support Engine
+    </button>
+    <button class="nav-tab" onclick="switchTab('program_pool')">
+      <span>📋</span> Program Pool & Quotas (<span id="tab-pool-count">1</span>)
+    </button>
+    <button class="nav-tab" onclick="switchTab('scores')">
+      <span>📊</span> Converted Scores Profile
+    </button>
+    <button class="nav-tab" onclick="switchTab('setup')">
+      <span>⚙️</span> Setup Hub Configuration
+    </button>
+  </nav>
+
+  <!-- ================================================================= -->
+  <!-- TAB 1: ADMISSION SUPPORT (THE CORE FEATURE)                       -->
+  <!-- ================================================================= -->
+  <section id="tab-admission_support" class="tab-content active">
+    
+    <!-- CONTROLS BAR -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <div style="font-size:0.88rem; color:var(--muted);">
+        Comparing applicant profile against <strong>AY 2026–2027 Academic Criteria</strong> and <strong>Cluster Archetypes</strong>.
+      </div>
+      <div class="view-toggles">
+        <button id="btn-split" class="btn" onclick="setLayout('split')" style="font-size:0.78rem;">◫ Side-by-Side View</button>
+        <button id="btn-single" class="btn" onclick="setLayout('single')" style="font-size:0.78rem;">▯ Single Column</button>
+      </div>
+    </div>
+
+    <!-- STUDENT 1ST PREFERENCE HIGHLIGHT -->
+    <div class="card" style="border-left: 4px solid var(--ok); background: color-mix(in srgb, var(--ok) 4%, var(--panel));">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ok); font-weight:700;">Student Intake Choice #1</span>
+          <h2 style="font-size:1.25rem; margin:0.2rem 0;">BS Information Technology (BSIT)</h2>
+          <p style="color:var(--muted); font-size:0.85rem;">Status: <span style="color:var(--ok); font-weight:700;">🟢 Meets Department Criteria</span> · 18 / 50 Quota Slots Remaining</p>
+        </div>
+        <button class="btn gold" onclick="quickAdd('BSIT', 'BS Information Technology', 18)">+ Set as Advised Default ★</button>
+      </div>
+    </div>
+
+    <!-- SIDE-BY-SIDE MODEL EVIDENCE GRID -->
+    <div id="model-grid" class="model-split-grid">
+      
+      <!-- MODEL 1: INSTITUTIONAL RULES (CHECKLIST) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🏛️</span>
+            <div>
+              <div>Model 1: Department Criteria</div>
+              <div style="font-size:0.75rem; color:var(--muted); font-weight:400;">Rules Engine v1.2 · 100% Deterministic</div>
+            </div>
+          </div>
+          <span class="badge ok">Evaluated</span>
+        </div>
+
+        <p style="font-size:0.85rem; color:var(--muted); margin-bottom:0.75rem;">BS Information Technology Qualification Benchmark:</p>
+        
+        <div class="checklist-item">
+          <span class="check-icon ok">✓</span>
+          <div style="flex:1;">
+            <div><strong>Math Cutoff: Passed</strong></div>
+            <div style="font-size:0.8rem; color:var(--muted);">Applicant: 88 · Required Cutoff: &ge; 80 (+8 pts margin)</div>
+          </div>
+        </div>
+
+        <div class="checklist-item">
+          <span class="check-icon ok">✓</span>
+          <div style="flex:1;">
+            <div><strong>Abstract Reasoning: Passed</strong></div>
+            <div style="font-size:0.8rem; color:var(--muted);">Applicant: 90 · Required Cutoff: &ge; 75 (+15 pts margin)</div>
+          </div>
+        </div>
+
+        <div class="checklist-item">
+          <span class="check-icon ok">✓</span>
+          <div style="flex:1;">
+            <div><strong>SHS Strand Prerequisite</strong></div>
+            <div style="font-size:0.8rem; color:var(--muted);">STEM strand qualifies directly for computing disciplines</div>
+          </div>
+        </div>
+
+        <div class="checklist-item">
+          <span class="check-icon warn">⚠</span>
+          <div style="flex:1;">
+            <div><strong>High School Math GWA Notice</strong></div>
+            <div style="font-size:0.8rem; color:var(--muted);">GWA Math (81.0) is lower than aptitude percentile (88). Cross-modal discordance noted.</div>
+          </div>
+        </div>
+
+        <!-- BRIDGING REQUIREMENT PROPOSAL -->
+        <div class="bridging-box">
+          <input type="checkbox" id="chk-bridge" onchange="toggleBridging(this.checked)">
+          <label for="chk-bridge" style="cursor:pointer;">
+            <strong>Attach Bridging Requirement:</strong>
+            <div style="font-size:0.8rem; color:var(--muted);">Require MATH01 (Pre-Calculus Summer Workshop) on final enrollment sheet.</div>
+          </label>
+        </div>
+      </div>
+
+      <!-- MODEL 2: YUKEE K-MEANS ARTIFACT (RADAR VISUALIZATION) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🎯</span>
+            <div>
+              <div>Model 2: Aptitude Archetype</div>
+              <div style="font-size:0.75rem; color:var(--muted); font-weight:400;">YuKee K-Means Cluster v1.0 · Unsupervised</div>
+            </div>
+          </div>
+          <span class="badge accent">Cluster #3</span>
+        </div>
+
+        <div style="text-align:center; font-size:0.85rem; margin-bottom:0.5rem;">
+          Archetype: <strong style="color:var(--accent);">Quantitative & Analytical Systems Thinker</strong>
+          <div style="font-size:0.75rem; color:var(--muted);">Euclidean Centroid Distance: 0.12 (High Proximity)</div>
+        </div>
+
+        <!-- INTERACTIVE RADAR CHART SVG -->
+        <div class="radar-container">
+          <svg class="radar-chart" viewBox="-120 -120 240 240">
+            <!-- Grid Web -->
+            <circle cx="0" cy="0" r="30" fill="none" stroke="#223152" stroke-dasharray="3,3" />
+            <circle cx="0" cy="0" r="60" fill="none" stroke="#223152" stroke-dasharray="3,3" />
+            <circle cx="0" cy="0" r="90" fill="none" stroke="#223152" />
+            
+            <!-- Axes -->
+            <line x1="0" y1="0" x2="0" y2="-90" stroke="#223152" />
+            <line x1="0" y1="0" x2="90" y2="0" stroke="#223152" />
+            <line x1="0" y1="0" x2="0" y2="90" stroke="#223152" />
+            <line x1="0" y1="0" x2="-90" y2="0" stroke="#223152" />
+            
+            <!-- Labels -->
+            <text x="0" y="-100" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700">Numerical (88)</text>
+            <text x="105" y="4" text-anchor="start" fill="#94a3b8" font-size="10" font-weight="700">Science (82)</text>
+            <text x="0" y="108" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700">Verbal (75)</text>
+            <text x="-105" y="4" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="700">Abstract (90)</text>
+            
+            <!-- Cluster Centroid Polygon (Grey/Dotted) -->
+            <polygon points="0,-76 72,0 0,64 -78,0" fill="rgba(148,163,184,0.12)" stroke="#64748b" stroke-dasharray="4,4" stroke-width="1.5" />
+            
+            <!-- Student Score Polygon (Teal/Solid) -->
+            <polygon points="0,-79 74,0 0,68 -81,0" fill="rgba(56, 189, 248, 0.35)" stroke="#38bdf8" stroke-width="2" />
+          </svg>
+          <div style="font-size:0.75rem; color:var(--muted); margin-top:0.4rem;">
+            <span style="color:#38bdf8;">■ Student Polygon</span> &nbsp;·&nbsp;
+            <span style="color:#64748b;">■ Cluster Centroid</span>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:0.75rem; font-size:0.82rem; color:var(--muted);">
+          Historical Cluster Success: <strong>89%</strong> in Computing, <strong>84%</strong> in Engineering sciences.
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- TAB 2: PROGRAM POOL & QUOTAS (CLICK-TO-ADD INTERACTIVE DEMO)      -->
+  <!-- ================================================================= -->
+  <section id="tab-program_pool" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>📋</span> Approved Program Pool for Juan Dela Cruz
+        </div>
+        <span style="font-size:0.8rem; color:var(--muted);">First item is Advised Default · Quota held</span>
+      </div>
+
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:0.75rem;">
+        Click cards below to add/remove programs. The first clicked automatically becomes the <strong>Advised Default (★)</strong>.
+      </p>
+
+      <!-- ACTIVE POOL CHIPS -->
+      <div id="pool-chips" class="pool-chips-container">
+        <!-- populated via JS -->
+      </div>
+
+      <!-- AVAILABLE CATALOG LIST -->
+      <h3 style="font-size:0.95rem; margin:1.25rem 0 0.6rem;">Available University Degree Programs</h3>
+      <div class="catalog-list">
+        
+        <div class="catalog-item" id="cat-BSIT" onclick="toggleProgram('BSIT', 'BS Information Technology', 18)">
+          <div>
+            <strong>BS Information Technology (BSIT)</strong>
+            <div style="font-size:0.8rem; color:var(--muted);">Criteria: Math &ge; 80, Abstract &ge; 75 · High Alignment</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span class="badge ok">18 seats left</span>
+            <span class="item-status" style="font-size:0.82rem; color:var(--muted);">Click to Add</span>
+          </div>
+        </div>
+
+        <div class="catalog-item" id="cat-BSCS" onclick="toggleProgram('BSCS', 'BS Computer Science', 12)">
+          <div>
+            <strong>BS Computer Science (BSCS)</strong>
+            <div style="font-size:0.8rem; color:var(--muted);">Criteria: Math &ge; 82, Abstract &ge; 80 · High Alignment</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span class="badge ok">12 seats left</span>
+            <span class="item-status" style="font-size:0.82rem; color:var(--muted);">Click to Add</span>
+          </div>
+        </div>
+
+        <div class="catalog-item" id="cat-BSN" onclick="toggleProgram('BSN', 'BS Nursing', 2)">
+          <div>
+            <strong>BS Nursing (BSN)</strong>
+            <div style="font-size:0.8rem; color:var(--muted);">Criteria: Science &ge; 85 · Marginal (-3 pts) · Quota Constrained</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span class="badge warn">2 seats left</span>
+            <span class="item-status" style="font-size:0.82rem; color:var(--muted);">Click to Add</span>
+          </div>
+        </div>
+
+        <div class="catalog-item" id="cat-BSCE" onclick="toggleProgram('BSCE', 'BS Civil Engineering', 24)">
+          <div>
+            <strong>BS Civil Engineering (BSCE)</strong>
+            <div style="font-size:0.8rem; color:var(--muted);">Criteria: Math &ge; 85, Physics &ge; 80 · STEM Fit</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span class="badge ok">24 seats left</span>
+            <span class="item-status" style="font-size:0.82rem; color:var(--muted);">Click to Add</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:1.5rem; text-align:right;">
+        <button class="btn primary" onclick="alert('Program pool successfully locked! BSIT held with 1 quota reservation.')">
+          Lock Pool & Finalize Consultation (1 Click)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- TAB 3: CONVERTED SCORES PROFILE                                   -->
+  <!-- ================================================================= -->
+  <section id="tab-scores" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span>📊</span> Exam Subtest Converted Scores</div>
+        <span class="badge ok">Scored via Conversion Table Engine</span>
+      </div>
+      
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:#070b18; text-align:left;">
+            <th style="padding:0.75rem;">Aptitude Subtest Area</th>
+            <th style="padding:0.75rem;">Raw Marks</th>
+            <th style="padding:0.75rem;">Converted Score</th>
+            <th style="padding:0.75rem;">Percentile Band</th>
+            <th style="padding:0.75rem;">Classification</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:0.75rem;"><strong>Numerical & Mathematics</strong></td>
+            <td style="padding:0.75rem;">44 / 50</td>
+            <td style="padding:0.75rem; font-weight:700; color:var(--accent);">88.0</td>
+            <td style="padding:0.75rem;">89th %ile</td>
+            <td style="padding:0.75rem;"><span class="badge ok">Superior</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:0.75rem;"><strong>Abstract & Non-Verbal</strong></td>
+            <td style="padding:0.75rem;">46 / 50</td>
+            <td style="padding:0.75rem; font-weight:700; color:var(--accent);">90.0</td>
+            <td style="padding:0.75rem;">92nd %ile</td>
+            <td style="padding:0.75rem;"><span class="badge ok">Superior</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:0.75rem;"><strong>Science & Physical Reasoning</strong></td>
+            <td style="padding:0.75rem;">39 / 50</td>
+            <td style="padding:0.75rem; font-weight:700; color:var(--accent);">82.0</td>
+            <td style="padding:0.75rem;">80th %ile</td>
+            <td style="padding:0.75rem;"><span class="badge accent">Above Average</span></td>
+          </tr>
+          <tr>
+            <td style="padding:0.75rem;"><strong>Verbal & Reading Comprehension</strong></td>
+            <td style="padding:0.75rem;">34 / 50</td>
+            <td style="padding:0.75rem; font-weight:700; color:var(--accent);">75.0</td>
+            <td style="padding:0.75rem;">72nd %ile</td>
+            <td style="padding:0.75rem;"><span class="badge warn">Average</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- TAB 4: SETUP HUB CONFIGURATION PREVIEW                           -->
+  <!-- ================================================================= -->
+  <section id="tab-setup" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>⚙️</span> Setup Hub ── Admission Support Configuration (<code>/setup/admission-support</code>)
+        </div>
+        <span class="badge accent">Administrator View</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem;">
+        
+        <div>
+          <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">1. Active Analytical Providers</h4>
+          <div style="background:#070b18; padding:1rem; border-radius:8px; border:1px solid var(--line);">
+            <label style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.6rem; cursor:pointer;">
+              <input type="checkbox" checked disabled>
+              <span><strong>Model 1: Institutional Criteria & Cutoffs</strong> (v1.2)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.6rem; cursor:pointer;">
+              <input type="checkbox" checked id="toggle-yukee" onchange="toggleYukeeModel(this.checked)">
+              <span><strong>Model 2: YuKee K-Means Clustering</strong> (v1.0)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.6rem; color:var(--muted); cursor:not-allowed;">
+              <input type="checkbox" disabled>
+              <span>Model 3: BGE Career Interest Embeddings (Deferred)</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">2. Workspace Layout Mode</h4>
+          <div style="background:#070b18; padding:1rem; border-radius:8px; border:1px solid var(--line);">
+            <label style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.6rem; cursor:pointer;">
+              <input type="radio" name="layout-pref" checked onchange="setLayout('split')">
+              <span><strong>Side-by-Side (Split Columns)</strong> ── Default</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;">
+              <input type="radio" name="layout-pref" onchange="setLayout('single')">
+              <span><strong>Single Column (Minimal Scannable)</strong></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:1.5rem; text-align:right;">
+        <button class="btn primary" onclick="alert('Setup preferences saved for Academic Year 2026–2027.')">Save Setup Preferences</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // STATE MANAGEMENT
+  let activePool = [
+    { code: 'BSIT', name: 'BS Information Technology', seats: 18 }
+  ];
+
+  function renderPool() {
+    const container = document.getElementById('pool-chips');
+    const tabCount = document.getElementById('tab-pool-count');
+    tabCount.textContent = activePool.length;
+    
+    container.innerHTML = '';
+    if (activePool.length === 0) {
+      container.innerHTML = '<span style="color:var(--muted); font-size:0.85rem;">No programs selected. Click cards below to add.</span>';
+      return;
+    }
+
+    activePool.forEach((prog, index) => {
+      const isDefault = index === 0;
+      const chip = document.createElement('div');
+      chip.className = 'pool-chip' + (isDefault ? ' is-default' : '');
+      chip.innerHTML = `
+        <span class="chip-star" title="Advised Default">${isDefault ? '★' : '☆'}</span>
+        <span>${prog.code} · ${prog.name}</span>
+        ${isDefault ? '<span class="badge gold" style="font-size:0.65rem;">DEFAULT</span>' : ''}
+        <span class="chip-close" onclick="removeProgram('${prog.code}')" title="Remove">✕</span>
+      `;
+      container.appendChild(chip);
+    });
+
+    // Update catalog selection highlights
+    document.querySelectorAll('.catalog-item').forEach(item => {
+      const code = item.id.replace('cat-', '');
+      const isInPool = activePool.some(p => p.code === code);
+      const isDefault = activePool.length > 0 && activePool[0].code === code;
+      
+      item.classList.toggle('selected', isInPool);
+      item.classList.toggle('is-default', isDefault);
+      const statusLabel = item.querySelector('.item-status');
+      if (isDefault) {
+        statusLabel.innerHTML = '<strong style="color:var(--gold);">★ Advised Default</strong>';
+      } else if (isInPool) {
+        statusLabel.innerHTML = '<span style="color:var(--ok);">✓ In Pool</span>';
+      } else {
+        statusLabel.textContent = 'Click to Add';
+      }
+    });
+  }
+
+  function toggleProgram(code, name, seats) {
+    const existingIndex = activePool.findIndex(p => p.code === code);
+    if (existingIndex >= 0) {
+      activePool.splice(existingIndex, 1);
+    } else {
+      activePool.push({ code, name, seats });
+    }
+    renderPool();
+  }
+
+  function quickAdd(code, name, seats) {
+    if (!activePool.some(p => p.code === code)) {
+      activePool.unshift({ code, name, seats });
+    } else {
+      // Move to top if already there
+      const idx = activePool.findIndex(p => p.code === code);
+      const item = activePool.splice(idx, 1)[0];
+      activePool.unshift(item);
+    }
+    renderPool();
+    switchTab('program_pool');
+  }
+
+  function removeProgram(code) {
+    activePool = activePool.filter(p => p.code !== code);
+    renderPool();
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    const targetTab = Array.from(document.querySelectorAll('.nav-tab')).find(t => t.getAttribute('onclick')?.includes(tabId));
+    if (targetTab) targetTab.classList.add('active');
+    
+    const content = document.getElementById('tab-' + tabId);
+    if (content) content.classList.add('active');
+  }
+
+  function setLayout(mode) {
+    const grid = document.getElementById('model-grid');
+    if (mode === 'single') {
+      grid.classList.add('single-column');
+      document.getElementById('btn-single').classList.add('primary');
+      document.getElementById('btn-split').classList.remove('primary');
+    } else {
+      grid.classList.remove('single-column');
+      document.getElementById('btn-split').classList.add('primary');
+      document.getElementById('btn-single').classList.remove('primary');
+    }
+  }
+
+  function toggleYukeeModel(enabled) {
+    const radarCard = document.querySelector('#model-grid .card:nth-child(2)');
+    if (radarCard) {
+      radarCard.style.display = enabled ? 'block' : 'none';
+    }
+  }
+
+  function toggleBridging(checked) {
+    if (checked) {
+      alert('Bridging Requirement flagged: MATH01 attached to Juan Dela Cruz. This will sync to the final enrollment stamp.');
+    }
+  }
+
+  function setRole(role) {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (role === 'program_head') {
+      alert('Role switched to: PROGRAM HEAD / DEAN.\n\nNotice: You only see candidates who have selected or have open follow-ups for your assigned college. Personal notes and other choices are strictly hidden.');
+    } else if (role === 'student') {
+      alert('Role switched to: APPLICANT PORTAL.\n\nNotice: The student sees positive strengths orientation (Computing & Informatics), their approved pool options, and access history.');
+    } else {
+      alert('Role switched to: GUIDANCE COUNSELOR.\n\nFull multi-modal profile, side-by-side radar & rules, click-to-pool advising active.');
+    }
+  }
+
+  // Initial render
+  renderPool();
+  setLayout('split');
+</script>
+
+</body>
+</html>

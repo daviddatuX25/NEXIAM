@@ -13,9 +13,11 @@ class RetryOmrTemplateVerificationRequest extends FormRequest
         return app(CapabilityAuthorizer::class)->allows($this->user(), CapabilityCatalog::GUIDANCE_SCORING_OMR);
     }
 
-    /** @return array<string, list<string>> */
+    /** @return array<string, list<mixed>> */
     public function rules(): array
     {
-        return [];
+        return [
+            'idempotency_key' => ['sometimes', 'nullable', 'string', 'max:190'],
+        ];
     }
 }

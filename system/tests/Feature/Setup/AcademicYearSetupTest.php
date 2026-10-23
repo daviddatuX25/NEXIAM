@@ -6,9 +6,9 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 test('academic years index lists created years without create forms', function (): void {
     seedE2Foundation();
-    $registrar = User::query()->where('email', 'registrar.admin@nexiam.test')->firstOrFail();
+    $admin = User::query()->where('email', 'admin.lead@nexiam.test')->firstOrFail();
 
-    $this->actingAs($registrar)
+    $this->actingAs($admin)
         ->get(route('setup.cycles'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -24,14 +24,14 @@ test('academic years index lists created years without create forms', function (
 
 test('create academic year is a separate page like legacy', function (): void {
     seedE2Foundation();
-    $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
+    $admin = User::query()->where('email', 'admin.lead@nexiam.test')->firstOrFail();
 
-    $this->actingAs($registrar)
+    $this->actingAs($admin)
         ->get(route('setup.cycles.create'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Setup/Cycles/Create'));
 
-    $this->actingAs($registrar)
+    $this->actingAs($admin)
         ->post(route('setup.cycles.store'), [
             'school_year' => '2026-2027',
             'semester' => '2',
@@ -53,10 +53,10 @@ test('create academic year is a separate page like legacy', function (): void {
 
 test('edit and activate academic year follow legacy list actions', function (): void {
     seedE2Foundation();
-    $registrar = User::query()->where('email', 'registrar.admin@nexiam.test')->firstOrFail();
+    $admin = User::query()->where('email', 'admin.lead@nexiam.test')->firstOrFail();
     $active = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
 
-    $this->actingAs($registrar)
+    $this->actingAs($admin)
         ->get(route('setup.cycles.edit', $active))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -65,7 +65,7 @@ test('edit and activate academic year follow legacy list actions', function (): 
             ->where('cycle.is_active', true)
         );
 
-    $this->actingAs($registrar)
+    $this->actingAs($admin)
         ->post(route('setup.cycles.store'), [
             'school_year' => '2026-2027',
             'semester' => '1',
@@ -79,7 +79,7 @@ test('edit and activate academic year follow legacy list actions', function (): 
         ->where('semester', '1')
         ->firstOrFail();
 
-    $this->actingAs($registrar)
+    $this->actingAs($admin)
         ->post(route('setup.cycles.activate', $next))
         ->assertRedirect(route('setup.cycles'));
 
@@ -87,11 +87,29 @@ test('edit and activate academic year follow legacy list actions', function (): 
         ->and($active->fresh()->is_active)->toBeFalse();
 });
 
-test('duplicate school year and semester is rejected', function (): void {
+test('undelegated registrar clerk is denied academic year setup', function (): void {
     seedE2Foundation();
     $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
 
     $this->actingAs($registrar)
+        ->get(route('setup.cycles.create'))
+        ->assertForbidden();
+
+    $this->actingAs($registrar)
+        ->post(route('setup.cycles.store'), [
+            'school_year' => '2026-2027',
+            'semester' => '2',
+            'application_start_date' => '2026-08-01',
+            'application_end_date' => '2027-01-31',
+        ])
+        ->assertForbidden();
+});
+
+test('duplicate school year and semester is rejected', function (): void {
+    seedE2Foundation();
+    $admin = User::query()->where('email', 'admin.lead@nexiam.test')->firstOrFail();
+
+    $this->actingAs($admin)
         ->from(route('setup.cycles.create'))
         ->post(route('setup.cycles.store'), [
             'school_year' => '2025-2026',

@@ -58,6 +58,7 @@ final class RenderOmrSourcePagesJob implements ShouldQueue
             $authoring = (array) $draft->authoring_json;
             $authoring['source_run'] = [...$runState, 'status' => 'cancelled'];
             $draft->forceFill(['authoring_json' => $authoring])->save();
+
             return;
         }
         $authoring = (array) $draft->authoring_json;
@@ -160,6 +161,7 @@ final class RenderOmrSourcePagesJob implements ShouldQueue
         ], (string) $this->actorId);
         @unlink($sourcePath);
     }
+
     public function failed(?Throwable $exception): void
     {
         $draft = OmrTemplateAuthoringDraft::query()->find($this->draftId);

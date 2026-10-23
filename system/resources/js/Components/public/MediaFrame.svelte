@@ -11,6 +11,11 @@
 
     let failed = $state(false);
 
+    $effect(() => {
+        image?.src;
+        failed = false;
+    });
+
     const imageAlt = $derived(image?.alt ?? alt);
     const sourceLabel = $derived(image?.source ?? null);
 </script>

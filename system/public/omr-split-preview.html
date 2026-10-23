@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NEXIAM OMR — Immersive Split Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0e1211;
+    --bg-panel: #151918;
+    --border-dark: rgba(255, 255, 255, 0.12);
+    --border-light: oklch(0.88 0 0);
+
+    --surface-light: #ffffff;
+    --surface-muted: oklch(0.96 0.01 87);
+    --bg-page: oklch(0.97 0.01 87.41);
+
+    --text-dark: oklch(0.25 0.03 148.2);
+    --text-muted: oklch(0.48 0.02 150);
+    --text-light: #f4f6f5;
+    --text-light-muted: rgba(255, 255, 255, 0.65);
+
+    --primary: oklch(0.52 0.13 144.33);
+    --primary-hover: oklch(0.45 0.13 144.33);
+    --primary-soft: oklch(0.95 0.03 144.33);
+
+    --amber: #b7791f;
+    --amber-soft: #fef8eb;
+    --amber-border: rgba(183, 121, 31, 0.3);
+
+    --emerald: #1a7f4e;
+    --emerald-soft: #eafaf1;
+    --emerald-border: rgba(26, 127, 78, 0.25);
+
+    --radius-sm: 5px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+
+    --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: hidden;
+    font-family: var(--font-sans);
+    background: var(--bg-dark);
+    color: var(--text-dark);
+    font-size: 13px;
+  }
+
+  /* Full-bleed Immersive Container (Zero outer sidebar / Zero app shell bloat) */
+  .workbench-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  /* Clean Top Header */
+  .ca-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: #141817;
+    border-bottom: 1px solid var(--border-dark);
+    flex-shrink: 0;
+    min-height: 50px;
+    color: var(--text-light);
+    z-index: 50;
+  }
+  .ca-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-light-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .ca-back:hover { color: #fff; }
+  .ca-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ca-title small {
+    display: block;
+    font-size: 9.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-light-muted);
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+  .ca-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .ca-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-light-muted);
+  }
+
+  /* ==========================================================================
+     DESKTOP LAYOUT (>= 900px): TRUE SIDE-BY-SIDE IMMERSIVE WORKSPACE
+     ========================================================================== */
+  .layout-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 390px 1fr;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* ================= LEFT: CAMERA & INTAKE DECK ================= */
+  .camera-panel {
+    background: var(--bg-dark);
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-dark);
+    min-height: 0;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* 1-Tap Lens Bar (0.5x, 1x, 3x, Flip) */
+  .lens-bar {
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.4);
+    border-bottom: 1px solid var(--border-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .lens-pills {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+  }
+  .lens-pill {
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-dark);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-light-muted);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .lens-pill:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  .lens-pill.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  .flip-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-sm);
+    color: #fff;
+    padding: 3px 8px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Viewfinder Area */
+  .viewfinder {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 50%, #171b19 0%, #0a0d0c 85%);
+    overflow: hidden;
+  }
+  .bracket {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-color: #48bb78;
+    z-index: 10;
+  }
+  .b-tl { top: 20px; left: 20px; border-top: 2.5px solid; border-left: 2.5px solid; }
+  .b-tr { top: 20px; right: 20px; border-top: 2.5px solid; border-right: 2.5px solid; }
+  .b-bl { bottom: 20px; left: 20px; border-bottom: 2.5px solid; border-left: 2.5px solid; }
+  .b-br { bottom: 20px; right: 20px; border-bottom: 2.5px solid; border-right: 2.5px solid; }
+
+  /* Simulated Paper inside Viewfinder */
+  .camera-sheet-mock {
+    width: 220px;
+    height: 300px;
+    background: #fbfbfa;
+    border-radius: 3px;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #111;
+    position: relative;
+    opacity: 0.95;
+  }
+  .mock-top {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1.5px solid #111;
+    padding-bottom: 3px;
+    font-size: 7.5px;
+    font-weight: 800;
+  }
+  .mock-id-pill {
+    border: 1px solid #2f855a;
+    background: rgba(47, 133, 90, 0.1);
+    padding: 2px 4px;
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #22543d;
+  }
+  .mock-bubbles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    margin-top: 4px;
+  }
+  /* Desktop vs Mobile Gallery Button Rules */
+  @media (min-width: 900px) {
+    .btn-scans-gallery {
+      display: none !important;
+    }
+  }
+
+  /* Desktop Left Column Scans Queue Card */
+  .desktop-scans-queue {
+    background: #141817;
+    border-top: 1px solid var(--border-dark);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-height: 180px;
+    overflow-y: auto;
+  }
+  .queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 2px;
+  }
+  .queue-count-badge {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-light-muted);
+  }
+  .queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .queue-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .queue-item:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.25);
+  }
+  .queue-item.active {
+    background: rgba(26, 127, 78, 0.2);
+    border-color: var(--primary);
+  }
+  .queue-item-meta strong {
+    display: block;
+    font-size: 11.5px;
+    color: #fff;
+  }
+  .queue-item-meta span {
+    font-size: 10px;
+    color: var(--text-light-muted);
+    font-family: var(--font-mono);
+  }
+  .queue-status-tag {
+    font-size: 9px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    border-radius: var(--radius-full);
+  }
+  .queue-status-tag.warn { background: var(--amber); color: #fff; }
+  .queue-status-tag.ok { background: var(--emerald); color: #fff; }
+
+  @media (max-width: 900px) {
+    .desktop-scans-queue { display: none !important; }
+  }
+
+  /* Bottom Left: Switch to Gallery / Scans */
+  .btn-scans-gallery {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    color: var(--text-light-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    min-width: 54px;
+  }
+  .btn-scans-gallery:hover { color: #fff; }
+  .scans-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .scans-badge-count {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 8.5px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    padding: 1px 4px;
+    border-radius: var(--radius-full);
+  }
+  .btn-scans-gallery span {
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Center: Large Shutter */
+  .shutter-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .shutter-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3.5px solid rgba(255,255,255,0.85);
+    background: transparent;
+    padding: 4px;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .shutter-btn:active { transform: scale(0.9); }
+  .shutter-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #fff;
+    transition: background 0.2s;
+  }
+  .shutter-btn.batch-active .shutter-core { background: var(--primary); }
+
+  /* Bottom Right: Mode Switcher */
+  .mode-wrap {
+    position: relative;
+    min-width: 54px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .mode-trigger-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-full);
+    padding: 5px 9px;
+    color: #fff;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mode-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--emerald);
+  }
+  .mode-dot.manual { background: var(--amber); }
+  .mode-dot.batch { background: #3182ce; }
+
+  .mode-dropdown {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    width: 200px;
+    background: #1a1e1d;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+    padding: 4px;
+    z-index: 60;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .mode-dropdown.open { display: flex; animation: dropUp 0.15s ease; }
+  @keyframes dropUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .mode-opt {
+    padding: 7px 9px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #eee;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .mode-opt:hover { background: rgba(255,255,255,0.08); }
+  .mode-opt.active { background: rgba(26, 127, 78, 0.25); color: #86efac; font-weight: 700; }
+  .mode-opt small { display: block; font-size: 9px; color: var(--text-light-muted); font-weight: 400; }
+
+  /* ================= RIGHT: SIDE-BY-SIDE REVIEW WORKSPACE ================= */
+  .review-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--bg-page);
+    padding: 12px 16px 28px;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Sheet Ticket Header */
+  .sheet-bar {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .sheet-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sheet-num {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 11.5px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .sheet-person { font-size: 13.5px; font-weight: 700; }
+  .sheet-sub { font-size: 10.5px; color: var(--text-muted); font-family: var(--font-mono); }
+  .sheet-actions { display: flex; align-items: center; gap: 6px; }
+
+  /* Review Duo (Sheet Photo on Left, Data on Right) */
+  .review-duo {
+    display: grid;
+    grid-template-columns: 290px 1fr;
+    gap: 12px;
+    align-items: start;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Visual Column: Photo + Handwriting Snippet */
+  .col-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .photo-box {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .photo-box-head {
+    padding: 5px 8px;
+    background: var(--surface-muted);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+  .photo-view {
+    aspect-ratio: 3/4;
+    background: #eae6db;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+  }
+  .rendered-paper {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    position: relative;
+    padding: 8px;
+    font-size: 7px;
+    font-family: var(--font-mono);
+  }
+  .box-id {
+    position: absolute;
+    top: 6%;
+    left: 6%;
+    width: 60%;
+    height: 12%;
+    border: 1.5px solid #2f855a;
+    background: rgba(47, 133, 90, 0.08);
+  }
+  .box-ambig {
+    position: absolute;
+    top: 38%;
+    left: 8%;
+    width: 44%;
+    height: 6%;
+    border: 1.5px solid var(--amber);
+    background: rgba(183, 121, 31, 0.16);
+  }
+
+  /* Handwriting Crop */
+  .handwriting-box {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 8px;
+  }
+  .hw-row { display: flex; gap: 8px; align-items: center; }
+  .hw-crop {
+    width: 84px;
+    height: 30px;
+    background: #fff;
+    border: 1px solid #cbd5e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Caveat", cursive, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #2d3748;
+    flex-shrink: 0;
+  }
+  .hw-select { flex: 1; min-width: 0; }
+  .hw-select select {
+    width: 100%;
+    padding: 4px;
+    font-size: 11px;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  /* Data Column: Duplicate Alert, Scores, Item Review */
+  .col-data {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .dup-alert {
+    background: var(--amber-soft);
+    border: 1px solid var(--amber-border);
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+  }
+  .dup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #744210;
+  }
+  .dup-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid var(--amber-border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 10.5px;
+  }
+
+  /* Area Scores Strip */
+  .scores-strip {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .sc-val { font-family: var(--font-mono); font-weight: 700; }
+  .sc-val.fin { color: var(--primary); font-weight: 800; }
+
+  /* Item Bubble Table */
+  .items-table-box {
+    background: var(--surface-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .items-table-head {
+    padding: 6px 10px;
+    background: var(--surface-muted);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .item-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--surface-muted);
+    font-size: 11px;
+    gap: 6px;
+  }
+  .item-entry.warn {
+    background: rgba(183, 121, 31, 0.08);
+    border-left: 3px solid var(--amber);
+  }
+  .item-lbl { font-weight: 700; font-family: var(--font-mono); min-width: 60px; }
+  
+  .crop-bubbles {
+    width: 100px;
+    height: 20px;
+    background: #ebe6d9;
+    border: 1px solid #d4cdbe;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 1px 3px;
+    flex-shrink: 0;
+  }
+  .b-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: 1px solid #666;
+    font-size: 6px;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+  }
+  .b-dot.on { background: #1a202c; color: #fff; border-color: #1a202c; }
+  .b-dot.amb { background: #718096; border-color: var(--amber); }
+
+  .ans-badge {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .ans-badge.ok { background: #def7ec; color: #03543f; }
+  .ans-badge.warn { background: #feecdc; color: #9c4221; }
+
+  .fix-options { display: flex; gap: 2px; }
+  .fix-btn {
+    width: 19px;
+    height: 19px;
+    font-size: 9px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    border: 1px solid var(--border-light);
+    background: #fff;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .fix-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* Reusable Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-outline { background: #fff; border-color: var(--border-light); color: var(--text-dark); }
+  .btn-amber { background: var(--amber); color: #fff; }
+  .btn-sm { padding: 2px 6px; font-size: 10px; }
+
+  /* ==========================================================================
+     MOBILE SCREEN 2: SCANS GALLERY GRID (Only active when Scans button is tapped)
+     ========================================================================== */
+  .scans-gallery-view {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: var(--bg-dark);
+    color: var(--text-light);
+  }
+  .gallery-top {
+    height: 44px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-dark);
+    background: rgba(0,0,0,0.3);
+  }
+  .gallery-tabs-row {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px 0;
+  }
+  .tab-pill {
+    flex: 1;
+    padding: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-light-muted);
+    cursor: pointer;
+    text-align: center;
+  }
+  .tab-pill.active { background: rgba(255,255,255,0.12); color: #fff; }
+
+  .cards-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-content: start;
+  }
+  .scan-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .scan-card:hover { border-color: var(--primary); }
+  .scan-thumb {
+    aspect-ratio: 3/4;
+    background: #232826;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .thumb-sheet-mini {
+    width: 78%;
+    height: 82%;
+    background: #fff;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+  }
+  .badge-status {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 2px 5px;
+    border-radius: var(--radius-full);
+    font-size: 8px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+  }
+  .badge-status.warn { background: var(--amber); color: #fff; }
+  .badge-status.ok { background: var(--emerald); color: #fff; }
+  .card-info { padding: 6px 8px; font-size: 10.5px; }
+  .card-info strong { display: block; font-size: 11px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-info span { font-size: 9.5px; color: var(--text-light-muted); font-family: var(--font-mono); }
+
+  .gallery-bottom-deck {
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border-dark);
+    background: #141817;
+  }
+
+  /* ==========================================================================
+     RESPONSIVE BREAKPOINT (< 900px): MOBILE NATIVE 3-STAGE FLOW
+     ========================================================================== */
+  @media (max-width: 900px) {
+    /* Collapse the 2-column desktop grid into a 1-screen viewport */
+    .layout-grid {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+    .review-duo {
+      grid-template-columns: 1fr;
+    }
+
+    /* Screen 1: Camera View (Default on Mobile) */
+    .workbench-container[data-mobile-screen="camera"] .camera-panel {
+      display: flex;
+      height: 100%;
+      width: 100%;
+    }
+    .workbench-container[data-mobile-screen="camera"] .review-panel { display: none; }
+    .workbench-container[data-mobile-screen="camera"] .scans-gallery-view { display: none; }
+
+    /* Screen 2: Scans Gallery (Triggered by bottom-left Scans button) */
+    .workbench-container[data-mobile-screen="gallery"] .camera-panel { display: none; }
+    .workbench-container[data-mobile-screen="gallery"] .review-panel { display: none; }
+    .workbench-container[data-mobile-screen="gallery"] .scans-gallery-view { display: flex; }
+
+    /* Screen 3: Sheet Review (Triggered by tapping a card in gallery) */
+    .workbench-container[data-mobile-screen="review"] .camera-panel { display: none; }
+    .workbench-container[data-mobile-screen="review"] .review-panel { display: flex; width: 100%; }
+    .workbench-container[data-mobile-screen="review"] .scans-gallery-view { display: none; }
+
+    /* Show back button in review screen when on mobile */
+    #btnMobileBackToScans { display: inline-flex !important; }
+  }
+
+  #btnMobileBackToScans { display: none; }
+</style>
+</head>
+<body>
+
+<div class="workbench-container" id="workbenchRoot" data-mobile-screen="camera">
+  
+  <!-- Clean Top Header -->
+  <header class="ca-top">
+    <button class="ca-back" onclick="alert('Close capture')" aria-label="Back">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <div class="ca-title">
+      Exam Session
+      <small>EX-2408-01 · Room B-204</small>
+    </div>
+    <div class="ca-right">
+      <span class="ca-count">6 captured</span>
+    </div>
+  </header>
+
+  <!-- Main Content Layout (Desktop = Side-by-Side | Mobile = 3-Screen App Flow) -->
+  <main class="layout-grid" id="layoutGrid">
+    
+    <!-- ================= CAMERA & INTAKE COLUMN (Desktop Left / Mobile Screen 1) ================= -->
+    <aside class="camera-panel" id="cameraPanel">
+      
+      <!-- Lens Bar (0.5x, 1x, 3x, Flip) -->
+      <div class="lens-bar">
+        <div class="lens-pills">
+          <button class="lens-pill" onclick="selectLens(this, '0.5x')">0.5x Wide</button>
+          <button class="lens-pill active" onclick="selectLens(this, '1x')">1x Main</button>
+          <button class="lens-pill" onclick="selectLens(this, '3x')">3x Tele</button>
+          <button class="lens-pill" onclick="selectLens(this, 'Selfie')">Selfie</button>
+        </div>
+
+        <button class="flip-btn" onclick="cycleNextLens()" title="Cycle camera">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 2.21 1.005 4.19 2.5 5.5"/><path d="M4 14c0 4.418 3.582 8 8 8s8-3.582 8-8c0-2.21-1.005-4.19-2.5-5.5"/><path d="m7 15-3 3-3-3"/><path d="m17 9 3-3 3 3"/></svg>
+          Flip
+        </button>
+      </div>
+
+      <!-- Viewfinder -->
+      <div class="viewfinder">
+        <div class="bracket b-tl"></div>
+        <div class="bracket b-tr"></div>
+        <div class="bracket b-bl"></div>
+        <div class="bracket b-br"></div>
+
+        <!-- Simulated Sheet in Viewfinder -->
+        <div class="camera-sheet-mock">
+          <div class="mock-top">
+            <span>CANONICAL EXAM</span>
+            <span>SET A</span>
+          </div>
+          <div class="mock-id-pill">
+            APP NO: <b>A0231</b> · <b>SARMIENTO</b>
+          </div>
+          <div class="mock-bubbles-grid">
+            <div class="mock-b-row"><span>1</span><i class="mock-dot"></i><i class="mock-dot fill"></i><i class="mock-dot"></i><i class="mock-dot"></i></div>
+            <div class="mock-b-row"><span>2</span><i class="mock-dot fill"></i><i class="mock-dot"></i><i class="mock-dot"></i><i class="mock-dot"></i></div>
+            <div class="mock-b-row"><span>3</span><i class="mock-dot"></i><i class="mock-dot ambig"></i><i class="mock-dot ambig"></i><i class="mock-dot"></i></div>
+            <div class="mock-b-row"><span>4</span><i class="mock-dot"></i><i class="mock-dot"></i><i class="mock-dot fill"></i><i class="mock-dot"></i></div>
+            <div class="mock-b-row"><span>5</span><i class="mock-dot fill"></i><i class="mock-dot"></i><i class="mock-dot"></i><i class="mock-dot"></i></div>
+            <div class="mock-b-row"><span>6</span><i class="mock-dot"></i><i class="mock-dot fill"></i><i class="mock-dot"></i><i class="mock-dot"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Control Deck: [Scans Button] [Shutter] [Mode Selector] -->
+      <div class="camera-deck">
+        
+        <!-- Bottom Left: Scans Gallery Switch -->
+        <button class="btn-scans-gallery" onclick="goToMobileScreen('gallery')" title="View captured scans">
+          <div class="scans-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+            <span class="scans-badge-count">6</span>
+          </div>
+          <span>Scans</span>
+        </button>
+
+        <!-- Center: Shutter Button -->
+        <div class="shutter-wrapper">
+          <button class="shutter-btn" id="snapBtn" onclick="takeSnapshot()" aria-label="Capture">
+            <div class="shutter-core"></div>
+          </button>
+        </div>
+
+        <!-- Bottom Right: Mode Switcher -->
+        <div class="mode-wrap">
+          <button class="mode-trigger-btn" onclick="toggleModeMenu()">
+            <span class="mode-dot" id="modeDotIndicator"></span>
+            <span id="activeModeText">Auto</span>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <div class="mode-dropdown" id="modeDropdown">
+            <button class="mode-opt active" onclick="setModeOption('auto')">
+              <span class="mode-dot"></span>
+              <div>Auto Mode<small>Advances on capture</small></div>
+            </button>
+            <button class="mode-opt" onclick="setModeOption('manual')">
+              <span class="mode-dot manual"></span>
+              <div>Manual Verify<small>Review each scan</small></div>
+            </button>
+            <button class="mode-opt" onclick="setModeOption('batch')">
+              <span class="mode-dot batch"></span>
+              <div>Batch Snaps<small>Auto-captures when steady</small></div>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Desktop-Only Scans Queue directly below camera (Hidden on mobile) -->
+      <div class="desktop-scans-queue">
+        <div class="queue-header">
+          <span>Batch Scans Queue</span>
+          <span class="queue-count-badge">6 sheets · 1 needs review</span>
+        </div>
+        <div class="queue-list">
+          <div class="queue-item active" id="qItem0130" onclick="selectDesktopQueueItem('0130', 'Sarmiento, David', 'A0231', true)">
+            <div class="queue-item-meta">
+              <strong>#0130 · Sarmiento, David</strong>
+              <span>A0231 · Set A</span>
+            </div>
+            <span class="queue-status-tag warn">Review</span>
+          </div>
+          <div class="queue-item" id="qItem0128" onclick="selectDesktopQueueItem('0128', 'Andrea, Alyssa', 'A0232', false)">
+            <div class="queue-item-meta">
+              <strong>#0128 · Andrea, Alyssa</strong>
+              <span>A0232 · Set A</span>
+            </div>
+            <span class="queue-status-tag ok">Scored</span>
+          </div>
+          <div class="queue-item" id="qItem0129" onclick="selectDesktopQueueItem('0129', 'Reyes, Marcus', 'A0233', false)">
+            <div class="queue-item-meta">
+              <strong>#0129 · Reyes, Marcus</strong>
+              <span>A0233 · Set B</span>
+            </div>
+            <span class="queue-status-tag ok">Scored</span>
+          </div>
+          <div class="queue-item" id="qItem0127" onclick="selectDesktopQueueItem('0127', 'Castro, Bianca', 'A0234', true)">
+            <div class="queue-item-meta">
+              <strong>#0127 · Castro, Bianca</strong>
+              <span>A0234 · Set A</span>
+            </div>
+            <span class="queue-status-tag warn">Duplicate</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ================= MOBILE SCREEN 2: SCANS GALLERY (Hidden until Scans is clicked) ================= -->
+    <div class="scans-gallery-view" id="scansGalleryView">
+      <div class="gallery-top">
+        <button class="btn btn-outline btn-sm" onclick="goToMobileScreen('camera')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Camera
+        </button>
+        <strong style="font-size:12px">Captured Scans (6)</strong>
+        <button class="btn btn-outline btn-sm" style="color:var(--amber); border-color:var(--amber)" onclick="alert('Batch rejected')">Reject</button>
+      </div>
+
+      <div class="gallery-tabs-row">
+        <button class="tab-pill active" onclick="filterGallery(this, 'all')">All (6)</button>
+        <button class="tab-pill" onclick="filterGallery(this, 'review')">Needs Review (2)</button>
+      </div>
+
+      <div class="cards-grid">
+        <!-- Card 1 -->
+        <div class="scan-card" onclick="openReviewSheet('0130', 'Sarmiento, David', 'A0231', true)">
+          <div class="scan-thumb">
+            <div class="thumb-sheet-mini">
+              <span style="font-size:5px; font-weight:800; border-bottom:0.5px solid #222">EXAM 2408</span>
+              <span style="margin-top:3px; font-size:4px; font-family:var(--font-mono)">Q1 [B] Q2 [A] Q3 [?]</span>
+            </div>
+            <span class="badge-status warn">Review</span>
+          </div>
+          <div class="card-info">
+            <strong>Sarmiento, David</strong>
+            <span>A0231 · Set A</span>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="scan-card" onclick="openReviewSheet('0128', 'Andrea, Alyssa', 'A0232', false)">
+          <div class="scan-thumb">
+            <div class="thumb-sheet-mini">
+              <span style="font-size:5px; font-weight:800; border-bottom:0.5px solid #222">EXAM 2408</span>
+            </div>
+            <span class="badge-status ok">Scored</span>
+          </div>
+          <div class="card-info">
+            <strong>Andrea, Alyssa</strong>
+            <span>A0232 · Set A</span>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="scan-card" onclick="openReviewSheet('0129', 'Reyes, Marcus', 'A0233', false)">
+          <div class="scan-thumb">
+            <div class="thumb-sheet-mini">
+              <span style="font-size:5px; font-weight:800; border-bottom:0.5px solid #222">EXAM 2408</span>
+            </div>
+            <span class="badge-status ok">Scored</span>
+          </div>
+          <div class="card-info">
+            <strong>Reyes, Marcus</strong>
+            <span>A0233 · Set B</span>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="scan-card" onclick="openReviewSheet('0127', 'Castro, Bianca', 'A0234', true)">
+          <div class="scan-thumb">
+            <div class="thumb-sheet-mini">
+              <span style="font-size:5px; font-weight:800; border-bottom:0.5px solid #222">EXAM 2408</span>
+            </div>
+            <span class="badge-status warn">Duplicate</span>
+          </div>
+          <div class="card-info">
+            <strong>Castro, Bianca</strong>
+            <span>A0234 · Set A</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="gallery-bottom-deck">
+        <button class="btn btn-primary" style="width:100%" onclick="goToMobileScreen('camera')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Return to Camera
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= REVIEW COLUMN (Desktop Right / Mobile Screen 3) ================= -->
+    <section class="review-panel" id="reviewPanel">
+      
+      <!-- Sheet Banner -->
+      <div class="sheet-bar">
+        <div class="sheet-title-group">
+          <!-- Mobile Back Button to Scans Gallery -->
+          <button class="btn btn-outline btn-sm" id="btnMobileBackToScans" onclick="goToMobileScreen('gallery')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            Scans
+          </button>
+
+          <span class="sheet-num" id="activeSheetBadge">#0130</span>
+          <div>
+            <div class="sheet-person" id="activeSheetName">Sarmiento, David</div>
+            <div class="sheet-sub" id="activeSheetSub">A0231 · Set A</div>
+          </div>
+        </div>
+
+        <div class="sheet-actions">
+          <span style="font-size:10.5px; font-family:var(--font-mono); font-weight:700; color:#92400e; background:#fef3c7; border:1px solid #fde68a; padding:2px 6px; border-radius:4px" id="activeIssueBadge">
+            Q3 Ambiguous
+          </span>
+          <button class="btn btn-outline btn-sm" onclick="alert('Skipped to next sheet')">Skip</button>
+          <button class="btn btn-primary btn-sm" onclick="alert('Review committed!')">Save & Next</button>
+        </div>
+      </div>
+
+      <!-- Review Duo: Left = Visual Photo & Crop | Right = Data & Bubbles -->
+      <div class="review-duo">
+        
+        <!-- Left: Paper Photo + Handwriting Crop -->
+        <div class="col-visual">
+          <div class="photo-box">
+            <div class="photo-box-head">
+              <span>Captured Paper Evidence</span>
+              <div style="display:flex; gap:4px">
+                <button class="btn btn-outline btn-sm" style="padding:1px 5px">Raw</button>
+                <button class="btn btn-primary btn-sm" style="padding:1px 5px">Marked</button>
+              </div>
+            </div>
+            <div class="photo-view">
+              <div class="rendered-paper">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #222; padding-bottom:2px; font-weight:800">
+                  <span>EXAM 2408</span>
+                  <span>SET A</span>
+                </div>
+                <!-- Overlays -->
+                <div class="box-id"></div>
+                <div class="box-ambig"></div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; margin-top:55px; font-size:6.5px">
+                  <div>1 (A) [X] (C) (D)</div>
+                  <div>6 (A) (B) [X] (D)</div>
+                  <div>2 [X] (B) (C) (D)</div>
+                  <div>7 (A) [X] (C) (D)</div>
+                  <div style="color:var(--amber); font-weight:700">3 [X] [X] (C) (D)</div>
+                  <div>8 (A) (B) (C) [X]</div>
+                  <div>4 (A) (B) [X] (D)</div>
+                  <div>9 [X] (B) (C) (D)</div>
+                  <div>5 [X] (B) (C) (D)</div>
+                  <div>10 (A) [X] (C) (D)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Handwriting Crop -->
+          <div class="handwriting-box">
+            <div style="font-size:9.5px; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:5px">
+              Handwritten Name Verification
+            </div>
+            <div class="hw-row">
+              <div class="hw-crop" title="Physical handwritten name snippet">D. Sarmiento</div>
+              <div class="hw-select">
+                <select>
+                  <option selected>A0231 · Sarmiento, David (STEM)</option>
+                  <option>A0232 · Andrea, Alyssa (COMM)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Duplicate Warning + Area Scores + Question Bubbles -->
+        <div class="col-data">
+          <!-- Duplicate Alert Card -->
+          <div class="dup-alert" id="dupAlertBox">
+            <div class="dup-head">
+              <span>Possible Duplicate Scan</span>
+              <span style="font-family:var(--font-mono); font-size:9px">OMR-0130-DUP</span>
+            </div>
+            <div class="dup-row">
+              <div>
+                Earlier #0128 (88%)
+                <div style="margin-top:3px"><button class="btn btn-outline btn-sm" onclick="alert('Retained earlier')">Keep Earlier</button></div>
+              </div>
+              <div style="border-left:1px solid var(--amber-border); padding-left:6px">
+                Current #0130 (98%)
+                <div style="margin-top:3px"><button class="btn btn-amber btn-sm" onclick="alert('Approved current')">Keep Current</button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Area Scores Pill Bar -->
+          <div class="scores-strip">
+            <div>General Aptitude: <span class="sc-val">20/20</span> <span class="sc-val fin">20</span></div>
+            <div>Verbal: <span class="sc-val">19/20</span> <span class="sc-val fin">19</span></div>
+            <div>Spelling: <span class="sc-val">28/30</span> <span class="sc-val fin">28</span></div>
+          </div>
+
+          <!-- Bubble Items Table -->
+          <div class="items-table-box">
+            <div class="items-table-head">
+              <span>Item Verification (60 items)</span>
+              <span style="color:var(--amber); font-family:var(--font-mono)">1 Issue</span>
+            </div>
+
+            <!-- Q1 -->
+            <div class="item-entry">
+              <span class="item-lbl">Q1 (GA)</span>
+              <div class="crop-bubbles">
+                <span class="b-dot">A</span><span class="b-dot on">B</span><span class="b-dot">C</span><span class="b-dot">D</span>
+              </div>
+              <span class="ans-badge ok">[ B ]</span>
+              <div class="fix-options">
+                <button class="fix-btn">A</button>
+                <button class="fix-btn active">B</button>
+                <button class="fix-btn">C</button>
+                <button class="fix-btn">D</button>
+              </div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="item-entry">
+              <span class="item-lbl">Q2 (GA)</span>
+              <div class="crop-bubbles">
+                <span class="b-dot on">A</span><span class="b-dot">B</span><span class="b-dot">C</span><span class="b-dot">D</span>
+              </div>
+              <span class="ans-badge ok">[ A ]</span>
+              <div class="fix-options">
+                <button class="fix-btn active">A</button>
+                <button class="fix-btn">B</button>
+                <button class="fix-btn">C</button>
+                <button class="fix-btn">D</button>
+              </div>
+            </div>
+
+            <!-- Q3 (Issue) -->
+            <div class="item-entry warn" id="itemRowQ3">
+              <span class="item-lbl" style="color:var(--amber)">Q3 (GA)</span>
+              <div class="crop-bubbles" style="border-color:var(--amber)">
+                <span class="b-dot">A</span><span class="b-dot amb">B</span><span class="b-dot amb">C</span><span class="b-dot">D</span>
+              </div>
+              <span class="ans-badge warn" id="ansBadgeQ3">[ ? ] Multi</span>
+              <div class="fix-options">
+                <button class="fix-btn" onclick="correctQ3('A')">A</button>
+                <button class="fix-btn" onclick="correctQ3('B')">B</button>
+                <button class="fix-btn" onclick="correctQ3('C')">C</button>
+                <button class="fix-btn" onclick="correctQ3('D')">D</button>
+              </div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="item-entry">
+              <span class="item-lbl">Q4 (GA)</span>
+              <div class="crop-bubbles">
+                <span class="b-dot">A</span><span class="b-dot">B</span><span class="b-dot on">C</span><span class="b-dot">D</span>
+              </div>
+              <span class="ans-badge ok">[ C ]</span>
+              <div class="fix-options">
+                <button class="fix-btn">A</button>
+                <button class="fix-btn">B</button>
+                <button class="fix-btn active">C</button>
+                <button class="fix-btn">D</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Lens Picker
+  function selectLens(btn, lens) {
+    document.querySelectorAll('.lens-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  const lenses = ['0.5x', '1x', '3x', 'Selfie'];
+  let lIdx = 1;
+  function cycleNextLens() {
+    lIdx = (lIdx + 1) % lenses.length;
+    const btns = document.querySelectorAll('.lens-pill');
+    if (btns[lIdx]) selectLens(btns[lIdx], lenses[lIdx]);
+  }
+
+  // Shutter Snap Animation
+  function takeSnapshot() {
+    const core = document.querySelector('.shutter-core');
+    core.style.background = '#48bb78';
+    setTimeout(() => { core.style.background = '#fff'; }, 150);
+  }
+
+  // Mode menu
+  function toggleModeMenu() {
+    document.getElementById('modeDropdown').classList.toggle('open');
+  }
+
+  function setModeOption(mode) {
+    const dot = document.getElementById('modeDotIndicator');
+    const label = document.getElementById('activeModeText');
+    const shutter = document.getElementById('snapBtn');
+
+    dot.className = 'mode-dot ' + (mode === 'auto' ? '' : mode);
+    label.innerText = mode.charAt(0).toUpperCase() + mode.slice(1);
+    
+    document.querySelectorAll('.mode-opt').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById('modeDropdown').classList.remove('open');
+
+    if (mode === 'batch') {
+      shutter.classList.add('batch-active');
+    } else {
+      shutter.classList.remove('batch-active');
+    }
+  }
+
+  // Mobile Screen Switching (Camera -> Gallery -> Review)
+  function goToMobileScreen(screen) {
+    document.getElementById('workbenchRoot').setAttribute('data-mobile-screen', screen);
+  }
+
+  function openReviewSheet(id, name, sub, hasIssue) {
+    document.getElementById('activeSheetBadge').innerText = '#' + id;
+    document.getElementById('activeSheetName').innerText = name;
+    document.getElementById('activeSheetSub').innerText = sub + ' · Set A';
+
+    const issueBadge = document.getElementById('activeIssueBadge');
+    const dupBox = document.getElementById('dupAlertBox');
+    if (hasIssue) {
+      issueBadge.style.display = 'inline-block';
+      dupBox.style.display = 'block';
+    } else {
+      issueBadge.style.display = 'none';
+      dupBox.style.display = 'none';
+    }
+
+    goToMobileScreen('review');
+  }
+  function selectDesktopQueueItem(id, name, sub, hasIssue) {
+    document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('active'));
+    const item = document.getElementById('qItem' + id);
+    if (item) item.classList.add('active');
+
+    document.getElementById('activeSheetBadge').innerText = '#' + id;
+    document.getElementById('activeSheetName').innerText = name;
+    document.getElementById('activeSheetSub').innerText = sub + ' · Set A';
+
+    const issueBadge = document.getElementById('activeIssueBadge');
+    const dupBox = document.getElementById('dupAlertBox');
+    if (hasIssue) {
+      issueBadge.style.display = 'inline-block';
+      dupBox.style.display = 'block';
+    } else {
+      issueBadge.style.display = 'none';
+      dupBox.style.display = 'none';
+    }
+  }
+
+  function filterGallery(btn, type) {
+    document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function correctQ3(choice) {
+    const row = document.getElementById('itemRowQ3');
+    row.classList.remove('warn');
+    const badge = document.getElementById('ansBadgeQ3');
+    badge.className = 'ans-badge ok';
+    badge.innerText = '[' + choice + ']';
+  }
+
+  // Close menus on outside click
+  window.addEventListener('click', (e) => {
+    if (!e.target.closest('.mode-wrap')) {
+      document.getElementById('modeDropdown').classList.remove('open');
+    }
+  });
+</script>
+
+</body>
+</html>

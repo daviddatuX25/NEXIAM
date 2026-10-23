@@ -2,6 +2,7 @@
 
 namespace App\Consultation\Actions;
 
+use App\Consultation\Support\ConsultationReservationEvaluator;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Consultation\ConsultationSession;
 use App\Models\User;
@@ -10,27 +11,23 @@ use RuntimeException;
 
 class OpenConsultationSessionReservation
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
+    public function __construct(
+        private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly ConsultationReservationEvaluator $evaluator,
+    ) {}
 
     public function handle(ConsultationSession $session, User $actor, int $expectedVersion, ?string $reason = null): ConsultationSession
     {
         return DB::transaction(function () use ($session, $actor, $expectedVersion, $reason): ConsultationSession {
             $session = ConsultationSession::query()->lockForUpdate()->findOrFail($session->id);
 
-            if ((int) $session->version !== $expectedVersion) {
-                throw new RuntimeException('Stale consultation session version.');
+            $preflight = $this->evaluator->evaluate($session, $expectedVersion);
+            if ($preflight->outcome === 'fail') {
+                throw new RuntimeException('Release Day session cannot open for reservation.');
             }
 
-            if (in_array($session->status, [ConsultationSession::STATUS_COMPLETED, ConsultationSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Terminal sessions cannot open for reservation.');
-            }
-
-            if ($session->isOpenForReservation()) {
+            if ($preflight->outcome === 'noop') {
                 return $session;
-            }
-
-            if ($session->room_id === null || $session->scheduled_at === null) {
-                throw new RuntimeException('Room and schedule time are required before opening reservation.');
             }
 
             $session->update([

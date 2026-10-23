@@ -3,6 +3,7 @@
 namespace App\Models\Assessment;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,18 +18,47 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OmrTemplateVerificationRun extends Model
 {
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_PREPARING_PROOF = 'preparing_proof';
+
     public const STATUS_CLEAN_RECOVERY = 'clean_recovery';
+
     public const STATUS_VARIANT_MATRIX = 'variant_matrix';
+
     public const STATUS_AWAITING_PRINT = 'awaiting_print';
+
     public const STATUS_AWAITING_CAPTURE = 'awaiting_capture';
+
     public const STATUS_ANALYZING_CAPTURE = 'analyzing_capture';
+
     public const STATUS_NEEDS_REVIEW = 'needs_review';
+
     public const STATUS_PASSED = 'passed';
+
     public const STATUS_FAILED = 'failed';
 
+    public const PHASE_QUEUED = 'queued';
+
+    public const PHASE_PREFLIGHT = 'preflight';
+
+    public const PHASE_ORIENTATION = 'orientation';
+
+    public const PHASE_LAYOUT_VERIFICATION = 'layout_verification';
+
+    public const PHASE_RECOGNITION = 'recognition';
+
+    public const PHASE_EVIDENCE_PERSISTENCE = 'evidence_persistence';
+
+    public const PHASE_AWAITING_REVIEW = 'awaiting_review';
+
+    public const PHASE_PASSED = 'passed';
+
+    public const PHASE_FAILED = 'failed';
+
     public const MODE_DIGITAL = 'digital';
+
     public const MODE_QUICK_REHEARSAL = 'quick_rehearsal';
+
     public const MODE_FULL_QUALIFICATION = 'full_qualification';
 
     /** Non-terminal statuses; exactly one active run per target (DB partial unique index). */
@@ -39,6 +69,15 @@ class OmrTemplateVerificationRun extends Model
         self::STATUS_VARIANT_MATRIX,
         self::STATUS_AWAITING_PRINT,
         self::STATUS_AWAITING_CAPTURE,
+        self::STATUS_ANALYZING_CAPTURE,
+    ];
+
+    /** Worker-owned phases eligible for heartbeat timeout finalization. */
+    public const TIMEOUT_ELIGIBLE_STATUSES = [
+        self::STATUS_QUEUED,
+        self::STATUS_PREPARING_PROOF,
+        self::STATUS_CLEAN_RECOVERY,
+        self::STATUS_VARIANT_MATRIX,
         self::STATUS_ANALYZING_CAPTURE,
     ];
 
@@ -109,6 +148,16 @@ class OmrTemplateVerificationRun extends Model
     public function challenges(): HasMany
     {
         return $this->hasMany(OmrPhysicalChallenge::class, 'run_id');
+    }
+
+    public function methods(): HasMany
+    {
+        return $this->hasMany(OmrTemplateVerificationMethod::class, 'run_id');
+    }
+
+    public function scopeWithPhysicalMethods(Builder $query): Builder
+    {
+        return $query->whereHas('methods');
     }
 
     public function isActive(): bool

@@ -9,17 +9,14 @@ use function is_array;
 use function is_int;
 use function is_string;
 use function max;
-use function min;
 
 /**
  * Versioned capture-policy contract `nexiam.omr.capture-policy.v1`.
  *
- * The frozen primitives live in `config/omr/capture-policy.php` (the
- * template-versioned configuration path); this class derives the full
- * per-version policy by binding the immutable native bundle identity (solver
- * version, native bundle hash, review-manifest hash, engine/patch identity)
- * to the frozen contract. It never duplicates fieldBlocks, bubble positions,
- * or answer-key semantics — it may only reference native geometry.
+ * template-versioned configuration path; this class derives the full
+ * per-version policy from immutable native geometry/bundle identity and the
+ * currently configured worker execution identity. It never duplicates fieldBlocks,
+ * bubble positions, or answer-key semantics — it may only reference native geometry.
  */
 final readonly class OmrCapturePolicy
 {
@@ -107,9 +104,9 @@ final readonly class OmrCapturePolicy
             'bundle_hash' => (string) $version->native_bundle_hash,
             'manifest_hash' => (string) $version->review_manifest_hash,
             'engine' => [
-                'name' => (string) $version->engine_name,
-                'commit' => (string) $version->engine_commit,
-                'patch_identity' => (string) $version->patch_identity,
+                'name' => (string) config('omr.omrchecker.engine_name', ''),
+                'commit' => (string) config('omr.omrchecker.engine_commit', ''),
+                'patch_identity' => (string) config('omr.omrchecker.patch_identity', ''),
             ],
         ]);
     }
@@ -151,6 +148,7 @@ final readonly class OmrCapturePolicy
                 'size' => (int) $markers['size'],
                 'quiet_zone' => (int) $markers['quiet_zone'],
                 'inset' => (int) $markers['inset'],
+                'insets_px' => is_array($markers['insets_px'] ?? null) ? $markers['insets_px'] : null,
                 'paper' => $markers['paper'],
                 'frame' => [$frame[0], $frame[1]],
                 'centers' => $markers['centers'],
@@ -193,7 +191,6 @@ final readonly class OmrCapturePolicy
      *
      * @param  array{0: int, 1: int}  $paper
      * @param  array{0: int, 1: int}  $frame
-     * @param  int  $inset
      */
     public static function assertQuadrantPlacement(array $paper, array $frame, int $inset): void
     {

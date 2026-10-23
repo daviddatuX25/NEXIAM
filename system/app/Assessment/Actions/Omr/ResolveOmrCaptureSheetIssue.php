@@ -11,9 +11,7 @@ use RuntimeException;
 
 final class ResolveOmrCaptureSheetIssue
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(
         OmrCaptureSheetIssue $issue,
@@ -32,13 +30,19 @@ final class ResolveOmrCaptureSheetIssue
             if ($issue->state !== 'open') {
                 return $issue;
             }
+            $isItemIssue = ($issue->question_no !== null && ! in_array($issue->issue_code, ['identity_conflict', 'identity_unresolved', 'birthdate_invalid', 'sheet_misaligned'], true))
+                || in_array($issue->issue_code, ['ambiguous_mark', 'unreadable', 'blank_mark', 'low_confidence', 'machine_uncertain'], true);
+
+            if ($isItemIssue) {
+                throw new RuntimeException('Item-level issues must be resolved through item review.');
+            }
 
             $reason = trim($reason);
             if ($reason === '') {
                 throw new RuntimeException('A resolution reason is required.');
             }
 
-            if (! in_array($resolutionCode, ['manual_review', 'manual_score_adjustment', 'abstained'], true)) {
+            if (! in_array($resolutionCode, ['manual_review', 'abstained'], true)) {
                 throw new RuntimeException('Unsupported OMR issue resolution.');
             }
 

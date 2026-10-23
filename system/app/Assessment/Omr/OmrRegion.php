@@ -13,8 +13,7 @@ final readonly class OmrRegion
         public float $y,
         public float $w,
         public float $h,
-    ) {
-    }
+    ) {}
 
     public static function fromArray(array $data): self
     {

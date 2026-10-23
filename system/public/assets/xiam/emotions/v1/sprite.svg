@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="xiam-face" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#d9f99d"/>
+      <stop offset="1" stop-color="#84cc16"/>
+    </linearGradient>
+  </defs>
+  <symbol id="idle" viewBox="0 0 128 128"><circle cx="64" cy="64" r="50" fill="url(#xiam-face)"/><circle cx="46" cy="57" r="5" fill="#172554"/><circle cx="82" cy="57" r="5" fill="#172554"/><path d="M48 78c9 6 23 6 32 0" fill="none" stroke="#172554" stroke-linecap="round" stroke-width="5"/></symbol>
+  <symbol id="hi" viewBox="0 0 128 128"><use href="#idle"/><path d="M91 45l10-18m-4 24l17-9m-21 0l3-21" fill="none" stroke="#172554" stroke-linecap="round" stroke-width="5"/></symbol>
+  <symbol id="thumbs-up" viewBox="0 0 128 128"><use href="#idle"/><path d="M91 89H76V61h15c5 0 9 4 9 9v10c0 5-4 9-9 9ZM76 65 88 37c2-5 9-4 10 2l-3 19" fill="none" stroke="#172554" stroke-linejoin="round" stroke-width="5"/></symbol>
+  <symbol id="celebrating" viewBox="0 0 128 128"><use href="#idle"/><path d="m23 28 7 10m-1-18 1 12m-11-3 12 1m73-2 9-9m-3 18 2-13m-10 7 13-1" fill="none" stroke="#172554" stroke-linecap="round" stroke-width="4"/></symbol>
+  <symbol id="star-eyes" viewBox="0 0 128 128"><circle cx="64" cy="64" r="50" fill="url(#xiam-face)"/><path d="m46 48 3 7 8 1-6 5 2 8-7-4-7 4 2-8-6-5 8-1Zm36 0 3 7 8 1-6 5 2 8-7-4-7 4 2-8-6-5 8-1Z" fill="#172554"/><path d="M48 80c9 5 23 5 32 0" fill="none" stroke="#172554" stroke-linecap="round" stroke-width="5"/></symbol>
+  <symbol id="laughing" viewBox="0 0 128 128"><use href="#idle"/><path d="M43 77c6 12 36 12 42 0" fill="#172554" stroke="#172554" stroke-linecap="round" stroke-width="4"/></symbol>
+  <symbol id="shock" viewBox="0 0 128 128"><circle cx="64" cy="64" r="50" fill="url(#xiam-face)"/><circle cx="46" cy="57" r="5" fill="#172554"/><circle cx="82" cy="57" r="5" fill="#172554"/><ellipse cx="64" cy="82" rx="9" ry="13" fill="#172554"/></symbol>
+  <symbol id="sad" viewBox="0 0 128 128"><use href="#idle"/><path d="M48 86c9-7 23-7 32 0" fill="none" stroke="#172554" stroke-linecap="round" stroke-width="5"/><path d="M45 65v10m38-10v10" stroke="#38bdf8" stroke-linecap="round" stroke-width="4"/></symbol>
+  <symbol id="angry" viewBox="0 0 128 128"><use href="#idle"/><path d="m39 49 15 6m35-6-15 6M48 82c9 6 23 6 32 0" fill="none" stroke="#172554" stroke-linecap="round" stroke-width="5"/></symbol>
+</svg>

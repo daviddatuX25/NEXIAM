@@ -1,11 +1,17 @@
 <?php
 
+use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
-use App\Models\Examination\ExamSession;
-use App\Models\Examination\ProctorDuty;
-use App\Models\Foundation\AcademicCycle;
-use App\Models\Foundation\Room;
+use App\Foundation\Actions\RecordAuditEvent;
+use App\Models\Foundation\AuditEvent;
 use App\Models\User;
+use App\Staffing\Actions\GrantTestAdministratorCapabilities;
+use App\Staffing\Actions\RevokeTestAdministratorCapabilities;
+use Database\Seeders\CapabilityCatalogSeeder;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 function taGuidanceCounselor(): User
 {
@@ -17,26 +23,7 @@ function taGuidanceClerk(): User
     return User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
 }
 
-function taCreateSession(User $actor, string $code): ExamSession
-{
-    $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
-    $room = Room::query()->where('code', 'RM-101')->firstOrFail();
-
-    test()->actingAs($actor)
-        ->post(route('exams.sessions.store'), [
-            'academic_cycle_id' => $cycle->id,
-            'room_id' => $room->id,
-            'code' => $code,
-            'date' => now()->addDays(5)->toDateString(),
-            'start_time' => '08:00',
-            'end_time' => '10:00',
-        ])
-        ->assertRedirect();
-
-    return ExamSession::query()->where('code', $code)->firstOrFail();
-}
-
-test('personnel page shows ta overlay and counselor grants then clerk assigns proctor; revoke restores', function (): void {
+test('personnel page shows TA delegation and preserves exam capability when revoked', function (): void {
     seedE2Foundation();
     $counselor = taGuidanceCounselor();
     $clerk = taGuidanceClerk();
@@ -64,39 +51,43 @@ test('personnel page shows ta overlay and counselor grants then clerk assigns pr
 
     $clerk->refresh();
     expect($clerk->getRoleNames()->contains('test_administrator'))->toBeFalse()
-        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_BOOKLET_MANAGE))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_BOOKLET_CONTENT))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::PROGRAM_QUOTA_MANAGE))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_SELECTION_MANAGE))->toBeTrue()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_FOLLOW_UP_MANAGE))->toBeTrue()
         ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_TA_DELEGATE))->toBeFalse();
 
-    $session = taCreateSession($counselor, 'EX-TA-DELEGATE');
+    $this->actingAs($clerk)
+        ->get('/setup/exam-materials/test-kits')
+        ->assertOk();
 
     $this->actingAs($clerk)
-        ->post(route('proctor-duty.assign', $session), [
-            'proctor_user_id' => User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail()->id,
-            'idempotency_key' => 'ta-delegate-proctor-1',
-        ])
-        ->assertRedirect();
+        ->get('/setup/exam-materials/booklets')
+        ->assertOk();
 
-    expect(
-        ProctorDuty::query()
-            ->where('exam_session_id', $session->id)
-            ->where('status', ProctorDuty::STATUS_ACTIVE)
-            ->exists()
-    )->toBeTrue();
+    $this->actingAs($clerk)
+        ->get('/setup/exam-materials/omr-test')
+        ->assertOk();
 
     $this->actingAs($counselor)
         ->post(route('staff.personnel.revoke-ta', $clerk))
         ->assertRedirect();
-
     $clerk->refresh();
-    expect($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_PROCTOR_ASSIGN))->toBeFalse()
+
+    expect($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG))->toBeFalse()
+        ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_BOOKLET_MANAGE))->toBeFalse()
         ->and($clerk->hasPermissionTo(CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE))->toBeTrue();
 
     $this->actingAs($clerk)
-        ->post(route('proctor-duty.assign', $session), [
-            'proctor_user_id' => User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail()->id,
-            'idempotency_key' => 'ta-delegate-proctor-2',
-        ])
+        ->get('/setup/exam-materials/test-kits')
         ->assertForbidden();
+
+    $this->actingAs($clerk)
+        ->get('/exams/monitoring')
+        ->assertOk();
 });
 
 test('hr and registrar cannot grant ta; counselor cannot grant registrar', function (): void {
@@ -142,4 +133,170 @@ test('guidance.ta.delegate stays outside the ta capability set', function (): vo
         ->toContain(CapabilityCatalog::GUIDANCE_TA_DELEGATE)
         ->and(CapabilityCatalog::roleHelperGrants()['guidance_clerk'])
         ->not->toContain(CapabilityCatalog::GUIDANCE_TA_DELEGATE);
+});
+
+test('ordinary guidance clerks and support staff cannot score or prepare results but retain scheduling', function (): void {
+    $fixture = buildGradingFixture($this);
+    $session = $fixture['session'];
+    $attempt = $fixture['attempts'][0];
+    $authorizer = app(CapabilityAuthorizer::class);
+
+    foreach ([
+        'guidance_clerk' => 'guidance.clerk@nexiam.test',
+        'guidance_support_staff' => 'guidance.support@nexiam.test',
+    ] as $role => $email) {
+        $target = User::query()->where('email', $email)->firstOrFail();
+        expect($target->hasRole($role))->toBeTrue();
+
+        expect($authorizer->decideFresh($target, CapabilityCatalog::GUIDANCE_SCORING_MANUAL)->allowed)->toBeFalse()
+            ->and($authorizer->decideFresh($target, CapabilityCatalog::GUIDANCE_RESULTS_PREPARE)->allowed)->toBeFalse()
+            ->and($authorizer->decideFresh($target, CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)->allowed)->toBeTrue();
+
+        $this->actingAs($target)->get('/scoring')->assertForbidden();
+        $this->actingAs($target)->put("/scoring/sessions/{$session->id}/attempts/{$attempt->id}/scores", [
+            'scores' => [],
+            'idempotency_key' => 'unauthorized-score-'.$role,
+        ])->assertForbidden();
+        $this->actingAs($target)->post("/release/{$attempt->id}/prepare", [])->assertForbidden();
+
+        $delegator = taGuidanceCounselor();
+        app(GrantTestAdministratorCapabilities::class)->handle($delegator, $target);
+
+        expect($authorizer->decideFresh($target->fresh(), CapabilityCatalog::GUIDANCE_SCORING_MANUAL)->allowed)->toBeTrue()
+            ->and($authorizer->decideFresh($target->fresh(), CapabilityCatalog::GUIDANCE_RESULTS_PREPARE)->allowed)->toBeTrue();
+        $this->actingAs($target->fresh())->get('/scoring')->assertOk();
+
+        app(RevokeTestAdministratorCapabilities::class)->handle($delegator, $target->fresh());
+        expect($authorizer->decideFresh($target->fresh(), CapabilityCatalog::GUIDANCE_SCORING_MANUAL)->allowed)->toBeFalse()
+            ->and($authorizer->decideFresh($target->fresh(), CapabilityCatalog::GUIDANCE_RESULTS_PREPARE)->allowed)->toBeFalse();
+        $this->actingAs($target->fresh())->get('/scoring')->assertForbidden();
+    }
+});
+
+test('capability catalog resync preserves explicit TA delegation but cannot restore role-helper scoring grants', function (): void {
+    seedE2Foundation();
+    $clerk = taGuidanceClerk();
+    $support = User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail();
+    $delegator = taGuidanceCounselor();
+    app(GrantTestAdministratorCapabilities::class)->handle($delegator, $clerk);
+    app(CapabilityCatalogSeeder::class)->run();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect($clerk->fresh()->hasDirectPermission(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeTrue()
+        ->and($clerk->fresh()->hasDirectPermission(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeTrue()
+        ->and($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeTrue()
+        ->and($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeTrue();
+
+    expect($support->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeFalse()
+        ->and($support->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeFalse();
+    app(RevokeTestAdministratorCapabilities::class)->handle($delegator, $clerk->fresh());
+    expect($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeFalse()
+        ->and($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeFalse();
+});
+
+test('scoring grant removal migration removes only the historical role grants and audits once', function (): void {
+    seedE2Foundation();
+    $clerk = taGuidanceClerk();
+    $support = User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail();
+    $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
+    $support->givePermissionTo(CapabilityCatalog::legacyTestAdministratorCapabilities());
+    $delegator = taGuidanceCounselor();
+    app(GrantTestAdministratorCapabilities::class)->handle($delegator, $clerk);
+
+    $roleIds = Role::query()
+        ->whereIn('name', ['guidance_clerk', 'guidance_support_staff'])
+        ->pluck('id');
+    $permissions = Permission::query()
+        ->whereIn('name', [CapabilityCatalog::GUIDANCE_SCORING_MANUAL, CapabilityCatalog::GUIDANCE_RESULTS_PREPARE])
+        ->pluck('id', 'name');
+    foreach ($roleIds as $roleId) {
+        foreach ($permissions as $permissionId) {
+            DB::table('role_has_permissions')->insertOrIgnore([
+                'permission_id' => $permissionId,
+                'role_id' => $roleId,
+            ]);
+        }
+    }
+    $registrar->assignRole('registrar_clerk');
+    $registrarRole = $registrar->roles()->firstOrFail();
+    DB::table('role_has_permissions')->insert([
+        'permission_id' => $permissions[CapabilityCatalog::GUIDANCE_SCORING_MANUAL],
+        'role_id' => $registrarRole->id,
+    ]);
+
+    $migration = require database_path('migrations/2026_10_19_120000_remove_default_guidance_scoring_grants.php');
+    $migration->up();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $eventCount = AuditEvent::query()
+        ->where('event_type', 'staff.guidance_default_scoring_grants_removed')
+        ->count();
+    expect($eventCount)->toBe(2)
+        ->and($clerk->fresh()->hasDirectPermission(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeTrue()
+        ->and($clerk->fresh()->hasDirectPermission(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeTrue()
+        ->and($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeTrue()
+        ->and($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeTrue()
+        ->and($clerk->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE))->toBeTrue()
+        ->and($support->fresh()->hasDirectPermission(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeTrue()
+        ->and($support->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_SCORING_MANUAL))->toBeTrue()
+        ->and($support->fresh()->hasDirectPermission(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeTrue()
+        ->and($support->fresh()->hasPermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_PREPARE))->toBeTrue();
+    foreach (CapabilityCatalog::legacyTestAdministratorCapabilities() as $capability) {
+        expect($support->fresh()->hasDirectPermission($capability))->toBeTrue();
+    }
+    expect(DB::table('role_has_permissions')
+        ->whereIn('role_id', $roleIds)
+        ->whereIn('permission_id', $permissions->values())
+        ->count())->toBe(0);
+
+    expect(DB::table('role_has_permissions')
+        ->where('role_id', $registrarRole->id)
+        ->where('permission_id', $permissions[CapabilityCatalog::GUIDANCE_SCORING_MANUAL])
+        ->exists())->toBeTrue();
+
+    $clerkRole = Role::query()->where('name', 'guidance_clerk')->firstOrFail();
+    $schedulePermissionId = Permission::query()
+        ->where('name', CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE)
+        ->value('id');
+    expect(DB::table('role_has_permissions')
+        ->where('role_id', $clerkRole->id)
+        ->where('permission_id', $schedulePermissionId)
+        ->exists())->toBeTrue();
+    $migration->up();
+    expect(AuditEvent::query()
+        ->where('event_type', 'staff.guidance_default_scoring_grants_removed')
+        ->count())->toBe($eventCount);
+});
+
+test('scoring grant migration rolls back role edges when audit recording fails', function (): void {
+    seedE2Foundation();
+    $roleIds = Role::query()
+        ->whereIn('name', ['guidance_clerk', 'guidance_support_staff'])
+        ->pluck('id');
+    $permissionIds = Permission::query()
+        ->whereIn('name', [CapabilityCatalog::GUIDANCE_SCORING_MANUAL, CapabilityCatalog::GUIDANCE_RESULTS_PREPARE])
+        ->pluck('id');
+    foreach ($roleIds as $roleId) {
+        foreach ($permissionIds as $permissionId) {
+            DB::table('role_has_permissions')->insertOrIgnore([
+                'permission_id' => $permissionId,
+                'role_id' => $roleId,
+            ]);
+        }
+    }
+
+    $this->app->instance(
+        RecordAuditEvent::class,
+        Mockery::mock(RecordAuditEvent::class)
+            ->shouldReceive('handle')
+            ->once()
+            ->andThrow(new RuntimeException('audit-failure'))
+            ->getMock(),
+    );
+    $migration = require database_path('migrations/2026_10_19_120000_remove_default_guidance_scoring_grants.php');
+
+    expect(fn () => $migration->up())->toThrow(RuntimeException::class, 'audit-failure')
+        ->and(DB::table('role_has_permissions')
+            ->whereIn('role_id', $roleIds)
+            ->whereIn('permission_id', $permissionIds)
+            ->count())->toBe($roleIds->count() * $permissionIds->count());
 });

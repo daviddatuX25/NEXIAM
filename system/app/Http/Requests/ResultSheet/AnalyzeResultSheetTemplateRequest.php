@@ -21,8 +21,8 @@ class AnalyzeResultSheetTemplateRequest extends FormRequest
         return [
             'mode' => ['sometimes', Rule::in([ResultSheetTemplate::MODE_HTML, ResultSheetTemplate::MODE_DOCX])],
             'content' => ['nullable', 'string'],
-            'document' => ['nullable', 'file', 'mimes:docx,odt', 'max:5120'],
-            'logical_unit' => ['sometimes', Rule::in([ResultSheetTemplate::LOGICAL_FULL, ResultSheetTemplate::LOGICAL_HALF_A4, ResultSheetTemplate::LOGICAL_HALF_LEGAL, ResultSheetTemplate::LOGICAL_HALF_LETTER])],
+            'document' => ['nullable', 'file', 'mimes:docx,odt', 'max:16384'],
+            'logical_unit' => ['sometimes', Rule::in([ResultSheetTemplate::LOGICAL_FULL])],
         ];
     }
 }

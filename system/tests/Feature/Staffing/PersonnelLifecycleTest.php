@@ -1,10 +1,15 @@
 <?php
 
 use App\Models\Foundation\AuditEvent;
+use App\Models\Foundation\Program;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Staffing\Actions\CreateStaffAccount;
-use App\Staffing\Actions\DeactivateStaffAccount;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use PragmaRX\Google2FA\Google2FA;
 
 test('seed creates configurable default hr account', function (): void {
     seedE2Foundation();
@@ -16,17 +21,249 @@ test('seed creates configurable default hr account', function (): void {
         ->and($hr->name)->toBe(config('seed.hr.name'));
 });
 
-test('hr can open personnel index', function (): void {
+test('hr sees canonical office options and avatar and office label projections', function (): void {
     seedE2Foundation();
     $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
-
+    $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
+    $clerk->authenticationState()->update([
+        'two_factor_secret' => null,
+        'two_factor_confirmed_at' => null,
+        'mfa_required' => false,
+    ]);
     $this->actingAs($hr)
         ->get(route('staff.personnel.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Staff/Personnel/Index')
-            ->has('users.data')
-            ->where('can_full_hr', true)
+            ->where('offices', [
+                ['value' => 'admin', 'label' => 'Admin Office'],
+                ['value' => 'registrar', 'label' => 'Registrar Office'],
+                ['value' => 'guidance', 'label' => 'Guidance Office'],
+                ['value' => 'program', 'label' => 'Academic Programs'],
+            ])
+            ->where('users.data', fn ($rows) => collect($rows)->contains(
+                fn ($row) => $row['id'] === $clerk->id
+                    && $row['office_label'] === 'Guidance Office'
+                    && $row['can_manage_user'] === true
+                    && $row['can_issue_voucher'] === true
+                    && $row['mfa_status'] === (config('ciam.mfa.enabled') ? 'pending' : 'exempt')
+                    && $row['can_require_mfa'] === true
+                    && $row['can_reset_mfa'] === false
+                    && $row['avatar'] === ['type' => 'initials', 'preset' => null, 'url' => null]
+                    && ! array_key_exists('avatar_path', $row)
+            ))
+        );
+});
+
+test('personnel index hides academic assignments for central offices and ignores their academic filters', function (): void {
+    seedE2Foundation();
+    $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
+    $program = Program::query()
+        ->where('institution_id', $hr->actorScope()->institutionId)
+        ->where('code', 'BSIT')
+        ->where('is_active', true)
+        ->with('department')
+        ->firstOrFail();
+
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data', fn ($rows) => collect($rows)
+                ->filter(fn ($row) => in_array($row['office'], ['admin', 'registrar', 'guidance'], true))
+                ->isNotEmpty()
+                && collect($rows)
+                    ->filter(fn ($row) => in_array($row['office'], ['admin', 'registrar', 'guidance'], true))
+                    ->every(fn ($row) => $row['department_code'] === null && $row['program_codes'] === []))
+        );
+
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', [
+            'office' => 'registrar',
+            'department' => $program->department?->code,
+            'program' => $program->code,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.department', null)
+            ->where('filters.program', null)
+            ->where('users.data', fn ($rows) => collect($rows)->isNotEmpty()
+                && collect($rows)->every(fn ($row) => $row['office'] === 'registrar'
+                    && $row['department_code'] === null
+                    && $row['program_codes'] === []))
+        );
+});
+
+test('ordinary personnel actor sees only own office option and valid office filters narrow results', function (): void {
+    seedE2Foundation();
+    $clerk = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
+
+    $this->actingAs($clerk)
+        ->get(route('staff.personnel.index', ['office' => 'guidance']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('offices', [['value' => 'registrar', 'label' => 'Registrar Office']])
+            ->where('filters.office', 'guidance')
+            ->where('users.data', [])
+        );
+
+    $this->actingAs($clerk)
+        ->get(route('staff.personnel.index', ['office' => 'registrar']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.office', 'registrar')
+            ->where('users.data', fn ($rows) => collect($rows)->isNotEmpty()
+                && collect($rows)->every(fn ($row) => $row['office'] === 'registrar'))
+        );
+
+    $this->actingAs($clerk)
+        ->get(route('staff.personnel.index', ['office' => ['guidance']]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.office', null)
+            ->where('users.data', fn ($rows) => collect($rows)->every(
+                fn ($row) => $row['office'] === 'registrar'
+            ))
+        );
+
+    $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', ['office' => 'guidance']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.office', 'guidance')
+            ->where('users.data', fn ($rows) => collect($rows)->isNotEmpty()
+                && collect($rows)->every(fn ($row) => $row['office'] === 'guidance'))
+        );
+});
+
+test('personnel index sorts office codes in SQL in both directions', function (): void {
+    seedE2Foundation();
+    $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
+
+    foreach (['asc', 'desc'] as $direction) {
+        $this->actingAs($hr)
+            ->get(route('staff.personnel.index', ['sort' => 'office', 'dir' => $direction]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.sort', 'office')
+                ->where('filters.dir', $direction)
+                ->where('users.data', function ($rows) use ($direction): bool {
+                    $offices = collect($rows)->pluck('office')->filter(fn ($office) => $office !== null)->values()->all();
+                    $expected = $offices;
+                    sort($expected);
+                    if ($direction === 'desc') {
+                        $expected = array_reverse($expected);
+                    }
+
+                    return $offices === $expected;
+                })
+            );
+    }
+});
+
+test('personnel index filters by department and program and sorts by program', function (): void {
+    seedE2Foundation();
+    $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
+    $program = Program::query()
+        ->where('institution_id', $hr->actorScope()->institutionId)
+        ->where('code', 'BSIT')
+        ->where('is_active', true)
+        ->with('department')
+        ->firstOrFail();
+    $departmentCode = $program->department?->code;
+    $departmentName = $program->department?->name;
+
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', ['program' => $program->code]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('departments', fn ($options) => collect($options)->contains([
+                'value' => $departmentCode,
+                'label' => "{$departmentCode} — {$departmentName}",
+            ]))
+            ->where('programs', fn ($options) => collect($options)->contains([
+                'value' => $program->code,
+                'label' => "{$program->code} — {$program->name}",
+                'department_code' => $departmentCode,
+            ]))
+            ->where('filters.program', $program->code)
+            ->where('filters.department', null)
+            ->where('users.data', fn ($rows) => collect($rows)->isNotEmpty()
+                && collect($rows)->every(fn ($row) => in_array($program->code, $row['program_codes'], true)
+                    && $row['department_code'] === $departmentCode))
+        );
+
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', ['department' => $departmentCode]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.department', $departmentCode)
+            ->where('filters.program', null)
+            ->where('users.data', fn ($rows) => collect($rows)->isNotEmpty()
+                && collect($rows)->every(fn ($row) => $row['department_code'] === $departmentCode))
+        );
+
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', ['sort' => 'program']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.sort', 'program')
+            ->where('users.data', function ($rows): bool {
+                $programCodes = collect($rows)
+                    ->map(fn ($row) => json_encode($row['program_codes'], JSON_THROW_ON_ERROR))
+                    ->all();
+                $expected = $programCodes;
+                sort($expected);
+
+                return $programCodes === $expected;
+            })
+        );
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', ['department' => 'UNKNOWN', 'program' => 'UNKNOWN']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.department', null)
+            ->where('filters.program', null)
+        );
+
+});
+
+test('personnel index projects saved preset and uploaded avatars without exposing media paths', function (): void {
+    seedE2Foundation();
+    Storage::fake('public');
+    $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
+    $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
+    $support = User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail();
+    Storage::disk('public')->put('staff-avatars/personnel-test.png', 'avatar-bytes');
+    StaffProfile::query()->where('user_id', $clerk->id)->update([
+        'avatar_type' => 'preset',
+        'avatar_preset' => 'guidance_clerk',
+    ]);
+    StaffProfile::query()->where('user_id', $support->id)->update([
+        'avatar_type' => 'upload',
+        'avatar_preset' => null,
+        'avatar_path' => 'staff-avatars/personnel-test.png',
+    ]);
+
+    $this->actingAs($hr)
+        ->get(route('staff.personnel.index', ['office' => 'guidance']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data', fn ($rows) => collect($rows)->contains(
+                fn ($row) => $row['id'] === $clerk->id
+                    && $row['avatar'] === ['type' => 'preset', 'preset' => 'guidance_clerk', 'url' => null]
+                    && ! array_key_exists('avatar_path', $row)
+            ))
+            ->where('users.data', fn ($rows) => collect($rows)->contains(
+                fn ($row) => $row['id'] === $support->id
+                    && $row['avatar'] === [
+                        'type' => 'upload',
+                        'preset' => null,
+                        'url' => Storage::disk('public')->url('staff-avatars/personnel-test.png'),
+                    ]
+                    && ! array_key_exists('avatar_path', $row)
+            ))
         );
 });
 
@@ -84,8 +321,6 @@ test('hr can create staff within ceiling', function (): void {
         ->post(route('staff.personnel.store'), [
             'name' => 'New Clerk',
             'email' => 'new.clerk@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
             'roles' => ['registrar_clerk'],
             'office' => 'registrar',
         ])
@@ -93,7 +328,9 @@ test('hr can create staff within ceiling', function (): void {
 
     $created = User::query()->where('email', 'new.clerk@nexiam.test')->firstOrFail();
     expect($created->hasRole('registrar_clerk'))->toBeTrue()
-        ->and($created->staffProfile?->status)->toBe(StaffProfile::STATUS_ACTIVE);
+        ->and($created->staffProfile?->status)->toBe(StaffProfile::STATUS_ACTIVE)
+        ->and($created->authenticationState->activation_completed_at)->toBeNull()
+        ->and(Hash::check('Password1', $created->password))->toBeFalse();
 
     expect(AuditEvent::query()->where('event_type', 'hr.staff.created')->exists())->toBeTrue();
 });
@@ -106,8 +343,6 @@ test('hr cannot assign forbidden role helpers via api', function (): void {
         ->post(route('staff.personnel.store'), [
             'name' => 'Bad Role',
             'email' => 'bad.role@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
             'roles' => ['proctor'],
             'office' => 'guidance',
         ])
@@ -124,8 +359,6 @@ test('hr cannot pick support staff role from permanent checklist', function (): 
         ->post(route('staff.personnel.store'), [
             'name' => 'Bad Support Pick',
             'email' => 'bad.support@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
             'account_type' => 'permanent',
             'roles' => ['guidance_support_staff'],
             'office' => 'guidance',
@@ -143,16 +376,16 @@ test('hr can create support staff via office-derived account type', function ():
         ->post(route('staff.personnel.store'), [
             'name' => 'Hr Support',
             'email' => 'hr.support@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
             'account_type' => 'support',
             'office' => 'guidance',
         ])
         ->assertRedirect(route('staff.personnel.index'));
-
     $created = User::query()->where('email', 'hr.support@nexiam.test')->firstOrFail();
+
     expect($created->hasRole('guidance_support_staff'))->toBeTrue()
-        ->and($created->staffProfile?->office)->toBe('guidance');
+        ->and($created->staffProfile?->office)->toBe('guidance')
+        ->and($created->authenticationState->activation_completed_at)->toBeNull()
+        ->and(Hash::check('Password1', $created->password))->toBeFalse();
 });
 
 test('registrar admin creates registrar support with office-derived role and coerced office', function (): void {
@@ -163,30 +396,30 @@ test('registrar admin creates registrar support with office-derived role and coe
         ->post(route('staff.personnel.store'), [
             'name' => 'Reg Support',
             'email' => 'reg.support@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
             'office' => 'registrar',
         ])
         ->assertRedirect(route('staff.personnel.index'));
-
     $created = User::query()->where('email', 'reg.support@nexiam.test')->firstOrFail();
+
     expect($created->hasRole('registrar_support_staff'))->toBeTrue()
-        ->and($created->staffProfile?->office)->toBe('registrar');
+        ->and($created->staffProfile?->office)->toBe('registrar')
+        ->and($created->authenticationState->activation_completed_at)->toBeNull()
+        ->and(Hash::check('Password1', $created->password))->toBeFalse();
 
     // Office actors cannot target another office — the office is coerced server-side.
     $this->actingAs($admin)
         ->post(route('staff.personnel.store'), [
             'name' => 'Cross Office',
             'email' => 'cross.office@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
             'office' => 'guidance',
         ])
         ->assertRedirect(route('staff.personnel.index'));
-
     $coerced = User::query()->where('email', 'cross.office@nexiam.test')->firstOrFail();
+
     expect($coerced->hasRole('registrar_support_staff'))->toBeTrue()
-        ->and($coerced->staffProfile?->office)->toBe('registrar');
+        ->and($coerced->staffProfile?->office)->toBe('registrar')
+        ->and($coerced->authenticationState->activation_completed_at)->toBeNull()
+        ->and(Hash::check('Password1', $coerced->password))->toBeFalse();
 });
 
 test('registrar clerk can create registrar support staff', function (): void {
@@ -206,14 +439,14 @@ test('registrar clerk can create registrar support staff', function (): void {
         ->post(route('staff.personnel.store'), [
             'name' => 'Clerk Support',
             'email' => 'clerk.support@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
         ])
         ->assertRedirect(route('staff.personnel.index'));
-
     $created = User::query()->where('email', 'clerk.support@nexiam.test')->firstOrFail();
+
     expect($created->hasRole('registrar_support_staff'))->toBeTrue()
-        ->and($created->staffProfile?->office)->toBe('registrar');
+        ->and($created->staffProfile?->office)->toBe('registrar')
+        ->and($created->authenticationState->activation_completed_at)->toBeNull()
+        ->and(Hash::check('Password1', $created->password))->toBeFalse();
 });
 
 test('guidance clerk can create guidance support staff', function (): void {
@@ -224,14 +457,14 @@ test('guidance clerk can create guidance support staff', function (): void {
         ->post(route('staff.personnel.store'), [
             'name' => 'Guide Support',
             'email' => 'guide.support@nexiam.test',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
         ])
         ->assertRedirect(route('staff.personnel.index'));
-
     $created = User::query()->where('email', 'guide.support@nexiam.test')->firstOrFail();
+
     expect($created->hasRole('guidance_support_staff'))->toBeTrue()
-        ->and($created->staffProfile?->office)->toBe('guidance');
+        ->and($created->staffProfile?->office)->toBe('guidance')
+        ->and($created->authenticationState->activation_completed_at)->toBeNull()
+        ->and(Hash::check('Password1', $created->password))->toBeFalse();
 });
 
 test('office actor cannot reassign roles via update', function (): void {
@@ -243,7 +476,6 @@ test('office actor cannot reassign roles via update', function (): void {
         ->put(route('staff.personnel.update', $support), [
             'name' => 'Renamed Support',
             'email' => 'guidance.support@nexiam.test',
-            'password' => '',
             'roles' => ['guidance_clerk'],
         ])
         ->assertRedirect(route('staff.personnel.index'));
@@ -258,6 +490,16 @@ test('deactivate blocks staff login and activate restores', function (): void {
     seedE2Foundation();
     $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
     $clerk = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
+    $clerk->authenticationState->forceFill([
+        'activation_completed_at' => now(),
+        'password_set_at' => now(),
+        'must_change_password' => false,
+        'mfa_required' => true,
+        'mfa_exempt' => false,
+        'two_factor_secret' => 'JBSWY3DPEHPK3PXP',
+        'two_factor_confirmed_at' => now(),
+        'two_factor_generation' => (string) Str::uuid(),
+    ])->save();
 
     $this->actingAs($hr)
         ->post(route('staff.personnel.deactivate', $clerk))
@@ -265,7 +507,8 @@ test('deactivate blocks staff login and activate restores', function (): void {
 
     expect($clerk->fresh()->staffProfile?->status)->toBe(StaffProfile::STATUS_INACTIVE);
 
-    $this->post('/logout');
+    Auth::guard('web')->logout();
+    $this->flushSession();
 
     $this->post('/login', [
         'email' => 'registrar.clerk@nexiam.test',
@@ -280,15 +523,23 @@ test('deactivate blocks staff login and activate restores', function (): void {
 
     $this->post('/logout');
     $this->assertGuest();
+    Auth::guard('web')->logout();
+    $this->flushSession();
 
-    $this->post('/login', [
+    $loginRes = $this->post('/login', [
         'email' => 'registrar.clerk@nexiam.test',
         'password' => 'password',
-    ])->assertRedirect();
-
+    ]);
+    if (config('ciam.mfa.enabled')) {
+        $loginRes->assertRedirect('/two-factor-challenge');
+        $secret = $clerk->fresh()->authenticationState?->two_factor_secret;
+        $otp = (new Google2FA)->getCurrentOtp((string) $secret);
+        $this->post('/two-factor-challenge', ['code' => $otp])->assertRedirect('/staff');
+    } else {
+        $loginRes->assertRedirect('/staff');
+    }
     $this->assertAuthenticatedAs($clerk->fresh());
 });
-
 test('cannot deactivate own account', function (): void {
     seedE2Foundation();
     $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
@@ -306,27 +557,28 @@ test('create staff account command enforces ceiling', function (): void {
         $admin,
         'Nope',
         'nope@nexiam.test',
-        'Password1',
         ['hr_administrator'],
-        'hr',
+        'admin',
         (int) $admin->actorScope()->institutionId,
     ))->toThrow(RuntimeException::class);
 });
 
-test('password confirmation required on create', function (): void {
+test('staff creation prohibits a caller-supplied password', function (): void {
     seedE2Foundation();
     $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
 
     $this->actingAs($hr)
         ->post(route('staff.personnel.store'), [
-            'name' => 'No Confirm',
+            'name' => 'Password Injection Attempt',
             'email' => 'noconfirm@nexiam.test',
             'password' => 'Password1',
-            'password_confirmation' => 'Different1',
+            'password_confirmation' => 'Password1',
             'roles' => ['registrar_clerk'],
             'office' => 'registrar',
         ])
         ->assertSessionHasErrors('password');
+
+    expect(User::query()->where('email', 'noconfirm@nexiam.test')->exists())->toBeFalse();
 });
 
 test('guidance clerk cannot edit or deactivate the guidance counselor (higher rank)', function (): void {
@@ -369,6 +621,23 @@ test('guidance clerk cannot manage a peer guidance clerk', function (): void {
         ->assertSessionHasErrors('deactivate');
 });
 
+test('HR support edit derives the office role when the roles field is omitted', function (): void {
+    seedE2Foundation();
+    $hr = User::query()->where('email', config('seed.hr.email'))->firstOrFail();
+    $support = User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail();
+
+    $this->actingAs($hr)
+        ->put(route('staff.personnel.update', $support), [
+            'name' => $support->name,
+            'email' => $support->email,
+            'office' => 'registrar',
+        ])
+        ->assertRedirect(route('staff.personnel.index'));
+
+    expect($support->fresh()->staffProfile?->office)->toBe('registrar')
+        ->and($support->fresh()->getRoleNames()->all())->toBe(['registrar_support_staff']);
+});
+
 test('guidance clerk can edit and deactivate guidance support staff (lower rank)', function (): void {
     seedE2Foundation();
     $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
@@ -385,43 +654,23 @@ test('guidance clerk can edit and deactivate guidance support staff (lower rank)
     expect($support->fresh()->staffProfile?->status)->toBe(StaffProfile::STATUS_INACTIVE);
 });
 
-test('guidance clerk cannot reset a support staff password (HR or office lead only)', function (): void {
+test('directory updates prohibit password injection even for authorized managers', function (): void {
     seedE2Foundation();
     $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
-    $support = User::query()->where('email', 'guidance.support@nexiam.test')->firstOrFail();
+    $support = $clerk;
+    $counselor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+    $password = $clerk->password;
 
-    $this->actingAs($clerk)
+    $this->actingAs($counselor)
         ->put(route('staff.personnel.update', $support), [
             'name' => 'Renamed Support',
             'email' => 'guidance.support@nexiam.test',
             'password' => 'NewPass123',
             'password_confirmation' => 'NewPass123',
         ])
-        ->assertSessionHasErrors('roles');
-});
+        ->assertSessionHasErrors('password');
 
-test('guidance counselor can reset a guidance clerk password (own office, lower rank)', function (): void {
-    seedE2Foundation();
-    $counselor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
-    $clerk = User::query()->where('email', 'guidance.clerk@nexiam.test')->firstOrFail();
-
-    $this->actingAs($counselor)
-        ->put(route('staff.personnel.update', $clerk), [
-            'name' => $clerk->name,
-            'email' => 'guidance.clerk@nexiam.test',
-            'password' => 'NewPass123',
-            'password_confirmation' => 'NewPass123',
-        ])
-        ->assertRedirect(route('staff.personnel.index'));
-
-    $this->post('/logout');
-
-    $this->post('/login', [
-        'email' => 'guidance.clerk@nexiam.test',
-        'password' => 'NewPass123',
-    ])->assertRedirect();
-
-    $this->assertAuthenticatedAs($clerk->fresh());
+    expect($clerk->fresh()->password)->toBe($password);
 });
 
 test('registrar clerk cannot edit or deactivate the registrar admin (higher rank)', function (): void {

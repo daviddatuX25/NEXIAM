@@ -17,7 +17,7 @@ use App\Models\User;
  *   available: bool,
  *   reason: string|null,
  *   attempt: array{id: int, reference_code: string|null, status: string}|null,
- *   schedule: array{page_state: string, summary: string}|null,
+ *   schedule: array{page_state: string, summary: string, has_assigned_seat_instruction: bool}|null,
  *   results: array{released: bool, summary: string|null}
  * }
  */
@@ -91,7 +91,7 @@ final class ApplicantOwnDataProjector
     }
 
     /**
-     * @return array{page_state: string, summary: string}
+     * @return array{page_state: string, summary: string, has_assigned_seat_instruction: bool}
      */
     private function scheduleSummary(AdmissionAttempt $attempt): array
     {
@@ -99,12 +99,13 @@ final class ApplicantOwnDataProjector
             return [
                 'page_state' => 'pending_acceptance',
                 'summary' => 'Exam scheduling opens after your application is accepted.',
+                'has_assigned_seat_instruction' => false,
             ];
         }
 
         $assignment = ExamAssignment::query()
             ->active()
-            ->with(['examSession.room:id,code,name'])
+            ->with(['examSession.room:id,code,name', 'examSession.currentMaterialSnapshot', 'activeSeatAllocation.sessionSeat'])
             ->where('admission_attempt_id', $attempt->id)
             ->first();
 
@@ -115,6 +116,15 @@ final class ApplicantOwnDataProjector
                 ExamSession::STATUS_IN_PROGRESS,
                 ExamSession::STATUS_COMPLETED,
             ], true);
+            $snapshot = $session?->currentMaterialSnapshot;
+            $allocation = $assignment->activeSeatAllocation;
+            $seat = $allocation?->sessionSeat;
+            $hasAssignedSeatInstruction = $snapshot?->is_current
+                && $snapshot->seating_mode === ExamSession::SEATING_MODE_ASSIGNED_SEATING
+                && (int) $snapshot->exam_session_id === (int) $session->id
+                && $allocation !== null && $allocation->effective_to === null
+                && (int) $allocation->exam_assignment_id === (int) $assignment->id
+                && $seat !== null && (int) $seat->material_snapshot_id === (int) $snapshot->id;
 
             $when = $session?->starts_at?->toDayDateTimeString() ?? 'scheduled time';
             $room = $session?->room?->name ?: ($session?->room?->code ?? 'room TBA');
@@ -122,8 +132,9 @@ final class ApplicantOwnDataProjector
             return [
                 'page_state' => $published ? 'assigned_published' : 'assigned_unpublished',
                 'summary' => $published
-                    ? "Your exam seat is confirmed for {$when} ({$room})."
+                    ? "Your exam slot is confirmed for {$when} ({$room})."
                     : 'You are assigned to a session. Staff will publish the schedule when ready.',
+                'has_assigned_seat_instruction' => $hasAssignedSeatInstruction,
             ];
         }
 
@@ -137,12 +148,14 @@ final class ApplicantOwnDataProjector
             return [
                 'page_state' => 'waiting_for_reservation_open',
                 'summary' => 'No reservation window is open yet. Check back after Guidance opens booking.',
+                'has_assigned_seat_instruction' => false,
             ];
         }
 
         return [
             'page_state' => 'reservation_open',
-            'summary' => 'Reservation is open. Choose a seat on the ordinary Schedule page.',
+            'summary' => 'Reservation is open. Choose an available exam slot on the ordinary Schedule page.',
+            'has_assigned_seat_instruction' => false,
         ];
     }
 

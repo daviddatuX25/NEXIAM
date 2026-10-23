@@ -2,6 +2,7 @@
 
 namespace App\Application\Capabilities;
 
+use App\Ai\Context\InvocationContext;
 use Illuminate\Contracts\Auth\Authenticatable;
 
 /**
@@ -21,5 +22,7 @@ final readonly class CapabilityInvocationRequest
         public ?string $surfaceKey = null,
         public ?string $pagePackKey = null,
         public ?string $correlationId = null,
+        public ?InvocationContext $context = null,
+        public bool $serverConfirmed = false,
     ) {}
 }

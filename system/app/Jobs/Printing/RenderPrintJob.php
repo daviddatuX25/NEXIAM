@@ -6,11 +6,13 @@ use App\Assessment\Omr\NativeBundle;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Printing\PrintJob;
-use App\Models\Release\ResultRelease;
 use App\Printing\BundleRenderer;
 use App\Printing\PrintRenderer;
-use App\ResultSheet\Rendering\AllItemsFailedException;
-use App\ResultSheet\Rendering\ResultSheetArtifactRenderer;
+use App\ResultSheet\Pipeline\AssemblePrintJob;
+use App\ResultSheet\Pipeline\FillAndConvertJob;
+use App\ResultSheet\Rendering\DocxMerger;
+use App\ResultSheet\Rendering\PdfMerger;
+use App\ResultSheet\Rendering\PreparedResultDocumentRenderer;
 use App\Support\SensitiveAssetStore;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -64,39 +66,44 @@ final class RenderPrintJob implements ShouldQueue
             return;
         }
 
+        if ($job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET) {
+            $job->update(['status' => PrintJob::STATUS_RENDERING]);
+            $container = app();
+
+            foreach ($job->items()->orderBy('item_index')->get() as $item) {
+                (new FillAndConvertJob($item->id))->handle(
+                    $container->make(PreparedResultDocumentRenderer::class),
+                    $container->make(SensitiveAssetStore::class),
+                );
+            }
+
+            (new AssemblePrintJob($job->id))->handle(
+                $container->make(PdfMerger::class),
+                $container->make(DocxMerger::class),
+                $container->make(SensitiveAssetStore::class),
+                $container->make(RecordAuditEvent::class),
+            );
+
+            return;
+        }
+
         $job->update(['status' => PrintJob::STATUS_RENDERING]);
 
         try {
-            [$bytes, $manifest] = $this->renderArtifact($job, $renderer);
+            $payload = $this->renderPayload($job);
+            $bytes = $renderer->render($payload['html'], $payload['options']);
             $checksum = hash('sha256', $bytes);
-
             $path = 'print-jobs/'.$job->id.'/'.$checksum.'.pdf';
-            $sensitive = $job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET;
+            Storage::disk('local')->put($path, $bytes);
 
-            if ($sensitive) {
-                $assetStore->store($bytes, $path);
-            } else {
-                Storage::disk('local')->put($path, $bytes);
-            }
-
-            $updates = [
+            $job->update([
                 'status' => PrintJob::STATUS_READY,
                 'file_path' => $path,
                 'file_checksum' => $checksum,
                 'safe_error' => null,
                 'progress_done' => $job->progress_total,
                 'completed_at' => now(),
-            ];
-
-            if ($manifest !== null) {
-                $updates['per_item_manifest'] = $manifest;
-            }
-
-            $job->update($updates);
-
-            if ($job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET) {
-                $this->markPrinted($job);
-            }
+            ]);
 
             $recordAuditEvent->handle('printing.job_ready', [
                 'print_job_id' => $job->id,
@@ -106,19 +113,11 @@ final class RenderPrintJob implements ShouldQueue
             ], (string) ($job->requested_by_user_id ?? 'system'));
         } catch (Throwable $exception) {
             $safeError = $this->safeError($exception);
-            $updates = [
+            $job->update([
                 'status' => PrintJob::STATUS_FAILED,
                 'safe_error' => $safeError,
                 'completed_at' => now(),
-            ];
-
-            if ($job->per_item_manifest !== null) {
-                $updates['per_item_manifest'] = $job->per_item_manifest;
-            } elseif ($exception instanceof AllItemsFailedException) {
-                $updates['per_item_manifest'] = $exception->manifest;
-            }
-
-            $job->update($updates);
+            ]);
 
             $recordAuditEvent->handle('printing.job_failed', [
                 'print_job_id' => $job->id,
@@ -132,46 +131,6 @@ final class RenderPrintJob implements ShouldQueue
     }
 
     /**
-     * Dispatch to the artifact renderer for this job type. Blank sheets use
-     * the prepared-HTML path through the PrintRenderer interface; result
-     * sheets produce PDF bytes directly through ResultSheetArtifactRenderer
-     * (with a per-item manifest). Returns bytes + optional manifest.
-     *
-     * @return array{0: string, 1: array<int, array<string, mixed>>|null}
-     */
-    private function renderArtifact(PrintJob $job, PrintRenderer $renderer): array
-    {
-        if ($job->artifact_type === PrintJob::ARTIFACT_RESULT_SHEET) {
-            $result = app(ResultSheetArtifactRenderer::class)->render($job);
-
-            return [$result['bytes'], $result['manifest']];
-        }
-
-        $payload = $this->renderPayload($job);
-
-        return [$renderer->render($payload['html'], $payload['options']), null];
-    }
-
-    /**
-     * Set result_printed_at idempotently (only where still null) on the pinned
-     * release records once a result-sheet artifact is ready.
-     */
-    private function markPrinted(PrintJob $job): void
-    {
-        $pinned = is_array($job->pinned_input_json) ? $job->pinned_input_json : [];
-        $releaseIds = array_map('intval', $pinned['release_ids'] ?? []);
-
-        if ($releaseIds === []) {
-            return;
-        }
-
-        ResultRelease::query()
-            ->whereIn('id', $releaseIds)
-            ->whereNull('result_printed_at')
-            ->update(['result_printed_at' => now()]);
-    }
-
-    /**
      * @return array{html: string, options: array<string, mixed>}
      */
     private function renderPayload(PrintJob $job): array
@@ -181,21 +140,25 @@ final class RenderPrintJob implements ShouldQueue
         if ($job->artifact_type === PrintJob::ARTIFACT_BLANK_SHEET) {
             $versionId = (int) ($pinned['template_version_id'] ?? 0);
             $templateVersion = $versionId > 0
-                ? OmrAnswerSheetTemplateVersion::find($versionId)
+                ? OmrAnswerSheetTemplateVersion::query()->with('template')->find($versionId)
                 : null;
 
-            $templateJson = is_array($templateVersion?->native_bundle_json) && isset($templateVersion->native_bundle_json['template'])
-                ? $templateVersion->native_bundle_json['template']
-                : null;
-
-            if ($templateJson === null) {
-                $bundle = NativeBundle::load(
-                    (string) ($pinned['bundle_code'] ?? 'SYN-OMR-ONE-PAGE'),
-                    (int) ($pinned['bundle_version'] ?? 1),
-                );
-                $templateJson = $bundle->template;
+            if ($templateVersion === null
+                || (int) $templateVersion->template_id !== (int) ($pinned['template_id'] ?? 0)
+                || (int) $templateVersion->template?->institution_id !== (int) ($pinned['institution_id'] ?? 0)
+                || (int) $templateVersion->version !== (int) ($pinned['bundle_version'] ?? 0)
+                || (string) $templateVersion->template?->code !== (string) ($pinned['bundle_code'] ?? '')
+                || ! is_string($templateVersion->native_bundle_hash)
+                || ! is_string($pinned['bundle_hash'] ?? null)
+                || ! hash_equals($templateVersion->native_bundle_hash, $pinned['bundle_hash'])) {
+                throw new RuntimeException('OMR native bundle version pin is missing or does not match its owner.');
             }
 
+            $bundle = NativeBundle::loadForVersion($templateVersion);
+            if (! hash_equals($pinned['bundle_hash'], $bundle->bundleHash)) {
+                throw new RuntimeException('OMR native bundle hash differs from the queued version pin.');
+            }
+            $templateJson = $bundle->template;
             $renderer = app(BundleRenderer::class);
             $paper = $renderer->paper();
 

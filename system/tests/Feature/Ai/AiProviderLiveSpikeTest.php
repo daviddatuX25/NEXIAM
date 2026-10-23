@@ -2,12 +2,12 @@
 
 use App\Ai\Adapters\Fake\FakeAiGateway;
 use App\Ai\Adapters\LaravelAi\LaravelAiGateway;
-use App\Ai\Adapters\LaravelAi\NexiInquiryAgent;
+use App\Ai\Adapters\LaravelAi\XiamInquiryAgent;
 use App\Ai\Contracts\AiGateway;
 use Illuminate\Support\Str;
 
 test('default AiGateway binding remains FakeAiGateway', function (): void {
-    config(['nexi.ai.gateway' => 'fake']);
+    config(['xiam.ai.gateway' => 'fake']);
     app()->forgetInstance(AiGateway::class);
 
     expect(app(AiGateway::class))->toBeInstanceOf(FakeAiGateway::class);
@@ -15,8 +15,8 @@ test('default AiGateway binding remains FakeAiGateway', function (): void {
 
 test('laravel gateway health degrades without API key', function (): void {
     config([
-        'nexi.ai.gateway' => 'laravel',
-        'nexi.ai.provider' => 'openai',
+        'xiam.ai.gateway' => 'laravel',
+        'xiam.ai.provider' => 'openai',
         'ai.providers.openai.key' => '',
     ]);
 
@@ -37,12 +37,12 @@ test('laravel gateway health degrades without API key', function (): void {
 
 test('laravel adapter streams NEXIAM chunk DTOs under Agent fake', function (): void {
     config([
-        'nexi.ai.gateway' => 'laravel',
-        'nexi.ai.provider' => 'openai',
+        'xiam.ai.gateway' => 'laravel',
+        'xiam.ai.provider' => 'openai',
         'ai.providers.openai.key' => '',
     ]);
 
-    NexiInquiryAgent::fake([
+    XiamInquiryAgent::fake([
         'Synthetic spike reply about setup readiness.',
     ]);
 
@@ -74,8 +74,8 @@ test('laravel adapter streams NEXIAM chunk DTOs under Agent fake', function (): 
     expect($assembled)->toContain('Synthetic spike reply');
 });
 
-test('nexi inquiry agent declares no mutation tools in this cut', function (): void {
-    $agent = new NexiInquiryAgent;
+test('xiam inquiry agent declares no mutation tools in this cut', function (): void {
+    $agent = new XiamInquiryAgent;
     expect(method_exists($agent, 'tools'))->toBeFalse()
         ->and($agent->instructions())->toBeString()
         ->and($agent->instructions())->toContain('Inquiry');

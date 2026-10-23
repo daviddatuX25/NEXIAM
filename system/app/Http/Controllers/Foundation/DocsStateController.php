@@ -47,6 +47,7 @@ final class DocsStateController extends Controller
                         ->where('page', $page)
                         ->where('key', $entry['key'])
                         ->delete();
+
                     continue;
                 }
 

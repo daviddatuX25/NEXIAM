@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "source_sha256": "de0f2a7bc1199fc4eea5c90a3c864c61de546409a1fa4f1984c6c4148670cc33",
+  "acceptance_protocol_schema_version": "test-kit-acceptance-protocol-v1",
+  "acceptance_protocol_sha256": "e2be57fa029e14e3b3660cd7197d3159072abbc325de139ecb1e2d43cb2127c5",
+  "reviewer_reference": "tests/Fixtures/TestKit/two-item-count-v1.review.md",
+  "reviewer_name": "KitCriticalResume (AI software reviewer)",
+  "decision": "accepted"
+}

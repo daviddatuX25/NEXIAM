@@ -6,8 +6,8 @@ use App\Admission\Support\ApplicantScope;
 use App\Examination\Queries\ApplicantSlotCalendar;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Examination\ExamAssignment;
+use App\Models\Examination\ExamSession;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * exams.slots.list@1 — OWN-scope read for the applicant slot skill (Slice 9).
@@ -17,17 +17,14 @@ use Illuminate\Support\Facades\Auth;
  */
 final class ExamSlotsListHandler
 {
-    public function __construct(private readonly ApplicantSlotCalendar $calendar)
-    {
-    }
+    public function __construct(private readonly ApplicantSlotCalendar $calendar) {}
 
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public function handle(array $input = []): array
+    public function handle(array $input = [], ?User $actor = null): array
     {
-        $actor = Auth::user();
         if (! $actor instanceof User) {
             return ['mode' => 'denied', 'reason' => 'unauthenticated'];
         }
@@ -60,9 +57,9 @@ final class ExamSlotsListHandler
         if ($assignment !== null) {
             $session = $assignment->examSession;
             $published = in_array($session?->status, [
-                \App\Models\Examination\ExamSession::STATUS_PUBLISHED,
-                \App\Models\Examination\ExamSession::STATUS_IN_PROGRESS,
-                \App\Models\Examination\ExamSession::STATUS_COMPLETED,
+                ExamSession::STATUS_PUBLISHED,
+                ExamSession::STATUS_IN_PROGRESS,
+                ExamSession::STATUS_COMPLETED,
             ], true);
 
             return [

@@ -3,23 +3,26 @@
 namespace App\Http\Controllers\Applicant;
 
 use App\Admission\Support\ApplicantScope;
+use App\Examination\Actions\ChangeApplicantExamSlot;
+use App\Examination\Actions\ReconcileOverdueExamSessions;
 use App\Examination\Actions\ReserveExamSlot;
 use App\Examination\Queries\ApplicantSlotCalendar;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Examination\SwitchExamSlotRequest;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Examination\ExamAssignment;
+use App\Models\Examination\ExamAttendanceRecord;
 use App\Models\Examination\ExamSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 
 class ApplicantScheduleController extends Controller
 {
-    public function __construct(private readonly ApplicantSlotCalendar $calendar)
-    {
-    }
+    public function __construct(private readonly ApplicantSlotCalendar $calendar) {}
 
     public function show(Request $request): Response
     {
@@ -66,9 +69,36 @@ class ApplicantScheduleController extends Controller
 
         $assignment = ExamAssignment::query()
             ->active()
-            ->with(['examSession.room:id,code,name'])
+            ->with([
+                'examSession.room:id,code,name,building_name,floor_level,directions_hint,photo_path,latitude,longitude',
+                'examSession.currentLogisticsPlan',
+                'examSession.currentMaterialSnapshot',
+                'activeSeatAllocation.sessionSeat',
+                'activeLogisticsSeatAllocation.seat',
+                'attendanceRecord',
+                'submissionRecord',
+            ])
             ->where('admission_attempt_id', $attempt->id)
+            ->latest('id')
             ->first();
+
+        if ($assignment !== null && $assignment->examSession !== null) {
+            $reconciledSession = app(ReconcileOverdueExamSessions::class)->reconcileSessionIfOverdue($assignment->examSession);
+            if ($reconciledSession->status !== $assignment->examSession->status) {
+                $assignment = $assignment->fresh([
+                    'examSession.room:id,code,name,building_name,floor_level,directions_hint,photo_path,latitude,longitude',
+                    'examSession.currentLogisticsPlan',
+                    'examSession.currentMaterialSnapshot',
+                    'activeSeatAllocation.sessionSeat',
+                    'activeLogisticsSeatAllocation.seat',
+                    'attendanceRecord',
+                    'submissionRecord',
+                ]);
+            }
+            if ($assignment !== null && ! $assignment->isActive()) {
+                $assignment = null;
+            }
+        }
 
         if ($assignment !== null) {
             $session = $assignment->examSession;
@@ -77,27 +107,95 @@ class ApplicantScheduleController extends Controller
                 ExamSession::STATUS_IN_PROGRESS,
                 ExamSession::STATUS_COMPLETED,
             ], true);
+            $attendanceOutcome = $assignment->attendanceRecord?->outcome;
+            $examCompleted = $assignment->submissionRecord?->submitted_at !== null
+                || ($session?->status === ExamSession::STATUS_COMPLETED
+                    && $attendanceOutcome === ExamAttendanceRecord::OUTCOME_PRESENT);
+
+            $room = $session?->room;
+            $venue = $room === null ? null : [
+                'id' => $room->id,
+                'code' => $room->code,
+                'name' => $room->name,
+                'building_name' => $room->building_name,
+                'floor_level' => $room->floor_level,
+                'directions_hint' => $room->directions_hint,
+                'photo_url' => $room->photo_path === null
+                    ? null
+                    : (str_starts_with($room->photo_path, '/')
+                        ? $room->photo_path
+                        : Storage::disk('public')->url($room->photo_path)),
+                'latitude' => $room->latitude,
+                'longitude' => $room->longitude,
+            ];
+
+            $plan = $session?->currentLogisticsPlan;
+            if ($plan !== null) {
+                $logisticsAllocation = $assignment->activeLogisticsSeatAllocation;
+                $seat = $logisticsAllocation?->seat;
+                $hasAssignedSeatInstruction = $plan->seating_mode === ExamSession::SEATING_MODE_ASSIGNED_SEATING
+                    && $plan->published_at !== null
+                    && $plan->is_current
+                    && $logisticsAllocation !== null
+                    && $logisticsAllocation->effective_to === null
+                    && (int) $logisticsAllocation->exam_assignment_id === (int) $assignment->id
+                    && (int) $logisticsAllocation->exam_session_id === (int) $session->id
+                    && (int) $logisticsAllocation->logistics_plan_id === (int) $plan->id
+                    && $seat !== null
+                    && (int) $seat->logistics_plan_id === (int) $plan->id;
+            } else {
+                $snapshot = $session?->hasLogisticsGeneration() ? null : $session?->currentMaterialSnapshot;
+                $allocation = $assignment->activeSeatAllocation;
+                $seat = $allocation?->sessionSeat;
+                $hasAssignedSeatInstruction = $snapshot?->is_current
+                    && $snapshot->seating_mode === ExamSession::SEATING_MODE_ASSIGNED_SEATING
+                    && (int) $snapshot->exam_session_id === (int) $session->id
+                    && $allocation !== null && $allocation->effective_to === null
+                    && (int) $allocation->exam_assignment_id === (int) $assignment->id
+                    && $seat !== null && (int) $seat->material_snapshot_id === (int) $snapshot->id;
+            }
 
             return $this->renderSchedule(
-                pageState: 'assigned_published',
+                pageState: $published ? 'assigned_published' : 'assigned_tentative',
                 attempt: $attemptPayload,
-                application: $application,
                 assignment: [
                     'id' => $assignment->id,
+                    'version' => $assignment->version,
                     'source' => $assignment->source,
+                    'source_label' => $assignment->source === ExamAssignment::SOURCE_APPLICANT_RESERVED
+                        ? 'Reserved by you'
+                        : 'Assigned by Guidance',
+                    'exam_completed' => $examCompleted,
+                    'attendance_outcome' => $attendanceOutcome,
                     'session' => $session ? [
                         'code' => $session->code,
                         'status' => $session->status,
                         'date' => $session->starts_at?->toDateString(),
                         'start_time' => $session->starts_at?->format('H:i'),
+                        'end_date' => $session->effective_end_at?->toDateString(),
                         'end_time' => $session->effective_end_at?->format('H:i'),
-                        'room' => $session->room?->name ?: $session->room?->code,
+                        'scheduled_at' => $session->starts_at?->toIso8601String(),
+                        'effective_end_at' => $session->effective_end_at?->toIso8601String(),
+                        'started_at' => $session->started_at?->toIso8601String(),
+                        'closed_at' => $session->closed_at?->toIso8601String(),
+                        'room_id' => $room?->id,
+                        'room_code' => $room?->code,
+                        'room' => $room === null ? null : ($room->code.' — '.$room->name),
+                        'venue' => $venue,
                         'published' => $published,
                     ] : null,
                 ],
-                message: $published
-                    ? 'Your exam seat is confirmed.'
-                    : 'You are assigned to a session. Staff will publish the schedule when ready.',
+                slotSwitch: $session?->status === ExamSession::STATUS_DRAFT
+                    ? ['target_calendar_days' => $this->calendar->calendarDays($attempt, excludeSessionId: (int) $session->id)]
+                    : null,
+                message: $examCompleted
+                    ? 'Exam Completed'
+                    : ($published
+                        ? ($assignment->source === ExamAssignment::SOURCE_APPLICANT_RESERVED
+                            ? 'Reserved by you'
+                            : 'Assigned by Guidance')
+                        : 'You are assigned to an exam session. Staff will publish the schedule when ready.'),
+                hasAssignedSeatInstruction: $hasAssignedSeatInstruction,
             );
         }
 
@@ -149,7 +247,30 @@ class ApplicantScheduleController extends Controller
 
         return redirect()
             ->route('applicant.schedule')
-            ->with('status', 'Exam seat reserved.');
+            ->with('status', 'Exam slot reserved.');
+    }
+
+    public function switch(SwitchExamSlotRequest $request, ChangeApplicantExamSlot $action): RedirectResponse
+    {
+        $validated = $request->validated();
+        $attempt = AdmissionAttempt::query()->findOrFail((int) $validated['admission_attempt_id']);
+        abort_unless(ApplicantScope::attemptBelongsToUser($attempt, $request->user()), 403);
+        $session = ExamSession::query()->findOrFail((int) $validated['exam_session_id']);
+
+        try {
+            $action->handle(
+                $session,
+                $attempt,
+                $request->user(),
+                (int) $validated['expected_assignment_id'],
+                (int) $validated['expected_assignment_version'],
+                $validated['idempotency_key'],
+            );
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['switch' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('applicant.schedule')->with('status', 'Appointment changed.');
     }
 
     /**
@@ -164,15 +285,19 @@ class ApplicantScheduleController extends Controller
         array $calendarDays = [],
         string $message = '',
         ?array $application = null,
+        bool $hasAssignedSeatInstruction = false,
+        ?array $slotSwitch = null,
     ): Response {
         return Inertia::render('Applicant/Schedule', [
             'page_state' => $pageState,
             'attempt' => $attempt,
             'assignment' => $assignment,
             'calendar_days' => $calendarDays,
+            'slot_switch' => $slotSwitch,
             'message' => $message,
             'application' => $application,
             'pipeline' => $this->pipelineFor($pageState, $attempt, $assignment),
+            'has_assigned_seat_instruction' => $hasAssignedSeatInstruction,
         ]);
     }
 
@@ -219,38 +344,43 @@ class ApplicantScheduleController extends Controller
             'calendar_open' => 'current',
             default => 'done',
         };
-        // Only one "Now" at a time: while picking a slot, seat stays Next.
-        $seatStatus = match ($pageState) {
-            'assigned_published' => 'done',
+        $isExamCompleted = ! empty($assignment['exam_completed']);
+        // Only one "Now" at a time: while picking a slot, appointment stays Next.
+        // When exam attendance is already recorded, appointment is Done (not Next).
+        $appointmentStatus = match ($pageState) {
+            'assigned_tentative', 'assigned_published' => $isExamCompleted ? 'done' : 'upcoming',
             default => 'upcoming',
         };
         $officialStatus = match ($pageState) {
-            'assigned_published' => ($assignment['session']['published'] ?? false) ? 'done' : 'current',
+            'assigned_tentative', 'assigned_published' => ($assignment['session']['published'] ?? false) || $isExamCompleted ? 'done' : 'current',
             default => 'upcoming',
         };
-
         $windowSummary = match ($pageState) {
             'pending_acceptance' => 'Opens after acceptance.',
             'waiting_for_reservation_open' => 'Guidance has not opened a session for booking yet — or this wave is staff-assign only.',
             'calendar_open' => 'Slots are open. Pick a time below.',
-            'assigned_published' => 'You already have a seat.',
+            'assigned_tentative', 'assigned_published' => 'You already have an exam appointment.',
             default => null,
         };
 
-        $seatSummary = match ($pageState) {
-            'assigned_published' => isset($assignment['session'])
-                ? trim(($assignment['session']['date'] ?? '').' · '.($assignment['session']['room'] ?? ''))
-                : 'Seat assigned.',
-            'calendar_open' => 'After you confirm below, your seat lands here.',
-            'waiting_for_reservation_open' => 'Waiting until a session opens or Guidance assigns you.',
-            default => 'Your reserved or assigned seat will show here.',
+        $appointmentSummary = match ($pageState) {
+            'assigned_tentative', 'assigned_published' => $isExamCompleted
+                ? 'Exam Completed'
+                : (isset($assignment['session'])
+                    ? trim(($assignment['session']['date'] ?? '').' · '.($assignment['session']['room'] ?? ''))
+                    : 'Exam slot assigned.'),
+            'calendar_open' => 'After you confirm below, your exam slot lands here.',
+            'waiting_for_reservation_open' => 'Waiting until a session opens or Guidance assigns your slot.',
+            default => 'Your reserved or assigned exam slot will show here.',
         };
 
         $officialSummary = match ($pageState) {
-            'assigned_published' => ($assignment['session']['published'] ?? false)
-                ? 'Published — this is your official exam schedule.'
-                : 'Assigned; waiting for staff to publish the announce.',
-            default => 'Staff publish makes the schedule official.',
+            'assigned_tentative', 'assigned_published' => $isExamCompleted
+                ? 'Exam Completed'
+                : (($assignment['session']['published'] ?? false)
+                    ? 'Published — this is your official exam schedule.'
+                    : 'Assigned; waiting for staff to publish the official schedule.'),
+            default => 'Official schedule confirmation will appear once assigned.',
         };
 
         return [
@@ -270,9 +400,9 @@ class ApplicantScheduleController extends Controller
             ],
             [
                 'id' => 'seat',
-                'label' => 'Your exam seat',
-                'status' => $seatStatus,
-                'summary' => $seatSummary,
+                'label' => 'Appointment',
+                'status' => $appointmentStatus,
+                'summary' => $appointmentSummary,
             ],
             [
                 'id' => 'official',

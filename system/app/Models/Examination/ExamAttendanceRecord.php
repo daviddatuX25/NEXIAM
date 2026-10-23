@@ -12,6 +12,8 @@ class ExamAttendanceRecord extends Model
 
     public const OUTCOME_ABSENT = 'absent';
 
+    public const OUTCOME_VOID = 'void';
+
     protected $fillable = [
         'exam_assignment_id',
         'recorded_by_user_id',

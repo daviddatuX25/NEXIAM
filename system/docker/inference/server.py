@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import math
 import os
 import secrets
 import shutil
@@ -13,14 +14,17 @@ from email.parser import BytesParser
 from email.policy import default
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import document_rectifier
 
 
-CONTRACT_VERSION = "nexiam.omr.detection.v2"
+CONTRACT_VERSION = "nexiam.omr.detection.v5"
+AUXILIARY_CONTRACT_VERSION = "nexiam.omr.detection.v3"
+PREFLIGHT_CONTRACT_VERSION = "nexiam.omr.detection.v4"
 SIGNING_SECRET = os.environ.get("OMR_WORKER_SIGNING_SECRET", "").encode()
 MAX_REQUEST_BYTES = int(os.environ.get("OMR_WORKER_MAX_REQUEST_BYTES", str(12 * 1024 * 1024)))
 MAX_MANIFEST_BYTES = int(os.environ.get("OMR_WORKER_MAX_MANIFEST_BYTES", str(2 * 1024 * 1024)))
 MAX_IMAGE_BYTES = int(os.environ.get("OMR_WORKER_MAX_IMAGE_BYTES", str(10 * 1024 * 1024)))
-MAX_RESULT_BYTES = int(os.environ.get("OMR_WORKER_MAX_RESULT_BYTES", str(2 * 1024 * 1024)))
+MAX_RESULT_BYTES = int(os.environ.get("OMR_WORKER_MAX_RESULT_BYTES", str(8 * 1024 * 1024)))
 MAX_ALIGNED_BYTES = int(os.environ.get("OMR_WORKER_MAX_ALIGNED_BYTES", str(15 * 1024 * 1024)))
 MAX_CLOCK_SKEW_SECONDS = int(os.environ.get("OMR_WORKER_MAX_CLOCK_SKEW_SECONDS", "30"))
 CHILD_TIMEOUT_SECONDS = float(os.environ.get("OMR_WORKER_CHILD_TIMEOUT_SECONDS", "30"))
@@ -29,6 +33,7 @@ TEMP_ROOT = Path(os.environ.get("OMR_WORKER_TEMP_ROOT", "/tmp"))
 CHILD = Path(__file__).with_name("detect.py")
 VERIFY_CHILD = Path(__file__).with_name("verify.py")
 RECTIFY_CHILD = Path(__file__).with_name("rectify.py")
+PREFLIGHT_CHILD = Path(__file__).with_name("preflight.py")
 CAPACITY = threading.BoundedSemaphore(MAX_CONCURRENCY)
 
 
@@ -49,6 +54,64 @@ def canonical_preflight_response_signature(timestamp: str, run_id: str, result_h
 
 def canonical_rectification_response_signature(timestamp: str, run_id: str, result_hash: str, rectified_hash: str) -> bytes:
     return f"{timestamp}\n{run_id}\n{result_hash}\n{rectified_hash}".encode()
+def canonical_qr_extract_response_signature(timestamp: str, run_id: str, result_hash: str) -> bytes:
+    return f"{timestamp}\n{run_id}\n{result_hash}".encode()
+
+def qr_orientation(points: list[list[float]]) -> dict:
+    """Return a correction turn only when ordered QR geometry is reliable."""
+    if len(points) != 4 or any(len(point) != 2 for point in points):
+        return {
+            "corners": [],
+            "top_edge_angle_degrees": None,
+            "quarter_turn_residual_degrees": None,
+            "correction_quarter_turn": None,
+        }
+    corners = [[round(float(point[0]), 3), round(float(point[1]), 3)] for point in points]
+    if any(not math.isfinite(coordinate) for point in corners for coordinate in point):
+        return {
+            "corners": [],
+            "top_edge_angle_degrees": None,
+            "quarter_turn_residual_degrees": None,
+            "correction_quarter_turn": None,
+        }
+    edges = [
+        (
+            corners[(index + 1) % 4][0] - corners[index][0],
+            corners[(index + 1) % 4][1] - corners[index][1],
+        )
+        for index in range(4)
+    ]
+    cross_products = [
+        edges[index][0] * edges[(index + 1) % 4][1]
+        - edges[index][1] * edges[(index + 1) % 4][0]
+        for index in range(4)
+    ]
+    if (
+        any(math.hypot(dx, dy) < 8.0 for dx, dy in edges)
+        or not (
+            all(cross > 1.0 for cross in cross_products)
+            or all(cross < -1.0 for cross in cross_products)
+        )
+    ):
+        return {
+            "corners": corners,
+            "top_edge_angle_degrees": None,
+            "quarter_turn_residual_degrees": None,
+            "correction_quarter_turn": None,
+        }
+    dx, dy = edges[0]
+    angle = math.degrees(math.atan2(dy, dx))
+    detected_turn = int(round(angle / 90.0) * 90) % 360
+    residual = abs(((angle - detected_turn + 180.0) % 360.0) - 180.0)
+    correction = (-detected_turn) % 360 if residual <= 20.0 else None
+    return {
+        "corners": corners,
+        "top_edge_angle_degrees": round(angle, 3),
+        "quarter_turn_residual_degrees": round(residual, 3),
+        "correction_quarter_turn": correction,
+    }
+
+
 
 
 def sign(payload: bytes) -> str:
@@ -84,12 +147,12 @@ cleanup_stale_directories()
 
 
 class RequestFailure(Exception):
-    def __init__(self, status: int, code: str):
+    def __init__(self, status: int, code: str, detail: str = "", rectification: dict | None = None):
         super().__init__(code)
         self.status = status
         self.code = code
-
-
+        self.detail = detail
+        self.rectification = rectification
 class Handler(BaseHTTPRequestHandler):
     server_version = "NexiamOmr/1"
 
@@ -103,7 +166,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(404, {"code": "not_found"})
 
     def do_POST(self):
-        if self.path not in ("/v1/detections", "/v1/layout-verification", "/v1/preflight", "/v1/source-rectification"):
+        if self.path not in ("/v1/detections", "/v1/layout-verification", "/v1/preflight", "/v1/source-rectification", "/v1/qr-extract"):
             self.send_json(404, {"code": "not_found"})
             return
         if not READY:
@@ -119,12 +182,19 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_detection("/v1/layout-verification", VERIFY_CHILD, verification=True)
             elif self.path == "/v1/source-rectification":
                 self.handle_rectification()
+            elif self.path == "/v1/qr-extract":
+                self.handle_qr_extract()
             else:
                 self.handle_preflight()
         except RequestFailure as error:
-            self.send_json(error.status, {"code": error.code})
+            payload = {"code": error.code}
+            if error.detail:
+                payload["detail"] = error.detail
+            if error.rectification:
+                payload["rectification"] = error.rectification
+            self.send_json(error.status, payload)
         except Exception:
-            self.send_json(500, {"code": "worker_internal_failure"})
+            self.send_json(500, {"code": "worker_internal_failure", "detail": "Internal worker error."})
         finally:
             CAPACITY.release()
 
@@ -178,10 +248,9 @@ class Handler(BaseHTTPRequestHandler):
             except subprocess.TimeoutExpired:
                 raise RequestFailure(504, "child_timeout") from None
             if completed.returncode != 0:
-                code = self.safe_child_code(completed.stderr)
+                code, detail, rect = self.safe_child_error(completed.stderr)
                 status = 422 if completed.returncode == 2 else 500
-                raise RequestFailure(status, code)
-
+                raise RequestFailure(status, code, detail, rectification=rect)
             result_path = directory / "result.json"
             aligned_path = directory / "aligned.png"
             if not result_path.is_file() or not aligned_path.is_file():
@@ -230,7 +299,7 @@ class Handler(BaseHTTPRequestHandler):
         run_id = self.headers.get("X-Nexiam-Run-Id", "")
         contract = self.headers.get("X-Nexiam-Contract", "")
         signature = self.headers.get("X-Nexiam-Signature", "")
-        if not timestamp.isdigit() or not run_id or contract != CONTRACT_VERSION or len(signature) != 64:
+        if not timestamp.isdigit() or not run_id or contract != AUXILIARY_CONTRACT_VERSION or len(signature) != 64:
             raise RequestFailure(401, "request_auth_invalid")
         if abs(int(time.time()) - int(timestamp)) > MAX_CLOCK_SKEW_SECONDS:
             raise RequestFailure(401, "request_timestamp_invalid")
@@ -247,6 +316,7 @@ class Handler(BaseHTTPRequestHandler):
             raise RequestFailure(422, "manifest_invalid") from None
         if not isinstance(manifest, dict) or manifest.get("run_id") != run_id or manifest.get("image_mime") != image_mime or manifest.get("input_hash") != image_hash:
             raise RequestFailure(422, "manifest_invalid")
+
         directory = Path(tempfile.mkdtemp(prefix="nexiam-omr-request-", dir=TEMP_ROOT))
         try:
             manifest_path = directory / "manifest.json"
@@ -263,8 +333,8 @@ class Handler(BaseHTTPRequestHandler):
             except subprocess.TimeoutExpired:
                 raise RequestFailure(504, "child_timeout") from None
             if completed.returncode != 0:
-                code = self.safe_child_code(completed.stderr)
-                raise RequestFailure(422 if completed.returncode == 2 else 500, code)
+                code, detail, rect = self.safe_child_error(completed.stderr)
+                raise RequestFailure(422 if completed.returncode == 2 else 500, code, detail, rectification=rect)
             result_path = directory / "result.json"
             rectified_path = directory / "rectified.png"
             if not result_path.is_file() or not rectified_path.is_file():
@@ -298,7 +368,7 @@ class Handler(BaseHTTPRequestHandler):
         run_id = self.headers.get("X-Nexiam-Run-Id", "")
         contract = self.headers.get("X-Nexiam-Contract", "")
         signature = self.headers.get("X-Nexiam-Signature", "")
-        if not timestamp.isdigit() or not run_id or contract != CONTRACT_VERSION or len(signature) != 64:
+        if not timestamp.isdigit() or not run_id or contract != PREFLIGHT_CONTRACT_VERSION or len(signature) != 64:
             raise RequestFailure(401, "request_auth_invalid")
         if abs(int(time.time()) - int(timestamp)) > MAX_CLOCK_SKEW_SECONDS:
             raise RequestFailure(401, "request_timestamp_invalid")
@@ -336,10 +406,9 @@ class Handler(BaseHTTPRequestHandler):
             except subprocess.TimeoutExpired:
                 raise RequestFailure(504, "child_timeout") from None
             if completed.returncode != 0:
-                code = self.safe_child_code(completed.stderr)
+                code, detail, rect = self.safe_child_error(completed.stderr)
                 status = 422 if completed.returncode == 2 else 500
-                raise RequestFailure(status, code)
-
+                raise RequestFailure(status, code, detail, rectification=rect)
             result_path = directory / "result.json"
             if not result_path.is_file():
                 raise RequestFailure(502, "child_output_invalid")
@@ -358,6 +427,88 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             shutil.rmtree(directory, ignore_errors=True)
 
+    def handle_qr_extract(self) -> None:
+        import cv2
+        import numpy as np
+
+        content_length_text = self.headers.get("Content-Length", "")
+        if not content_length_text.isdigit():
+            raise RequestFailure(411, "content_length_required")
+        content_length = int(content_length_text)
+        if content_length <= 0 or content_length > MAX_REQUEST_BYTES:
+            raise RequestFailure(413, "request_too_large")
+
+        timestamp = self.headers.get("X-Nexiam-Timestamp", "")
+        run_id = self.headers.get("X-Nexiam-Run-Id", "")
+        contract = self.headers.get("X-Nexiam-Contract", "")
+        signature = self.headers.get("X-Nexiam-Signature", "")
+        if not timestamp.isdigit() or not run_id or contract != AUXILIARY_CONTRACT_VERSION or len(signature) != 64:
+            raise RequestFailure(401, "request_auth_invalid")
+        if abs(int(time.time()) - int(timestamp)) > MAX_CLOCK_SKEW_SECONDS:
+            raise RequestFailure(401, "request_timestamp_invalid")
+
+        body = self.rfile.read(content_length)
+        manifest_bytes, image_bytes, image_mime = self.parse_multipart(body)
+        manifest_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        image_hash = hashlib.sha256(image_bytes).hexdigest()
+        expected_signature = sign(canonical_request_signature("/v1/qr-extract", timestamp, run_id, manifest_hash, image_hash))
+        if not hmac.compare_digest(signature, expected_signature):
+            raise RequestFailure(401, "request_signature_invalid")
+
+        try:
+            manifest = json.loads(manifest_bytes)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise RequestFailure(422, "manifest_invalid") from None
+        if not isinstance(manifest, dict) or manifest.get("run_id") != run_id or manifest.get("image_mime") != image_mime:
+            raise RequestFailure(422, "manifest_invalid")
+        if manifest.get("input_hash") != image_hash:
+            raise RequestFailure(422, "input_hash_mismatch")
+
+        try:
+            image = document_rectifier.bounded_decode_image(image_bytes, color=True)
+        except Exception:
+            raise RequestFailure(422, "image_decode_failed") from None
+        detector = cv2.QRCodeDetector()
+        payload, points, _ = detector.detectAndDecode(image)
+        if not payload:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray_payload, gray_points, _ = detector.detectAndDecode(gray)
+            if gray_payload:
+                payload = gray_payload
+                points = gray_points
+
+        ordered_points = []
+        if payload and points is not None:
+            try:
+                flattened = np.asarray(points, dtype=np.float64).reshape(-1, 2)
+                ordered_points = flattened.tolist()
+            except (TypeError, ValueError):
+                ordered_points = []
+        geometry = qr_orientation(ordered_points)
+        result = {
+            "contract_version": AUXILIARY_CONTRACT_VERSION,
+            "run_id": run_id,
+            "payload": payload if payload else None,
+            "found": bool(payload),
+            **geometry,
+        }
+        result_bytes = json.dumps(result, separators=(",", ":"), sort_keys=True).encode()
+        self.send_qr_extract(run_id, result_bytes)
+
+    def send_qr_extract(self, run_id: str, result: bytes) -> None:
+        timestamp = str(int(time.time()))
+        result_hash = hashlib.sha256(result).hexdigest()
+        signature = sign(canonical_qr_extract_response_signature(timestamp, run_id, result_hash))
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(result)))
+        self.send_header("X-Nexiam-Contract", AUXILIARY_CONTRACT_VERSION)
+        self.send_header("X-Nexiam-Run-Id", run_id)
+        self.send_header("X-Nexiam-Timestamp", timestamp)
+        self.send_header("X-Nexiam-Result-SHA256", result_hash)
+        self.send_header("X-Nexiam-Signature", signature)
+        self.end_headers()
+        self.wfile.write(result)
 
     def send_rectification_multipart(self, run_id: str, result: bytes, rectified: bytes) -> None:
         boundary = "nexiam-" + secrets.token_hex(16)
@@ -379,7 +530,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", f"multipart/form-data; boundary={boundary}")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("X-Nexiam-Contract", CONTRACT_VERSION)
+        self.send_header("X-Nexiam-Contract", AUXILIARY_CONTRACT_VERSION)
         self.send_header("X-Nexiam-Run-Id", run_id)
         self.send_header("X-Nexiam-Timestamp", timestamp)
         self.send_header("X-Nexiam-Result-SHA256", result_hash)
@@ -394,7 +545,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(result)))
-        self.send_header("X-Nexiam-Contract", CONTRACT_VERSION)
+        self.send_header("X-Nexiam-Contract", PREFLIGHT_CONTRACT_VERSION)
         self.send_header("X-Nexiam-Run-Id", run_id)
         self.send_header("X-Nexiam-Timestamp", timestamp)
         self.send_header("X-Nexiam-Result-SHA256", result_hash)
@@ -497,17 +648,25 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     @staticmethod
-    def safe_child_code(stderr: bytes) -> str:
+    def safe_child_error(stderr: bytes) -> tuple[str, str, dict | None]:
         for line in reversed(stderr.decode("utf-8", "replace").splitlines()):
             try:
                 value = json.loads(line)
             except json.JSONDecodeError:
                 continue
             code = value.get("error")
+            detail = value.get("detail", "")
+            rectification = value.get("rectification")
             if isinstance(code, str) and code.replace("_", "").isalnum() and len(code) <= 64:
-                return code
-        return "child_failed"
+                safe_detail = detail if isinstance(detail, str) and len(detail) <= 256 and "\n" not in detail and "/" not in detail else ""
+                safe_rect = rectification if isinstance(rectification, dict) else None
+                return code, safe_detail, safe_rect
+        return "child_failed", "", None
 
+    @staticmethod
+    def safe_child_code(stderr: bytes) -> str:
+        code, _, _ = Handler.safe_child_error(stderr)
+        return code
     def send_json(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode()
         self.send_response(status)

@@ -1,0 +1,46 @@
+# Add after compose.yaml and compose.https-test.yaml for the public HTTPS runtime.
+# Keep source/runtime APP_KEY and provider configuration unchanged when recreating.
+services:
+  https-test-app:
+    command: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000', '--no-reload', '--quiet']
+    environment:
+      APPLICATION_OPENING_ALERTS_ENABLED: 'true'
+      INERTIA_DEVTOOLS_ENABLED: 'false'
+  https-test-queue:
+    environment:
+      APPLICATION_OPENING_ALERTS_ENABLED: 'true'
+      INERTIA_DEVTOOLS_ENABLED: 'false'
+  https-test-opening-alerts-scheduler:
+    extends:
+      file: compose.yaml
+      service: queue
+    image: nexiam-system-app
+    command: ['php', 'artisan', 'schedule:work']
+    restart: unless-stopped
+    environment:
+      APP_URL: ${NEXIAM_TEST_APP_URL:-https://nexiam.dxtechph.online}
+      APP_DEBUG: 'false'
+      DB_DATABASE: nexiam_public_ispsc_20261016
+      DB_URL: ''
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      SESSION_COOKIE: nexiam_https_test_session
+      SESSION_SECURE_COOKIE: 'true'
+      APPLICATION_OPENING_ALERTS_ENABLED: 'true'
+      APPLICATION_OPENING_ALERTS_SCHEDULER_ONLY: 'true'
+      INERTIA_DEVTOOLS_ENABLED: 'false'
+    volumes:
+      - .:/var/www/html
+      - public_ispsc_storage:/var/www/html/storage
+      - type: bind
+        source: ./storage/app/nexiam-public-build
+        target: /var/www/html/public/build
+        read_only: true
+        bind:
+          create_host_path: false
+
+    healthcheck:
+      test: ['CMD-SHELL', "pgrep -f 'artisan [s]chedule:work' >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

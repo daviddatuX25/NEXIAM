@@ -11,10 +11,10 @@ use Illuminate\Support\Str;
 /**
  * Analyzes a result-sheet template (HTML content or uploaded Word/ODT
  * document) against the placeholder catalog: found / missing (required +
- * recommended) / extra. Required missing placeholders gate template saves
- * unless staff explicitly confirm (legacy parity).
+ * recommended) / extra / unresolved. Required, unknown, or malformed
+ * placeholders gate template preview and activation.
  *
- * @phpstan-type AnalysisResult array{valid: bool, found: list<string>, missing: list<string>, extra: list<string>, recommended_missing: list<string>}
+ * @phpstan-type AnalysisResult array{valid: bool, found: list<string>, missing: list<string>, extra: list<string>, recommended_missing: list<string>, unresolved: list<string>}
  */
 final class ResultSheetTemplateAnalyzer
 {
@@ -25,28 +25,36 @@ final class ResultSheetTemplateAnalyzer
      */
     public function analyze(ResultSheetTemplate|array $source): array
     {
-        $found = $this->extractPlaceholders($source);
+        $tokens = $this->extractTokens($source);
+        $found = $tokens['found'];
+        $unresolved = $tokens['unresolved'];
 
         $catalog = $this->catalogKeys();
 
-        $missing = array_values(array_diff($catalog['required'], $found));
-        $recommendedMissing = array_values(array_diff($catalog['recommended'], $found));
+        $canonicalFound = array_values(array_unique(array_map(
+            [TemplateFieldAliasCatalog::class, 'canonical'],
+            $found,
+        )));
+
+        $missing = array_values(array_diff($catalog['required'], $canonicalFound));
+        $recommendedMissing = array_values(array_diff($catalog['recommended'], $canonicalFound));
         $extra = array_values(array_diff($found, $catalog['all']));
 
         return [
-            'valid' => $missing === [],
+            'valid' => $missing === [] && $extra === [] && $unresolved === [],
             'found' => array_values($found),
             'missing' => $missing,
             'recommended_missing' => $recommendedMissing,
             'extra' => $extra,
+            'unresolved' => $unresolved,
         ];
     }
 
     /**
      * @param  ResultSheetTemplate|array<string, mixed>  $source
-     * @return list<string>
+     * @return array{found: list<string>, unresolved: list<string>}
      */
-    private function extractPlaceholders(ResultSheetTemplate|array $source): array
+    private function extractTokens(ResultSheetTemplate|array $source): array
     {
         if ($source instanceof ResultSheetTemplate) {
             if ($source->mode === ResultSheetTemplate::MODE_HTML) {
@@ -57,7 +65,7 @@ final class ResultSheetTemplateAnalyzer
                 return $this->fromDocument(storage_path('app/private/'.$source->document_path));
             }
 
-            return [];
+            return ['found' => [], 'unresolved' => []];
         }
 
         if (isset($source['content']) && is_string($source['content'])) {
@@ -68,35 +76,34 @@ final class ResultSheetTemplateAnalyzer
             return $this->fromDocument($source['document_path']);
         }
 
-        return [];
+        return ['found' => [], 'unresolved' => []];
     }
 
     /**
-     * @return list<string>
+     * @return array{found: list<string>, unresolved: list<string>}
      */
     private function fromContent(string $content): array
     {
-        preg_match_all('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', $content, $matches);
-
-        return array_values(array_unique($matches[1] ?? []));
+        return ResultSheetMacroScanner::scan(strip_tags($content));
     }
 
     /**
-     * @return list<string>
+     * @return array{found: list<string>, unresolved: list<string>}
      */
     private function fromDocument(string $path): array
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
         if ($extension === 'odt') {
-            $text = $this->odtText($path);
-
-            preg_match_all('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', $text, $matches);
-
-            return array_values(array_unique($matches[1] ?? []));
+            return $this->fromContent($this->odtText($path));
         }
 
-        return $this->extractor->placeholders($path);
+        $inspection = $this->extractor->inspect($path);
+
+        return [
+            'found' => $inspection['found'],
+            'unresolved' => $inspection['unresolved'],
+        ];
     }
 
     private function odtText(string $path): string
@@ -131,7 +138,6 @@ final class ResultSheetTemplateAnalyzer
             $slug = $this->areaSlug($area->name);
             foreach (['', '_rating', '_raw', '_pct'] as $suffix) {
                 $all[] = $slug.$suffix;
-                $all[] = $slug.$suffix.'_2';
             }
         }
 
@@ -139,19 +145,14 @@ final class ResultSheetTemplateAnalyzer
         foreach (TemplateFieldAliasCatalog::domainAliases() as $alias => $code) {
             $all[] = $alias;
             $all[] = $alias.'_rating';
-            $all[] = $alias.'_2';
-            $all[] = $alias.'_rating_2';
+            $all[] = $alias.'_raw';
+            $all[] = $alias.'_pct';
         }
 
         // Course checkmarks for active programs.
         foreach (Program::query()->where('is_active', true)->get(['code']) as $program) {
             $all[] = Str::slug($program->code, '_').'_check';
-            $all[] = Str::slug($program->code, '_').'_check_2';
-        }
-
-        // Dual-slot variants of every applicant field.
-        foreach ($all as $key) {
-            $all[] = $key.'_2';
+            $all[] = strtoupper($program->code).'_check';
         }
 
         return [

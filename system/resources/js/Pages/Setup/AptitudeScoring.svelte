@@ -185,7 +185,7 @@
 <svelte:head><title>{area.code ?? 'Area'} scoring · Setup</title></svelte:head>
 
 <StaffLayout {breadcrumbs}>
-  <div class="min-w-0 max-w-3xl space-y-6 p-4 sm:p-6">
+  <div class="min-w-0 w-full max-w-6xl space-y-6 p-4 sm:p-6">
     <PageHeaderBar title="Scoring configuration" description={`${area.name ?? ''} (${area.code ?? ''}) · v${area.version ?? 1}`}>
       {#snippet actions()}
         <Link href="/setup/aptitude"><Button variant="outline" size="sm">Back to aptitude areas</Button></Link>

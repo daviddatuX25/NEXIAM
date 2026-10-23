@@ -8,8 +8,7 @@ final readonly class AuthorizationDecision
         public bool $allowed,
         public string $reason,
         public ?string $capability = null,
-    ) {
-    }
+    ) {}
 
     public static function allow(string $capability): self
     {

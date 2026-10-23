@@ -26,6 +26,12 @@ class StoreProgramRequest extends FormRequest
                 Rule::unique('programs', 'code')->where(fn ($q) => $q->where('institution_id', Institution::current()->id)),
             ],
             'name' => ['required', 'string', 'max:255'],
+            'department_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('departments', 'id')->where(fn ($query) => $query
+                    ->where('institution_id', Institution::current()->id)),
+            ],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

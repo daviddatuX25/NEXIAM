@@ -2,17 +2,25 @@
 
 namespace App\Models\Admission;
 
+use App\Models\Communications\PublicPolicy;
 use App\Models\Consultation\ConsultationAssignment;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\PrivacyPolicy;
+use App\Models\Release\ConsultationDecision;
 use App\Models\Release\ResultDocument;
+use App\Testing\HasPracticeProvenance;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AdmissionAttempt extends Model
 {
+    use HasPracticeProvenance;
+
+    protected $hidden = ['practice_fixture_set_id'];
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_NEEDS_CORRECTION = 'needs_correction';
@@ -25,6 +33,7 @@ class AdmissionAttempt extends Model
 
     protected $fillable = [
         'applicant_identity_id',
+        'practice_fixture_set_id',
         'institution_id',
         'academic_cycle_id',
         'application_window_id',
@@ -39,6 +48,7 @@ class AdmissionAttempt extends Model
         'strand',
         'gwa',
         'privacy_policy_id',
+        'public_policy_id',
         'contact_email',
         'contact_phone',
         'address_line',
@@ -93,6 +103,14 @@ class AdmissionAttempt extends Model
     }
 
     /**
+     * @return BelongsTo<PublicPolicy, $this>
+     */
+    public function publicPolicy(): BelongsTo
+    {
+        return $this->belongsTo(PublicPolicy::class);
+    }
+
+    /**
      * @return HasMany<AdmissionAttemptGradeValue, $this>
      */
     public function gradeValues(): HasMany
@@ -122,6 +140,14 @@ class AdmissionAttempt extends Model
     public function consultationAssignments(): HasMany
     {
         return $this->hasMany(ConsultationAssignment::class);
+    }
+
+    /**
+     * @return HasMany<ConsultationDecision, $this>
+     */
+    public function consultationDecisions(): HasMany
+    {
+        return $this->hasMany(ConsultationDecision::class);
     }
 
     /**
@@ -157,11 +183,72 @@ class AdmissionAttempt extends Model
     }
 
     /**
+     * @return HasOne<EnrollmentStamp, $this>
+     */
+    public function enrollmentStamp(): HasOne
+    {
+        return $this->hasOne(EnrollmentStamp::class, 'admission_attempt_id')->latestOfMany();
+    }
+
+    /**
+     * @return HasMany<AdmissionClearanceReceipt, $this>
+     */
+    public function clearanceReceipts(): HasMany
+    {
+        return $this->hasMany(AdmissionClearanceReceipt::class, 'admission_attempt_id');
+    }
+
+    /**
+     * @return HasOne<AdmissionClearanceReceipt, $this>
+     */
+    public function latestClearanceReceipt(): HasOne
+    {
+        return $this->hasOne(AdmissionClearanceReceipt::class, 'admission_attempt_id')->latestOfMany();
+    }
+
+    /**
+     * @return HasMany<EnrollmentSheetHandoffReceipt, $this>
+     */
+    public function sheetHandoffReceipts(): HasMany
+    {
+        return $this->hasMany(EnrollmentSheetHandoffReceipt::class, 'admission_attempt_id');
+    }
+
+    /**
+     * @return HasOne<EnrollmentSheetHandoffReceipt, $this>
+     */
+    public function latestSheetHandoffReceipt(): HasOne
+    {
+        return $this->hasOne(EnrollmentSheetHandoffReceipt::class, 'admission_attempt_id')->latestOfMany();
+    }
+
+    /**
+     * @return HasMany<ApplicantAccessChallenge, $this>
+     */
+    public function accessChallenges(): HasMany
+    {
+        return $this->hasMany(ApplicantAccessChallenge::class, 'admission_attempt_id');
+    }
+
+    /**
+     * @return HasOne<ApplicantAccessChallenge, $this>
+     */
+    public function accessChallenge(): HasOne
+    {
+        return $this->hasOne(ApplicantAccessChallenge::class, 'admission_attempt_id')->latestOfMany();
+    }
+
+    /**
      * Single scheduling/exam eligibility gate (GF-06).
      * Authorized demographic amendment while accepted keeps this true — no retake.
      * Reconsider → pending flips this false so new assignments cannot be created.
      */
     public function isExamEligible(): bool
+    {
+        return $this->status === self::STATUS_ACCEPTED;
+    }
+
+    public function isAccepted(): bool
     {
         return $this->status === self::STATUS_ACCEPTED;
     }

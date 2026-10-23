@@ -1,0 +1,30 @@
+{
+    "bundle_version": "nexiam.omr.native-bundle.v1",
+    "template_code": "CANONICAL-HTML",
+    "template_version": 1,
+    "synthetic": false,
+    "identity_policy": "optional",
+    "canonical_definition_schema": "nexiam.omr.canonical-sheet-definition.v1",
+    "canonical_definition_hash": "83b531326235c24bbc04f5fd472fa934886c4dd4f817bf7d208e191561a414a7",
+    "marker_profile": {
+        "id": 1,
+        "code": "omrchecker.sample",
+        "version": 1,
+        "asset_sha256": "61d39aab56d6c5ead514c0769528af56ca7f2b849ca26ebd6e9346f4ce704059",
+        "status": "candidate",
+        "geometry_status": "provisional",
+        "size_mm": 12,
+        "quiet_zone_mm": 3
+    },
+    "engine": {
+        "name": "OMRChecker",
+        "commit": "de3f6982822895491be760325fd43e65e90fa293",
+        "patch_set": "nexiam-headless-overlay-v1"
+    },
+    "files": {
+        "template.json": "a4cd6fb0c90b97c8117d792955edb88f2ef78cda1c870ed934621827228d4a73",
+        "config.json": "00cd60cfa39f8b3db902f4680de37df9ea769af34e71001e66fb6b9b1c743a52",
+        "reference-page-1.svg": "49e1d187972736fa9dbdbfe784fe262b085f0be4e8f348814ab6f2547524dda5",
+        "omr_marker.jpg": "61d39aab56d6c5ead514c0769528af56ca7f2b849ca26ebd6e9346f4ce704059"
+    }
+}

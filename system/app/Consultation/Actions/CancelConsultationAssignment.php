@@ -24,7 +24,7 @@ class CancelConsultationAssignment
             $assignment = ConsultationAssignment::query()->lockForUpdate()->findOrFail($assignment->id);
 
             if ((int) $assignment->consultation_session_id !== (int) $session->id) {
-                throw new RuntimeException('Assignment does not belong to this session.');
+                throw new RuntimeException('Release Day assignment does not belong to this session.');
             }
 
             if (! $assignment->isActive()) {
@@ -32,7 +32,7 @@ class CancelConsultationAssignment
             }
 
             if (in_array($session->status, [ConsultationSession::STATUS_COMPLETED, ConsultationSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Cannot cancel assignments on a terminal session.');
+                throw new RuntimeException('Cannot cancel appointments on a terminal Release Day session.');
             }
 
             $assignment->update([

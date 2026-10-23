@@ -1,17 +1,23 @@
 <?php
 
 use App\Assessment\Actions\Omr\ActivateOmrConfiguration;
+use App\Assessment\Actions\Omr\ConfirmOmrCaptureBatch;
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
 use App\Assessment\Actions\Omr\ReplaceOmrSheetPage;
+use App\Assessment\Actions\Omr\RetryOmrCaptureSheet;
+use App\Assessment\Actions\Omr\RunOmrSheetAnalysis;
 use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
 use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
 use App\Assessment\Actions\Omr\UploadOmrCaptureSheet;
 use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrCaptureSheetPage;
+use App\Models\Assessment\OmrCaptureSheetPageRevision;
+use App\Models\Assessment\OmrProcessingRun;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Foundation\AptitudeArea;
-use Illuminate\Support\Facades\DB;
+use App\Support\SensitiveAssetStore;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -25,13 +31,7 @@ test('omr page exposes sheet and per-page image urls with both route params', fu
         ->whereHas('templateVersion', fn ($query) => $query->where('version', 3))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'multipage-urls-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'multipage-urls-'.uniqid());
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
     $setId = (string) Str::uuid();
@@ -40,7 +40,7 @@ test('omr page exposes sheet and per-page image urls with both route params', fu
     $sheet = OmrCaptureSheet::query()->where('batch_id', $batch->id)->firstOrFail();
 
     $this->actingAs($guidance)
-        ->get(route('grading.sessions.omr', $grading))
+        ->get(route('scoring.sessions.omr', $grading->examSession))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Assessment/Omr/Capture')
@@ -49,6 +49,56 @@ test('omr page exposes sheet and per-page image urls with both route params', fu
                 ->where('image_url', fn (string $url) => str_contains($url, '/sheets/'.$sheet->id.'/pages/'))
                 ->etc()
             )
+        );
+
+    $this->actingAs($guidance)
+        ->getJson(route('scoring.sessions.omr.batches.status', [
+            'examSession' => $grading->examSession,
+            'batch' => $batch,
+        ]))
+        ->assertOk()
+        ->assertJsonPath('session_id', $grading->id)
+        ->assertJsonPath('run_id', $batch->id)
+        ->assertJsonPath('mode', 'production')
+        ->assertJsonPath('progress.total', 2)
+        ->assertJsonPath('progress.completed', 2)
+        ->assertJsonPath('counts.total', 1)
+        ->assertJsonPath('sheets.0.id', $sheet->id)
+        ->assertJsonPath('sheets.0.pages.0.page_no', 1)
+        ->assertJsonStructure([
+            'revision',
+            'observed_at',
+            'stage',
+            'counts',
+            'actions',
+            'needs_attention',
+        ]);
+
+    $this->actingAs($guidance)
+        ->getJson(route('scoring.sessions.omr.batches.status', [
+            'examSession' => $grading->examSession->id + 99999,
+            'batch' => $batch,
+        ]))
+        ->assertNotFound();
+
+    expect(fn () => app(ConfirmOmrCaptureBatch::class)->handle(
+        $batch,
+        $guidance,
+        1,
+    ))->toThrow(RuntimeException::class, 'changed after validation');
+
+    $this->actingAs($guidance)
+        ->get(route('scoring.sessions.omr', [
+            'examSession' => $grading->examSession,
+            'mode' => 'dry_run',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Assessment/Omr/Capture')
+            ->missing('execution_mode')
+            ->has('roster', 1)
+            ->has('batch.sheets', 1)
+            ->where('run_status.mode', 'production')
         );
 });
 
@@ -90,7 +140,7 @@ test('merge records per-page birthdate conflicts with value evidence', function 
         $bkVersion = app(SaveAuthoredBookletVersion::class)->handle('DOB-BK-'.$code, 'Merge birthdate booklet', $questions, $guidance);
         $pair = app(ActivateOmrConfiguration::class)->handle($draft, $bkVersion, $guidance);
 
-        $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, (int) $pair->template_version_id, (int) $pair->booklet_version_id, 'dob-conflict-'.uniqid());
+        $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, 'dob-conflict-'.uniqid());
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
         $setId = (string) Str::uuid();
 
@@ -148,7 +198,7 @@ test('invalid merged birthdate is flagged as a review issue', function (): void 
         $bkVersion = app(SaveAuthoredBookletVersion::class)->handle('DOB-BK-'.$code, 'Invalid birthdate booklet', $questions, $guidance);
         $pair = app(ActivateOmrConfiguration::class)->handle($draft, $bkVersion, $guidance);
 
-        $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, (int) $pair->template_version_id, (int) $pair->booklet_version_id, 'dob-invalid-'.uniqid());
+        $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, 'dob-invalid-'.uniqid());
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
         $setId = (string) Str::uuid();
 
@@ -176,13 +226,7 @@ test('two-page capture merges into one reviewed sheet', function (): void {
         ->whereHas('templateVersion', fn ($query) => $query->where('version', 3))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'multipage-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'multipage-'.uniqid());
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
     $setId = (string) Str::uuid();
@@ -211,13 +255,7 @@ test('duplicate page upload is refused', function (): void {
         ->whereHas('templateVersion', fn ($query) => $query->where('version', 3))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'multipage-dup-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'multipage-dup-'.uniqid());
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
     $setId = (string) Str::uuid();
@@ -238,13 +276,7 @@ test('incomplete two-page set never analyzes', function (): void {
         ->whereHas('templateVersion', fn ($query) => $query->where('version', 3))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'multipage-half-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'multipage-half-'.uniqid());
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
     $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, (string) Str::uuid(), $guidance, null, 1);
@@ -254,8 +286,9 @@ test('incomplete two-page set never analyzes', function (): void {
         ->and($sheet->processingRuns()->count())->toBe(0);
 });
 
-test('captured page can be replaced before the set is enqueued', function (): void {
+test('captured page can be replaced before the set is enqueued with immutable history', function (): void {
     Storage::fake('sensitive');
+    Queue::fake();
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
@@ -264,33 +297,40 @@ test('captured page can be replaced before the set is enqueued', function (): vo
         ->whereHas('templateVersion', fn ($query) => $query->where('version', 3))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'multipage-replace-'.uniqid(),
-    );
-
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'multipage-replace-'.uniqid());
     $original = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
-    $replacement = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAQAAABFaP0WAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
-
+    $replacement = base64_decode('iVBORw0KGgoAAAACCAQAAABFaP0WAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
     $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $original, 'image/png', OmrCaptureSheet::MODE_AUTO, (string) Str::uuid(), $guidance, null, 1);
     $page = $sheet->pages()->where('page_no', 1)->firstOrFail();
     $oldPath = (string) $page->asset_path;
+    $oldHmac = (string) $page->asset_hmac;
 
-    app(ReplaceOmrSheetPage::class)->handle($sheet, 1, $replacement, 'image/png', $guidance);
+    app(ReplaceOmrSheetPage::class)->handle(
+        $sheet,
+        1,
+        (int) $page->id,
+        (int) $page->current_revision,
+        $replacement,
+        'image/png',
+        $guidance,
+        'The original page was misframed.',
+        (string) Str::uuid(),
+    );
     $page->refresh();
 
-    expect($page->asset_path)->not->toBe($oldPath)
-        ->and((int) $page->original_bytes)->toBe(strlen($replacement))
-        ->and(Storage::disk('sensitive')->exists($page->asset_path))->toBeTrue()
-        ->and(Storage::disk('sensitive')->exists($oldPath))->toBeFalse()
-        ->and(DB::table('audit_events')->where('event_type', 'grading.omr_sheet_page_replaced')->exists())->toBeTrue();
+    expect($sheet->fresh()->status)->toBe(OmrCaptureSheet::STATUS_PENDING_PAGES)
+        ->and((int) $page->current_revision)->toBe(2)
+        ->and($page->revisions()->count())->toBe(2)
+        ->and(Storage::disk('sensitive')->exists($oldPath))->toBeTrue()
+        ->and(app(SensitiveAssetStore::class)->read($oldPath, $oldHmac))->toBe($original)
+        ->and(Storage::disk('sensitive')->exists((string) $page->asset_path))->toBeTrue()
+        ->and($page->currentRevision?->replacement_reason)->toBe('The original page was misframed.')
+        ->and($page->crop_policy)->toBe('auto_document_quad');
 });
 
-test('replacement is refused once the set is enqueued', function (): void {
+test('accepted analysis page can be redone while enqueued and stale processing remains fenced', function (): void {
     Storage::fake('sensitive');
+    Queue::fake();
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
     $grading = $fixture['grading'];
@@ -298,23 +338,152 @@ test('replacement is refused once the set is enqueued', function (): void {
         ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
         ->whereHas('templateVersion', fn ($query) => $query->where('version', 3))
         ->firstOrFail();
-
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'multipage-replace-locked-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'multipage-replace-locked-'.uniqid());
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
     $setId = (string) Str::uuid();
     app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1);
     $sheet = app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 2);
+    $page = $sheet->pages()->where('page_no', 1)->firstOrFail();
+    $sibling = $sheet->pages()->where('page_no', 2)->firstOrFail();
+    $oldRun = $page->currentProcessingRun()->firstOrFail();
+    $siblingRun = $sibling->currentProcessingRun()->firstOrFail();
+    $oldPath = (string) $page->asset_path;
+    $oldHmac = (string) $page->asset_hmac;
 
-    expect(in_array($sheet->status, [OmrCaptureSheet::STATUS_QUEUED, OmrCaptureSheet::STATUS_PROCESSING, OmrCaptureSheet::STATUS_NEEDS_REVIEW], true))->toBeTrue()
-        ->and(fn () => app(ReplaceOmrSheetPage::class)->handle($sheet, 1, $bytes, 'image/png', $guidance))
-        ->toThrow(RuntimeException::class, 'not-yet-enqueued');
+    $oldRun->forceFill([
+        'status' => OmrProcessingRun::STATUS_CLAIMED,
+        'claim_token' => (string) Str::uuid(),
+        'claimed_at' => now(),
+        'claim_expires_at' => now()->addMinute(),
+        'attempts' => 1,
+    ])->save();
+    $page->forceFill(['status' => OmrCaptureSheetPage::STATUS_PROCESSING])->save();
+    $sheet->forceFill(['status' => OmrCaptureSheet::STATUS_PROCESSING])->save();
+    $reason = 'The accepted page was captured at an angle.';
+
+    app(ReplaceOmrSheetPage::class)->handle(
+        $sheet,
+        1,
+        (int) $page->id,
+        (int) $page->current_revision,
+        $bytes,
+        'image/png',
+        $guidance,
+        $reason,
+        (string) Str::uuid(),
+    );
+
+    $sheet->refresh();
+
+    $page->refresh();
+    $revisionTwoRun = $page->currentProcessingRun()->firstOrFail();
+    $firstReplacementPath = (string) $page->asset_path;
+    $firstReplacementHmac = (string) $page->asset_hmac;
+    $revisionTwoProposal = [
+        'input_hash' => (string) $revisionTwoRun->input_hash,
+        'page_no' => 1,
+        'items' => [],
+    ];
+    $revisionTwoRun->forceFill([
+        'status' => OmrProcessingRun::STATUS_SUCCEEDED,
+        'claim_token' => null,
+        'claim_expires_at' => null,
+        'output_json' => ['outcome' => 'succeeded'],
+    ])->save();
+    $page->forceFill([
+        'status' => OmrCaptureSheetPage::STATUS_SUCCEEDED,
+        'proposal_json' => $revisionTwoProposal,
+    ])->save();
+    $analysisEvent = OmrCaptureSheetPageRevision::capture(
+        $page,
+        OmrCaptureSheetPageRevision::KIND_ANALYSIS,
+        sourceRevisionId: (int) $page->current_revision_id,
+        actorUserId: (int) $guidance->id,
+    );
+    $page->forceFill(['current_revision_id' => $analysisEvent->id])->save();
+
+    $revisionTwoAnalysis = $analysisEvent;
+
+    $lateRevisionTwoRun = $sheet->processingRuns()->create([
+        'actor_id' => $guidance->id,
+        'run_no' => ((int) $sheet->processingRuns()->max('run_no')) + 1,
+        'run_uuid' => (string) Str::uuid(),
+        'status' => OmrProcessingRun::STATUS_CLAIMED,
+        'page_no' => 1,
+        'page_revision' => 2,
+        'provider_name' => $revisionTwoRun->provider_name,
+        'provider_version' => $revisionTwoRun->provider_version,
+        'provider_commit' => $revisionTwoRun->provider_commit,
+        'request_version' => $revisionTwoRun->request_version,
+        'expected_sheet_version' => (int) $sheet->version,
+        'input_hash' => (string) $revisionTwoRun->input_hash,
+        'template_hash' => $revisionTwoRun->template_hash,
+        'booklet_hash' => $revisionTwoRun->booklet_hash,
+        'native_bundle_hash' => $revisionTwoRun->native_bundle_hash,
+        'manifest_hash' => $revisionTwoRun->manifest_hash,
+        'config_hash' => $revisionTwoRun->config_hash,
+        'patch_identity' => $revisionTwoRun->patch_identity,
+        'claim_token' => (string) Str::uuid(),
+        'claimed_at' => now(),
+        'claim_expires_at' => now()->addMinute(),
+        'attempts' => 1,
+    ]);
+    $page->forceFill([
+        'status' => OmrCaptureSheetPage::STATUS_PROCESSING,
+        'current_processing_run_id' => $lateRevisionTwoRun->id,
+    ])->save();
+    $sheet->forceFill(['status' => OmrCaptureSheet::STATUS_PROCESSING])->save();
+
+    $secondReason = 'The second scan supersedes the analyzed revision.';
+    app(ReplaceOmrSheetPage::class)->handle(
+        $sheet,
+        1,
+        (int) $page->id,
+        2,
+        $replacement,
+        'image/png',
+        $guidance,
+        $secondReason,
+        (string) Str::uuid(),
+    );
+
+    $page->refresh();
+    $newRun = $page->currentProcessingRun()->firstOrFail();
+    $oldRun->refresh();
+    $lateRevisionTwoRun->refresh();
+    $siblingRun->refresh();
+    app(RunOmrSheetAnalysis::class)->handle((int) $oldRun->id);
+    app(RunOmrSheetAnalysis::class)->handle((int) $lateRevisionTwoRun->id);
+    $oldRun->refresh();
+    $lateRevisionTwoRun->refresh();
+
+    expect($oldRun->status)->toBe(OmrProcessingRun::STATUS_SUPERSEDED)
+        ->and($revisionTwoRun->fresh()->status)->toBe(OmrProcessingRun::STATUS_SUCCEEDED)
+        ->and($lateRevisionTwoRun->status)->toBe(OmrProcessingRun::STATUS_SUPERSEDED)
+        ->and($newRun->status)->toBe(OmrProcessingRun::STATUS_PENDING)
+        ->and((int) $newRun->page_revision)->toBe(3)
+        ->and((int) $page->current_revision)->toBe(3)
+        ->and($page->proposal_json)->toBeNull()
+        ->and((int) $siblingRun->expected_sheet_version)->toBe((int) $sheet->fresh()->version)
+        ->and($revisionTwoAnalysis->proposal_json['input_hash'])->toBe((string) $revisionTwoRun->input_hash)
+        ->and(Storage::disk('sensitive')->exists($oldPath))->toBeTrue()
+        ->and(app(SensitiveAssetStore::class)->read($oldPath, $oldHmac))->toBe($bytes)
+        ->and(Storage::disk('sensitive')->exists($firstReplacementPath))->toBeTrue()
+        ->and(app(SensitiveAssetStore::class)->read($firstReplacementPath, $firstReplacementHmac))->toBe($bytes)
+        ->and($page->currentRevision?->replacement_reason)->toBe($secondReason)
+        ->and(app(SensitiveAssetStore::class)->read((string) $page->asset_path, (string) $page->asset_hmac))->toBe($replacement);
+
+    $newRun->forceFill([
+        'status' => OmrProcessingRun::STATUS_TERMINAL_FAILED,
+        'diagnostic_code' => 'provider_failed',
+    ])->save();
+    $sheet->forceFill(['status' => OmrCaptureSheet::STATUS_NEEDS_REVIEW])->save();
+    $retryRun = app(RetryOmrCaptureSheet::class)->handle($sheet, $guidance, 1);
+
+    expect($retryRun->status)->toBe(OmrProcessingRun::STATUS_PENDING)
+        ->and((int) $retryRun->page_revision)->toBe(3)
+        ->and((int) $page->fresh()->currentProcessingRun?->page_revision)->toBe(3);
 });
 
 test('solver-generated two-page bundle runs through capture and merge', function (): void {
@@ -350,7 +519,7 @@ test('solver-generated two-page bundle runs through capture and merge', function
         $bk = app(SaveAuthoredBookletVersion::class)->handle('SLV-BK-'.$code, 'Solver recognition booklet', $questions, $guidance);
         $pair = app(ActivateOmrConfiguration::class)->handle($draft, $bk, $guidance);
 
-        $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, (int) $pair->template_version_id, (int) $pair->booklet_version_id, 'solver-sheet-'.uniqid());
+        $batch = app(CreateOmrCaptureBatch::class)->handle($fixture['grading'], $guidance, 'solver-sheet-'.uniqid());
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
         $setId = (string) Str::uuid();
         app(UploadOmrCaptureSheet::class)->handle($batch, $bytes, 'image/png', OmrCaptureSheet::MODE_AUTO, $setId, $guidance, null, 1);

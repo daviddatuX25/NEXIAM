@@ -17,8 +17,6 @@ class StoreOmrBatchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'template_version_id' => ['required', 'integer', 'exists:omr_answer_sheet_template_versions,id'],
-            'booklet_version_id' => ['required', 'integer', 'exists:omr_question_booklet_versions,id'],
             'idempotency_key' => ['required', 'string', 'uuid'],
         ];
     }

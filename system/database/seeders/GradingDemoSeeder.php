@@ -6,21 +6,25 @@ use App\Admission\Actions\AcceptAdmissionAttempt;
 use App\Admission\Actions\SubmitAdmissionAttempt;
 use App\Admission\Data\AdmissionIntakeData;
 use App\Assessment\Actions\RecordScores;
+use App\Examination\Actions\AssignApplicantToExamSession;
+use App\Examination\Actions\CloseExamSession;
+use App\Examination\Actions\PublishExamSession;
 use App\Examination\Actions\RecordExamAttendance;
 use App\Examination\Actions\RecordExamSubmission;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Assessment\GradingSession;
+use App\Models\Assessment\OmrQuestionBookletVersion;
+use App\Models\Communications\PublicPolicy;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamAttendanceRecord;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
-use App\Models\Foundation\AptitudeArea;
 use App\Models\Foundation\ApplicationWindow;
+use App\Models\Foundation\AptitudeArea;
 use App\Models\Foundation\Institution;
 use App\Models\Foundation\Room;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use RuntimeException;
 
 /**
  * Developer-ready grading demo (GradingWorkflow HANDOFF).
@@ -41,7 +45,7 @@ class GradingDemoSeeder extends Seeder
         $institution = Institution::query()->where('code', 'SYN-INST-001')->firstOrFail();
         $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
         $window = ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
-        $room = Room::query()->where('code', 'RM-101')->firstOrFail();
+        $room = Room::query()->whereIn('code', ['ITBR-105', 'RM-101'])->firstOrFail();
         $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
 
@@ -74,6 +78,11 @@ class GradingDemoSeeder extends Seeder
                 'starts_at' => now()->subHours(2),
                 'effective_end_at' => now()->addMinutes(30),
                 'version' => 1,
+                'booklet_version_id' => OmrQuestionBookletVersion::query()
+                    ->whereHas('booklet', fn ($query) => $query->where('code', ExamMaterialRoutingDemoSeeder::BOOKLET_CODE))
+                    ->whereNotNull('finalized_at')
+                    ->value('id'),
+                'seating_arrangement_id' => $room->default_seating_arrangement_id,
             ],
         );
 
@@ -84,12 +93,12 @@ class GradingDemoSeeder extends Seeder
                 ->exists();
 
             if (! $assigned) {
-                app(\App\Examination\Actions\AssignApplicantToExamSession::class)
+                app(AssignApplicantToExamSession::class)
                     ->handle($session, $attempt, $guidance);
             }
         }
 
-        app(\App\Examination\Actions\PublishExamSession::class)->handle($session, $guidance, 1);
+        app(PublishExamSession::class)->handle($session, $guidance, 1);
 
         // GRE-1/3 — applicant A is present + submitted (gradable), applicant B
         // is absent (no-show) and excluded from the grading roster.
@@ -105,7 +114,7 @@ class GradingDemoSeeder extends Seeder
             }
         });
 
-        app(\App\Examination\Actions\CloseExamSession::class)->handle($session->fresh(), $guidance, 2);
+        app(CloseExamSession::class)->handle($session->fresh(), $guidance, 2);
 
         $grading = GradingSession::query()->where('exam_session_id', $session->id)->firstOrFail();
 
@@ -139,6 +148,10 @@ class GradingDemoSeeder extends Seeder
             ->first();
 
         if ($attempt === null) {
+            $policy = PublicPolicy::designatedIntake((int) $institution->getKey())
+                ?? throw new \RuntimeException('A designated published PublicPolicy revision is required for seeded intake.');
+            $revision = $policy->publishedRevision
+                ?? throw new \RuntimeException('The designated intake policy has no published revision.');
             $result = app(SubmitAdmissionAttempt::class)->handle(
                 $institution,
                 $cycle,
@@ -150,14 +163,7 @@ class GradingDemoSeeder extends Seeder
                     sex: 'female',
                     contactEmail: $email,
                     applicantType: 'new',
-                    programPreferenceCodes: ['BSN', 'BSPSY'],
-                    grades: [
-                        'GWA' => '1.90',
-                        'ENG' => '89.00',
-                        'FIL' => '90.00',
-                        'MATH' => '86.00',
-                        'SCI' => '88.00',
-                    ],
+                    programPreferenceCodes: ['BSIT', 'BA-Psych'],
                     middleName: null,
                     suffix: null,
                     contactPhone: '09171234568',
@@ -168,6 +174,9 @@ class GradingDemoSeeder extends Seeder
                     province: 'Ilocos Sur',
                     zipCode: '2714',
                     termsAccepted: true,
+                    publicPolicyId: (int) $policy->getKey(),
+                    publicPolicyRevisionId: (int) $revision->getKey(),
+                    publicPolicyRevisionDigest: $revision->contentDigest(),
                 ),
                 'grading-demo-seeder',
             );

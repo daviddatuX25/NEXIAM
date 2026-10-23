@@ -12,8 +12,7 @@ final class QualifyOmrMarkerProfile
     public function __construct(
         private readonly OmrMarkerProfileService $profiles,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $evidence */
     public function handle(OmrMarkerProfile $profile, array $evidence, User $actor): OmrMarkerProfile

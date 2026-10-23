@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xiam Mascot & Expression Studio (v2)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .checkerboard {
+      background-color: #ffffff;
+      background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+                        linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+                        linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+    .checkerboard-dark {
+      background-color: #18181b;
+      background-image: linear-gradient(45deg, #27272a 25%, transparent 25%),
+                        linear-gradient(-45deg, #27272a 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #27272a 75%),
+                        linear-gradient(-45deg, transparent 75%, #27272a 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+    img {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+  </style>
+<body class="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 sm:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v2 Asset Pipeline</span>
+          <span class="text-xs text-slate-400 font-mono">12 Active Expressions • Authentic Artist RGBA</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mt-1">Xiam Mascot & Expression Studio</h1>
+        <p class="text-sm text-slate-400">Authentic character animations: multi-stage Idle life cycle & dedicated Thinking action sets.</p>
+      </div>
+
+      <!-- Theme / Canvas Controls -->
+      <div class="flex flex-wrap items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700/60 text-xs">
+        <span class="text-slate-400 font-medium px-1">Background:</span>
+        <button onclick="setTheme('glass-dark')" id="btn-glass-dark" class="px-2.5 py-1.5 rounded-lg bg-slate-700 text-white font-medium hover:bg-slate-600 transition">Dark Glass</button>
+        <button onclick="setTheme('glass-light')" id="btn-glass-light" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:bg-slate-700 transition">Light Glass</button>
+        <button onclick="setTheme('staff')" id="btn-staff" class="px-2.5 py-1.5 rounded-lg text-emerald-400 hover:bg-slate-700 transition">Staff (Emerald)</button>
+        <button onclick="setTheme('applicant')" id="btn-applicant" class="px-2.5 py-1.5 rounded-lg text-amber-400 hover:bg-slate-700 transition">Student (Amber)</button>
+        <button onclick="setTheme('proctor')" id="btn-proctor" class="px-2.5 py-1.5 rounded-lg text-blue-400 hover:bg-slate-700 transition">Proctor (Blue)</button>
+        <button onclick="setTheme('checkerboard')" id="btn-checkerboard" class="px-2.5 py-1.5 rounded-lg text-slate-300 hover:bg-slate-700 transition">Grid (Alpha Test)</button>
+      </div>
+    </header>
+
+    <!-- Special Feature Highlight: Idle, Thinking & Talking Breakdown -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+      <div class="bg-gradient-to-br from-emerald-950/40 via-slate-800/60 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-emerald-400"></span>
+            <span class="font-bold text-white uppercase tracking-wider">Natural Idle Life Cycle</span>
+          </div>
+          <span class="text-[11px] font-mono text-emerald-400">Frequent Blinks • Rare Glance</span>
+        </div>
+        <div class="flex items-center gap-2 overflow-x-auto pb-1">
+          <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center shrink-0">
+            <img src="/assets/xiam/emotions/v2/frames/idle-open.png" class="size-16 object-contain" />
+            <span class="font-medium text-slate-200 mt-1">Open Eyes</span>
+            <span class="text-[10px] text-emerald-400 font-mono">Frequent (3.4s)</span>
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center shrink-0">
+            <img src="/assets/xiam/emotions/v2/frames/idle-blink.png" class="size-16 object-contain" />
+            <span class="font-medium text-slate-200 mt-1">Blink</span>
+            <span class="text-[10px] text-slate-400 font-mono">150ms</span>
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center shrink-0">
+            <img src="/assets/xiam/emotions/v2/frames/idle-open.png" class="size-16 object-contain" />
+            <span class="font-medium text-slate-200 mt-1">Open Eyes</span>
+            <span class="text-[10px] text-emerald-400 font-mono">Repeats 3x</span>
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="bg-slate-900 p-2 rounded-xl border border-purple-500/30 flex flex-col items-center shrink-0 bg-purple-950/20">
+            <img src="/assets/xiam/emotions/v2/frames/idle-glance.png" class="size-16 object-contain" />
+            <span class="font-medium text-purple-200 mt-1">Side Glance</span>
+            <span class="text-[10px] text-purple-300 font-mono">Uncommon (12s)</span>
+          </div>
+        </div>
+        <div class="text-[11px] text-emerald-300/80 bg-emerald-950/30 rounded-lg p-2 border border-emerald-500/20">
+          <span class="font-semibold text-emerald-200">Resting Pacing:</span> Most of the time Xiam looks directly forward with natural eye blinks. The side-look is kept rare so the avatar doesn't look distracted.
+        </div>
+      </div>
+
+      <!-- Thinking Sets Highlights -->
+      <div class="bg-gradient-to-br from-blue-950/40 via-slate-800/60 to-slate-900 border border-blue-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-blue-400"></span>
+            <span class="font-bold text-white uppercase tracking-wider">Dedicated Thinking Actions (3 Authentic 2-Frame Sets)</span>
+          </div>
+          <span class="text-[11px] font-mono text-blue-400">Authentic Keyframes (Zero Fake Zooms)</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 flex flex-col items-center text-center">
+            <img src="/assets/xiam/emotions/v2/frames/thinking-1.png" class="size-14 object-contain" />
+            <span class="font-semibold text-white mt-1 text-[11px]">1. Pondering</span>
+            <span class="text-[10px] text-slate-400">General reasoning</span>
+          </div>
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 flex flex-col items-center text-center">
+            <img src="/assets/xiam/emotions/v2/frames/searching-paper-1.png" class="size-14 object-contain" />
+            <span class="font-semibold text-white mt-1 text-[11px]">2. Paper Search</span>
+            <span class="text-[10px] text-slate-400">OMR & document review</span>
+          </div>
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 flex flex-col items-center text-center">
+            <img src="/assets/xiam/emotions/v2/frames/searching-phone-1.png" class="size-14 object-contain" />
+            <span class="font-semibold text-white mt-1 text-[11px]">3. Device Check</span>
+            <span class="text-[10px] text-slate-400">SMS & notifications</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Talking Combos Highlights -->
+      <div class="bg-gradient-to-br from-purple-950/40 via-slate-800/60 to-slate-900 border border-purple-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-purple-400"></span>
+            <span class="font-bold text-white uppercase tracking-wider">Authentic Talking Combos</span>
+          </div>
+          <span class="text-[11px] font-mono text-purple-400">2 & 3 Frame Focused Combos</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 flex flex-col items-center text-center">
+            <img src="/assets/xiam/emotions/v2/frames/talking-4.png" class="size-14 object-contain" />
+            <span class="font-semibold text-white mt-1 text-[11px]">Calm (Hands Down)</span>
+            <span class="text-[10px] text-slate-400">2F: 6 ↔ 4 • 3F: 6 → mid → 4</span>
+          </div>
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 flex flex-col items-center text-center">
+            <img src="/assets/xiam/emotions/v2/frames/talking-3.png" class="size-14 object-contain" />
+            <span class="font-semibold text-white mt-1 text-[11px]">Presenting (1 Hand)</span>
+            <span class="text-[10px] text-slate-400">2F: 2 ↔ 3 • 3F: 2 → mid → 3</span>
+          </div>
+          <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 flex flex-col items-center text-center">
+            <img src="/assets/xiam/emotions/v2/frames/talking-5.png" class="size-14 object-contain" />
+            <span class="font-semibold text-white mt-1 text-[11px]">Expressive (Both)</span>
+            <span class="text-[10px] text-slate-400">2F: 1 ↔ 5</span>
+          </div>
+        </div>
+        <div class="text-[11px] text-purple-300/80 bg-purple-900/20 rounded-lg p-2 border border-purple-500/20">
+          <span class="font-semibold text-purple-200">Zero Limb-Flailing:</span> Postures remain stable while only the mouth and subtle facial inflections articulate speech.
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Speech & Text Stream Simulator (Chat & Walkthrough) -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-purple-500/40 rounded-3xl p-6 shadow-2xl space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/80 pb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">Interactive Simulator</span>
+            <h2 class="text-lg font-bold text-white">AI Chat & Walkthrough Speech Synchronization</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Test real-time text streaming: avatar talks while text streams, then seamlessly settles into the resolved emotion.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="sim-start-btn" onclick="startStreamSimulation()" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition shadow-lg shadow-purple-600/20 flex items-center gap-1.5">
+            <span>▶ Stream Text & Speak</span>
+          </button>
+          <button onclick="revealAllSimulation()" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium transition">
+            ⚡ Fast-Forward
+          </button>
+          <button onclick="stopSimulation()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-medium transition">
+            ⏹ Settle Now
+          </button>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 bg-slate-950/60 p-3 rounded-2xl border border-purple-500/20">
+        <span class="text-xs font-bold text-purple-300 flex items-center gap-1.5 mr-1">
+          <span class="size-2 rounded-full bg-purple-400 animate-pulse"></span>
+          <span>Interactive Presets:</span>
+        </span>
+        <button onclick="applyPreset('welcome')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-purple-900/50 text-purple-200 text-xs border border-purple-500/30 transition flex items-center gap-1">
+          <span>🌟 Welcome Tour</span>
+        </button>
+        <button onclick="applyPreset('omr-search')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-blue-900/50 text-blue-200 text-xs border border-blue-500/30 transition flex items-center gap-1">
+          <span>📄 OMR Paper Search</span>
+        </button>
+        <button onclick="applyPreset('sms-check')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-600 transition flex items-center gap-1">
+          <span>📱 SMS Code Check</span>
+        </button>
+        <button onclick="applyPreset('honors')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-900/50 text-amber-200 text-xs border border-amber-500/30 transition flex items-center gap-1">
+          <span>🏆 Top 5% Honors</span>
+        </button>
+        <button onclick="applyPreset('preflight')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-emerald-900/50 text-emerald-200 text-xs border border-emerald-500/30 transition flex items-center gap-1">
+          <span>👍 Preflight Passed</span>
+        </button>
+        <button onclick="applyPreset('collision')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/50 text-rose-200 text-xs border border-rose-500/30 transition flex items-center gap-1">
+          <span>⚠️ Seating Alert</span>
+        </button>
+        <button onclick="applyPreset('casual')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-600 transition flex items-center gap-1">
+          <span>💬 Casual Chat</span>
+        </button>
+        <button onclick="applyPreset('concept')" class="preset-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-900/50 text-indigo-200 text-xs border border-indigo-500/30 transition flex items-center gap-1">
+          <span>🔄 Statistical Rules</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- Avatar Stage -->
+        <div class="lg:col-span-4 flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-950 border border-purple-500/30 space-y-3">
+          <div class="relative size-44 flex items-center justify-center rounded-2xl p-2 bg-purple-950/20 border border-purple-500/20">
+            <img id="sim-avatar-img" src="/assets/xiam/emotions/v2/talking-calm.webp" class="size-40 object-contain" alt="Xiam speaking" />
+            <div id="sim-speech-indicator" class="absolute top-2 right-2 flex items-center gap-1 bg-purple-500/80 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shadow-xs">
+              <span class="size-1.5 rounded-full bg-white animate-ping"></span>
+              <span>READY</span>
+            </div>
+          </div>
+          <div class="text-center space-y-0.5">
+            <div id="sim-status-label" class="text-sm font-bold text-white">Talking • Calm (2-Frame)</div>
+            <div id="sim-status-sub" class="text-xs text-purple-300 font-mono">speech: ready • select preset</div>
+          </div>
+        </div>
+
+        <!-- Interactive Controls & Live Bubble -->
+        <div class="lg:col-span-8 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">1. Talking Style:</label>
+              <select id="sim-talking-style" onchange="updateSimStyle(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-500">
+                <option value="talking-calm" selected>Calm Dialogue (2-Frame Hands Down)</option>
+                <option value="talking-presenting">Presenting (2-Frame 1-Hand)</option>
+                <option value="talking-expressive">Expressive (2-Frame Both Hands)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">2. Settle Target Emotion:</label>
+              <select id="sim-settle-emotion" onchange="previewSettleEmotion(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-500">
+                <option value="hi" selected>hi (Welcome Wave)</option>
+                <option value="thumbs-up">thumbs-up (Approved / Guided)</option>
+                <option value="star-eyes">star-eyes (Honors / Discovery)</option>
+                <option value="celebrating">celebrating (Milestone / Complete)</option>
+                <option value="thinking">thinking (Pondering Rules)</option>
+                <option value="searching-paper">searching-paper (OMR Review)</option>
+                <option value="searching-phone">searching-phone (SMS Check)</option>
+                <option value="idle">idle (Calm Life Cycle)</option>
+                <option value="shock">shock (Alert / Conflict)</option>
+                <option value="sad">sad (Ineligible / 0 Quota)</option>
+                <option value="angry">angry (Policy Rejection)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">3. Text Speed:</label>
+              <select id="sim-speed" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-500">
+                <option value="12">Fast (Chat SSE: 12ms)</option>
+                <option value="25" selected>Natural (Tour: 25ms)</option>
+                <option value="45">Deliberate (45ms)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1 font-medium">4. Playback Mode:</label>
+              <select id="sim-cadence" onchange="updateCadenceMode(this.value)" class="w-full bg-slate-900 border border-purple-500/50 rounded-xl px-2.5 py-2 text-purple-200 font-medium focus:outline-none focus:border-purple-400">
+                <option value="oneshot" selected>1 → 2 Hold (One-Shot • Zero Looping)</option>
+                <option value="natural">Natural Phrasing (Punctuation Pauses)</option>
+                <option value="continuous">Continuous Flapping (Repeating Loop)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Speech Text Stream Surface -->
+          <div class="relative bg-slate-950/80 border border-slate-700/80 rounded-2xl p-4 min-h-[110px] flex flex-col justify-between shadow-inner">
+            <div class="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800 pb-2 mb-2">
+              <span class="font-mono text-purple-400 flex items-center gap-1.5">
+                <span class="size-2 rounded-full bg-purple-400"></span>
+                Xiam Live Stream Output
+              </span>
+              <span id="sim-progress-text" class="font-mono text-slate-500">0 / 0 chars</span>
+            </div>
+            <div id="sim-text-display" class="text-sm text-slate-100 font-sans leading-relaxed tracking-wide min-h-[48px]">
+              Click "Stream Text & Speak" to observe live speech animation synchronized with text reveal...
+            </div>
+            <div class="text-[10px] text-slate-500 flex items-center justify-between pt-2 border-t border-slate-800/80 mt-2">
+              <span>Click anywhere in bubble to fast-forward text</span>
+              <span id="sim-latency-badge" class="font-mono text-emerald-400">Deceleration: 120ms crossfade</span>
+            </div>
+          </div>
+        </div>
+      </div>
+     </div>
+
+    <!-- Playback Mode Toolbar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800/60 border border-slate-700/60 p-4 rounded-2xl">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-semibold text-slate-200">Animation Style:</span>
+        <div class="inline-flex rounded-xl bg-slate-900/80 p-1 border border-slate-700/80 text-xs">
+          <button id="mode-keyframes" onclick="setMode('keyframes')" class="px-3 py-1.5 rounded-lg font-medium bg-emerald-600 text-white transition">Discrete Keyframes (JS Timer)</button>
+          <button id="mode-webp" onclick="setMode('webp')" class="px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition">Native Animated WebP</button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-6 text-xs text-slate-400">
+        <div class="flex items-center gap-2">
+          <span>Display Size:</span>
+          <select id="size-select" onchange="updateSize(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200">
+            <option value="96">96px (Panel Dock)</option>
+            <option value="128" selected>128px (Tour Modal)</option>
+            <option value="192">192px (Large)</option>
+            <option value="256">256px (Hero / Hi-Res)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emotion Cards Grid -->
+    <div id="emotions-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div class="col-span-full text-center py-12 text-slate-500">Loading v2 manifest and assets...</div>
+    </div>
+
+    <!-- Unpaired Isolated Asset Shelf -->
+    <div class="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-bold text-slate-200">Isolated & Unpaired Asset Shelf</h3>
+          <p class="text-xs text-slate-400">Assets removed from standard loops awaiting their matching animation partner.</p>
+        </div>
+        <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">1 asset</span>
+      </div>
+      <div class="flex items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+        <img src="/assets/xiam/emotions/v2/unpaired/laugh-1-norm.png" class="size-20 object-contain bg-slate-950/60 rounded-lg p-1" />
+        <div class="space-y-1 text-xs">
+          <div class="font-semibold text-white">laugh-1.png (Smirk / Chuckle base)</div>
+          <div class="text-slate-400 text-[11px]">Removed from Laughing (which now cleanly loops between laugh-2 + laugh-3). Ready to be paired with a matching partner.</div>
+          <a href="/assets/xiam/emotions/v2/unpaired/laugh-1-norm.png" target="_blank" class="text-emerald-400 hover:underline">Download Clean Normalized PNG (512px) ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inspector Modal / Detail Drawer -->
+    <div id="inspector" class="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 hidden space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 id="inspector-title" class="text-lg font-bold text-white">Emotion Breakdown</h3>
+        <button onclick="closeInspector()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
+      </div>
+      <div id="inspector-content" class="flex flex-wrap gap-4 items-center"></div>
+    </div>
+  </div>
+
+  <script>
+    let manifest = null;
+    let currentMode = 'keyframes';
+    let currentTheme = 'glass-dark';
+    let currentDisplaySize = 128;
+    let activeTimers = {};
+
+    const THEME_CLASSES = {
+      'glass-dark': 'bg-slate-950 border-slate-800 text-white',
+      'glass-light': 'bg-white border-slate-200 text-slate-900 shadow-md',
+      'staff': 'bg-slate-950 border-emerald-500/40 text-emerald-100',
+      'applicant': 'bg-slate-950 border-amber-500/40 text-amber-100',
+      'proctor': 'bg-slate-950 border-blue-500/40 text-blue-100',
+      'checkerboard': 'checkerboard border-slate-300 text-slate-900',
+    };
+
+
+    function renderGrid() {
+      const container = document.getElementById('emotions-grid');
+      container.innerHTML = '';
+
+      Object.entries(manifest.emotions).forEach(([emotion, data]) => {
+        const card = document.createElement('div');
+        card.className = `avatar-card rounded-2xl border p-5 flex flex-col items-center justify-between gap-4 transition-all duration-300 ${THEME_CLASSES[currentTheme]}`;
+        card.id = `card-${emotion}`;
+
+        const isSpeech = emotion.startsWith('talking');
+        const isSpecial = emotion.startsWith('idle') || emotion.startsWith('thinking') || emotion.startsWith('searching');
+        const badgeColor = isSpeech ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : (isSpecial ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-slate-700/60 text-slate-300 border-slate-600/40');
+        card.innerHTML = `
+          <div class="flex items-center justify-between w-full">
+            <span class="font-bold text-sm tracking-wide capitalize flex items-center gap-1.5">
+              ${data.label}
+              ${isSpeech ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-mono">Speech</span>' : (isSpecial ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-mono">Set 2</span>' : '')}
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded-full border ${badgeColor}">${emotion}</span>
+          </div>
+
+          <div class="relative flex items-center justify-center p-3 rounded-2xl overflow-hidden" style="width: ${currentDisplaySize + 24}px; height: ${currentDisplaySize + 24}px;">
+            <img id="img-${emotion}" 
+                 src="${currentMode === 'webp' ? data.animated_webp : data.keyframes[0]}" 
+                 alt="${data.label}" 
+                 class="object-contain"
+                 style="width: ${currentDisplaySize}px; height: ${currentDisplaySize}px;" />
+          </div>
+
+          <div class="w-full flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-700/40 pt-3">
+            <span id="frame-indicator-${emotion}">${currentMode === 'webp' ? 'WebP Native' : data.keyframes.length + ' keyframes'}</span>
+            <button onclick="inspectEmotion('${emotion}')" class="text-emerald-400 hover:underline">Inspect Frames →</button>
+          </div>
+        `;
+        container.appendChild(card);
+
+        startAnimationForEmotion(emotion, data);
+      });
+    }
+
+    function startAnimationForEmotion(emotion, data) {
+      if (activeTimers[emotion]) {
+        clearTimeout(activeTimers[emotion]);
+        delete activeTimers[emotion];
+      }
+
+      if (currentMode === 'webp') {
+        const img = document.getElementById(`img-${emotion}`);
+        if (img) img.src = data.animated_webp;
+        return;
+      }
+
+      const frames = data.keyframes;
+      let frameIdx = 0;
+      const durations = data.durations_ms;
+
+      function step() {
+        const img = document.getElementById(`img-${emotion}`);
+        const indicator = document.getElementById(`frame-indicator-${emotion}`);
+        if (img) img.src = frames[frameIdx];
+        if (indicator) indicator.textContent = `Frame ${frameIdx + 1} of ${frames.length}`;
+
+        const holdTime = (durations && durations[frameIdx]) ? durations[frameIdx] : 500;
+        frameIdx = (frameIdx + 1) % frames.length;
+        activeTimers[emotion] = setTimeout(step, holdTime);
+      }
+
+      step();
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      ['keyframes', 'webp'].forEach(m => {
+        const btn = document.getElementById(`mode-${m}`);
+        if (btn) {
+          btn.className = (m === mode) ? "px-3 py-1.5 rounded-lg font-medium bg-emerald-600 text-white transition" : "px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition";
+        }
+      });
+
+      if (manifest) {
+        Object.entries(manifest.emotions).forEach(([emotion, data]) => {
+          startAnimationForEmotion(emotion, data);
+        });
+        const style = document.getElementById('sim-talking-style')?.value || 'talking-calm-3f';
+        animateSimulatorAvatar(style);
+      }
+    }
+    function setTheme(theme) {
+      currentTheme = theme;
+      ['glass-dark', 'glass-light', 'staff', 'applicant', 'proctor', 'checkerboard'].forEach(t => {
+        const btn = document.getElementById(`btn-${t}`);
+        if (btn) {
+          btn.className = (t === theme) ? "px-2.5 py-1.5 rounded-lg bg-slate-700 text-white font-medium transition" : "px-2.5 py-1.5 rounded-lg text-slate-400 hover:bg-slate-700 transition";
+        }
+      });
+
+      document.querySelectorAll('.avatar-card').forEach(card => {
+        card.className = `avatar-card rounded-2xl border p-5 flex flex-col items-center justify-between gap-4 transition-all duration-300 ${THEME_CLASSES[theme]}`;
+      });
+    }
+
+    function updateSize(val) {
+      currentDisplaySize = parseInt(val, 10);
+      renderGrid();
+    }
+
+    function inspectEmotion(emotion) {
+      const data = manifest.emotions[emotion];
+      const drawer = document.getElementById('inspector');
+      const title = document.getElementById('inspector-title');
+      const content = document.getElementById('inspector-content');
+
+      title.textContent = `${data.label} (${emotion}) — Frame-by-Frame Breakdown`;
+      content.innerHTML = '';
+
+      const kfSection = document.createElement('div');
+      kfSection.className = "w-full";
+      kfSection.innerHTML = `<h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Keyframes (${data.keyframes.length} frames)</h4><div class="flex flex-wrap gap-4" id="kf-list"></div>`;
+      content.appendChild(kfSection);
+      const kfList = kfSection.querySelector('#kf-list');
+
+      data.keyframes.forEach((src, idx) => {
+        const dur = (data.durations_ms && data.durations_ms[idx]) ? `${data.durations_ms[idx]}ms` : '';
+        const item = document.createElement('div');
+        item.className = "flex flex-col items-center bg-slate-900 p-3 rounded-xl border border-slate-700";
+        item.innerHTML = `
+          <img src="${src}" class="w-32 h-32 object-contain bg-slate-950/60 rounded-lg p-2" />
+          <span class="text-xs font-mono text-slate-300 mt-2">Frame ${idx + 1}</span>
+          ${dur ? `<span class="text-[11px] font-mono text-emerald-400">${dur}</span>` : ''}
+          <a href="${src}" target="_blank" class="text-[10px] text-emerald-400 hover:underline mt-1">Full 512px ↗</a>
+        `;
+        kfList.appendChild(item);
+      });
+
+      drawer.classList.remove('hidden');
+      drawer.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeInspector() {
+      document.getElementById('inspector').classList.add('hidden');
+    }
+    // --- Speech & Text Stream Simulator ---
+    let simInterval = null;
+    let simAnimTimer = null;
+    let simCurrentText = "Welcome to the Admission Decision Support Hub! Let's explore your degree program compatibility curves and calibration benchmarks.";
+    let simCharPos = 0;
+    let simIsSpeaking = false;
+    let currentPresetKey = 'welcome';
+
+    const PRESETS = {
+      welcome: {
+        style: 'talking-presenting',
+        settle: 'hi',
+        speed: 25,
+        text: "Welcome to the Admission Decision Support Hub! Let's explore your degree program compatibility curves and calibration benchmarks."
+      },
+      'omr-search': {
+        style: 'talking-presenting',
+        settle: 'searching-paper',
+        speed: 15,
+        text: "I'm checking the uploaded standard answer sheet against the 150-question canonical master key."
+      },
+      'sms-check': {
+        style: 'talking-calm',
+        settle: 'searching-phone',
+        speed: 15,
+        text: "Checking the applicant's SMS delivery receipts and portal verification codes."
+      },
+      honors: {
+        style: 'talking-expressive',
+        settle: 'star-eyes',
+        speed: 22,
+        text: "Outstanding! Candidate aptitude scores place them in the top 5% honors threshold for Computer Science."
+      },
+      preflight: {
+        style: 'talking-calm',
+        settle: 'thumbs-up',
+        speed: 18,
+        text: "Preflight checks passed! Room 204 seating plan is locked and ready for your authorization."
+      },
+      collision: {
+        style: 'talking-calm',
+        settle: 'shock',
+        speed: 18,
+        text: "Warning: Room 304 has exceeded maximum seating capacity by 4 candidates. Action blocked."
+      },
+      casual: {
+        style: 'talking-calm',
+        settle: 'idle',
+        speed: 18,
+        text: "The Registrar's office hours for document verification are 08:00 to 17:00, Monday through Friday."
+      },
+      concept: {
+        style: 'talking-presenting',
+        settle: 'thinking',
+        speed: 25,
+        text: "In NEXIAM, TabFM models provide advisory evidence only. The Admissions Committee retains 100% human authority."
+      }
+    };
+
+    function updateCadenceMode(val) {
+      const style = document.getElementById('sim-talking-style')?.value || 'talking-presenting';
+      animateSimulatorAvatar(style);
+    }
+
+    function animateSimulatorAvatar(emotionKey, forceMode = null) {
+      if (simAnimTimer) {
+        clearTimeout(simAnimTimer);
+        simAnimTimer = null;
+      }
+      const img = document.getElementById('sim-avatar-img');
+      if (!img || !manifest) return;
+
+      const data = manifest.emotions[emotionKey];
+      if (!data) return;
+
+      const cadence = document.getElementById('sim-cadence')?.value || 'oneshot';
+      const isOneShot = (forceMode === 'oneshot') || (forceMode !== 'loop' && cadence === 'oneshot');
+
+      const frames = data.keyframes;
+      const durations = data.durations_ms;
+
+      if (isOneShot) {
+        // ONE-SHOT GESTURE (1 -> 2 -> HOLD): ZERO REPEATING LOOP!
+        let fIdx = 0;
+        img.src = frames[0];
+
+        function oneShotStep() {
+          fIdx++;
+          if (fIdx < frames.length) {
+            img.src = frames[fIdx];
+            const dur = (durations && durations[fIdx]) ? durations[fIdx] : 200;
+            simAnimTimer = setTimeout(oneShotStep, dur);
+          } else {
+            // Permanently stay on the held pose until next user action / step
+            img.src = frames[frames.length - 1];
+            simAnimTimer = null;
+          }
+        }
+
+        const firstDur = (durations && durations[0]) ? durations[0] : 180;
+        simAnimTimer = setTimeout(oneShotStep, firstDur);
+        return;
+      }
+
+      // Looping fallback mode
+      if (currentMode === 'webp') {
+        img.src = data.animated_webp;
+        return;
+      }
+
+      let fIdx = 0;
+      function simStep() {
+        img.src = frames[fIdx];
+        const dur = (durations && durations[fIdx]) ? durations[fIdx] : 200;
+        fIdx = (fIdx + 1) % frames.length;
+        simAnimTimer = setTimeout(simStep, dur);
+      }
+      simStep();
+    }
+    function applyPreset(key) {
+      const p = PRESETS[key];
+      if (!p) return;
+      currentPresetKey = key;
+
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+      }
+      simIsSpeaking = false;
+
+      document.getElementById('sim-talking-style').value = p.style;
+      document.getElementById('sim-settle-emotion').value = p.settle;
+      document.getElementById('sim-speed').value = p.speed;
+      simCurrentText = p.text;
+
+      document.getElementById('sim-text-display').textContent = p.text;
+      document.getElementById('sim-progress-text').textContent = `${p.text.length} / ${p.text.length} chars (preset loaded)`;
+
+      const styleData = manifest?.emotions[p.style];
+      document.getElementById('sim-status-label').textContent = styleData?.label || p.style;
+      document.getElementById('sim-status-sub').textContent = `preset: ${key} • ready to stream`;
+
+      const speechBadge = document.getElementById('sim-speech-indicator');
+      speechBadge.className = "absolute top-2 right-2 flex items-center gap-1 bg-purple-600/80 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shadow-xs";
+      speechBadge.innerHTML = '<span>READY</span>';
+
+      animateSimulatorAvatar(p.style);
+    }
+
+    function updateSimStyle(style) {
+      const data = manifest?.emotions[style];
+      if (data) {
+        document.getElementById('sim-status-label').textContent = data.label;
+        document.getElementById('sim-status-sub').textContent = simIsSpeaking ? "speech: active (streaming text)" : "speech: style preview";
+      }
+      animateSimulatorAvatar(style);
+    }
+
+    function previewSettleEmotion(emotion) {
+      if (!simIsSpeaking) {
+        const data = manifest?.emotions[emotion];
+        if (data) {
+          document.getElementById('sim-status-label').textContent = `Settle Target: ${data.label}`;
+          document.getElementById('sim-status-sub').textContent = `settle preview: ${emotion}`;
+          animateSimulatorAvatar(emotion);
+        }
+      }
+    }
+
+    function pauseSpeechTemporarily(label, duration) {
+      const speechBadge = document.getElementById('sim-speech-indicator');
+      if (speechBadge) {
+        speechBadge.className = "absolute top-2 right-2 flex items-center gap-1 bg-amber-500/90 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shadow-xs";
+        speechBadge.innerHTML = `<span class="size-1.5 rounded-full bg-white"></span><span>${label}</span>`;
+      }
+      // Pause animation on the resting frame during breath pause
+      if (simAnimTimer) {
+        clearTimeout(simAnimTimer);
+        simAnimTimer = null;
+      }
+      const style = document.getElementById('sim-talking-style').value;
+      const data = manifest?.emotions[style];
+      const img = document.getElementById('sim-avatar-img');
+      if (img && data && data.keyframes) {
+        img.src = data.keyframes[0]; // Rest/closed mouth
+      }
+
+      setTimeout(() => {
+        if (simIsSpeaking) {
+          if (speechBadge) {
+            speechBadge.className = "absolute top-2 right-2 flex items-center gap-1 bg-purple-500 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shadow-xs";
+            speechBadge.innerHTML = '<span class="size-1.5 rounded-full bg-white animate-ping"></span><span>SPEAKING</span>';
+          }
+          animateSimulatorAvatar(style);
+        }
+      }, duration - 40);
+    }
+
+    function startStreamSimulation() {
+      if (simInterval) clearTimeout(simInterval);
+      simCharPos = 0;
+      simIsSpeaking = true;
+
+      const style = document.getElementById('sim-talking-style').value;
+      const speed = parseInt(document.getElementById('sim-speed').value, 10);
+      const data = manifest?.emotions[style] || manifest?.emotions['talking-calm-3f'];
+
+      const speechBadge = document.getElementById('sim-speech-indicator');
+      const statusLabel = document.getElementById('sim-status-label');
+      const statusSub = document.getElementById('sim-status-sub');
+      const textDisplay = document.getElementById('sim-text-display');
+      const progressText = document.getElementById('sim-progress-text');
+
+      speechBadge.className = "absolute top-2 right-2 flex items-center gap-1 bg-purple-500 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shadow-xs";
+      speechBadge.innerHTML = '<span class="size-1.5 rounded-full bg-white animate-ping"></span><span>SPEAKING</span>';
+      statusLabel.textContent = data ? data.label : style;
+      statusSub.textContent = "speech: active (streaming text)";
+
+      animateSimulatorAvatar(style);
+      textDisplay.innerHTML = '<span class="inline-block border-r-2 border-purple-400 pr-0.5 animate-pulse"></span>';
+
+      function stepStream() {
+        if (!simIsSpeaking) return;
+
+        simCharPos++;
+        const revealed = simCurrentText.slice(0, simCharPos);
+        textDisplay.innerHTML = revealed + '<span class="inline-block border-r-2 border-purple-400 pr-0.5 animate-pulse"></span>';
+        progressText.textContent = `${simCharPos} / ${simCurrentText.length} chars`;
+
+        if (simCharPos >= simCurrentText.length) {
+          simInterval = null;
+          settleSimulation();
+          return;
+        }
+
+        const lastChar = simCurrentText[simCharPos - 1];
+        const isNaturalCadence = document.getElementById('sim-cadence')?.value !== 'continuous';
+        let nextDelay = speed;
+
+        if (isNaturalCadence && (lastChar === '.' || lastChar === '!' || lastChar === '?')) {
+          nextDelay = 420; // Full sentence breathing pause
+          pauseSpeechTemporarily("BREATH PAUSE", nextDelay);
+        } else if (isNaturalCadence && (lastChar === ',' || lastChar === ';' || lastChar === ':')) {
+          nextDelay = 240; // Clause comma pause
+          pauseSpeechTemporarily("COMMA PAUSE", nextDelay);
+        }
+
+        simInterval = setTimeout(stepStream, nextDelay);
+      }
+
+      simInterval = setTimeout(stepStream, speed);
+    }
+
+    function revealAllSimulation() {
+      if (simInterval) {
+        clearTimeout(simInterval);
+        simInterval = null;
+      }
+      simCharPos = simCurrentText.length;
+      const textDisplay = document.getElementById('sim-text-display');
+      const progressText = document.getElementById('sim-progress-text');
+      textDisplay.textContent = simCurrentText;
+      progressText.textContent = `${simCurrentText.length} / ${simCurrentText.length} chars (revealed)`;
+      settleSimulation();
+    }
+
+    function stopSimulation() {
+      if (simInterval) {
+        clearTimeout(simInterval);
+        simInterval = null;
+      }
+      settleSimulation();
+    }
+
+    function settleSimulation() {
+      simIsSpeaking = false;
+      const targetEmotion = document.getElementById('sim-settle-emotion').value;
+      const targetData = manifest?.emotions[targetEmotion] || manifest?.emotions['idle'];
+
+      const avatarImg = document.getElementById('sim-avatar-img');
+      const speechBadge = document.getElementById('sim-speech-indicator');
+      const statusLabel = document.getElementById('sim-status-label');
+      const statusSub = document.getElementById('sim-status-sub');
+
+      animateSimulatorAvatar(targetEmotion);
+
+      speechBadge.className = "absolute top-2 right-2 flex items-center gap-1 bg-emerald-600/80 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shadow-xs";
+      speechBadge.innerHTML = '<span>HELD (READY)</span>';
+      statusLabel.textContent = `Held: ${targetData.label}`;
+      statusSub.textContent = `affect: ${targetEmotion} • speech: idle (waiting for user action)`;
+    }
+
+    async function init() {
+      try {
+        const res = await fetch('/assets/xiam/emotions/v2/manifest.json');
+        manifest = await res.json();
+        renderGrid();
+        applyPreset('welcome');
+      } catch (e) {
+        document.getElementById('emotions-grid').innerHTML = `<div class="col-span-full text-rose-400">Failed to load manifest: ${e.message}</div>`;
+      }
+    }
+    init();
+  </script>
+</body>
+</html>

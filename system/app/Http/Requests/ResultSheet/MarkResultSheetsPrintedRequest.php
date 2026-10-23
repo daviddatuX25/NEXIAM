@@ -17,9 +17,11 @@ class MarkResultSheetsPrintedRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'release_ids' => ['required', 'array', 'min:1', 'max:200'],
-            'release_ids.*' => ['integer'],
+            'document_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'document_ids.*' => ['integer'],
             'printed' => ['required', 'boolean'],
+            'reason' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'idempotency_key' => ['sometimes', 'nullable', 'uuid'],
         ];
     }
 }

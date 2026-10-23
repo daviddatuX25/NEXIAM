@@ -2,10 +2,16 @@
 
 namespace App\Models\Consultation;
 
+use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\Room;
+use App\Models\User;
+use Database\Factories\Consultation\ConsultationSessionFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -14,19 +20,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $code
  * @property string $status
  * @property string $booking_mode
- * @property \Illuminate\Support\Carbon|null $scheduled_at
+ * @property Carbon|null $scheduled_at
  * @property int $version
  * @property int|null $published_by_user_id
- * @property \Illuminate\Support\Carbon|null $published_at
- * @property \Illuminate\Support\Carbon|null $completed_at
- * @property \Illuminate\Support\Carbon|null $cancelled_at
- * @property \Illuminate\Support\Carbon|null $reservation_opened_at
- * @property \Illuminate\Support\Carbon|null $reservation_closed_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $published_at
+ * @property Carbon|null $completed_at
+ * @property Carbon|null $cancelled_at
+ * @property Carbon|null $reservation_opened_at
+ * @property Carbon|null $reservation_closed_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class ConsultationSession extends Model
 {
+    /** @use HasFactory<ConsultationSessionFactory> */
+    use HasFactory;
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_PUBLISHED = 'published';
@@ -49,12 +58,17 @@ class ConsultationSession extends Model
         self::BOOKING_OPEN_FOR_RESERVATION,
     ];
 
+    protected $attributes = [
+        'auto_assign_enabled' => false,
+    ];
+
     protected $fillable = [
         'academic_cycle_id',
         'room_id',
         'code',
         'status',
         'booking_mode',
+        'auto_assign_enabled',
         'scheduled_at',
         'published_by_user_id',
         'published_at',
@@ -71,6 +85,8 @@ class ConsultationSession extends Model
     protected function casts(): array
     {
         return [
+            'auto_assign_enabled' => 'boolean',
+            'version' => 'integer',
             'scheduled_at' => 'datetime',
             'published_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -95,27 +111,51 @@ class ConsultationSession extends Model
     }
 
     /**
-     * @return BelongsTo<\App\Models\Foundation\AcademicCycle, $this>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeDistributionEligible(Builder $query, int $academicCycleId): Builder
+    {
+        return $query
+            ->where('academic_cycle_id', $academicCycleId)
+            ->where('status', self::STATUS_DRAFT)
+            ->where('booking_mode', self::BOOKING_STAFF_ONLY)
+            ->whereHas('room', fn (Builder $room): Builder => $room->where('is_active', true));
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeAutoAssignEligible(Builder $query, int $academicCycleId): Builder
+    {
+        return $query
+            ->distributionEligible($academicCycleId)
+            ->where('auto_assign_enabled', true);
+    }
+
+    /**
+     * @return BelongsTo<AcademicCycle, $this>
      */
     public function academicCycle(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Foundation\AcademicCycle::class);
+        return $this->belongsTo(AcademicCycle::class);
     }
 
     /**
-     * @return BelongsTo<\App\Models\Foundation\Room, $this>
+     * @return BelongsTo<Room, $this>
      */
     public function room(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Foundation\Room::class);
+        return $this->belongsTo(Room::class);
     }
 
     /**
-     * @return BelongsTo<\App\Models\User, $this>
+     * @return BelongsTo<User, $this>
      */
     public function publishedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'published_by_user_id');
+        return $this->belongsTo(User::class, 'published_by_user_id');
     }
 
     /**

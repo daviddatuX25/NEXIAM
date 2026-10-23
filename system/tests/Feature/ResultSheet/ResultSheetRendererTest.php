@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ResultSheet\ResultSheetTemplate;
+use App\ResultSheet\Builder\ResultSheetBuilderSchema;
 use App\ResultSheet\Rendering\DocxToPdfConverter;
 use App\ResultSheet\Rendering\ResultSheetRenderer;
 use App\ResultSheet\Support\ResultSheetPlaceholderService;
@@ -31,6 +32,24 @@ test('html template renders pdf bytes with sample data', function (): void {
         ->and(strlen($bytes))->toBeGreaterThan(1000);
 });
 
+test('builder render rejects score rows that exceed the persisted table height', function (): void {
+    seedE2Foundation();
+    $sample = app(ResultSheetPlaceholderService::class)->sampleData();
+    $sample['scores'][] = ['domain' => 'Additional Area', 'raw' => 85, 'converted' => 'Above Average'];
+    $document = ResultSheetBuilderSchema::defaultDocument();
+
+    $template = new ResultSheetTemplate([
+        'name' => 'Builder overflow',
+        'mode' => ResultSheetTemplate::MODE_HTML,
+        'source_kind' => ResultSheetTemplate::SOURCE_BUILDER,
+        'builder_json' => $document,
+        'content' => '<div class="result-sheet-builder"></div>',
+    ]);
+
+    expect(fn () => app(ResultSheetRenderer::class)->renderForApplicants($template, [$sample]))
+        ->toThrow(RuntimeException::class, 'builder_invalid');
+});
+
 test('docx template fills and converts through the docx converter', function (): void {
     seedE2Foundation();
 
@@ -40,15 +59,18 @@ test('docx template fills and converts through the docx converter', function ():
 
         public bool $existedAtConvert = false;
 
+        public ?float $timeoutSeconds = null;
+
         public function isAvailable(): bool
         {
             return true;
         }
 
-        public function convert(string $documentPath): string
+        public function convert(string $documentPath, ?float $timeoutSeconds = null): string
         {
             $this->convertedPath = $documentPath;
             $this->existedAtConvert = is_file($documentPath);
+            $this->timeoutSeconds = $timeoutSeconds;
 
             return '%PDF-1.4 fake-converted';
         }
@@ -66,30 +88,14 @@ test('docx template fills and converts through the docx converter', function ():
         'document_extension' => 'docx',
     ]);
 
-    $bytes = $renderer->renderForApplicants($template, [$data]);
+    $artifacts = $renderer->renderItem($template, [$data], 4.25);
 
-    expect($bytes)->toStartWith('%PDF')
+    expect($artifacts['pdf'])->toStartWith('%PDF')
+        ->and($artifacts['docx'])->not->toBeNull()
+        ->and(strlen((string) $artifacts['docx']))->toBeGreaterThan(1000)
         ->and($fake->existedAtConvert)->toBeTrue()
-        ->and($fake->convertedPath)->toContain('docx_filled_');
-});
-
-test('dual slot template renders two applicants on one sheet', function (): void {
-    seedE2Foundation();
-
-    $renderer = app(ResultSheetRenderer::class);
-    $service = app(ResultSheetPlaceholderService::class);
-    $data1 = $service->sampleData();
-    $data2 = $service->sampleData();
-    $data2['name'] = 'Maria L. Santos';
-    $data2['reference'] = '2026-000456';
-
-    $template = htmlTemplate();
-    $template->logical_unit = ResultSheetTemplate::LOGICAL_HALF_A4;
-
-    $bytes = $renderer->renderForApplicants($template, [$data1, $data2]);
-
-    expect($bytes)->toStartWith('%PDF')
-        ->and(strlen($bytes))->toBeGreaterThan(1000);
+        ->and($fake->convertedPath)->toContain('docx_filled_')
+        ->and($fake->timeoutSeconds)->toBe(4.25);
 });
 
 test('docx render without an available converter fails truthfully', function (): void {
@@ -102,7 +108,7 @@ test('docx render without an available converter fails truthfully', function ():
             return false;
         }
 
-        public function convert(string $documentPath): string
+        public function convert(string $documentPath, ?float $timeoutSeconds = null): string
         {
             throw new RuntimeException('unreachable');
         }

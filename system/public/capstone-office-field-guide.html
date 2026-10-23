@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Office Field Presentation & Interview Guide</title>
+  <style>
+    :root { color-scheme: dark; --bg: #090d1c; --panel: #11182b; --panel-alt: #162038; --line: #2a3656; --text: #eef2ff; --muted: #a8b3d0; --accent: #73a7ff; --ok: #72ddb0; --warn: #fcd34d; --danger: #f87171; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, sans-serif; }
+    main { width: min(1040px, calc(100% - 2rem)); margin: auto; padding: 2.5rem 0 5rem; }
+    header { border-bottom: 1px solid var(--line); padding-bottom: 2rem; margin-bottom: 2rem; }
+    .eyebrow { color: var(--accent); font-size: .75rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+    h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.1; font-weight: 700; }
+    h2 { margin: 2rem 0 .8rem; font-size: 1.5rem; display: flex; align-items: center; gap: .6rem; }
+    h3 { margin: 0 0 .4rem; font-size: 1.1rem; }
+    p, li { color: var(--muted); }
+    strong { color: var(--text); }
+    a { color: var(--accent); }
+    .actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.2rem; }
+    .actions a { border: 1px solid var(--line); border-radius: .7rem; padding: .55rem .9rem; text-decoration: none; font-size: .9rem; }
+    .actions a.primary { background: var(--accent); color: #081126; font-weight: 700; border-color: var(--accent); }
+    .actions a:hover { border-color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    article, .notice, .card { border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); padding: 1.25rem; }
+    .notice { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+    .script { border: 1px solid color-mix(in srgb, var(--ok) 38%, var(--line)); padding: 1rem 1.2rem; background: var(--panel); border-radius: .8rem; margin: 1rem 0; }
+    .script p { margin: .4rem 0; }
+    ol, ul { padding-left: 1.25rem; }
+    li { margin: .4rem 0; }
+    .tag { display: inline-block; padding: .2rem .55rem; border-radius: .4rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .tag.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
+    .tag.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
+    .tag.accent { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .92rem; }
+    th, td { border: 1px solid var(--line); padding: .75rem .9rem; text-align: left; vertical-align: top; }
+    th { color: var(--text); background: #0e1529; font-weight: 600; }
+    td { color: var(--muted); }
+    .office-section { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 2rem; }
+    .q-list { list-style: none; padding: 0; counter-reset: q-counter; }
+    .q-list li { counter-increment: q-counter; position: relative; padding-left: 2.2rem; margin: .8rem 0; }
+    .q-list li::before { content: counter(q-counter); position: absolute; left: 0; top: 0; width: 1.5rem; height: 1.5rem; background: var(--panel-alt); border: 1px solid var(--line); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; color: var(--accent); }
+    .mock-box { background: #060913; border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; font-family: ui-monospace, monospace; font-size: .85rem; color: #93c5fd; overflow-x: auto; margin: .8rem 0; white-space: pre-wrap; }
+    footer { margin-top: 4rem; border-top: 1px solid var(--line); padding-top: 1.5rem; color: var(--muted); font-size: .85rem; text-align: center; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">NEXIAM · Capstone Requirements & Field Validation</div>
+    <h1>Office Presentation & Interview Guide</h1>
+    <p>Prepared for campus office visits (Guidance, Registrar, and Program Heads). Ties empirical student survey findings directly to system capabilities and targeted interview questions.</p>
+    <div class="actions">
+      <a class="primary" style="background:#0284c7; border-color:#0284c7;" href="/capstone/prototype">🎯 Open Interactive Prototype</a>
+      <a class="primary" href="/capstone/status">← Return to Feature Roadmap</a>
+      <a href="/capstone-interview-guide.html">General Interview Guide</a>
+      <a href="/capstone-manuscript-brief.html">Manuscript Brief</a>
+      <a href="/capstone-wireframe-review.html">Wireframe Review</a>
+    </div>
+  </header>
+
+  <!-- SURVEY FINDINGS CROSS-WALK -->
+  <section>
+    <h2><span>📊</span> Empirical Student Survey Cross-Walk</h2>
+    <div class="notice">
+      <p><strong>Baseline Justification (SO1 & SO2):</strong> The table below connects our <strong>First-Year Student Admission Journey Survey</strong> findings directly to the proposed features you are presenting today.</p>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Student Survey Finding (Pain Point)</th>
+          <th>Root Cause in Current Office Process</th>
+          <th>NEXIAM Feature to Present</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--danger)">Waiting &gt;2 Weeks for Results</strong><br><small>Students anxious for weeks about whether they passed.</small></td>
+          <td>Manual grading using paper stencils takes days of repetitive checking.</td>
+          <td><span class="tag ok">OMR Automated Scoring</span><br>Sheets read and converted automatically; results ready for advising in minutes.</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--warn)">1–2+ Hours Waiting in Open Lines</strong><br><small>Students arrive at 8:00 AM in unmanaged crowds.</small></td>
+          <td>All-day open arrival without batching or appointment windows.</td>
+          <td><span class="tag accent">Hourly Consultation Sessions</span><br>Students assigned or self-reserve hourly slots (~20/hr); queues eliminated.</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--warn)">Rushed Advising ("Mabilisang Abot")</strong><br><small>Counselors overwhelmed by 100+ students outside.</small></td>
+          <td>No centralized digital workspace; manual form filling eats consultation time.</td>
+          <td><span class="tag ok">Click-to-Pool Advising</span><br>Single-click program selection with automatic advised default and cutoff checks.</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--danger)">Program Choice Heartbreak</strong><br><small>Finding out a course is full only upon reaching counter.</small></td>
+          <td>Quotas tracked in separate department logs or paper files.</td>
+          <td><span class="tag ok">Live Quota Visibility</span><br>Remaining seats shown directly during counseling; no over-promising.</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--muted)">Document & Requirement Anxiety</strong><br><small>Students unsure if papers were accepted until exam day.</small></td>
+          <td>Paper filing cabinets without real-time applicant feedback.</td>
+          <td><span class="tag accent">Applicant Portal Dashboard</span><br>Transparent step-by-step spine: Application → Exam → Result → Advising → Enrollment.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- GUIDANCE OFFICE -->
+  <section class="office-section">
+    <h2><span>🧠</span> 1. GUIDANCE OFFICE (Testing & Counseling)</h2>
+    <p>Target audience: Guidance Director, Testing Coordinators, Counselors.</p>
+    
+    <div class="grid">
+      <div class="card">
+        <h3>What to Present</h3>
+        <ul>
+          <li><strong>The Consultation Dashboard (<code>/consultation</code>):</strong> Today's scheduled sessions, room capacities, and list of applicants pending advising.</li>
+          <li><strong>Click-to-Pool Advising:</strong> Click once to add a program; the first clicked becomes the <em>Advised Default</em>. Click again to remove. Zero typing.</li>
+          <li><strong>Admission Support Models (Decision Support):</strong> Side-by-side department criteria checklist + Aptitude Profile Radar Chart. Emphasize: <em>"Models advise — you decide."</em></li>
+          <li><strong>The Physical Result Sheet:</strong> Shows the printable Result Sheet with opaque QR pass that students hand-carry to the Registrar.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Specific Questions to Ask Guidance</h3>
+        <ul class="q-list">
+          <li>During busy advising days, does a <strong>click-to-select program pool</strong> (with the first click as the recommended default) feel fast and natural?</li>
+          <li>Would having a side-by-side checklist showing <strong>department cutoffs (e.g. Math &ge; 80) and live remaining seats</strong> help you advise borderline students?</li>
+          <li>When an applicant misses a cutoff by 1–2 points, do you currently <strong>refer them to the Dean/Program Head</strong>, or does Guidance handle the exception?</li>
+          <li>Would you prefer scheduling <strong>hourly consultation batches (e.g., 20/hour)</strong> over open morning walk-in crowds?</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="script">
+      <p><strong>Counselor Pitch (Taglish):</strong> “Ma’am, sa screen po na ito, hindi niyo na kailangang mag-type ng mahabang forms habang may nakapilang estudyante. Pag-upo ng bata, kita niyo agad ang score radar at department cutoffs. Click niyo lang po ang kurso—yung unang click, yun na po ang recommended default na hahawak ng slot niya. Kapag tapos na po, print lang ng Result Sheet na may QR code, at diretso na ang bata sa Registrar.”</p>
+    </div>
+  </section>
+
+  <!-- REGISTRAR OFFICE -->
+  <section class="office-section">
+    <h2><span>🏛️</span> 2. REGISTRAR OFFICE (Admissions & Enrollment Verification)</h2>
+    <p>Target audience: University Registrar, Admissions Clerks, Counter Evaluators.</p>
+    
+    <div class="grid">
+      <div class="card">
+        <h3>What to Present</h3>
+        <ul>
+          <li><strong>2-Second Counter Check:</strong> Zero re-encoding. Registrar scans QR or types name and immediately verifies:
+            <div class="mock-box">✓ DELA CRUZ, JUAN A. (APP-2026-0042)
+STATUS: CLEARED FOR ENROLLMENT
+Advised Track: BS Information Technology</div>
+          </li>
+          <li><strong>"Signed Paper is Final Truth":</strong> If the physical paper says BSCS instead of BSIT, the system enrolls BSCS, releases the old BSIT seat, and logs the change as research data.</li>
+          <li><strong>Post-Enrollment SIS Masterlist Sync:</strong> Registrar never has to encode student-by-student; can upload an official SIS CSV after enrollment week.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Specific Questions to Ask the Registrar</h3>
+        <ul class="q-list">
+          <li>On enrollment day, is seeing a fast <strong>"CLEARED FOR ENROLLMENT"</strong> status the primary verification you need at your counter?</li>
+          <li>If a student presents an official printed <strong>Result Sheet signed by Guidance</strong>, is that physical paper sufficient, or is a digital checkmark required?</li>
+          <li>During peak enrollment rush, would you prefer <strong>NOT having to encode the final course in our software</strong>, and instead provide the official enrolled list after enrollment closes?</li>
+          <li>When a student brings an authorized waiver to enroll in a course already at full capacity, how does your office currently record that override?</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="script">
+      <p><strong>Registrar Pitch (Taglish):</strong> “Sir/Ma’am, naiintindihan po namin na sa araw ng enrollment, tambak kayo ng trabaho sa assessment at sectioning. Ang role po ng NEXIAM sa desk niyo ay 2-second clearance lang: scan or search, makikita niyo agad na tapos ang exam at counseling, ‘Cleared to Enroll’. Hindi po kayo pipigilan ng software kung may piradong waiver ang bata. At pagkatapos ng enrollment week, pwede niyo pong i-upload ang official masterlist para ma-match ng system ang analytics.”</p>
+    </div>
+  </section>
+
+  <!-- PROGRAM HEADS / DEANS -->
+  <section class="office-section">
+    <h2><span>🎓</span> 3. PROGRAM HEADS & DEANS (Department Review & Quotas)</h2>
+    <p>Target audience: Department Chairs, College Deans, Program Coordinators.</p>
+    
+    <div class="grid">
+      <div class="card">
+        <h3>What to Present</h3>
+        <ul>
+          <li><strong>Zero Bottlenecks:</strong> Normal, qualified applicants bypass Program Heads completely. 90% of students enroll without waiting for departmental clicks.</li>
+          <li><strong>Clean Follow-Up Queue:</strong> Program Heads only see students referred by Guidance (e.g., bridging candidates, interview requirements, quota appeals).</li>
+          <li><strong>Direct Mobile/Desktop Actions:</strong> Three simple choices:
+            <br>• <code>[ ✓ Clear / Approve ]</code>
+            <br>• <code>[ ✕ Decline ]</code> (releases quota slot)
+            <br>• <code>[ 📅 Request Office Interview ]</code>
+          </li>
+          <li><strong>Departmental Quota Tracker:</strong> Live view of seat capacity (e.g. <code>35 / 50 seats filled</code>).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Specific Questions to Ask Program Heads</h3>
+        <ul class="q-list">
+          <li>For normal applicants who meet all published cutoffs, do you agree that Guidance should advise them directly without requiring your signature?</li>
+          <li>When Guidance refers borderline applicants to your department, would you prefer a simple <strong>digital queue on your phone/desktop</strong>, or physical referral slips?</li>
+          <li>For quota-limited programs (e.g. Nursing, Tech), who holds the final institutional authority to adjust or override the student cap?</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- POST-ADMISSION SURVEY -->
+  <section class="office-section">
+    <h2><span>📝</span> 4. POST-ADMISSION SURVEY (Institutional Research Engine)</h2>
+    <div class="notice">
+      <p><strong>Value-Add for Academic Planning:</strong> Once marked <code>ENROLLED</code>, students see an optional 1-minute survey. For students whose enrolled program differs from their advised program, a conditional question unlocks:</p>
+      <div class="mock-box">"We noticed you enrolled in BS Computer Science (BSCS) after being advised for BS Information Technology (BSIT).
+What was the primary reason?
+( ) Quota / Slots Full in First Choice
+( ) Family / Parental Preference
+( ) Career Opportunity Realization
+( ) Changed Mind After Counseling"</div>
+    </div>
+    <p><strong>Institutional Payoff:</strong> Provides the University President, Deans, and Guidance Director with hard statistical data showing why students shift courses, proving where new faculty and classroom sections are needed for the next school year.</p>
+  </section>
+
+  <footer>
+    <p>NEXIAM System Architecture · ISPSC Tagudin Campus Capstone Research</p>
+    <p><a href="/capstone/status">Feature Roadmap</a> · <a href="/capstone-interview-guide.html">Interview Guide</a> · <a href="/capstone/demo-guide">Demo Guide</a></p>
+  </footer>
+</main>
+</body>
+</html>

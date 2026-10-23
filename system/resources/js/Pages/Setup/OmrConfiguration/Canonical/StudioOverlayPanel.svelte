@@ -2,6 +2,7 @@
   import StudioTip from './StudioTip.svelte';
   import StudioFontPicker from './StudioFontPicker.svelte';
   import StudioQrReservationControls from './StudioQrReservationControls.svelte';
+  import StudioFiducialInsetControls from './StudioFiducialInsetControls.svelte';
   import {
     Plus,
     Trash2,
@@ -19,9 +20,15 @@
   let {
     marginMm = $bindable(15),
     markerPattern = $bindable('square'),
+    markerInsetsMm = $bindable({ top: 12, right: 12, bottom: 14, left: 12 }),
+    markerInsetsDisabled = false,
+    onMarkerInsetsPreview = null,
+    onMarkerInsetsCommit = null,
     markerProfiles = [],
     selectedMarkerProfileId = null,
     onMarkerProfileChange = null,
+    showFiducialControls = true,
+    showQrControls = true,
     showHeaderOverlay = $bindable(true),
     headerTitle = $bindable('EXAMINATION ANSWER SHEET'),
     headerSubtitle = $bindable('AUTOMATED OMR EVALUATION FORM'),
@@ -100,15 +107,15 @@
 <div class="p-5 space-y-5">
   <div>
     <h2 class="text-sm font-bold text-slate-900">Overlays & Margins</h2>
-    <p class="text-[11px] text-slate-500 mt-0.5">Physical margins, fiducials, and customizable vector print typography.</p>
+    <p class="text-[11px] text-slate-500 mt-0.5">Content boundaries, independently positioned profile fiducials, and customizable vector print typography.</p>
   </div>
 
-  <!-- Physical Insets Slider -->
+  <!-- Content margin slider -->
   <div class="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
     <div class="flex justify-between text-xs font-semibold text-slate-700">
       <span class="flex items-center gap-1">
-        Physical Margin Inset
-        <StudioTip text="Quiet zone from paper edge to corner fiducial registration quad." />
+        Content Margin
+        <StudioTip text="Keeps editable content away from the paper edge. Use Fiducial Insets below to position the scanner-controlled registration marks independently." />
       </span>
       <span class="font-mono bg-white border px-1.5 py-0.5 rounded">{marginMm} mm</span>
     </div>
@@ -123,11 +130,12 @@
     />
   </div>
 
-  <!-- Marker appearance is profile-owned; the editor does not invent alternatives. -->
+  {#if showFiducialControls}
+  <!-- Marker shape is profile-owned; placement remains staff-adjustable. -->
   <div class="space-y-1.5 border-t border-slate-200 pt-3">
     <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">Fiducial Marker</span>
     <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] leading-relaxed text-slate-600">
-      The canvas mirrors the selected OMRChecker profile’s bullseye marker. Marker shape is not independently editable.
+      The selected scanner profile supplies the bullseye shape. Adjust its four page-edge positions below.
     </div>
   </div>
 
@@ -145,6 +153,14 @@
     </select>
     <span class="text-[10px] text-slate-500">The selected profile supplies the physical marker asset used by print and alignment.</span>
   </label>
+
+  <StudioFiducialInsetControls
+    bind:markerInsetsMm
+    disabled={markerInsetsDisabled}
+    onPreview={onMarkerInsetsPreview}
+    onCommit={onMarkerInsetsCommit}
+  />
+  {/if}
 
   <!-- Printable Overlay Elements with Individual Locks and Typography Controls -->
   <div class="space-y-3.5 border-t border-slate-200 pt-3">
@@ -399,6 +415,7 @@
       {/if}
     </div>
 
+    {#if showQrControls}
     <!-- 4. Blank Instance QR Box -->
     <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
       <StudioQrReservationControls
@@ -411,6 +428,7 @@
         onChanged={handleInput}
       />
     </div>
+    {/if}
 
     <!-- 5. Custom Text Elements -->
     {#each customTextItems as t, idx}

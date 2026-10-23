@@ -20,8 +20,8 @@ final readonly class OmrItemGeometry
         public OmrRegion $region,
         public array $options,
         public int $pageNo = 1,
-    ) {
-    }
+        public ?string $physicalItemUid = null,
+    ) {}
 
     /**
      * @return list<string>

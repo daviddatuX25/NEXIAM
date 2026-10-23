@@ -16,8 +16,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * D-080: Tier B protected-record gate. Full PH record access requires
- * assigned-program scope, released result, and an applicant-acknowledged
- * current selection or an explicit targeted follow-up for this program.
+ * assigned-program scope and either a released result with an applicant-
+ * acknowledged current selection or targeted follow-up, or an effective
+ * unresolved targeted follow-up before result issuance.
  * Every protected open persists audit + access-history evidence BEFORE
  * serialization (fail-closed) and deduplicates the applicant notice to the
  * first protected open by the same PH/program within 24 hours.
@@ -34,19 +35,18 @@ final class ProtectedViewGuard
      */
     public function tierFor(AdmissionAttempt $attempt, Program $program): array
     {
-        if (! AttemptProgramFacts::isResultReleased($attempt)) {
-            return ['tier' => 'A', 'access_reason' => null];
-        }
-
+        $released = AttemptProgramFacts::isResultReleased($attempt);
         $selection = AttemptProgramFacts::currentSelection($attempt);
-        $acknowledged = $selection !== null
+        $acknowledged = $released
+            && $selection !== null
             && $selection->program_id === $program->id
             && $selection->applicant_acknowledged_at !== null;
-
-        $targeted = ProgramFollowUp::query()
-            ->where('admission_attempt_id', $attempt->id)
-            ->where('program_id', $program->id)
-            ->exists();
+        $targeted = $released
+            ? ProgramFollowUp::query()
+                ->where('admission_attempt_id', $attempt->id)
+                ->where('program_id', $program->id)
+                ->exists()
+            : AttemptProgramFacts::hasOpenFollowUpForProgram($attempt, (int) $program->id);
 
         if (! $acknowledged && ! $targeted) {
             return ['tier' => 'A', 'access_reason' => null];

@@ -2,72 +2,160 @@
 
 namespace App\Examination\Actions;
 
+use App\Application\Actions\ActionExecutionIdentity;
+use App\Examination\Support\ActionExecutionReceiptClaim;
+use App\Examination\Support\ActionExecutionReceiptStore;
+use App\Examination\Support\ActionExecutionResult;
+use App\Examination\Support\PublishedSessionSeatAllocator;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Scheduling\AssignmentInvariant;
+use App\Scheduling\AssignmentPlanningMutex;
+use LogicException;
 use RuntimeException;
 
 class AssignApplicantToExamSession
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
+    private const ACTION_KEY = 'exams.session.assign@1';
+
+    public function __construct(
+        private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
+        private readonly AssignmentInvariant $invariant,
+        private readonly ActionExecutionReceiptStore $receipts,
+        private readonly PublishedSessionSeatAllocator $seatAllocator,
+    ) {}
+
+    public function handle(ExamSession $session, AdmissionAttempt $attempt, User $actor): ExamAssignment
     {
+        $result = $this->execute($session, $attempt, $actor, null);
+        if ($result instanceof ActionExecutionResult) {
+            throw new LogicException('Human exam assignment returned a Xiam receipt.');
+        }
+
+        return $result;
     }
 
-    public function handle(ExamSession $session, AdmissionAttempt $attempt, User $actor, ?string $seat = null): ExamAssignment
-    {
-        return DB::transaction(function () use ($session, $attempt, $actor, $seat): ExamAssignment {
-            $session = ExamSession::query()->lockForUpdate()->findOrFail($session->id);
-            $attempt = AdmissionAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+    public function handleConfirmed(
+        ExamSession $session,
+        AdmissionAttempt $attempt,
+        User $actor,
+        ActionExecutionIdentity $identity,
+    ): ActionExecutionResult {
+        $result = $this->execute($session, $attempt, $actor, $identity);
+        if (! $result instanceof ActionExecutionResult) {
+            throw new LogicException('Confirmed exam assignment did not return an Action receipt.');
+        }
 
-            // Single eligibility gate — authorized amendment while accepted keeps this true;
-            // ReconsiderAdmissionAttempt flips it false without deleting history.
-            if (! $attempt->isExamEligible()) {
-                throw new RuntimeException('Only exam-eligible (accepted) attempts may be assigned.');
-            }
+        return $result;
+    }
 
-            if (in_array($session->status, [ExamSession::STATUS_CANCELLED, ExamSession::STATUS_COMPLETED], true)) {
-                throw new RuntimeException('Cannot assign to a terminal exam session.');
-            }
+    public function replayConfirmed(
+        ExamSession $session,
+        AdmissionAttempt $attempt,
+        User $actor,
+        ActionExecutionIdentity $identity,
+    ): ?ActionExecutionResult {
+        $claim = $this->receipts->replay(
+            identity: $identity,
+            actor: $actor,
+            actionKey: self::ACTION_KEY,
+            target: [
+                'exam_session_id' => (int) $session->id,
+                'admission_attempt_id' => (int) $attempt->id,
+            ],
+            command: [],
+        );
 
-            $hasActiveAssignment = ExamAssignment::query()
-                ->active()
-                ->where('admission_attempt_id', $attempt->id)
-                ->exists();
+        return $claim === null ? null : new ActionExecutionResult($claim->safeResult, replayed: true);
+    }
 
-            if ($hasActiveAssignment) {
-                throw new RuntimeException('Attempt already has an active exam assignment.');
-            }
+    private function execute(
+        ExamSession $session,
+        AdmissionAttempt $attempt,
+        User $actor,
+        ?ActionExecutionIdentity $identity,
+    ): ExamAssignment|ActionExecutionResult {
+        return $this->planningMutex->run(
+            AssignmentPlanningMutex::DOMAIN_EXAM,
+            (int) $session->academic_cycle_id,
+            function () use ($session, $attempt, $actor, $identity): ExamAssignment|ActionExecutionResult {
+                $claim = $identity === null
+                    ? null
+                    : $this->receipts->claim(
+                        identity: $identity,
+                        actor: $actor,
+                        actionKey: self::ACTION_KEY,
+                        target: [
+                            'exam_session_id' => (int) $session->id,
+                            'admission_attempt_id' => (int) $attempt->id,
+                        ],
+                        command: [],
+                    );
 
-            $activeAssignments = ExamAssignment::query()
-                ->active()
-                ->where('exam_session_id', $session->id)
-                ->count();
+                if ($claim?->replayed) {
+                    return new ActionExecutionResult($claim->safeResult, replayed: true);
+                }
 
-            $room = $session->room()->firstOrFail();
+                $session = ExamSession::query()->lockForUpdate()->findOrFail($session->id);
+                $attempt = AdmissionAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
 
-            if ($activeAssignments >= $room->capacity) {
-                throw new RuntimeException('Exam session capacity exceeded.');
-            }
+                ExamAssignment::releaseTerminalMissedAssignmentsForAttempt(
+                    (int) $attempt->id,
+                    "Reassigned to {$session->code} after prior absence",
+                );
 
-            $assignment = ExamAssignment::query()->create([
-                'exam_session_id' => $session->id,
-                'admission_attempt_id' => $attempt->id,
-                'seat_label' => $seat,
-                'status' => ExamAssignment::STATUS_ASSIGNED,
-                'source' => ExamAssignment::SOURCE_STAFF_ASSIGNED,
-            ]);
+                $existing = ExamAssignment::query()
+                    ->where('admission_attempt_id', $attempt->id)
+                    ->where('status', ExamAssignment::STATUS_ASSIGNED)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existing !== null && (int) $existing->exam_session_id !== (int) $session->id) {
+                    throw new RuntimeException('Attempt belongs to another exam session. Use reassignment.');
+                }
 
-            $this->recordAuditEvent->handle('exam.assignment_created', [
-                'assignment_id' => $assignment->id,
-                'exam_session_id' => $session->id,
-                'attempt_id' => $attempt->id,
-                'source' => $assignment->source,
-            ], (string) $actor->id);
+                $this->invariant->validateManualExamAssignment($session, $attempt);
 
+                $assignment = ExamAssignment::query()->create([
+                    'exam_session_id' => $session->id,
+                    'admission_attempt_id' => $attempt->id,
+                    'status' => ExamAssignment::STATUS_ASSIGNED,
+                    'source' => ExamAssignment::SOURCE_STAFF_ASSIGNED,
+                    'origin' => ExamAssignment::ORIGIN_MANUAL,
+                ]);
+
+                $this->seatAllocator->allocateIfPublished($session, $assignment, $actor, 'Staff assignment created');
+
+                $this->recordAuditEvent->handle('exam.assignment_created', [
+                    'assignment_id' => $assignment->id,
+                    'exam_session_id' => $session->id,
+                    'attempt_id' => $attempt->id,
+                    'source' => $assignment->source,
+                ], (string) $actor->id);
+
+                return $this->completeReceipt($assignment, $claim);
+            },
+        );
+    }
+
+    private function completeReceipt(
+        ExamAssignment $assignment,
+        ?ActionExecutionReceiptClaim $claim,
+    ): ExamAssignment|ActionExecutionResult {
+        if ($claim === null) {
             return $assignment;
-        });
+        }
+
+        $safeResult = [
+            'assignment_id' => $assignment->id,
+            'session_id' => $assignment->exam_session_id,
+            'admission_attempt_id' => $assignment->admission_attempt_id,
+        ];
+        $this->receipts->complete($claim, $safeResult);
+
+        return new ActionExecutionResult($safeResult, replayed: false);
     }
 }

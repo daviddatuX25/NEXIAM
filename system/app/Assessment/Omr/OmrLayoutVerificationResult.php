@@ -15,6 +15,7 @@ namespace App\Assessment\Omr;
 final readonly class OmrLayoutVerificationResult
 {
     public const OUTCOME_SUCCEEDED = 'succeeded';
+
     public const OUTCOME_FAILED = 'failed';
 
     /**
@@ -25,6 +26,7 @@ final readonly class OmrLayoutVerificationResult
      * @param  array<string, list<array{label: string, option: string, mean: float|null}>>|null  $bubbleMeans
      * @param  list<array<string, mixed>>|null  $itemEvidence
      * @param  array<string, mixed>|null  $gates  {marker_count, registration, dimensions, shifts, unsafe_blocks}
+     * @param  array<string, mixed>|null  $rectification  rectification provenance/telemetry
      */
     public function __construct(
         public string $outcome,
@@ -41,12 +43,12 @@ final readonly class OmrLayoutVerificationResult
         public ?float $preprocessMs = null,
         public ?float $verificationMs = null,
         public ?array $itemEvidence = null,
-    ) {
-    }
+        public ?array $rectification = null,
+    ) {}
 
-    public static function failed(string $code, string $detail): self
+    public static function failed(string $code, string $detail, ?array $rectification = null): self
     {
-        return new self(self::OUTCOME_FAILED, $code, $detail);
+        return new self(self::OUTCOME_FAILED, $code, $detail, rectification: $rectification);
     }
 
     public function succeeded(): bool

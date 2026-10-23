@@ -1,18 +1,17 @@
 <?php
 
-use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
 use App\Assessment\Actions\Omr\ActivateOmrConfiguration;
+use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
 use App\Assessment\Actions\Omr\RegisterNativeBundle;
+use App\Assessment\Actions\Omr\RunOmrSheetAnalysis;
+use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrTemplateGeometryProjector;
 use App\Assessment\Omr\OmrTemplateProjectionException;
 use App\Assessment\Omr\Queries\OmrReviewGeometryQuery;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
-use App\Assessment\Actions\Omr\RunOmrSheetAnalysis;
-use App\Assessment\Omr\OmrDetectionRequest;
+use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrProcessingRun;
-use App\Support\SensitiveAssetStore;
-use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrQuestionBooklet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateArea;
@@ -21,13 +20,14 @@ use App\Models\Assessment\OmrTemplateQuestion;
 use App\Models\Assessment\OmrTemplateQuestionOption;
 use App\Models\Foundation\AptitudeArea;
 use App\Models\User;
+use App\Support\SensitiveAssetStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
 /**
- * FEATURE (task 35.10): `OmrTemplateGeometryProjector` + 
+ * FEATURE (task 35.10): `OmrTemplateGeometryProjector` +
  * `OmrReviewGeometryQuery` produce complete MCQ4/MCQ5/int option sets,
  * merge a compatible booklet's exact correct options by area code +
  * question position, and block pair activation/analysis with typed
@@ -216,12 +216,14 @@ test('compatible booklet merge returns exact correct options by area code and po
         ->and($items[0]['page_no'])->toBe(1)
         ->and(array_map(static fn (array $option): array => [
             'code' => $option['code'],
-            'region' => array_map(static fn (float $value): float => round($value, 12), $option['region']),
+            // Persisted region columns are decimal(8,6); PostgreSQL enforces
+            // that scale while SQLite ignores it. Assert the storage contract.
+            'region' => array_map(static fn (float $value): float => round($value, 6), $option['region']),
         ], $items[0]['options']))->toBe([
-            ['code' => 'A', 'region' => ['x' => round(200 / 2480, 12), 'y' => round(200 / 3508, 12), 'w' => round(48 / 2480, 12), 'h' => round(48 / 3508, 12)]],
-            ['code' => 'B', 'region' => ['x' => round(320 / 2480, 12), 'y' => round(200 / 3508, 12), 'w' => round(48 / 2480, 12), 'h' => round(48 / 3508, 12)]],
-            ['code' => 'C', 'region' => ['x' => round(440 / 2480, 12), 'y' => round(200 / 3508, 12), 'w' => round(48 / 2480, 12), 'h' => round(48 / 3508, 12)]],
-            ['code' => 'D', 'region' => ['x' => round(560 / 2480, 12), 'y' => round(200 / 3508, 12), 'w' => round(48 / 2480, 12), 'h' => round(48 / 3508, 12)]],
+            ['code' => 'A', 'region' => ['x' => round(200 / 2480, 6), 'y' => round(200 / 3508, 6), 'w' => round(48 / 2480, 6), 'h' => round(48 / 3508, 6)]],
+            ['code' => 'B', 'region' => ['x' => round(320 / 2480, 6), 'y' => round(200 / 3508, 6), 'w' => round(48 / 2480, 6), 'h' => round(48 / 3508, 6)]],
+            ['code' => 'C', 'region' => ['x' => round(440 / 2480, 6), 'y' => round(200 / 3508, 6), 'w' => round(48 / 2480, 6), 'h' => round(48 / 3508, 6)]],
+            ['code' => 'D', 'region' => ['x' => round(560 / 2480, 6), 'y' => round(200 / 3508, 6), 'w' => round(48 / 2480, 6), 'h' => round(48 / 3508, 6)]],
         ])
         ->and($items[1]['correct_option_code'])->toBe('C')
         ->and($items[1]['region']['w'])->toBeGreaterThan(0);
@@ -313,6 +315,7 @@ test('analysis blocks with geometry_projection_missing when the pair template ha
         'template_json_hash' => hash('sha256', 'template'),
         'review_manifest_json' => [],
         'review_manifest_hash' => hash('sha256', 'review'),
+        'native_bundle_version' => 'nexiam.omr.native-bundle.v1',
         'native_bundle_json' => ['template' => ['pageDimensions' => [2060, 3144], 'bubbleDimensions' => [48, 48]], 'config' => [], 'manifest' => [], 'files' => []],
         'native_bundle_hash' => hash('sha256', 'bundle'),
         'engine_name' => 'OMRChecker',
@@ -338,13 +341,7 @@ test('analysis blocks with geometry_projection_missing when the pair template ha
         'approved_at' => now(),
     ]);
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $version->id,
-        (int) $bookletVersion->id,
-        'unprojected-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'unprojected-'.uniqid());
 
     $assetStore = app(SensitiveAssetStore::class);
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);

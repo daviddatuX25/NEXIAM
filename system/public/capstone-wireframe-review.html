@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Session 1 Wireframe Review</title>
+  <style>
+    :root { color-scheme: dark; --bg: #090d1c; --panel: #11182b; --line: #2a3656; --text: #eef2ff; --muted: #a8b3d0; --accent: #73a7ff; --ok: #72ddb0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at 20% 0%, #1a2b55 0, transparent 38rem), var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, sans-serif; }
+    main { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 5rem; }
+    header { border-bottom: 1px solid var(--line); padding-bottom: 2rem; }
+    .eyebrow { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+    h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
+    h2 { margin: 2.5rem 0 .75rem; font-size: 1.65rem; }
+    h3 { margin: 0 0 .35rem; font-size: 1rem; }
+    p { color: var(--muted); max-width: 72ch; }
+    .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+    a, .button { display: inline-block; border: 1px solid var(--line); border-radius: .7rem; padding: .6rem .85rem; color: var(--text); text-decoration: none; }
+    a.primary { background: var(--accent); border-color: var(--accent); color: #081126; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    article, .notice { border: 1px solid var(--line); border-radius: 1rem; background: color-mix(in srgb, var(--panel) 92%, transparent); padding: 1.1rem; }
+    .tag { display: inline-block; border: 1px solid color-mix(in srgb, var(--ok) 40%, var(--line)); border-radius: 999px; padding: .2rem .55rem; color: var(--ok); font-size: .75rem; }
+    pre { overflow-x: auto; margin: .9rem 0 0; border: 1px solid var(--line); border-radius: .65rem; padding: 1rem; background: #080c19; color: #dbe5ff; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .screen-title { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    .screen-title span { color: var(--muted); font-size: .78rem; }
+    footer { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1rem; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">NEXIAM · user design · session 1</div>
+    <h1>Low-fidelity wireframe review</h1>
+    <p>This is the main-content review surface for the client office. Confirm the process, ownership, labels, and exception states before discussing visual polish.</p>
+    <div class="actions">
+      <a class="primary" href="/ui-kit">Open existing UI kit</a>
+      <a href="/capstone/status">Open project status</a>
+      <a href="/health">Check runtime</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>Review order</h2>
+    <div class="grid">
+      <article><span class="tag">01</span><h3>Applicant starts</h3><p>Public home → application → portal status.</p></article>
+      <article><span class="tag">02</span><h3>Office reviews</h3><p>Registrar correction → Guidance workspace → follow-up.</p></article>
+      <article><span class="tag">03</span><h3>Office delivers</h3><p>Schedule → conduct → OMR/manual grading → release.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Screen map</h2>
+    <div class="grid">
+      <article><div class="screen-title"><h3>WF-01 · Public home</h3><span>institution entry</span></div><pre>INSTITUTION                     Explore | Apply | Portal
+---------------------------------------------------------
+Mission / welcome statement
+                 [ Explore programs ] [ Apply ]
+Programs: search | program | details
+Stories | admissions steps | announcements | contact</pre></article>
+      <article><div class="screen-title"><h3>WF-02 · Application</h3><span>applicant input</span></div><pre>Applicant portal     Identity → Intake → Documents → Review
+---------------------------------------------------------
+Reference APP-000123
+[ name ] [ birthdate ] [ contact ] [ address ]
+Program / academic details
+Documents: [ Upload ]  ✓ accepted  ! needs review
+[ Save draft ]                              [ Continue ]</pre></article>
+      <article><div class="screen-title"><h3>WF-03 · Portal status</h3><span>next action</span></div><pre>CURRENT STATUS: Correction requested
+Next action: replace proof of grades
+Timeline: Submitted → Correction → Review → Decision
+[ Open correction ] [ Upload ] [ Ask a question ]</pre></article>
+      <article><div class="screen-title"><h3>WF-04 · Staff home</h3><span>work queue</span></div><pre>NEXIAM | Admissions | Consultation | Exams | Grading
+---------------------------------------------------------
+[ Reviews ] [ Today's sessions ] [ Follow-ups due ]
+Priority | applicant | state | owner | next action
+[ Scan QR ] [ Search applicant ] [ Open queue ]</pre></article>
+      <article><div class="screen-title"><h3>WF-05 · Admissions review</h3><span>correction/version</span></div><pre>Admissions / APP-000123                [ Correction requested ]
+---------------------------------------------------------
+Identity | Intake | Documents | Timeline | Audit
+Status: Submitted   [ Accept ] [ Dismiss ] [ Correct ]
+Correction history: v2 current / v1 previous</pre></article>
+      <article><div class="screen-title"><h3>WF-06 · Consultation</h3><span>handoff/follow-up</span></div><pre>Consultation  [ Today ] [ Search/scan ] [ Follow-ups ]
+---------------------------------------------------------
+09:00 APP-000123 Online       Confirmed
+10:30 APP-000211 Face-to-face Needs follow-up
+Remark [________________] [ Open follow-up ]
+Mode [ Online v ]  Next action/date [________]</pre></article>
+      <article><div class="screen-title"><h3>WF-07 · Examination</h3><span>schedule/conduct</span></div><pre>Sessions [ Create ]
+Date | time | room | status | assigned | present | submitted
+---------------------------------------------------------
+Session monitor: applicant | attendance | submission | action
+APP-000123 | Present | Not yet | [ Mark submitted ]</pre></article>
+      <article><div class="screen-title"><h3>WF-08 · Grading/OMR</h3><span>fallback evidence</span></div><pre>Grading  [ Capture ] [ Manual score ] [ Finalize ]
+---------------------------------------------------------
+22/24 analyzed · 2 need review
+Sheet | applicant | status | issue | action
+002 | APP-000211 | Review | marker missing | [ Review manually ]</pre></article>
+      <article><div class="screen-title"><h3>WF-09 · Program quota</h3><span>decision ownership</span></div><pre>Program Head: BS Example       quota 38 / 40
+---------------------------------------------------------
+Applicant | choice | state | follow-up | action
+Selected program: BS Example   quota check: pass
+[ Acknowledge ] [ Transfer ] [ Decline with reason ]</pre></article>
+      <article><div class="screen-title"><h3>WF-10 · Release</h3><span>controlled result</span></div><pre>Registrar / APP-000123
+---------------------------------------------------------
+Eligibility: Eligible   scores: Complete   review: Complete
+[ Enrolling ] [ Enrolled ] [ Reverse ]
+[ Prepare ] [ Preview ] [ Print ] [ Release ]</pre></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Questions to mark during the meeting</h2>
+    <div class="notice"><p>Which step is missing? Which role owns it? Which label is unfamiliar? What exception happens in real work? What evidence must be retained? Record the answer with the WF number and matrix ID.</p></div>
+  </section>
+
+  <footer>Standalone review packet. It does not change production workflow screens. Use the existing UI kit only after the office confirms the process shape.</footer>
+</main>
+</body>
+</html>

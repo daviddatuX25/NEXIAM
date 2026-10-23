@@ -16,6 +16,9 @@ class ActivateOmrCanonicalTemplateRequest extends FormRequest
     /** @return array<string, list<string>> */
     public function rules(): array
     {
-        return ['idempotency_key' => ['required', 'string', 'max:190']];
+        return [
+            'idempotency_key' => ['required', 'string', 'max:190'],
+            'confirm_activation' => ['sometimes', 'boolean'],
+        ];
     }
 }

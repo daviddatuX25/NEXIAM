@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Retained duty history only. Even a stored "active" status grants no current exam access.
+ */
 class ProctorDuty extends Model
 {
     public const STATUS_ACTIVE = 'active';

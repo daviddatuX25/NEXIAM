@@ -2,41 +2,62 @@
 
 namespace App\Assessment\Omr\Canonical;
 
+use App\Assessment\Omr\OmrQrMode;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Support\MaterialOwnerAccess;
+use App\Authorization\CapabilityCatalog;
+use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
-
-use function array_replace;
-use function config;
-
-final class OmrAuthoringDraftException extends RuntimeException
-{
-    /** @param array<string, mixed> $context */
-    public function __construct(public readonly string $errorCode, string $message, public readonly array $context = [])
-    {
-        parent::__construct($errorCode.': '.$message);
-    }
-}
 
 final class OmrAuthoringDraftService
 {
+    public function __construct(private readonly MaterialOwnerAccess $materialOwnerAccess) {}
+
     /**
-     * @param array<string, mixed> $authoring
+     * @param  array<string, mixed>  $authoring
      */
-    public function create(User $actor, string $code, string $name, string $sourceKind, array $authoring = []): OmrTemplateAuthoringDraft
-    {
+    public function create(
+        User $actor,
+        string $code,
+        string $name,
+        string $sourceKind,
+        array $authoring = [],
+        OmrRegistrationMode $registrationMode = OmrRegistrationMode::FiducialAnchored,
+        OmrQrMode $qrMode = OmrQrMode::Signed,
+        int $requestedPageCount = 1,
+    ): OmrTemplateAuthoringDraft {
         if (! in_array($sourceKind, OmrTemplateAuthoringDraft::SOURCE_KINDS, true)) {
             throw new OmrAuthoringDraftException('unsupported_source', 'Source kind is not supported.');
         }
         if (preg_match('/^[A-Z0-9][A-Z0-9._-]{2,63}$/', $code) !== 1) {
             throw new OmrAuthoringDraftException('draft_code_invalid', 'Draft code must be uppercase and URL-safe.');
         }
+        if ($requestedPageCount < 1 || $requestedPageCount > 4) {
+            throw new OmrAuthoringDraftException('requested_page_count_invalid', 'Requested page count must be between one and four.');
+        }
+
+        $institutionId = $this->materialOwnerAccess->institutionId($actor, CapabilityCatalog::GUIDANCE_SCORING_OMR);
+        $existingTemplate = OmrAnswerSheetTemplate::query()
+            ->where('institution_id', $institutionId)
+            ->where('code', $code)
+            ->first();
+        $isSynthetic = $existingTemplate === null ? false : $existingTemplate->is_synthetic;
+        if ($isSynthetic === null) {
+            throw new OmrAuthoringDraftException('template_provenance_unavailable', 'The scoped Answer Sheet provenance is unavailable.');
+        }
 
         return OmrTemplateAuthoringDraft::query()->create([
+            'institution_id' => $institutionId,
+            'template_id' => $existingTemplate?->id,
+            'is_synthetic' => $isSynthetic,
             'code' => $code,
             'name' => $name,
             'source_kind' => $sourceKind,
+            'registration_mode' => $registrationMode,
+            'qr_mode' => $qrMode,
+            'requested_page_count' => $requestedPageCount,
             'stage' => OmrTemplateAuthoringDraft::STAGE_DRAFT,
             'authoring_json' => $authoring,
             'lock_version' => 0,
@@ -71,7 +92,7 @@ final class OmrAuthoringDraftService
     }
 
     /**
-     * @param array<string, mixed> $authoring
+     * @param  array<string, mixed>  $authoring
      */
     public function saveAuthoring(OmrTemplateAuthoringDraft $draft, User $actor, array $authoring, int $expectedLockVersion): OmrTemplateAuthoringDraft
     {

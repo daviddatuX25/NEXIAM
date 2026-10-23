@@ -14,22 +14,27 @@ final class ConfirmOmrSourcePages
     public function __construct(
         private readonly OmrAuthoringDraftService $drafts,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /** @param list<array{page_no:int,decision:string,reason?:string|null}> $pages */
-    public function handle(OmrTemplateAuthoringDraft $draft, User $actor, array $pages): OmrTemplateAuthoringDraft
+    public function handle(OmrTemplateAuthoringDraft $draft, User $actor, array $pages, int $expectedLockVersion): OmrTemplateAuthoringDraft
     {
         $this->drafts->assertOwner($draft, $actor);
         if ($draft->stage !== OmrTemplateAuthoringDraft::STAGE_DRAFT) {
             throw new OmrAuthoringDraftException('page_confirmation_stage_invalid', 'Pages can only be confirmed on a draft awaiting confirmation.');
         }
 
-        return DB::transaction(function () use ($draft, $actor, $pages): OmrTemplateAuthoringDraft {
+        return DB::transaction(function () use ($draft, $actor, $pages, $expectedLockVersion): OmrTemplateAuthoringDraft {
             $locked = OmrTemplateAuthoringDraft::query()->lockForUpdate()->findOrFail($draft->id);
+            if ((int) $locked->lock_version !== $expectedLockVersion) {
+                throw new OmrAuthoringDraftException('concurrency_conflict', 'Draft changed since it was loaded.', ['lock_version' => $locked->lock_version]);
+            }
             $authoring = (array) $locked->authoring_json;
             $existing = collect((array) ($authoring['pages'] ?? []))->keyBy('page_no');
             $submitted = collect($pages)->keyBy('page_no');
+            if ($existing->count() !== (int) $locked->requested_page_count) {
+                throw new OmrAuthoringDraftException('uploaded_page_count_mismatch', "The uploaded document contains {$existing->count()} pages; this draft expects {$locked->requested_page_count}.");
+            }
             if ($existing->count() === 0 || $existing->keys()->sort()->values()->all() !== $submitted->keys()->sort()->values()->all()) {
                 throw new OmrAuthoringDraftException('page_confirmation_incomplete', 'Every ingested page must have one confirmation decision.');
             }

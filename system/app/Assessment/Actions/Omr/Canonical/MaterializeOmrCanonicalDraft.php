@@ -5,13 +5,14 @@ namespace App\Assessment\Actions\Omr\Canonical;
 use App\Assessment\Omr\Canonical\CanonicalArtifactMaterializer;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftException;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
+use App\Assessment\Omr\Canonical\OmrSourcePolicy;
 use App\Assessment\Omr\Canonical\OmrTemplateAssetStore;
+use App\Assessment\Omr\Verification\CurrentOmrDigitalVerification;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 use function count;
 
@@ -21,9 +22,9 @@ final class MaterializeOmrCanonicalDraft
         private readonly CanonicalArtifactMaterializer $materializer,
         private readonly OmrTemplateAssetStore $assets,
         private readonly OmrAuthoringDraftService $drafts,
+        private readonly CurrentOmrDigitalVerification $verification,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     public function handle(OmrTemplateAuthoringDraft $draft, User $actor, int $expectedLockVersion): OmrTemplateAuthoringDraft
     {
@@ -35,9 +36,6 @@ final class MaterializeOmrCanonicalDraft
             throw new OmrAuthoringDraftException('draft_read_only', 'Compiled drafts are immutable.');
         }
         $profile = $draft->markerProfile;
-        if ($profile === null) {
-            throw new OmrAuthoringDraftException('marker_profile_not_selected', 'Select a marker profile before materializing the canonical sheet.');
-        }
         $previousCanonical = (array) (($draft->authoring_json['canonical'] ?? []) ?: []);
         $sourcePdfAssetId = $draft->source_kind !== OmrTemplateAuthoringDraft::SOURCE_HTML
             ? (int) (($previousCanonical['source_pdf_asset_id'] ?? null) ?: ($previousCanonical['pdf_asset_id'] ?? 0))
@@ -56,7 +54,8 @@ final class MaterializeOmrCanonicalDraft
             );
             $rasterAssets[] = ['page_no' => $page['page_no'], 'asset_id' => $asset->id, 'sha256' => $asset->sha256];
         }
-        $pdfAsset = $this->assets->putDraftAsset(
+        $isUploaded = OmrSourcePolicy::sourceKindForDraft($draft) === OmrSourcePolicy::UPLOADED_ORIGINAL;
+        $pdfAsset = $isUploaded ? null : $this->assets->putDraftAsset(
             $draft,
             OmrTemplateAsset::KIND_PRINT_PDF,
             $artifactSet->pdfBytes,
@@ -76,39 +75,49 @@ final class MaterializeOmrCanonicalDraft
             $asset = $this->assets->putDraftAsset($draft, OmrTemplateAsset::KIND_REFERENCE_PAGE, $bytes, 'image/svg+xml', $pageNo, ['artifact_hash' => $artifactSet->artifactHash]);
             $referenceAssets[] = ['page_no' => $pageNo, 'asset_id' => $asset->id, 'sha256' => $asset->sha256];
         }
-        $markerAsset = $this->assets->putDraftAsset($draft, OmrTemplateAsset::KIND_MARKER_PROFILE, $artifactSet->file(basename((string) $profile->asset_path)), 'image/jpeg', null, ['artifact_hash' => $artifactSet->artifactHash, 'marker_profile_id' => $profile->id]);
-        return DB::transaction(function () use ($draft, $actor, $expectedLockVersion, $sourcePdfAssetId, $artifactSet, $rasterAssets, $pdfAsset, $templateAsset, $configAsset, $manifestAsset, $referenceAssets, $markerAsset): OmrTemplateAuthoringDraft {
+        $markerAsset = $profile !== null
+            ? $this->assets->putDraftAsset($draft, OmrTemplateAsset::KIND_MARKER_PROFILE, $artifactSet->file(basename((string) $profile->asset_path)), 'image/jpeg', null, ['artifact_hash' => $artifactSet->artifactHash, 'marker_profile_id' => $profile->id])
+            : null;
+
+        return DB::transaction(function () use ($draft, $actor, $expectedLockVersion, $sourcePdfAssetId, $artifactSet, $rasterAssets, $pdfAsset, $templateAsset, $configAsset, $manifestAsset, $referenceAssets, $markerAsset, $isUploaded): OmrTemplateAuthoringDraft {
             $locked = OmrTemplateAuthoringDraft::query()->lockForUpdate()->findOrFail($draft->id);
             if ((int) $locked->lock_version !== $expectedLockVersion) {
                 throw new OmrAuthoringDraftException('concurrency_conflict', 'Draft changed since it was loaded.');
             }
             $authoring = (array) $locked->authoring_json;
             $canonical = (array) ($authoring['canonical'] ?? []);
+            $previousArtifactHash = (string) ($canonical['artifact_set']['artifact_hash'] ?? $canonical['artifact_hash'] ?? '');
             $canonical['raster_assets'] = $rasterAssets;
-            $canonical['pdf_asset_id'] = $pdfAsset->id;
+            $canonical['pdf_asset_id'] = $pdfAsset?->id;
             $canonical['artifact_hash'] = $artifactSet->artifactHash;
-            if ($sourcePdfAssetId !== null && $sourcePdfAssetId > 0) {
+            if (! $isUploaded && $sourcePdfAssetId !== null && $sourcePdfAssetId > 0) {
                 $canonical['source_pdf_asset_id'] = $sourcePdfAssetId;
+            } else {
+                $canonical['source_pdf_asset_id'] = null;
             }
-            $authoring['verification'] = null;
             $canonical['artifact_set'] = [
                 'schema' => 'nexiam.omr.canonical-artifact-set.v1',
+                'registration_mode' => $artifactSet->definition['registration_mode'],
+                'qr_mode' => $artifactSet->definition['qr_mode'],
+                'compiled_pages' => $artifactSet->definition['compiled_pages'],
                 'artifact_hash' => $artifactSet->artifactHash,
+                'geometry_identity' => $artifactSet->geometryIdentity,
+                'mapping_hash' => $artifactSet->geometryIdentity,
                 'definition_hash' => $artifactSet->definition['source_hash'],
                 'insets_px' => $artifactSet->definition['insets_px'] ?? [],
                 'candidate_version' => $artifactSet->definition['candidate_version'],
                 'template_hash' => $artifactSet->templateHash,
                 'config_hash' => $artifactSet->configHash,
-                'pdf_hash' => $artifactSet->pdfHash,
+                'pdf_hash' => $isUploaded ? null : $artifactSet->pdfHash,
                 'reference_hash' => $artifactSet->referenceHash,
                 'marker_hash' => $artifactSet->markerHash,
                 'native_manifest_asset_id' => $manifestAsset->id,
                 'raster_assets' => $rasterAssets,
-                'pdf_asset_id' => $pdfAsset->id,
+                'pdf_asset_id' => $pdfAsset?->id,
                 'native_template_asset_id' => $templateAsset->id,
                 'native_config_asset_id' => $configAsset->id,
                 'reference_assets' => $referenceAssets,
-                'marker_asset_id' => $markerAsset->id,
+                'marker_asset_id' => $markerAsset?->id,
                 'template' => $artifactSet->template,
                 'review_manifest_hash' => $artifactSet->reviewManifestHash,
                 'review_manifest' => $artifactSet->reviewManifest,
@@ -121,7 +130,23 @@ final class MaterializeOmrCanonicalDraft
                 'paper_height_mm' => $artifactSet->definition['paper']['height_mm'],
             ];
             $authoring['canonical'] = $canonical;
+            $isIdenticalArtifact = $previousArtifactHash !== '' && hash_equals($previousArtifactHash, $artifactSet->artifactHash);
+            $matchingVerification = $isIdenticalArtifact
+                ? $this->verification->findForTarget($locked->id, $artifactSet->artifactHash, $artifactSet->geometryIdentity, $locked)
+                : null;
+
+            if ($matchingVerification !== null) {
+                $authoring['verification'] = $matchingVerification->rebuildVerificationPayload($locked);
+                $nextStage = OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED;
+            } else {
+                $authoring['verification'] = null;
+                $nextStage = $locked->stage === OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED
+                    ? OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE
+                    : $locked->stage;
+            }
+
             $locked->forceFill([
+                'stage' => $nextStage,
                 'authoring_json' => $authoring,
                 'lock_version' => (int) $locked->lock_version + 1,
             ])->save();
@@ -130,6 +155,9 @@ final class MaterializeOmrCanonicalDraft
                 'draft_id' => $saved->id,
                 'artifact_hash' => $artifactSet->artifactHash,
                 'definition_hash' => $artifactSet->definition['source_hash'],
+                'registration_mode' => $artifactSet->definition['registration_mode'],
+                'qr_mode' => $artifactSet->definition['qr_mode'],
+                'compiled_pages' => $artifactSet->definition['compiled_pages'],
                 'candidate_version' => $artifactSet->definition['candidate_version'],
                 'raster_count' => count($rasterAssets),
             ], (string) $actor->id);

@@ -4,6 +4,7 @@
   import { Button } from '@/Components/ui/button';
   import { Input } from '@/Components/ui/input';
   import { Label } from '@/Components/ui/label';
+  import InfoPopover from '@/Components/kit/InfoPopover.svelte';
   import { Link, useForm } from '@inertiajs/svelte';
 
   const form = useForm({
@@ -20,24 +21,23 @@
 
   const breadcrumbs = [
     { label: 'Setup', href: '/setup' },
-    { label: 'Academic years', href: '/setup/cycles' },
+    { label: 'Academic Years', href: '/setup/cycles' },
     { label: 'Create' },
   ];
 </script>
 
-<svelte:head><title>Create academic year · Setup</title></svelte:head>
+<svelte:head><title>Add Academic Year · Setup</title></svelte:head>
 
 <StaffLayout {breadcrumbs}>
   <div class="min-w-0 space-y-6 p-4 sm:p-6">
     <PageHeaderBar
-      title="Add academic year"
-      description="Create a school year and semester. Set the application window dates, then activate it from the list."
+      title="Add Academic Year"
+      description="Configure a school year, semester, and application window dates, then activate it from the cycle list."
     />
 
-    <form
-      class="max-w-lg space-y-4 rounded-xl border border-border bg-card p-6"
-      onsubmit={submit}
-    >
+    <form onsubmit={submit} class="space-y-6">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] max-w-6xl items-start">
+        <div class="space-y-4 rounded-xl border border-border bg-card p-6 shadow-xs">
       <div class="space-y-1.5">
         <Label for="school_year">Academic year</Label>
         <Input
@@ -67,7 +67,13 @@
       </div>
 
       <div class="space-y-1.5">
-        <Label for="application_start_date">Application window start</Label>
+        <div class="flex items-center gap-1.5">
+          <Label for="application_start_date">Application window start</Label>
+          <InfoPopover
+            title="Public intake window"
+            content="Sets the opening and closing dates for the cycle's application window on public /apply. If left blank at creation, the cycle defaults to a 6-month window starting today."
+          />
+        </div>
         <Input
           id="application_start_date"
           type="date"
@@ -86,13 +92,30 @@
         />
       </div>
 
-      <div class="flex gap-2 pt-2">
-        <Button type="submit" class="min-h-10" disabled={form.processing}>
-          {form.processing ? 'Creating...' : 'Create academic year'}
-        </Button>
-        <Link href="/setup/cycles">
-          <Button type="button" variant="outline" class="min-h-10">Cancel</Button>
-        </Link>
+          <div class="flex gap-2 pt-2">
+            <Button type="submit" class="min-h-10" disabled={form.processing}>
+              {form.processing ? 'Creating...' : 'Create academic year'}
+            </Button>
+            <Link href="/setup/cycles">
+              <Button type="button" variant="outline" class="min-h-10">Cancel</Button>
+            </Link>
+          </div>
+        </div>
+
+        <div class="space-y-5">
+          <div class="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
+            <div class="space-y-1 border-b border-border pb-3">
+              <h2 class="text-sm font-semibold text-foreground">Cycle Lifecycle Overview</h2>
+              <p class="text-xs text-muted-foreground">Institutional admission context</p>
+            </div>
+            <p class="text-xs text-muted-foreground leading-relaxed">
+              Creating an academic year establishes the temporal boundary for applicant admissions, exam session scheduling, and final enrollment endorsements.
+            </p>
+            <div class="rounded-lg border border-dashed border-border bg-muted/20 p-3.5 text-xs text-muted-foreground leading-relaxed">
+              After creation, new cycles remain inactive drafts until explicitly activated from the Academic Years hub. Only one cycle is active across the institution at any given time.
+            </div>
+          </div>
+        </div>
       </div>
     </form>
   </div>

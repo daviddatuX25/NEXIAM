@@ -4,13 +4,14 @@ namespace App\ResultSheet\Rendering;
 
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\Printing\PrintRenderer;
+use App\ResultSheet\Builder\ResultSheetBuilderSchema;
 use App\ResultSheet\Support\ResultSheetPlaceholderService;
 use RuntimeException;
 
 /**
  * Renders one result sheet (HTML or DOCX/ODT template) to PDF bytes for one
- * or two applicants (dual-slot). Runs inside queue workers only — nothing in
- * the render path executes during an HTTP request.
+ * applicant. Runs inside queue workers only — nothing in the render path
+ * executes during an HTTP request.
  */
 final class ResultSheetRenderer
 {
@@ -25,10 +26,10 @@ final class ResultSheetRenderer
     /**
      * @param  array<int, array<string, mixed>>  $applicants
      */
-    public function renderForApplicants(ResultSheetTemplate $template, array $applicants): string
+    public function renderForApplicants(ResultSheetTemplate $template, array $applicants, ?float $timeoutSeconds = null): string
     {
         if ($template->mode === ResultSheetTemplate::MODE_DOCX) {
-            return $this->renderDocument($template, $applicants);
+            return $this->renderDocumentItem($template, $applicants, $timeoutSeconds, false)['pdf'];
         }
 
         return $this->renderHtml($template, $applicants);
@@ -36,25 +37,35 @@ final class ResultSheetRenderer
 
     /**
      * @param  array<int, array<string, mixed>>  $applicants
+     * @return array{pdf: string, docx: string|null}
+     */
+    public function renderItem(ResultSheetTemplate $template, array $applicants, ?float $timeoutSeconds = null): array
+    {
+        if ($template->mode === ResultSheetTemplate::MODE_DOCX) {
+            return $this->renderDocumentItem($template, $applicants, $timeoutSeconds, true);
+        }
+
+        return ['pdf' => $this->renderHtml($template, $applicants), 'docx' => null];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $applicants
      */
     private function renderHtml(ResultSheetTemplate $template, array $applicants): string
     {
+        if ($template->isBuilder()) {
+            $document = is_array($template->builder_json) ? $template->builder_json : [];
+            $scoreRowCount = count(is_array($applicants[0]['scores'] ?? null) ? $applicants[0]['scores'] : []);
+            $diagnostics = ResultSheetBuilderSchema::diagnostics($document, $scoreRowCount);
+            if ($diagnostics !== []) {
+                throw new RuntimeException('builder_invalid:'.json_encode($diagnostics, JSON_THROW_ON_ERROR));
+            }
+        }
+
         $replacements = $this->placeholders->buildReplacements($applicants);
-        $isDual = $this->isDual($template);
-
-        $html = $isDual
-            ? $this->css->wrapDualForPdf(
-                $this->placeholders->renderRaw((string) $template->content, $this->slotReplacements($replacements, '')),
-                $this->placeholders->renderRaw((string) $template->content, $this->slotReplacements($replacements, '_2')),
-                $template->paper_size,
-                $template->orientation,
-            )
-            : $this->css->wrapForPdf(
-                $this->placeholders->renderRaw((string) $template->content, $replacements),
-                $template->paper_size,
-                $template->orientation,
-            );
-
+        $raw = $this->placeholders->renderRaw((string) $template->content, $replacements);
+        $marginMm = (float) ($template->builder_json['page']['margin_mm'] ?? 12);
+        $html = $this->css->wrapForPdf($raw, $template->paper_size, $template->orientation, $marginMm);
         $html = $this->injectWatermark($html, $template->watermark_text);
 
         return $this->pdfRenderer->render($html, $this->paperOptions($template));
@@ -62,59 +73,35 @@ final class ResultSheetRenderer
 
     /**
      * @param  array<int, array<string, mixed>>  $applicants
+     * @return array{pdf: string, docx: string|null}
      */
-    private function renderDocument(ResultSheetTemplate $template, array $applicants): string
-    {
+    private function renderDocumentItem(
+        ResultSheetTemplate $template,
+        array $applicants,
+        ?float $timeoutSeconds,
+        bool $includeDocx,
+    ): array {
         if (! $this->converter->isAvailable()) {
             throw new RuntimeException('libreoffice_unavailable');
         }
 
         $sourcePath = storage_path('app/private/'.$template->document_path);
-
         if (! is_file($sourcePath)) {
             throw new RuntimeException('Template document file not found on disk.');
         }
 
-        // One document fill carries both slots (dual templates use _2 keys).
         $filled = $this->filler->fill($sourcePath, $this->placeholders->buildDocxReplacements($applicants));
 
         try {
-            return $this->converter->convert($filled);
+            return [
+                'pdf' => $this->converter->convert($filled, $timeoutSeconds),
+                'docx' => $includeDocx ? (string) file_get_contents($filled) : null,
+            ];
         } finally {
             if (is_file($filled)) {
                 @unlink($filled);
             }
         }
-    }
-
-    /**
-     * @param  array<string, string>  $replacements
-     * @return array<string, string>
-     */
-    private function slotReplacements(array $replacements, string $suffix): array
-    {
-        if ($suffix === '') {
-            return $replacements;
-        }
-
-        $slot = [];
-
-        foreach ($replacements as $key => $value) {
-            if (str_ends_with($key, $suffix)) {
-                $slot[substr($key, 0, -strlen($suffix))] = $value;
-            }
-        }
-
-        return $slot;
-    }
-
-    private function isDual(ResultSheetTemplate $template): bool
-    {
-        return in_array($template->logical_unit, [
-            ResultSheetTemplate::LOGICAL_HALF_A4,
-            ResultSheetTemplate::LOGICAL_HALF_LEGAL,
-            ResultSheetTemplate::LOGICAL_HALF_LETTER,
-        ], true);
     }
 
     private function injectWatermark(string $html, ?string $text): string

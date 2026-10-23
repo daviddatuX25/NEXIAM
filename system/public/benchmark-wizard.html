@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Guided Admission Benchmark Setup Wizard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-alt: #334155;
+      --border: #475569;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --danger: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 1.5rem;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    h1 { font-size: 1.35rem; font-weight: 800; color: var(--accent); }
+    .subtitle { font-size: 0.85rem; color: var(--text-muted); }
+    
+    .progress-bar {
+      display: flex;
+      gap: 0.3rem;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+    .prog-chip {
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text-muted);
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .prog-chip.active {
+      background: var(--accent);
+      color: #041226;
+      border-color: var(--accent);
+    }
+    .prog-chip.done {
+      border-color: var(--ok);
+      color: var(--ok);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    h2 { font-size: 1.15rem; margin-bottom: 0.25rem; }
+    .question-block {
+      border-top: 1px solid var(--card-alt);
+      padding-top: 1.25rem;
+      margin-top: 1.25rem;
+    }
+    .question-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .question-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.85rem;
+    }
+
+    .strand-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .strand-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.6rem;
+      background: var(--card-alt);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .strand-label:hover { border-color: var(--accent); }
+    .strand-label input { accent-color: var(--accent); }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.8rem;
+      margin-top: 0.5rem;
+    }
+    .score-field {
+      background: var(--card-alt);
+      padding: 0.65rem 0.8rem;
+      border-radius: 8px;
+    }
+    .score-field label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
+    }
+    .score-field input {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      padding: 0.4rem 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .score-field input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.5rem;
+    }
+    .btn {
+      padding: 0.55rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--card-alt);
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.primary { background: var(--accent); color: #041226; border-color: var(--accent); }
+    .btn.primary:hover { background: var(--accent-hover); }
+    .btn.ok { background: var(--ok); color: #041226; border-color: var(--ok); }
+
+    .preview-box {
+      margin-top: 1.5rem;
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.75rem;
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>ISPSC Guided Admission Benchmark Wizard</h1>
+      <p class="subtitle">Step-by-step interview tool for Guidance Counselors and Psychometrician</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="btn ok" onclick="exportData('csv')">⬇ Export CSV</button>
+      <button class="btn ok" onclick="exportData('json')">⬇ Export JSON</button>
+    </div>
+  </header>
+
+  <!-- PROGRAM PROGRESS TABS -->
+  <div class="progress-bar" id="prog-tabs"></div>
+
+  <!-- ACTIVE PROGRAM CARD -->
+  <div class="card" id="form-card">
+    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+      <div>
+        <h2 id="current-title">BS Information Technology (BSIT)</h2>
+        <p class="subtitle" id="current-desc">Configure academic and aptitude expectations</p>
+      </div>
+      <span style="font-size: 0.75rem; color: var(--accent); font-weight: 700;" id="step-count">Program 1 of 10</span>
+    </div>
+
+    <!-- QUESTION 1: PRIORITY STRANDS -->
+    <div class="question-block">
+      <div class="question-title">1. Senior High School Strand Priorities</div>
+      <div class="question-desc">Which SHS tracks and strands are naturally preferred for this degree?</div>
+      <div class="strand-grid" id="strands-container">
+        <label class="strand-label"><input type="checkbox" name="strand" value="STEM" checked> STEM</label>
+        <label class="strand-label"><input type="checkbox" name="strand" value="TVL-ICT" checked> TVL-ICT</label>
+        <label class="strand-label"><input type="checkbox" name="strand" value="HUMSS"> HUMSS</label>
+        <label class="strand-label"><input type="checkbox" name="strand" value="ABM"> ABM</label>
+        <label class="strand-label"><input type="checkbox" name="strand" value="GAS"> GAS</label>
+        <label class="strand-label"><input type="checkbox" name="strand" value="TVL-HE"> TVL-HE</label>
+        <label class="strand-label"><input type="checkbox" name="strand" value="TVL-Agri"> TVL-Agri</label>
+      </div>
+    </div>
+
+    <!-- QUESTION 2: IDEAL/HONORS STUDENT -->
+    <div class="question-block">
+      <div class="question-title">2. Ideal / Honors Profile (Top 10% Candidate)</div>
+      <div class="question-desc">What grades and ICAT percentiles characterize a student who will effortlessly excel?</div>
+      <div class="score-row">
+        <div class="score-field"><label>GWA (Grade 12)</label><input type="number" step="0.5" id="h-gwa" value="91.0"></div>
+        <div class="score-field"><label>General Ability %</label><input type="number" id="h-gen" value="85"></div>
+        <div class="score-field"><label>Verbal Aptitude %</label><input type="number" id="h-verb" value="78"></div>
+        <div class="score-field"><label>Numeric Aptitude %</label><input type="number" id="h-num" value="88"></div>
+        <div class="score-field"><label>Spatial Aptitude %</label><input type="number" id="h-spat" value="82"></div>
+        <div class="score-field"><label>Perceptual %</label><input type="number" id="h-perc" value="80"></div>
+        <div class="score-field"><label>Manual Dext %</label><input type="number" id="h-man" value="75"></div>
+      </div>
+    </div>
+
+    <!-- QUESTION 3: REGULAR SOLID STUDENT -->
+    <div class="question-block">
+      <div class="question-title">3. Typical Successful Student (Solid Regular)</div>
+      <div class="question-desc">What is the standard profile of a regular passing student?</div>
+      <div class="score-row">
+        <div class="score-field"><label>GWA (Grade 12)</label><input type="number" step="0.5" id="r-gwa" value="86.0"></div>
+        <div class="score-field"><label>General Ability %</label><input type="number" id="r-gen" value="78"></div>
+        <div class="score-field"><label>Verbal Aptitude %</label><input type="number" id="r-verb" value="72"></div>
+        <div class="score-field"><label>Numeric Aptitude %</label><input type="number" id="r-num" value="80"></div>
+        <div class="score-field"><label>Spatial Aptitude %</label><input type="number" id="r-spat" value="78"></div>
+        <div class="score-field"><label>Perceptual %</label><input type="number" id="r-perc" value="75"></div>
+        <div class="score-field"><label>Manual Dext %</label><input type="number" id="r-man" value="72"></div>
+      </div>
+    </div>
+
+    <!-- QUESTION 4: STRICT MINIMUM PASSING THRESHOLD -->
+    <div class="question-block">
+      <div class="question-title">4. Minimum Passing Cutoff Threshold</div>
+      <div class="question-desc">What is the absolute lowest scores acceptable before you recommend denying admission?</div>
+      <div class="score-row">
+        <div class="score-field"><label>Min GWA</label><input type="number" step="0.5" id="m-gwa" value="83.0"></div>
+        <div class="score-field"><label>Min General %</label><input type="number" id="m-gen" value="72"></div>
+        <div class="score-field"><label>Min Verbal %</label><input type="number" id="m-verb" value="68"></div>
+        <div class="score-field"><label>Min Numeric %</label><input type="number" id="m-num" value="75"></div>
+        <div class="score-field"><label>Min Spatial %</label><input type="number" id="m-spat" value="70"></div>
+        <div class="score-field"><label>Min Perceptual %</label><input type="number" id="m-perc" value="70"></div>
+        <div class="score-field"><label>Min Manual %</label><input type="number" id="m-man" value="68"></div>
+      </div>
+    </div>
+
+    <!-- QUESTION 5: CAREER INTEREST (RIASEC) -->
+    <div class="question-block">
+      <div class="question-title">5. Dominant Career Interest Themes (Optional RIASEC)</div>
+      <div class="question-desc">Which personality or career themes thrive in this environment?</div>
+      <div class="strand-grid" id="riasec-container">
+        <label class="strand-label"><input type="checkbox" name="riasec" value="R"> Realistic (Hands-on)</label>
+        <label class="strand-label"><input type="checkbox" name="riasec" value="I" checked> Investigative (Logic/Tech)</label>
+        <label class="strand-label"><input type="checkbox" name="riasec" value="A"> Artistic (Creative)</label>
+        <label class="strand-label"><input type="checkbox" name="riasec" value="S"> Social (Helping/Teaching)</label>
+        <label class="strand-label"><input type="checkbox" name="riasec" value="E"> Enterprising (Leadership)</label>
+        <label class="strand-label"><input type="checkbox" name="riasec" value="C"> Conventional (Clerical/Data)</label>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn" onclick="prevProgram()" id="btn-prev" disabled>← Previous Program</button>
+      <button class="btn primary" onclick="nextProgram()" id="btn-next">Save & Next Program →</button>
+    </div>
+  </div>
+
+  <!-- AUTO-GENERATED EXEMPLAR PREVIEW -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>Generated 5-Tier In-Context Exemplars (Preview)</h3>
+      <span style="font-size: 0.75rem; color: var(--ok);" id="rows-count">5 rows generated</span>
+    </div>
+    <div class="preview-box" id="preview-output">Loading preview...</div>
+  </div>
+</div>
+
+<script>
+  const programs = [
+    { code: 'BSIT', name: 'BS Information Technology', desc: 'Software engineering, networks, system administration' },
+    { code: 'BSCS', name: 'BS Computer Science', desc: 'Algorithms, artificial intelligence, theory of computing' },
+    { code: 'BSCE', name: 'BS Civil Engineering', desc: 'Structures, surveying, materials, construction management' },
+    { code: 'BSN', name: 'BS Nursing', desc: 'Patient care, anatomy, clinical practice, public health' },
+    { code: 'BSPSY', name: 'BS Psychology', desc: 'Human behavior, counseling, psychometrics, mental health' },
+    { code: 'BSEd-Eng', 'name': 'BSEd Major in English', desc: 'Linguistics, literature, language pedagogy' },
+    { code: 'BSEd-Math', 'name': 'BSEd Major in Mathematics', desc: 'Mathematical pedagogy, advanced algebra, calculus' },
+    { code: 'BSBA', name: 'BS Business Administration', desc: 'Marketing, operations, human resources, finance' },
+    { code: 'BSHM', name: 'BS Hospitality Management', desc: 'Hotel operations, culinary, tourism, customer service' },
+    { code: 'BAT', name: 'Bachelor in Agricultural Technology', desc: 'Crop science, animal husbandry, agricultural machinery' }
+  ];
+
+  let currentIndex = 0;
+  const benchmarkStore = {};
+
+  function init() {
+    renderTabs();
+    loadProgram(0);
+  }
+
+  function renderTabs() {
+    const container = document.getElementById('prog-tabs');
+    container.innerHTML = programs.map((p, idx) => `
+      <div class="prog-chip ${idx === currentIndex ? 'active' : ''} ${benchmarkStore[p.code] ? 'done' : ''}" 
+           onclick="switchProgram(${idx})">
+        ${p.code} ${benchmarkStore[p.code] ? '✓' : ''}
+      </div>
+    `).join('');
+  }
+
+  function switchProgram(idx) {
+    saveCurrentToStore();
+    currentIndex = idx;
+    loadProgram(idx);
+    renderTabs();
+  }
+
+  function loadProgram(idx) {
+    const prog = programs[idx];
+    document.getElementById('current-title').textContent = `${prog.name} (${prog.code})`;
+    document.getElementById('current-desc').textContent = prog.desc;
+    document.getElementById('step-count').textContent = `Program ${idx + 1} of ${programs.length}`;
+    document.getElementById('btn-prev').disabled = idx === 0;
+    document.getElementById('btn-next').textContent = idx === programs.length - 1 ? 'Finish & Review' : 'Save & Next Program →';
+
+    const data = benchmarkStore[prog.code];
+    if (data) {
+      document.getElementById('h-gwa').value = data.honors.gwa;
+      document.getElementById('h-gen').value = data.honors.gen;
+      document.getElementById('h-verb').value = data.honors.verb;
+      document.getElementById('h-num').value = data.honors.num;
+      document.getElementById('h-spat').value = data.honors.spat;
+      document.getElementById('h-perc').value = data.honors.perc;
+      document.getElementById('h-man').value = data.honors.man;
+
+      document.getElementById('r-gwa').value = data.regular.gwa;
+      document.getElementById('r-gen').value = data.regular.gen;
+      document.getElementById('r-verb').value = data.regular.verb;
+      document.getElementById('r-num').value = data.regular.num;
+      document.getElementById('r-spat').value = data.regular.spat;
+      document.getElementById('r-perc').value = data.regular.perc;
+      document.getElementById('r-man').value = data.regular.man;
+
+      document.getElementById('m-gwa').value = data.minimum.gwa;
+      document.getElementById('m-gen').value = data.minimum.gen;
+      document.getElementById('m-verb').value = data.minimum.verb;
+      document.getElementById('m-num').value = data.minimum.num;
+      document.getElementById('m-spat').value = data.minimum.spat;
+      document.getElementById('m-perc').value = data.minimum.perc;
+      document.getElementById('m-man').value = data.minimum.man;
+    }
+    updatePreview();
+  }
+
+  function saveCurrentToStore() {
+    const prog = programs[currentIndex];
+    const checkedStrands = Array.from(document.querySelectorAll('#strands-container input:checked')).map(el => el.value);
+    const checkedRiasec = Array.from(document.querySelectorAll('#riasec-container input:checked')).map(el => el.value);
+
+    benchmarkStore[prog.code] = {
+      code: prog.code,
+      name: prog.name,
+      strands: checkedStrands,
+      riasec: checkedRiasec,
+      honors: {
+        gwa: parseFloat(document.getElementById('h-gwa').value) || 90.0,
+        gen: parseInt(document.getElementById('h-gen').value) || 85,
+        verb: parseInt(document.getElementById('h-verb').value) || 80,
+        num: parseInt(document.getElementById('h-num').value) || 85,
+        spat: parseInt(document.getElementById('h-spat').value) || 80,
+        perc: parseInt(document.getElementById('h-perc').value) || 80,
+        man: parseInt(document.getElementById('h-man').value) || 75,
+      },
+      regular: {
+        gwa: parseFloat(document.getElementById('r-gwa').value) || 85.0,
+        gen: parseInt(document.getElementById('r-gen').value) || 75,
+        verb: parseInt(document.getElementById('r-verb').value) || 70,
+        num: parseInt(document.getElementById('r-num').value) || 75,
+        spat: parseInt(document.getElementById('r-spat').value) || 70,
+        perc: parseInt(document.getElementById('r-perc').value) || 70,
+        man: parseInt(document.getElementById('r-man').value) || 70,
+      },
+      minimum: {
+        gwa: parseFloat(document.getElementById('m-gwa').value) || 82.0,
+        gen: parseInt(document.getElementById('m-gen').value) || 70,
+        verb: parseInt(document.getElementById('m-verb').value) || 65,
+        num: parseInt(document.getElementById('m-num').value) || 70,
+        spat: parseInt(document.getElementById('m-spat').value) || 65,
+        perc: parseInt(document.getElementById('m-perc').value) || 65,
+        man: parseInt(document.getElementById('m-man').value) || 65,
+      }
+    };
+  }
+
+  function nextProgram() {
+    saveCurrentToStore();
+    if (currentIndex < programs.length - 1) {
+      currentIndex++;
+      loadProgram(currentIndex);
+      renderTabs();
+    } else {
+      alert('All programs configured! Click "Export CSV" or "Export JSON" to download your completed dataset.');
+    }
+  }
+
+  function prevProgram() {
+    if (currentIndex > 0) {
+      saveCurrentToStore();
+      currentIndex--;
+      loadProgram(currentIndex);
+      renderTabs();
+    }
+  }
+
+  // Generates the 5 mathematical TabPFN tiers from the 3 simple questions
+  function generateExemplars() {
+    saveCurrentToStore();
+    const rows = [];
+
+    for (const p of programs) {
+      const b = benchmarkStore[p.code] || {
+        strands: ['STEM'],
+        riasec: ['I'],
+        honors: { gwa: 90, gen: 85, verb: 80, num: 85, spat: 80, perc: 80, man: 75 },
+        regular: { gwa: 85, gen: 75, verb: 70, num: 75, spat: 70, perc: 70, man: 70 },
+        minimum: { gwa: 82, gen: 70, verb: 65, num: 70, spat: 65, perc: 65, man: 65 }
+      };
+
+      const primaryStrand = b.strands[0] || 'STEM';
+      const secondaryStrand = b.strands[1] || 'GAS';
+      const riasecStr = b.riasec.join(', ');
+
+      // Tier 1: Honors (Positive anchor = 1)
+      rows.push({
+        program: p.code, tier: 'Tier 1 (Honors)', strand: primaryStrand,
+        gwa: b.honors.gwa, gen: b.honors.gen, verb: b.honors.verb, num: b.honors.num,
+        spat: b.honors.spat, perc: b.honors.perc, man: b.honors.man,
+        riasec: riasecStr, target: 1
+      });
+
+      // Tier 2: Regular (Positive anchor = 1)
+      rows.push({
+        program: p.code, tier: 'Tier 2 (Regular)', strand: secondaryStrand,
+        gwa: b.regular.gwa, gen: b.regular.gen, verb: b.regular.verb, num: b.regular.num,
+        spat: b.regular.spat, perc: b.regular.perc, man: b.regular.man,
+        riasec: riasecStr, target: 1
+      });
+
+      // Tier 3: Minimum Admissible (Positive anchor = 1)
+      rows.push({
+        program: p.code, tier: 'Tier 3 (Minimum)', strand: 'GAS',
+        gwa: b.minimum.gwa, gen: b.minimum.gen, verb: b.minimum.verb, num: b.minimum.num,
+        spat: b.minimum.spat, perc: b.minimum.perc, man: b.minimum.man,
+        riasec: riasecStr, target: 1
+      });
+
+      // Tier 4: Non-Traditional Aligned (High aptitude cross-strand = 1)
+      rows.push({
+        program: p.code, tier: 'Tier 4 (Cross-Strand)', strand: 'HUMSS',
+        gwa: (b.honors.gwa + b.regular.gwa) / 2, gen: b.honors.gen, verb: b.honors.verb, num: b.honors.num,
+        spat: b.regular.spat, perc: b.regular.perc, man: b.regular.man,
+        riasec: riasecStr, target: 1
+      });
+
+      // Tier 5: Below Cutoff Anchor (Negative anchor = 0)
+      rows.push({
+        program: p.code, tier: 'Tier 5 (Sub-Threshold)', strand: 'GAS',
+        gwa: b.minimum.gwa - 5.0, gen: b.minimum.gen - 12, verb: b.minimum.verb - 10, num: b.minimum.num - 12,
+        spat: b.minimum.spat - 10, perc: b.minimum.perc - 10, man: b.minimum.man - 10,
+        riasec: '', target: 0
+      });
+    }
+
+    return rows;
+  }
+
+  function updatePreview() {
+    const rows = generateExemplars();
+    document.getElementById('rows-count').textContent = `${rows.length} rows generated across ${programs.length} programs`;
+    document.getElementById('preview-output').textContent = JSON.stringify(rows.slice(0, 5), null, 2) + '\n... (' + (rows.length - 5) + ' more rows)';
+  }
+
+  function exportData(format) {
+    const rows = generateExemplars();
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+      downloadFile(blob, 'NEXIAM_Admission_Benchmarks.json');
+    } else {
+      const headers = ['program', 'tier', 'strand', 'gwa', 'gen', 'verb', 'num', 'spat', 'perc', 'man', 'riasec', 'target'];
+      const csvContent = [headers.join(',')].concat(
+        rows.map(r => [r.program, `"${r.tier}"`, r.strand, r.gwa, r.gen, r.verb, r.num, r.spat, r.perc, r.man, `"${r.riasec}"`, r.target].join(','))
+      ).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      downloadFile(blob, 'NEXIAM_Admission_Benchmarks.csv');
+    }
+  }
+
+  function downloadFile(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  window.onload = init;
+</script>
+
+</body>
+</html>

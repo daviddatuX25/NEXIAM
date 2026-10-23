@@ -3,7 +3,6 @@
 use App\Admission\Support\ApplicantCapabilityGrants;
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
-use App\Models\Foundation\Institution;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -38,7 +37,6 @@ test('program head role receives assigned-program admission-support grants', fun
         ->toContain(CapabilityCatalog::PROGRAM_HEAD_MESSAGE)
         ->toContain(CapabilityCatalog::RECORD_THREAD_PARTICIPATE)
         ->toContain(CapabilityCatalog::APPLICANT_QR_RESOLVE)
-        ->toContain(CapabilityCatalog::PROGRAM_QUOTA_MANAGE)
         // PH never gains Registrar or Guidance authority.
         ->not->toContain(CapabilityCatalog::REGISTRAR_ENROLLMENT_STAMP)
         ->not->toContain(CapabilityCatalog::GUIDANCE_SELECTION_MANAGE)
@@ -59,57 +57,54 @@ test('guidance counselor receives pool, follow-up, and thread grants; clerk does
         ->not->toContain(CapabilityCatalog::GUIDANCE_FOLLOW_UP_MANAGE);
 });
 
-test('registrar roles receive enrollment stamp and QR resolve', function (): void {
-    foreach (['registrar_admin', 'registrar_clerk', 'registrar_support_staff'] as $role) {
-        expect(CapabilityCatalog::roleHelperGrants()[$role])
-            ->toContain(CapabilityCatalog::REGISTRAR_ENROLLMENT_STAMP)
-            ->toContain(CapabilityCatalog::APPLICANT_QR_RESOLVE)
-            ->not->toContain(CapabilityCatalog::PROGRAM_HEAD_VIEW);
-    }
-});
+test('registrar capability authority follows support, clerk, and administrator boundaries', function (): void {
+    seedE2Foundation();
 
+    $support = User::query()->where('email', 'registrar.support@nexiam.test')->firstOrFail();
+    $clerk = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
+    $admin = User::query()->where('email', 'registrar.admin@nexiam.test')->firstOrFail();
+    $authorizer = app(CapabilityAuthorizer::class);
+
+    expect($authorizer->allows($support, CapabilityCatalog::REGISTRAR_ENROLLMENT_ELIGIBILITY))->toBeTrue()
+        ->and($authorizer->allows($support, CapabilityCatalog::REGISTRAR_ADMISSION_CLEARANCE_CONFIRM))->toBeTrue()
+        ->and($authorizer->allows($support, CapabilityCatalog::REGISTRAR_DOCUMENTS_VERIFY))->toBeTrue()
+        ->and($authorizer->allows($support, CapabilityCatalog::OFFICE_INQUIRY_HANDLE))->toBeTrue()
+        ->and($authorizer->allows($support, CapabilityCatalog::REGISTRAR_APPLICATIONS_IMPORT))->toBeFalse()
+        ->and($authorizer->allows($support, CapabilityCatalog::REGISTRAR_ADMISSION_CLEARANCE_REOPEN))->toBeFalse()
+        ->and($authorizer->allows($clerk, CapabilityCatalog::REGISTRAR_APPLICATIONS_IMPORT))->toBeTrue()
+        ->and($authorizer->allows($clerk, CapabilityCatalog::REGISTRAR_ADMISSION_CLEARANCE_REOPEN))->toBeFalse()
+        ->and($authorizer->allows($admin, CapabilityCatalog::REGISTRAR_APPLICATIONS_IMPORT))->toBeTrue()
+        ->and($authorizer->allows($admin, CapabilityCatalog::REGISTRAR_ADMISSION_CLEARANCE_REOPEN))->toBeTrue();
+});
 test('applicant portal grants include program selection and thread participation', function (): void {
     $keys = ApplicantCapabilityGrants::capabilityKeys();
 
     expect($keys)->toContain(CapabilityCatalog::APPLICANT_PROGRAM_SELECT)
-        ->toContain(CapabilityCatalog::RECORD_THREAD_PARTICIPATE);
+        ->toContain(CapabilityCatalog::RECORD_THREAD_PARTICIPATE)
+        ->toContain(CapabilityCatalog::APPLICANT_OFFICE_INQUIRY_USE);
 });
 
 test('program head capability denies outside assigned program scope', function (): void {
     seedE2Foundation();
 
-    $ph = User::factory()->create(['email' => 'ph.scope@example.test']);
-
     $authorizer = app(CapabilityAuthorizer::class);
+    $unassigned = User::factory()->create(['email' => 'ph.unassigned@example.test']);
 
-    // No capability granted at all.
-    expect($authorizer->decide($ph, CapabilityCatalog::PROGRAM_HEAD_VIEW, [
+    expect($authorizer->decide($unassigned, CapabilityCatalog::PROGRAM_HEAD_VIEW, [
         'program' => 'BSIT',
     ])->allowed)->toBeFalse();
 
-    $ph->givePermissionTo(CapabilityCatalog::PROGRAM_HEAD_VIEW);
+    $unassigned->givePermissionTo(CapabilityCatalog::PROGRAM_HEAD_VIEW);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-    // Granted, but actor has no assigned program scope -> scope mismatch.
-    expect($authorizer->decide($ph, CapabilityCatalog::PROGRAM_HEAD_VIEW, [
+    expect($authorizer->decide($unassigned, CapabilityCatalog::PROGRAM_HEAD_VIEW, [
         'program' => 'BSIT',
     ])->reason)->toBe('scope_mismatch');
 
-    // Actor scoped to BSIT may view BSIT, never BSN.
-    $ph->syncRoles(['program_head']);
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
-    $profile = $ph->staffProfile ?? $ph->staffProfile()->create([
-        'institution_id' => Institution::query()->where('code', 'SYN-INST-001')->firstOrFail()->id,
-        'office' => 'program_head',
-        'program_codes' => ['BSIT'],
-        'status' => 'active',
-    ]);
-    $profile->forceFill(['program_codes' => ['BSIT']])->save();
+    $programHead = User::query()->where('email', 'program.head.bsit@nexiam.test')->firstOrFail();
+    $allowed = $authorizer->decide($programHead, CapabilityCatalog::PROGRAM_HEAD_VIEW, ['program' => 'BSIT']);
 
-    $ph->refresh();
-
-    $allowed = $authorizer->decide($ph, CapabilityCatalog::PROGRAM_HEAD_VIEW, ['program' => 'BSIT']);
     expect($allowed->allowed)->toBeTrue()
-        ->and($authorizer->decide($ph, CapabilityCatalog::PROGRAM_HEAD_VIEW, ['program' => 'BSN'])->allowed)
+        ->and($authorizer->decide($programHead, CapabilityCatalog::PROGRAM_HEAD_VIEW, ['program' => 'BSN'])->allowed)
         ->toBeFalse();
 });

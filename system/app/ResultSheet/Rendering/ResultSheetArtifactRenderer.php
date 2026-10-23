@@ -3,6 +3,8 @@
 namespace App\ResultSheet\Rendering;
 
 use App\Models\Printing\PrintJob;
+use App\Models\Printing\PrintJobItem;
+use App\Models\Release\ResultDocument;
 use App\Models\Release\ResultRelease;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use App\ResultSheet\Data\ResultSheetDataProvider;
@@ -23,6 +25,7 @@ final class ResultSheetArtifactRenderer
 {
     public function __construct(
         private readonly ResultSheetRenderer $sheetRenderer,
+        private readonly PreparedResultDocumentRenderer $preparedDocumentRenderer,
         private readonly ResultSheetDataProvider $dataProvider,
         private readonly PdfMerger $merger,
         private readonly SensitiveAssetStore $assetStore,
@@ -34,60 +37,114 @@ final class ResultSheetArtifactRenderer
     public function render(PrintJob $job): array
     {
         $pinned = is_array($job->pinned_input_json) ? $job->pinned_input_json : [];
+        $documentIds = array_values(array_unique(array_map('intval', $pinned['document_ids'] ?? [])));
         $releaseIds = array_values(array_unique(array_map('intval', $pinned['release_ids'] ?? [])));
         $copies = max(1, min(10, (int) ($pinned['copies'] ?? 1)));
 
         $template = ResultSheetTemplate::query()->find((int) ($pinned['template_id'] ?? 0));
 
-        if ($template === null) {
+        if ($template === null && $documentIds === []) {
             throw new RuntimeException('template_missing');
         }
 
-        if ($releaseIds === []) {
+        if ($documentIds === [] && $releaseIds === []) {
             throw new RuntimeException('release_list_empty');
         }
 
-        $releases = ResultRelease::query()
-            ->whereIn('id', $releaseIds)
-            ->with('admissionAttempt.identity')
-            ->get()
-            ->keyBy('id');
+        $documents = $documentIds === []
+            ? collect()
+            : ResultDocument::query()
+                ->whereIn('id', $documentIds)
+                ->with('admissionAttempt.identity')
+                ->get()
+                ->keyBy('id');
+        $releases = $documentIds !== []
+            ? collect()
+            : ResultRelease::query()
+                ->whereIn('id', $releaseIds)
+                ->with('admissionAttempt.identity')
+                ->get()
+                ->keyBy('id');
+        $pinnedIds = $documentIds !== [] ? $documentIds : $releaseIds;
 
         $manifest = [];
         $sheets = [];
 
-        foreach ($releaseIds as $releaseId) {
-            $release = $releases->get($releaseId);
+        foreach ($pinnedIds as $pinnedId) {
+            $document = $documentIds !== [] ? $documents->get($pinnedId) : null;
+            $release = $documentIds === [] ? $releases->get($pinnedId) : null;
+            $attempt = $document?->admissionAttempt ?? $release?->admissionAttempt;
+            $item = PrintJobItem::query()
+                ->where('print_job_id', $job->id)
+                ->when(
+                    $documentIds !== [],
+                    fn ($query) => $query->where('result_document_id', $pinnedId),
+                    fn ($query) => $query->where('result_release_id', $pinnedId),
+                )
+                ->first();
+            $manifestKey = $document?->id ?? $release?->id ?? $pinnedId;
 
-            if ($release === null || ! $release->is_current || $release->unreleased_at !== null) {
-                $manifest[$releaseId] = ['status' => 'failed', 'safe_error' => 'release_stale'];
+            if (($document !== null && (
+                $document->status !== ResultDocument::STATUS_READY
+                || (int) $attempt?->current_result_document_id !== (int) $document->id
+            )) || ($documentIds === [] && (
+                $release === null || ! $release->is_current || $release->unreleased_at !== null
+            ))) {
+                $manifest[$manifestKey] = ['status' => 'failed', 'safe_error' => 'release_stale'];
+                $item?->update(['status' => PrintJobItem::STATUS_FAILED, 'safe_error' => 'release_stale']);
 
                 continue;
             }
 
+            if ($attempt === null) {
+                $manifest[$manifestKey] = ['status' => 'failed', 'safe_error' => 'result_document_missing'];
+                $item?->update(['status' => PrintJobItem::STATUS_FAILED, 'safe_error' => 'result_document_missing']);
+
+                continue;
+            }
+
+            $item?->update(['status' => PrintJobItem::STATUS_CONVERTING]);
             try {
-                $data = $this->dataProvider->forAttempt($release->admissionAttempt);
-                $bytes = $this->sheetRenderer->renderForApplicants($template, [$data]);
+
+                if ($document !== null) {
+                    $bytes = $this->preparedDocumentRenderer->render($document)['pdf'];
+                } else {
+                    $data = $this->dataProvider->forAttempt($attempt);
+                    $bytes = $this->sheetRenderer->renderForApplicants($template, [$data]);
+                }
 
                 $checksum = hash('sha256', $bytes);
-                $path = 'print-jobs/'.$job->id.'/items/'.$releaseId.'-'.$checksum.'.pdf';
+                $path = 'print-jobs/'.$job->id.'/items/'.$manifestKey.'-'.$checksum.'.pdf';
                 $this->assetStore->store($bytes, $path);
 
-                $manifest[$releaseId] = [
+                $manifest[$manifestKey] = [
                     'status' => 'ready',
                     'path' => $path,
                     'checksum' => $checksum,
-                    'release_version' => $release->release_version,
+                    'document_version' => $document?->version,
+                    'release_version' => $release?->release_version,
                 ];
+
+                $item?->update([
+                    'status' => PrintJobItem::STATUS_READY,
+                    'file_path' => $path,
+                    'file_checksum' => $checksum,
+                    'safe_error' => null,
+                ]);
 
                 for ($i = 0; $i < $copies; $i++) {
                     $sheets[] = $bytes;
                 }
             } catch (Throwable $exception) {
-                $manifest[$releaseId] = [
+                $safeErr = $this->safeError($exception);
+                $manifest[$manifestKey] = [
                     'status' => 'failed',
-                    'safe_error' => $this->safeError($exception),
+                    'safe_error' => $safeErr,
                 ];
+                $item?->update([
+                    'status' => PrintJobItem::STATUS_FAILED,
+                    'safe_error' => $safeErr,
+                ]);
             }
         }
 

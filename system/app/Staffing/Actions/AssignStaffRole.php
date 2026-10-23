@@ -13,8 +13,7 @@ class AssignStaffRole
     public function __construct(
         private readonly StaffRoleCeiling $ceiling,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     public function handle(User $actor, User $target, string $role): User
     {

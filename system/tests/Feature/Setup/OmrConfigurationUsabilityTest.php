@@ -166,7 +166,7 @@ test('overlay save edits drafts in place and copies active versions to a draft',
                 'version_id' => $draft->id,
                 'overlay' => ['title' => 'COPIED TITLE', 'header_lines' => ['H2'], 'footer_lines' => [], 'name_box_label' => '', 'per_page' => []],
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('setup.omr.templates.show', $draft->template_id));
 
         $newDraft = OmrAnswerSheetTemplateVersion::query()
             ->where('template_id', $draft->template_id)
@@ -207,32 +207,15 @@ test('booklet copy duplicates the key into a draft and is audited', function ():
         ->toThrow(RuntimeException::class, 'draft already exists');
 });
 
-test('bulk key entry parses rows and reports line numbers', function (): void {
+test('legacy bulk booklet mutation is not available after the Exam Materials cutover', function (): void {
     $fixture = buildGradingFixture($this);
-    $guidance = $fixture['guidance'];
 
-    $bulk = "# key for demo\n1 VERBAL A\n2 VERBAL B\n3 VERBAL C\n4 VERBAL D\n";
-    $this->actingAs($guidance)
-        ->post(route('setup.omr.booklets.store'), [
-            'code' => 'BULK-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8)),
-            'name' => 'Bulk demo',
-            'questions' => [],
-            'bulk' => $bulk,
+    $this->actingAs($fixture['guidance'])
+        ->post('/setup/omr/booklets', [
+            'name' => 'Legacy bulk demo',
+            'bulk' => "1 VERBAL A\n",
         ])
-        ->assertRedirect()
-        ->assertSessionHasNoErrors();
-
-    $booklet = OmrQuestionBooklet::query()->where('name', 'Bulk demo')->firstOrFail();
-    expect($booklet->versions()->first()->questions()->count())->toBe(4);
-
-    $this->actingAs($guidance)
-        ->post(route('setup.omr.booklets.store'), [
-            'code' => 'BULK-'.strtoupper(substr(str_replace('-', '', (string) Str::uuid()), 0, 8)),
-            'name' => 'Bulk bad',
-            'questions' => [],
-            'bulk' => "1 VERBAL A\n2 NOPE B\n3 VERBAL Z\n",
-        ])
-        ->assertSessionHasErrors('omr_booklet');
+        ->assertMethodNotAllowed();
 });
 
 test('builder hydrates drafts and refuses activated versions', function (): void {

@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
-
 test('deterministic seed creates synthetic institution and cycle', function (): void {
     Artisan::call('db:seed', ['--force' => true]);
 

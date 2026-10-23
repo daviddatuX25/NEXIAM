@@ -16,6 +16,10 @@ class ProgramQuotaChange extends Model
         'from_slots',
         'to_slots',
         'notice',
+        'reason',
+        'version',
+        'idempotency_key',
+        'payload_hash',
         'created_at',
     ];
 
@@ -27,6 +31,7 @@ class ProgramQuotaChange extends Model
         return [
             'from_slots' => 'integer',
             'to_slots' => 'integer',
+            'version' => 'integer',
             'created_at' => 'datetime',
         ];
     }

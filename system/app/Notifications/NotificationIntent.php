@@ -25,8 +25,7 @@ final class NotificationIntent
         public readonly int $templateVersion,
         public readonly array $payload,
         public readonly array $channels = [NotificationDelivery::CHANNEL_IN_APP],
-    ) {
-    }
+    ) {}
 
     public static function v1(string $eventType, string $templateKey, array $payload, array $channels = [NotificationDelivery::CHANNEL_IN_APP]): self
     {

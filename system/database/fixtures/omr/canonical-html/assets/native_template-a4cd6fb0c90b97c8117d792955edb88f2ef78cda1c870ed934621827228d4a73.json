@@ -1,0 +1,626 @@
+{
+    "bubbleDimensions": [
+        53,
+        53
+    ],
+    "pageDimensions": [
+        2292,
+        3320
+    ],
+    "visualComponents": [
+        {
+            "id": "Header_1",
+            "type": "header",
+            "title": "EXAMINATION ANSWER SHEET",
+            "subtitle": "Automated OMR Evaluation Form",
+            "posX": 15,
+            "posY": 14,
+            "w_mm": 129,
+            "h_mm": 18,
+            "typography": {
+                "fontSizePt": 13,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+                "fontWeight": 900,
+                "textColor": "#0f172a",
+                "textAlign": "left",
+                "lineHeight": 1.2,
+                "letterSpacingPx": 0
+            },
+            "zIndex": 1
+        },
+        {
+            "id": "Examinee_ID_2",
+            "type": "roll",
+            "title": "Examinee Number",
+            "posX": 146,
+            "posY": 15.97,
+            "w_mm": 58,
+            "h_mm": 52,
+            "digitsCount": 7,
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 5.76,
+            "rowPitchMm": 5.76,
+            "typography": {
+                "fontSizePt": 7.5,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+                "fontWeight": 700,
+                "textColor": "#475569",
+                "textAlign": "center",
+                "lineHeight": 1.2,
+                "letterSpacingPx": 0
+            },
+            "zIndex": 2,
+            "page_no": 1
+        },
+        {
+            "id": "RoomSeat_3",
+            "type": "room_seat",
+            "label": "Seat No.",
+            "posX": 70,
+            "posY": 54,
+            "w_mm": 33,
+            "h_mm": 17,
+            "inputStyle": "box",
+            "inputKind": "text",
+            "typography": {
+                "fontSizePt": 6.5,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+                "fontWeight": 800,
+                "textColor": "#475569",
+                "textAlign": "left",
+                "lineHeight": 1.2,
+                "letterSpacingPx": 0
+            },
+            "zIndex": 3
+        },
+        {
+            "id": "Birthdate_4",
+            "type": "birthdate",
+            "label": "Birthdate (MM / DD / YYYY)",
+            "posX": 16,
+            "posY": 54,
+            "w_mm": 52,
+            "h_mm": 17,
+            "inputStyle": "box",
+            "inputKind": "date",
+            "typography": {
+                "fontSizePt": 6.5,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+                "fontWeight": 800,
+                "textColor": "#475569",
+                "textAlign": "left",
+                "lineHeight": 1.2,
+                "letterSpacingPx": 0
+            },
+            "zIndex": 4
+        },
+        {
+            "id": "CandidateName_5",
+            "type": "candidate_name",
+            "label": "full name",
+            "posX": 16,
+            "posY": 34,
+            "w_mm": 88,
+            "h_mm": 18,
+            "inputStyle": "box",
+            "inputKind": "text",
+            "typography": {
+                "fontSizePt": 6.5,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+                "fontWeight": 800,
+                "textColor": "#475569",
+                "textAlign": "left",
+                "lineHeight": 1.2,
+                "letterSpacingPx": 0
+            },
+            "zIndex": 5
+        },
+        {
+            "id": "Instructions_6",
+            "type": "instructions",
+            "label": "INSTRUCTIONS",
+            "content": "Use Black Pencil/Pen (#2 or HB). Shade circle completely. Erase cleanly if changing answers. Make no stray marks on this sheet.",
+            "posX": 16,
+            "posY": 76,
+            "w_mm": 128,
+            "h_mm": 17,
+            "backgroundColor": "#ffffff",
+            "borderColor": "#cbd5e1",
+            "typography": {
+                "fontSizePt": 6.5,
+                "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+                "fontWeight": 600,
+                "textColor": "#334155",
+                "textAlign": "left",
+                "lineHeight": 1.3,
+                "letterSpacingPx": 0
+            },
+            "zIndex": 6
+        },
+        {
+            "id": "Part_1",
+            "type": "mcq",
+            "subjectName": "General Ability",
+            "aptitudeAreaCode": "LOGIC",
+            "name": "Part 1: General Ability (Q1\u201325)",
+            "posX": 13.97,
+            "posY": 95.97,
+            "w_mm": 28,
+            "h_mm": 175,
+            "questionsCount": 25,
+            "startQ": 1,
+            "optionsCount": 4,
+            "cols": 1,
+            "customValuesStr": "A, B, C, D",
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 6.01,
+            "rowPitchMm": 6.77,
+            "zIndex": 7,
+            "page_no": 1
+        },
+        {
+            "id": "Part_2",
+            "type": "mcq",
+            "subjectName": "Verbal Aptitude",
+            "aptitudeAreaCode": "VERBAL",
+            "name": "Part 2: Verbal Aptitude (Q26\u201350)",
+            "posX": 45.97,
+            "posY": 95.97,
+            "w_mm": 28,
+            "h_mm": 175,
+            "questionsCount": 25,
+            "startQ": 26,
+            "optionsCount": 4,
+            "cols": 1,
+            "customValuesStr": "A, B, C, D",
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 6.01,
+            "rowPitchMm": 6.77,
+            "zIndex": 8,
+            "page_no": 1
+        },
+        {
+            "id": "Part_3",
+            "type": "mcq",
+            "subjectName": "Numerical Aptitude",
+            "aptitudeAreaCode": "QUANT",
+            "name": "Part 3: Numerical Aptitude (Q51\u201375)",
+            "posX": 76.03,
+            "posY": 95.97,
+            "w_mm": 28,
+            "h_mm": 175,
+            "questionsCount": 25,
+            "startQ": 51,
+            "optionsCount": 4,
+            "cols": 1,
+            "customValuesStr": "A, B, C, D",
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 6.01,
+            "rowPitchMm": 6.77,
+            "zIndex": 9,
+            "page_no": 1
+        },
+        {
+            "id": "Part_4",
+            "type": "mcq",
+            "subjectName": "Spatial Aptitude",
+            "aptitudeAreaCode": "SPATIAL",
+            "name": "Part 4: Spatial Aptitude (Q76\u2013100)",
+            "posX": 106,
+            "posY": 95.97,
+            "w_mm": 28,
+            "h_mm": 175,
+            "questionsCount": 25,
+            "startQ": 76,
+            "optionsCount": 4,
+            "cols": 1,
+            "customValuesStr": "A, B, C, D",
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 6.01,
+            "rowPitchMm": 6.77,
+            "zIndex": 10,
+            "page_no": 1
+        },
+        {
+            "id": "Part_5",
+            "type": "mcq",
+            "subjectName": "Perceptual Aptitude",
+            "aptitudeAreaCode": "MEMORY",
+            "name": "Part 5: Perceptual Aptitude (Q101\u2013125)",
+            "posX": 138,
+            "posY": 95.97,
+            "w_mm": 28,
+            "h_mm": 175,
+            "questionsCount": 25,
+            "startQ": 101,
+            "optionsCount": 4,
+            "cols": 1,
+            "customValuesStr": "A, B, C, D",
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 6.01,
+            "rowPitchMm": 6.77,
+            "zIndex": 11,
+            "page_no": 1
+        },
+        {
+            "id": "Part_6",
+            "type": "mcq",
+            "subjectName": "Manual Dexterity",
+            "aptitudeAreaCode": "LANGUAGE",
+            "name": "Part 6: Manual Dexterity (Q126\u2013150)",
+            "posX": 167.97,
+            "posY": 95.97,
+            "w_mm": 28,
+            "h_mm": 175,
+            "questionsCount": 25,
+            "startQ": 126,
+            "optionsCount": 4,
+            "cols": 1,
+            "customValuesStr": "A, B, C, D",
+            "bubbleDiameterMm": 4.49,
+            "bubblePitchMm": 6.01,
+            "rowPitchMm": 6.77,
+            "zIndex": 12,
+            "page_no": 1
+        }
+    ],
+    "definitionHash": "83b531326235c24bbc04f5fd472fa934886c4dd4f817bf7d208e191561a414a7",
+    "pages": [
+        {
+            "page_no": 1,
+            "pageDimensions": [
+                2292,
+                3320
+            ],
+            "fieldBlocks": {
+                "Examinee_ID_2": {
+                    "fieldType": "QTYPE_INT",
+                    "direction": "vertical",
+                    "fieldLabels": [
+                        "APPLICANT_NUMBER_1",
+                        "APPLICANT_NUMBER_2",
+                        "APPLICANT_NUMBER_3",
+                        "APPLICANT_NUMBER_4",
+                        "APPLICANT_NUMBER_5",
+                        "APPLICANT_NUMBER_6",
+                        "APPLICANT_NUMBER_7"
+                    ],
+                    "bubblesGap": 68,
+                    "labelsGap": 68,
+                    "origin": [
+                        1706,
+                        260
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "Examinee Number",
+                    "showSectionHeader": true
+                },
+                "Part_1": {
+                    "fieldType": "QTYPE_MCQ4",
+                    "direction": "horizontal",
+                    "fieldLabels": [
+                        "PART_1_Q_1",
+                        "PART_1_Q_2",
+                        "PART_1_Q_3",
+                        "PART_1_Q_4",
+                        "PART_1_Q_5",
+                        "PART_1_Q_6",
+                        "PART_1_Q_7",
+                        "PART_1_Q_8",
+                        "PART_1_Q_9",
+                        "PART_1_Q_10",
+                        "PART_1_Q_11",
+                        "PART_1_Q_12",
+                        "PART_1_Q_13",
+                        "PART_1_Q_14",
+                        "PART_1_Q_15",
+                        "PART_1_Q_16",
+                        "PART_1_Q_17",
+                        "PART_1_Q_18",
+                        "PART_1_Q_19",
+                        "PART_1_Q_20",
+                        "PART_1_Q_21",
+                        "PART_1_Q_22",
+                        "PART_1_Q_23",
+                        "PART_1_Q_24",
+                        "PART_1_Q_25"
+                    ],
+                    "bubblesGap": 71,
+                    "labelsGap": 80,
+                    "origin": [
+                        130,
+                        1134
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "General Ability",
+                    "showSectionHeader": true
+                },
+                "Part_2": {
+                    "fieldType": "QTYPE_MCQ4",
+                    "direction": "horizontal",
+                    "fieldLabels": [
+                        "PART_2_Q_26",
+                        "PART_2_Q_27",
+                        "PART_2_Q_28",
+                        "PART_2_Q_29",
+                        "PART_2_Q_30",
+                        "PART_2_Q_31",
+                        "PART_2_Q_32",
+                        "PART_2_Q_33",
+                        "PART_2_Q_34",
+                        "PART_2_Q_35",
+                        "PART_2_Q_36",
+                        "PART_2_Q_37",
+                        "PART_2_Q_38",
+                        "PART_2_Q_39",
+                        "PART_2_Q_40",
+                        "PART_2_Q_41",
+                        "PART_2_Q_42",
+                        "PART_2_Q_43",
+                        "PART_2_Q_44",
+                        "PART_2_Q_45",
+                        "PART_2_Q_46",
+                        "PART_2_Q_47",
+                        "PART_2_Q_48",
+                        "PART_2_Q_49",
+                        "PART_2_Q_50"
+                    ],
+                    "bubblesGap": 71,
+                    "labelsGap": 80,
+                    "origin": [
+                        508,
+                        1134
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "Verbal Aptitude",
+                    "showSectionHeader": true
+                },
+                "Part_3": {
+                    "fieldType": "QTYPE_MCQ4",
+                    "direction": "horizontal",
+                    "fieldLabels": [
+                        "PART_3_Q_51",
+                        "PART_3_Q_52",
+                        "PART_3_Q_53",
+                        "PART_3_Q_54",
+                        "PART_3_Q_55",
+                        "PART_3_Q_56",
+                        "PART_3_Q_57",
+                        "PART_3_Q_58",
+                        "PART_3_Q_59",
+                        "PART_3_Q_60",
+                        "PART_3_Q_61",
+                        "PART_3_Q_62",
+                        "PART_3_Q_63",
+                        "PART_3_Q_64",
+                        "PART_3_Q_65",
+                        "PART_3_Q_66",
+                        "PART_3_Q_67",
+                        "PART_3_Q_68",
+                        "PART_3_Q_69",
+                        "PART_3_Q_70",
+                        "PART_3_Q_71",
+                        "PART_3_Q_72",
+                        "PART_3_Q_73",
+                        "PART_3_Q_74",
+                        "PART_3_Q_75"
+                    ],
+                    "bubblesGap": 71,
+                    "labelsGap": 80,
+                    "origin": [
+                        863,
+                        1134
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "Numerical Aptitude",
+                    "showSectionHeader": true
+                },
+                "Part_4": {
+                    "fieldType": "QTYPE_MCQ4",
+                    "direction": "horizontal",
+                    "fieldLabels": [
+                        "PART_4_Q_76",
+                        "PART_4_Q_77",
+                        "PART_4_Q_78",
+                        "PART_4_Q_79",
+                        "PART_4_Q_80",
+                        "PART_4_Q_81",
+                        "PART_4_Q_82",
+                        "PART_4_Q_83",
+                        "PART_4_Q_84",
+                        "PART_4_Q_85",
+                        "PART_4_Q_86",
+                        "PART_4_Q_87",
+                        "PART_4_Q_88",
+                        "PART_4_Q_89",
+                        "PART_4_Q_90",
+                        "PART_4_Q_91",
+                        "PART_4_Q_92",
+                        "PART_4_Q_93",
+                        "PART_4_Q_94",
+                        "PART_4_Q_95",
+                        "PART_4_Q_96",
+                        "PART_4_Q_97",
+                        "PART_4_Q_98",
+                        "PART_4_Q_99",
+                        "PART_4_Q_100"
+                    ],
+                    "bubblesGap": 71,
+                    "labelsGap": 80,
+                    "origin": [
+                        1217,
+                        1134
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "Spatial Aptitude",
+                    "showSectionHeader": true
+                },
+                "Part_5": {
+                    "fieldType": "QTYPE_MCQ4",
+                    "direction": "horizontal",
+                    "fieldLabels": [
+                        "PART_5_Q_101",
+                        "PART_5_Q_102",
+                        "PART_5_Q_103",
+                        "PART_5_Q_104",
+                        "PART_5_Q_105",
+                        "PART_5_Q_106",
+                        "PART_5_Q_107",
+                        "PART_5_Q_108",
+                        "PART_5_Q_109",
+                        "PART_5_Q_110",
+                        "PART_5_Q_111",
+                        "PART_5_Q_112",
+                        "PART_5_Q_113",
+                        "PART_5_Q_114",
+                        "PART_5_Q_115",
+                        "PART_5_Q_116",
+                        "PART_5_Q_117",
+                        "PART_5_Q_118",
+                        "PART_5_Q_119",
+                        "PART_5_Q_120",
+                        "PART_5_Q_121",
+                        "PART_5_Q_122",
+                        "PART_5_Q_123",
+                        "PART_5_Q_124",
+                        "PART_5_Q_125"
+                    ],
+                    "bubblesGap": 71,
+                    "labelsGap": 80,
+                    "origin": [
+                        1595,
+                        1134
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "Perceptual Aptitude",
+                    "showSectionHeader": true
+                },
+                "Part_6": {
+                    "fieldType": "QTYPE_MCQ4",
+                    "direction": "horizontal",
+                    "fieldLabels": [
+                        "PART_6_Q_126",
+                        "PART_6_Q_127",
+                        "PART_6_Q_128",
+                        "PART_6_Q_129",
+                        "PART_6_Q_130",
+                        "PART_6_Q_131",
+                        "PART_6_Q_132",
+                        "PART_6_Q_133",
+                        "PART_6_Q_134",
+                        "PART_6_Q_135",
+                        "PART_6_Q_136",
+                        "PART_6_Q_137",
+                        "PART_6_Q_138",
+                        "PART_6_Q_139",
+                        "PART_6_Q_140",
+                        "PART_6_Q_141",
+                        "PART_6_Q_142",
+                        "PART_6_Q_143",
+                        "PART_6_Q_144",
+                        "PART_6_Q_145",
+                        "PART_6_Q_146",
+                        "PART_6_Q_147",
+                        "PART_6_Q_148",
+                        "PART_6_Q_149",
+                        "PART_6_Q_150"
+                    ],
+                    "bubblesGap": 71,
+                    "labelsGap": 80,
+                    "origin": [
+                        1949,
+                        1134
+                    ],
+                    "bubbleDimensions": [
+                        53,
+                        53
+                    ],
+                    "page_no": 1,
+                    "displayLabel": "Manual Dexterity",
+                    "showSectionHeader": true
+                }
+            },
+            "preProcessors": [
+                {
+                    "name": "CropOnMarkers",
+                    "options": {
+                        "relativePath": "omr_marker.jpg",
+                        "sheetToMarkerWidthRatio": 17
+                    }
+                }
+            ],
+            "markers": {
+                "family": "omrchecker.bullseye",
+                "asset_name": "omr_marker.jpg",
+                "size": 142,
+                "quiet_zone": 35,
+                "geometry_status": "provisional",
+                "inset": 94,
+                "insets_mm": {
+                    "top": 8,
+                    "right": 8,
+                    "bottom": 8,
+                    "left": 8
+                },
+                "insets_px": {
+                    "top": 94,
+                    "right": 94,
+                    "bottom": 94,
+                    "left": 94
+                },
+                "paper": {
+                    "width_mm": 210,
+                    "height_mm": 297
+                },
+                "centers": [
+                    [
+                        0,
+                        0
+                    ],
+                    [
+                        2292,
+                        0
+                    ],
+                    [
+                        0,
+                        3320
+                    ],
+                    [
+                        2292,
+                        3320
+                    ]
+                ],
+                "quadrants": [
+                    "top_left",
+                    "top_right",
+                    "bottom_left",
+                    "bottom_right"
+                ]
+            }
+        }
+    ]
+}

@@ -2,7 +2,6 @@
 
 use App\Assessment\Omr\Canonical\OmrPageDimensionMath;
 
-
 test('canonical millimetres convert to deterministic 300 PPI pixels', function (): void {
     expect(OmrPageDimensionMath::pixelsFromMillimetres(216))->toBe(2551)
         ->and(OmrPageDimensionMath::pixelsFromMillimetres(330))->toBe(3898)
@@ -43,6 +42,18 @@ test('field block transform preserves labels and scales geometry by axis', funct
             'bubbleDimensions' => [20, 24],
         ],
     ]);
+});
+
+test('explicit bubble positions follow actual per-axis page transforms', function (): void {
+    $result = OmrPageDimensionMath::transformFieldBlocks([
+        'Tilted' => [
+            'origin' => [100, 200],
+            'bubbleDimensions' => [10, 12],
+            'bubblePositions' => [[[101, 202], [121, 206]]],
+        ],
+    ], ['width' => 1000, 'height' => 2000], ['width' => 2000, 'height' => 4000]);
+
+    expect($result['Tilted']['bubblePositions'])->toBe([[[202, 404], [242, 412]]]);
 });
 
 test('placement uses white padding and nine point alignment', function (): void {

@@ -11,8 +11,6 @@ use App\Ai\Surface\SurfaceProfileKey;
  *     key: string,
  *     version: int,
  *     page_identity: string,
- *     allowed_modes: list<string>,
- *     default_mode: string,
  *     privacy_class: string,
  *     surface: string,
  *     capabilities: list<string>,
@@ -23,7 +21,6 @@ use App\Ai\Surface\SurfaceProfileKey;
 final readonly class PageCapabilityPack
 {
     /**
-     * @param  list<string>  $allowedModes
      * @param  list<string>  $capabilities
      * @param  list<string>  $skills
      * @param  list<array{type: string, route_key?: string, label?: string}>  $uiIntents
@@ -32,8 +29,6 @@ final readonly class PageCapabilityPack
         public string $key,
         public int $version,
         public string $pageIdentity,
-        public array $allowedModes,
-        public string $defaultMode,
         public string $privacyClass,
         public SurfaceProfileKey $surface,
         public array $capabilities = [],
@@ -50,8 +45,6 @@ final readonly class PageCapabilityPack
             'key' => $this->key,
             'version' => $this->version,
             'page_identity' => $this->pageIdentity,
-            'allowed_modes' => $this->allowedModes,
-            'default_mode' => $this->defaultMode,
             'privacy_class' => $this->privacyClass,
             'surface' => $this->surface->value,
             'capabilities' => $this->capabilities,

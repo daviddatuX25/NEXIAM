@@ -22,6 +22,5 @@ final readonly class SolvedOmrTemplateLayout
         public string $templateJsonHash,
         public array $pages,
         public ?array $fiducial = null,
-    ) {
-    }
+    ) {}
 }

@@ -2,93 +2,153 @@
 
 namespace App\Assessment\Omr\Canonical;
 
+use App\Assessment\Omr\Diagnostics\OmrManifestBubbleShader;
 use App\Assessment\Omr\Diagnostics\OmrProofPlan;
-use App\Assessment\Omr\NativeBundle;
+use App\Assessment\Omr\OmrRegistrationMode;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
-
-use function array_key_exists;
-use function array_search;
-use function array_values;
-use function count;
-use function file_get_contents;
-use function file_put_contents;
-use function hash;
-use function imagecolorallocate;
-use function imagecopyresampled;
-use function imagecreatefromstring;
-use function imageellipse;
-use function imagefilledellipse;
-use function imagepng;
-use function imagesavealpha;
-use function imagesx;
-use function imagesy;
-use function imagestring;
-use function is_array;
-use function is_string;
-use function json_encode;
-use function min;
-use function ob_get_clean;
-use function ob_start;
-use function str_starts_with;
-use function sys_get_temp_dir;
-use function tempnam;
-use function unlink;
 
 final class OmrDigitalProofGenerator
 {
     public function __construct(
         private readonly OmrPdfPageRasterizer $rasterizer,
-        private readonly OmrBlankInstanceService $instances,
-        private readonly OmrQrPayload $qr,
+        private readonly OmrCalibrationQrPayload $calibrationQr,
         private readonly OmrQrCodeRenderer $qrRenderer,
-    ) {
-    }
+        private readonly OmrManifestBubbleShader $shader = new OmrManifestBubbleShader,
+    ) {}
 
     /**
-     * Machine-fills the draft's final composed exact-size PDF against an
-     * {@see OmrProofPlan} (OpenSpec 35.18): the answer vector and any
-     * calibration digits come from the plan, never from a local modulo
-     * pattern. The signed blank-instance QR and display code keep their
-     * exact machine rendering; the proof hash binds the plan hash so
-     * repeated identical plans produce identical hashes.
+     * Machine-fill every compiled page and add only purpose-bound diagnostic QR.
      *
-     * @return array{pages:list<array{page_no:int,bytes:string,sha256:string,width:int,height:int}>,answer_vector:array<string,string>,source_pdf_asset_id:int,proof_hash:string,instance_code:string,display_code:string}
+     * @return array{pages:list<array{page_no:int,bytes:string,sha256:string,width:int,height:int,diagnostic_qr_payload_hash:string,paper_bounds?:array{x:int,y:int,width:int,height:int}}>,answer_vector:array<string,string>,source_pdf_asset_id:int,proof_hash:string,registration_mode:string,qr_mode:string,compiled_pages:list<array{page_no:int}>,diagnostic_qr_payload_hashes:list<string>}
      */
     public function generate(OmrTemplateAuthoringDraft $draft, OmrProofPlan $plan): array
     {
         $authoring = (array) $draft->authoring_json;
-        $mapping = (array) ($authoring['mapping'] ?? []);
         $artifactSet = (array) ($authoring['canonical']['artifact_set'] ?? []);
-        $templatePages = (array) ($artifactSet['template']['pages'] ?? []);
-        $blocksByPage = [];
-        if ($templatePages !== []) {
-            foreach ($templatePages as $templatePage) {
-                if (! is_array($templatePage)) {
-                    continue;
-                }
-                $templatePageNo = max(1, (int) ($templatePage['page_no'] ?? 1));
-                foreach ((array) ($templatePage['fieldBlocks'] ?? []) as $blockName => $block) {
-                    if (! is_array($block)) {
-                        continue;
-                    }
-                    $block['page_no'] = $templatePageNo;
-                    $blocksByPage[$templatePageNo][(string) $blockName] = $block;
-                }
-            }
-        } else {
-            foreach ((array) ($mapping['field_blocks'] ?? []) as $blockName => $block) {
-                if (! is_array($block)) {
-                    continue;
-                }
-                $pageNo = max(1, (int) ($block['page_no'] ?? 1));
-                $blocksByPage[$pageNo][(string) $blockName] = $block;
-            }
-        }
-        if ($blocksByPage === []) {
+        $reviewManifest = is_array($artifactSet['review_manifest'] ?? null)
+            ? $artifactSet['review_manifest']
+            : (is_array($authoring['canonical']['review_manifest'] ?? null) ? $authoring['canonical']['review_manifest'] : []);
+        if ($reviewManifest === [] || ! is_array($reviewManifest['fields'] ?? null)) {
             throw new RuntimeException('digital_proof_mapping_missing');
         }
+        if (($reviewManifest['registration_mode'] ?? null) !== $plan->registrationMode->value
+            || ($reviewManifest['qr_mode'] ?? null) !== $plan->qrMode->value
+            || ($reviewManifest['compiled_pages'] ?? null) !== $plan->compiledPages) {
+            throw new RuntimeException('digital_proof_policy_mismatch');
+        }
+
+        $geometryIndex = $this->shader->index($reviewManifest);
+        $isUploaded = OmrSourcePolicy::sourceKindForDraft($draft) === OmrSourcePolicy::UPLOADED_ORIGINAL
+            || $plan->sourceKind === OmrSourcePolicy::UPLOADED_ORIGINAL;
+        $expectedPageNos = array_map(static fn (array $page): int => (int) $page['page_no'], $plan->compiledPages);
+        $proofPages = [];
+        $qrPayloadHashes = [];
+        $sourceRasterHashes = [];
+        $insetsPx = (array) ($artifactSet['insets_px'] ?? $artifactSet['definition']['insets_px'] ?? []);
+
+        if ($isUploaded) {
+            $rasterAssets = array_values((array) ($artifactSet['raster_assets'] ?? $authoring['canonical']['raster_assets'] ?? []));
+            if (count($rasterAssets) !== count($expectedPageNos)) {
+                throw new RuntimeException('digital_proof_raster_missing');
+            }
+            foreach ($rasterAssets as $index => $rasterRef) {
+                $pageNo = (int) ($rasterRef['page_no'] ?? 0);
+                $assetId = (int) ($rasterRef['asset_id'] ?? 0);
+                if ($pageNo !== $expectedPageNos[$index] || $assetId <= 0) {
+                    throw new RuntimeException('digital_proof_page_set_mismatch');
+                }
+                $asset = $draft->assets()->whereKey($assetId)->first();
+                if ($asset === null) {
+                    throw new RuntimeException('digital_proof_raster_missing');
+                }
+                $rasterBytes = Storage::disk($asset->disk)->get($asset->path);
+                if (! is_string($rasterBytes) || $rasterBytes === '' || hash('sha256', $rasterBytes) !== (string) $asset->sha256) {
+                    throw new RuntimeException('asset_integrity_failure');
+                }
+                $sourceRasterHashes[] = ['page_no' => $pageNo, 'sha256' => (string) $asset->sha256];
+                $image = @imagecreatefromstring($rasterBytes);
+                if ($image === false) {
+                    throw new RuntimeException('digital_proof_raster_invalid');
+                }
+                $black = imagecolorallocate($image, 0, 0, 0);
+                $this->shader->shadePage(
+                    $image,
+                    $geometryIndex,
+                    $pageNo,
+                    $plan->expectedVectorForPage($pageNo),
+                    $plan->calibrationDigits,
+                    $insetsPx,
+                    $black,
+                );
+                $paperBounds = null;
+                if ($plan->registrationMode === OmrRegistrationMode::DocumentBound) {
+                    $framed = self::frameDocumentBoundPage($image);
+                    $image = $framed['image'];
+                    $paperBounds = $framed['paper_bounds'];
+                }
+                $proofWidth = imagesx($image);
+                $proofHeight = imagesy($image);
+                imagesavealpha($image, false);
+                $proofPath = tempnam(sys_get_temp_dir(), 'nexiam-digital-proof-page-');
+                if ($proofPath === false) {
+                    throw new RuntimeException('digital_proof_page_output_create_failed');
+                }
+                try {
+                    if (! imagepng($image, $proofPath, 6)) {
+                        throw new RuntimeException('digital_proof_page_output_failed');
+                    }
+                    $proofBytes = file_get_contents($proofPath);
+                    if (! is_string($proofBytes) || $proofBytes === '') {
+                        throw new RuntimeException('digital_proof_page_output_invalid');
+                    }
+                } finally {
+                    @unlink($proofPath);
+                    imagedestroy($image);
+                }
+                $proofPages[] = [
+                    'page_no' => $pageNo,
+                    'bytes' => $proofBytes,
+                    'sha256' => hash('sha256', $proofBytes),
+                    'width' => $proofWidth,
+                    'height' => $proofHeight,
+                    'diagnostic_qr_payload_hash' => '',
+                    ...($paperBounds !== null ? ['paper_bounds' => $paperBounds] : []),
+                ];
+            }
+
+            $proofHash = hash('sha256', json_encode([
+                'source_kind' => OmrSourcePolicy::UPLOADED_ORIGINAL,
+                'source_raster_hashes' => $sourceRasterHashes,
+                'plan_hash' => $plan->planHash(),
+                'registration_mode' => $plan->registrationMode->value,
+                'qr_mode' => $plan->qrMode->value,
+                'compiled_pages' => $plan->compiledPages,
+                'pages' => array_map(static function (array $page): array {
+                    $proofPage = ['page_no' => $page['page_no'], 'sha256' => $page['sha256']];
+                    if (is_array($page['paper_bounds'] ?? null)) {
+                        $proofPage['paper_bounds'] = $page['paper_bounds'];
+                    }
+
+                    return $proofPage;
+                }, $proofPages),
+                'answer_vector' => $plan->expectedVector,
+            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+
+            return [
+                'pages' => $proofPages,
+                'answer_vector' => $plan->expectedVector,
+                'source_pdf_asset_id' => 0,
+                'source_raster_hashes' => $sourceRasterHashes,
+                'proof_hash' => $proofHash,
+                'registration_mode' => $plan->registrationMode->value,
+                'qr_mode' => $plan->qrMode->value,
+                'compiled_pages' => $plan->compiledPages,
+                'diagnostic_qr_payload_hashes' => [],
+            ];
+        }
+
         $pdfAssetId = (int) (($artifactSet['pdf_asset_id'] ?? null) ?: ($authoring['canonical']['pdf_asset_id'] ?? 0));
         $pdfAsset = $draft->assets()->whereKey($pdfAssetId)->first();
         if ($pdfAsset === null || $pdfAsset->mime !== 'application/pdf') {
@@ -102,6 +162,7 @@ final class OmrDigitalProofGenerator
         if ($pdfPath === false || file_put_contents($pdfPath, $pdfBytes) === false) {
             throw new RuntimeException('digital_proof_pdf_write_failed');
         }
+        unset($pdfBytes);
         try {
             $rasterPages = $this->rasterizer->rasterize($pdfPath, [
                 'width_mm' => $authoring['canonical']['settings']['paper_width_mm'] ?? null,
@@ -112,142 +173,151 @@ final class OmrDigitalProofGenerator
             @unlink($pdfPath);
         }
 
-        $instanceCode = $this->instances->newInstanceCode();
-        $displayCode = $this->instances->displayCodeFor($instanceCode);
-        $keyId = (string) config('omr.qr-keyring.current', 'dev-v1');
-        $proofPages = [];
-        $answerVector = $plan->expectedVector;
+        $rasterPageNos = array_map(static fn (array $page): int => (int) ($page['page_no'] ?? 0), $rasterPages);
+        if ($rasterPageNos !== $expectedPageNos) {
+            throw new RuntimeException('digital_proof_page_set_mismatch');
+        }
+
         $pageCount = count($rasterPages);
-        $insetsPx = (array) ($artifactSet['insets_px'] ?? $artifactSet['definition']['insets_px'] ?? []);
         foreach ($rasterPages as $page) {
             $pageNo = (int) $page['page_no'];
-            $image = @imagecreatefromstring((string) file_get_contents($page['path']));
+            $reservation = $plan->diagnosticQrReservation[$pageNo - 1] ?? null;
+            if (! is_array($reservation) || (int) ($reservation['page_no'] ?? 0) !== $pageNo) {
+                throw new RuntimeException('digital_proof_qr_reservation_missing');
+            }
+            $image = @imagecreatefrompng((string) $page['path']);
             if ($image === false) {
                 throw new RuntimeException('digital_proof_raster_invalid');
             }
             $black = imagecolorallocate($image, 0, 0, 0);
-            $pageBlocks = $blocksByPage[$pageNo] ?? [];
-            $expected = $plan->expectedVectorForPage($pageNo);
-            $identity = [];
-            foreach ($pageBlocks as $block) {
-                if (! is_array($block)) {
-                    continue;
-                }
-                $labels = [];
-                foreach ((array) ($block['fieldLabels'] ?? []) as $declaration) {
-                    $labels = [...$labels, ...NativeBundle::expandLabel((string) $declaration)];
-                }
-                $values = is_array($block['bubbleValues'] ?? null)
-                    ? array_values(array_map('strval', $block['bubbleValues']))
-                    : match ((string) ($block['fieldType'] ?? 'QTYPE_MCQ4')) {
-                        'QTYPE_MCQ5' => ['A', 'B', 'C', 'D', 'E'],
-                        'QTYPE_INT' => ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-                        default => ['A', 'B', 'C', 'D'],
-                    };
-                foreach ($labels as $labelIndex => $label) {
-                    if (array_key_exists($label, $expected)) {
-                        $selected = array_search($expected[$label], $values, true);
-                        if ($selected === false) {
-                            throw new RuntimeException('digital_proof_plan_option_missing: '.$label);
-                        }
-                        $this->shade($image, $block, $insetsPx, $values, $labelIndex, $selected, $black);
-                    } elseif (str_starts_with($label, 'APPLICANT_NUMBER_')) {
-                        $identity[$label] = ['block' => $block, 'values' => $values, 'labelIndex' => $labelIndex];
-                    }
-                }
+            $this->shader->shadePage(
+                $image,
+                $geometryIndex,
+                $pageNo,
+                $plan->expectedVectorForPage($pageNo),
+                $plan->calibrationDigits,
+                $insetsPx,
+                $black,
+            );
+
+            $payload = $this->calibrationQr->sign($plan->challengeCode, $pageNo, $pageCount);
+            $qrPayloadHash = $this->calibrationQr->payloadHash($payload);
+            $scaleX = imagesx($image) / (float) $reservation['paper_width_mm'];
+            $scaleY = imagesy($image) / (float) $reservation['paper_height_mm'];
+            $qrSize = min(
+                (int) round((float) $reservation['qr_size_mm'] * $scaleX),
+                (int) round((float) $reservation['qr_size_mm'] * $scaleY),
+            );
+            $qrX = (int) round((float) $reservation['qr_x_mm'] * $scaleX);
+            $qrY = (int) round((float) $reservation['qr_y_mm'] * $scaleY);
+            $displayCodeX = (int) round((float) $reservation['display_code_x_mm'] * $scaleX);
+            $displayCodeY = (int) round((float) $reservation['display_code_y_mm'] * $scaleY);
+            if ($qrSize < 64 || $qrX < 0 || $qrY < 0 || $qrX + $qrSize > imagesx($image)
+                || $qrY + $qrSize > imagesy($image) || $displayCodeX < 0 || $displayCodeY < 0
+                || $displayCodeX >= imagesx($image) || $displayCodeY >= imagesy($image)) {
+                throw new RuntimeException('digital_proof_qr_reservation_out_of_bounds');
             }
-            foreach ($plan->calibrationDigits as $label => $digit) {
-                $entry = $identity[$label] ?? null;
-                if ($entry === null) {
-                    continue;
-                }
-                $selected = array_search((string) $digit, $entry['values'], true);
-                if ($selected === false) {
-                    throw new RuntimeException('digital_proof_calibration_option_missing: '.$label);
-                }
-                $this->shade($image, $entry['block'], $insetsPx, $entry['values'], $entry['labelIndex'], $selected, $black);
-            }
-            $payload = $this->qr->sign($instanceCode, $pageNo, $pageCount, $keyId);
-            $qrImage = @imagecreatefromstring($this->qrRenderer->png($payload, 240));
+            $qrImage = @imagecreatefromstring($this->qrRenderer->png($payload, max(320, $qrSize)));
             if ($qrImage === false) {
                 throw new RuntimeException('digital_proof_qr_invalid');
             }
-            $qrSize = min(240, intdiv(imagesx($image), 6));
-            [$qrX, $qrY] = $this->qrPlacement($artifactSet, imagesx($image), imagesy($image), $qrSize);
             imagecopyresampled($image, $qrImage, $qrX, $qrY, 0, 0, $qrSize, $qrSize, imagesx($qrImage), imagesy($qrImage));
-            imagestring($image, 3, $qrX, min(imagesy($image) - 12, $qrY + $qrSize + 8), $displayCode, $black);
+            imagestring($image, 3, $displayCodeX, $displayCodeY, $plan->challengeCode, $black);
+            $paperBounds = null;
+            if ($plan->registrationMode === OmrRegistrationMode::DocumentBound) {
+                $framed = self::frameDocumentBoundPage($image);
+                $image = $framed['image'];
+                $paperBounds = $framed['paper_bounds'];
+            }
+            $proofWidth = imagesx($image);
+            $proofHeight = imagesy($image);
             imagesavealpha($image, false);
-            ob_start();
-            imagepng($image, null, 6);
-            $proofBytes = (string) ob_get_clean();
+            $proofPath = tempnam(sys_get_temp_dir(), 'nexiam-digital-proof-page-');
+            if ($proofPath === false) {
+                throw new RuntimeException('digital_proof_page_output_create_failed');
+            }
+            try {
+                if (! imagepng($image, $proofPath, 6)) {
+                    throw new RuntimeException('digital_proof_page_output_failed');
+                }
+                $proofBytes = file_get_contents($proofPath);
+                if (! is_string($proofBytes) || $proofBytes === '') {
+                    throw new RuntimeException('digital_proof_page_output_invalid');
+                }
+            } finally {
+                @unlink($proofPath);
+                imagedestroy($qrImage);
+                imagedestroy($image);
+            }
             $proofPages[] = [
                 'page_no' => $pageNo,
                 'bytes' => $proofBytes,
                 'sha256' => hash('sha256', $proofBytes),
-                'width' => imagesx($image),
-                'height' => imagesy($image),
+                'width' => $proofWidth,
+                'height' => $proofHeight,
+                'diagnostic_qr_payload_hash' => $qrPayloadHash,
             ];
+            if ($paperBounds !== null) {
+                $proofPages[array_key_last($proofPages)]['paper_bounds'] = $paperBounds;
+            }
+            $qrPayloadHashes[] = $qrPayloadHash;
         }
+
         $proofHash = hash('sha256', json_encode([
             'source_pdf_asset_id' => $pdfAsset->id,
             'source_pdf_sha256' => $pdfAsset->sha256,
             'plan_hash' => $plan->planHash(),
-            'pages' => array_map(static fn (array $page): array => ['page_no' => $page['page_no'], 'sha256' => $page['sha256']], $proofPages),
-            'answer_vector' => $answerVector,
-            'instance_code' => $instanceCode,
+            'registration_mode' => $plan->registrationMode->value,
+            'qr_mode' => $plan->qrMode->value,
+            'compiled_pages' => $plan->compiledPages,
+            'diagnostic_qr_reservation' => $plan->diagnosticQrReservation,
+            'diagnostic_qr_payload_hashes' => $qrPayloadHashes,
+            'pages' => array_map(static function (array $page): array {
+                $proofPage = ['page_no' => $page['page_no'], 'sha256' => $page['sha256']];
+                if (is_array($page['paper_bounds'] ?? null)) {
+                    $proofPage['paper_bounds'] = $page['paper_bounds'];
+                }
+
+                return $proofPage;
+            }, $proofPages),
+            'answer_vector' => $plan->expectedVector,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
         return [
             'pages' => $proofPages,
-            'answer_vector' => $answerVector,
+            'answer_vector' => $plan->expectedVector,
             'source_pdf_asset_id' => $pdfAsset->id,
             'proof_hash' => $proofHash,
-            'instance_code' => $instanceCode,
-            'display_code' => $displayCode,
+            'registration_mode' => $plan->registrationMode->value,
+            'qr_mode' => $plan->qrMode->value,
+            'compiled_pages' => $plan->compiledPages,
+            'diagnostic_qr_payload_hashes' => $qrPayloadHashes,
         ];
     }
 
-    /**
-     * Fill one declared-option bubble (or one calibration digit bubble) at
-     * marker-frame origin plus the paper inset ring.
-     *
-     * @param  array<string, mixed>  $block
-     * @param  array<string, int>  $insetsPx
-     * @param  list<string>  $values
-     */
-    private function shade(\GdImage $image, array $block, array $insetsPx, array $values, int $labelIndex, int $selected, int $black): void
+    /** @return array{image:\GdImage,paper_bounds:array{x:int,y:int,width:int,height:int}} */
+    public static function frameDocumentBoundPage(\GdImage $paper): array
     {
-        $origin = (array) ($block['origin'] ?? [0, 0]);
-        $originX = (int) ($origin[0] ?? 0) + (int) ($insetsPx['left'] ?? 0);
-        $originY = (int) ($origin[1] ?? 0) + (int) ($insetsPx['top'] ?? 0);
-        $bubble = (array) ($block['bubbleDimensions'] ?? [20, 20]);
-        $bubbleGap = (int) ($block['bubblesGap'] ?? 0);
-        $labelGap = (int) ($block['labelsGap'] ?? 0);
-        $vertical = (string) ($block['direction'] ?? 'horizontal') === 'vertical';
-        $cx = $vertical
-            ? $originX + $labelIndex * $labelGap + (int) $bubble[0] / 2
-            : $originX + $selected * $bubbleGap + (int) $bubble[0] / 2;
-        $cy = $vertical
-            ? $originY + $selected * $bubbleGap + (int) $bubble[1] / 2
-            : $originY + $labelIndex * $labelGap + (int) $bubble[1] / 2;
-        imagefilledellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
-        imageellipse($image, $cx, $cy, (int) $bubble[0], (int) $bubble[1], $black);
-    }
+        $paperWidth = imagesx($paper);
+        $paperHeight = imagesy($paper);
+        $margin = max(32, min(192, (int) round(min($paperWidth, $paperHeight) * .05)));
+        $canvas = imagecreatetruecolor($paperWidth + 2 * $margin, $paperHeight + 2 * $margin);
+        if ($canvas === false) {
+            throw new RuntimeException('digital_proof_canvas_create_failed');
+        }
+        $background = imagecolorallocate($canvas, 128, 128, 128);
+        imagefilledrectangle($canvas, 0, 0, imagesx($canvas), imagesy($canvas), $background);
+        imagecopy($canvas, $paper, $margin, $margin, 0, 0, $paperWidth, $paperHeight);
+        imagedestroy($paper);
 
-    /** @return array{0:int,1:int} */
-    private function qrPlacement(array $artifactSet, int $width, int $height, int $size): array
-    {
-        $markers = (array) (($artifactSet['template']['pages'][0]['markers'] ?? null) ?: []);
-        $insets = (array) (($artifactSet['insets_px'] ?? $artifactSet['definition']['insets_px'] ?? null) ?: []);
-        $markerHalf = intdiv((int) ($markers['size'] ?? 0), 2);
-        $quiet = (int) ($markers['quiet_zone'] ?? 0);
-        $left = (int) ($insets['left'] ?? 0) + $markerHalf + $quiet + 12;
-        $right = $width - (int) ($insets['right'] ?? 0) - $markerHalf - $quiet - 12;
-        $top = (int) ($insets['top'] ?? 0) + $markerHalf + $quiet + 12;
-        $bottom = $height - (int) ($insets['bottom'] ?? 0) - $markerHalf - $quiet - 12;
-        $x = max($left, min(intdiv($width - $size, 2), $right - $size));
-        $y = max($top, min($top + 20, $bottom - $size));
-
-        return [max(0, $x), max(0, $y)];
+        return [
+            'image' => $canvas,
+            'paper_bounds' => [
+                'x' => $margin,
+                'y' => $margin,
+                'width' => $paperWidth,
+                'height' => $paperHeight,
+            ],
+        ];
     }
 }

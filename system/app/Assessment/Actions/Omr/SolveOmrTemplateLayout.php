@@ -2,6 +2,7 @@
 
 namespace App\Assessment\Actions\Omr;
 
+use App\Assessment\Omr\Layout\LayoutDiagnostic;
 use App\Assessment\Omr\Layout\OmrTemplateLayoutException;
 use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 use App\Assessment\Omr\Layout\SolvedOmrTemplateLayout;
@@ -9,7 +10,6 @@ use App\Models\Foundation\AptitudeArea;
 use Illuminate\Support\Collection;
 
 use function array_values;
-use function in_array;
 
 /**
  * Application action over the pure layout solver: validates blueprint area
@@ -18,12 +18,11 @@ use function in_array;
  */
 final class SolveOmrTemplateLayout
 {
-    public function __construct(private readonly OmrTemplateLayoutSolver $solver)
-    {
-    }
+    public function __construct(private readonly OmrTemplateLayoutSolver $solver) {}
 
     /**
      * @param  array<string, mixed>  $blueprint
+     *
      * @throws OmrTemplateLayoutException when the blueprint cannot be solved
      */
     public function handle(array $blueprint): SolvedOmrTemplateLayout
@@ -38,7 +37,7 @@ final class SolveOmrTemplateLayout
             $code = (string) ($section['area_code'] ?? '');
             if (! $areaCodes->contains($code)) {
                 throw new OmrTemplateLayoutException([
-                    new \App\Assessment\Omr\Layout\LayoutDiagnostic(
+                    new LayoutDiagnostic(
                         'unknown_area_code',
                         sprintf('Section %d references unknown aptitude area "%s".', $index + 1, $code),
                         ['section' => $index + 1, 'area_code' => $code],

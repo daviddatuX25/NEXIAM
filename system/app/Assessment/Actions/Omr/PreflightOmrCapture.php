@@ -2,8 +2,10 @@
 
 namespace App\Assessment\Actions\Omr;
 
+use App\Assessment\Omr\OmrCaptureInput;
 use App\Assessment\Omr\OmrCapturePolicy;
 use App\Assessment\Omr\OmrCapturePreflight;
+use App\Assessment\Omr\OmrCapturePreflightResult;
 use App\Assessment\Omr\OmrCheckerDetection;
 use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
 use App\Models\Assessment\OmrCaptureBatch;
@@ -14,35 +16,36 @@ use function in_array;
 use function is_array;
 
 /**
- * Read-only server preflight for the ordinary capture page (tasks 10.7/10.18).
+ * Read-only server preflight for the ordinary capture page.
  *
- * Uses the BATCH's immutable template version as the geometry authority — no
- * client bubble coordinates, no free-form template id. Marker-bearing batches
- * run the CropOnMarkers-only registration diagnostic through the worker and
- * return `validated`/`rejected` with typed codes, marker scores, gates,
- * normalized dimensions, and an orientation hint; `submit_allowed` is true
- * only when every gate passes. Scan (CropPage) batches return an explicit
- * `mode=scan`, `outcome=not_applicable` response — the normal upload path
- * stays authoritative.
- *
- * Never runs Hough fallback, recognition, or scoring, and never mutates
- * batch/sheet/pair/key state.
+ * Resource validation is shared with canonical physical capture through
+ * {@see OmrCapturePreflight}. Marker-bearing grading batches then retain the
+ * existing worker-backed registration preflight; scan batches remain explicit
+ * no-op projections for the normal upload path.
  */
 final class PreflightOmrCapture
 {
     public function __construct(
+        private readonly OmrCapturePreflight $capturePreflight,
         private readonly OmrCheckerDetection $detection,
         private readonly OmrDiagnosticRequestBuilder $builder,
-    ) {
-    }
+    ) {}
 
     public function handle(
         OmrCaptureBatch $batch,
         string $imageBytes,
         string $imageMime,
         User $actor,
-    ): OmrCapturePreflight {
-        if (! in_array($imageMime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+    ): OmrCapturePreflightResult {
+        $resourceResult = $this->capturePreflight->validate(new OmrCaptureInput(
+            bytes: $imageBytes,
+            mime: $imageMime,
+        ));
+        if (! $resourceResult->succeeded()) {
+            throw new RuntimeException($resourceResult->code.': '.$resourceResult->detail);
+        }
+
+        if (! in_array(strtolower($imageMime), ['image/jpeg', 'image/png', 'image/webp'], true)) {
             throw new RuntimeException('Preflight accepts JPEG, PNG, or WebP uploads.');
         }
 
@@ -55,7 +58,7 @@ final class PreflightOmrCapture
         // Scan (CropPage) batches: camera validation is not applicable; the
         // existing upload/recognition path remains authoritative.
         if (! is_array($templateJson) || OmrCapturePolicy::markerMetadata($templateJson) === null) {
-            return OmrCapturePreflight::scan(
+            return OmrCapturePreflightResult::scan(
                 'This batch uses a scan (CropPage) template; camera preflight is not applicable. Upload the scan through the normal upload path.',
             );
         }

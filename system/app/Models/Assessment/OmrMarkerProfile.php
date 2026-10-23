@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OmrMarkerProfile extends Model
 {
     public const STATUS_CANDIDATE = 'candidate';
+
     public const STATUS_QUALIFIED = 'qualified';
+
     public const STATUS_RETIRED = 'retired';
 
     protected $table = 'omr_marker_profiles';

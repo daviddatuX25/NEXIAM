@@ -41,6 +41,11 @@ class ResetCommand extends Command
             }
         }
 
+        $privateRoot = storage_path('app/private');
+        File::ensureDirectoryExists($privateRoot);
+        File::cleanDirectory($privateRoot);
+        Storage::disk('local')->makeDirectory('foundation');
+
         $this->info('Refreshing greenfield schema...');
         Artisan::call('migrate:fresh', ['--force' => true, '--seed' => true]);
         $this->line(Artisan::output());
@@ -53,11 +58,6 @@ class ResetCommand extends Command
             '--force' => true,
         ]);
         $this->line(Artisan::output());
-
-        $privateRoot = storage_path('app/private');
-        File::ensureDirectoryExists($privateRoot);
-        File::cleanDirectory($privateRoot);
-        Storage::disk('local')->makeDirectory('foundation');
 
         $this->info('Greenfield database and private storage reset complete.');
 

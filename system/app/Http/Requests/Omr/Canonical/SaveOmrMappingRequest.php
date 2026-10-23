@@ -21,7 +21,10 @@ class SaveOmrMappingRequest extends FormRequest
             'mapping.page_width' => ['required', 'integer', 'min:1'],
             'mapping.page_height' => ['required', 'integer', 'min:1'],
             'mapping.page_count' => ['required', 'integer', 'min:1', 'max:20'],
-            'mapping.blocks' => ['required', 'array', 'min:1', 'max:100'],
+            'mapping.blocks.*.bubble_positions' => ['sometimes', 'array'],
+            'mapping.blocks.*.bubble_positions.*' => ['array'],
+            'mapping.blocks.*.bubble_positions.*.*' => ['array', 'size:2'],
+            'mapping.blocks.*.bubble_positions.*.*.*' => ['integer', 'min:0'],
             'lock_version' => ['required', 'integer', 'min:0'],
             'idempotency_key' => ['required', 'string', 'max:190'],
         ];

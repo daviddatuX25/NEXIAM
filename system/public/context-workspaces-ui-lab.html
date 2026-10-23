@@ -1,0 +1,1973 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Context workspaces · NEXIAM UI Lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: hsl(40 20% 97%);
+      --surface: hsl(0 0% 100%);
+      --surface-2: hsl(40 15% 92%);
+      --surface-3: hsl(40 18% 95%);
+      --ink: hsl(150 30% 14%);
+      --ink-soft: hsl(150 12% 40%);
+      --line: hsl(40 10% 83%);
+      --line-strong: hsl(150 12% 67%);
+      --pine: hsl(150 65% 32%);
+      --pine-strong: hsl(151 61% 26%);
+      --pine-ink: hsl(150 50% 9%);
+      --pine-wash: hsl(150 37% 92%);
+      --pine-wash-2: hsl(150 26% 96%);
+      --amber: hsl(38 69% 37%);
+      --amber-wash: hsl(42 78% 92%);
+      --red: hsl(5 58% 42%);
+      --red-wash: hsl(5 65% 95%);
+      --blue: hsl(206 63% 39%);
+      --blue-wash: hsl(205 70% 94%);
+      --shadow: 0 8px 22px -16px hsl(150 30% 10% / .26);
+      --radius: 8px;
+      --radius-sm: 6px;
+      --focus: 0 0 0 3px hsl(150 65% 32% / .24);
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --canvas: hsl(150 25% 6%);
+      --surface: hsl(150 20% 9%);
+      --surface-2: hsl(150 15% 14%);
+      --surface-3: hsl(150 17% 11%);
+      --ink: hsl(145 20% 92%);
+      --ink-soft: hsl(150 10% 68%);
+      --line: hsl(150 15% 21%);
+      --line-strong: hsl(150 11% 38%);
+      --pine: hsl(150 75% 40%);
+      --pine-strong: hsl(150 70% 48%);
+      --pine-ink: hsl(150 50% 5%);
+      --pine-wash: hsl(150 24% 15%);
+      --pine-wash-2: hsl(150 18% 12%);
+      --amber: hsl(40 82% 66%);
+      --amber-wash: hsl(40 40% 17%);
+      --red: hsl(5 74% 70%);
+      --red-wash: hsl(5 34% 17%);
+      --blue: hsl(202 77% 70%);
+      --blue-wash: hsl(204 30% 17%);
+      --shadow: 0 9px 24px -17px hsl(0 0% 0% / .75);
+      --focus: 0 0 0 3px hsl(150 75% 40% / .31);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--canvas); scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font: 15px/1.5 var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; }
+    button, select, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { text-decoration-color: var(--pine); }
+    button { color: inherit; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: none;
+      box-shadow: var(--focus);
+    }
+    ::selection { background: var(--pine); color: var(--pine-ink); }
+    .icon { display: inline-block; width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.small { width: 15px; height: 15px; }
+    .icon.large { width: 22px; height: 22px; }
+    .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .app-header {
+      position: sticky;
+      z-index: 30;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 2px 12px -12px hsl(150 30% 10% / .6);
+    }
+    .header-inner { max-width: 1480px; margin: 0 auto; padding: 0 28px; }
+    .draft-notice {
+      display: flex;
+      min-height: 34px;
+      padding: 8px 0;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      color: var(--pine-strong);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+    .notice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pine); box-shadow: 0 0 0 3px var(--pine-wash); }
+    .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 64px; padding: 9px 0; }
+    .brand-lockup { display: flex; min-width: 0; align-items: center; gap: 12px; }
+    .brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--pine-wash-2); color: var(--pine-strong); }
+    .brand-copy { min-width: 0; }
+    .brand-title { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.25; letter-spacing: -.015em; }
+    .brand-subtitle { margin: 3px 0 0; color: var(--ink-soft); font-size: 12px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .actor-label { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+    .actor-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pine); }
+    .theme-button, .button, .quiet-button, .tab-link, .nav-link, .variant-button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 550;
+      text-decoration: none;
+      transition: border-color .16s ease, background .16s ease, color .16s ease, transform .12s ease;
+    }
+    .theme-button:hover, .button:hover, .quiet-button:hover, .tab-link:hover, .nav-link:hover, .variant-button:hover { border-color: var(--line-strong); background: var(--surface-3); }
+    .theme-button:active, .button:active, .quiet-button:active, .nav-link:active { transform: scale(.98); }
+    .button.primary { border-color: var(--pine); background: var(--pine); color: var(--pine-ink); font-weight: 650; }
+    .button.primary:hover { border-color: var(--pine-strong); background: var(--pine-strong); color: var(--pine-ink); }
+    .button.subtle { border-color: transparent; background: transparent; }
+    .button.danger { border-color: hsl(5 58% 42% / .35); color: var(--red); }
+    .button:disabled { cursor: not-allowed; opacity: .56; transform: none; }
+    .nav-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+    .primary-nav { display: flex; width: max-content; min-width: 100%; align-items: center; gap: 3px; padding: 0 0 8px; }
+    .nav-link { min-height: 38px; border-color: transparent; background: transparent; color: var(--ink-soft); white-space: nowrap; }
+    .nav-link[aria-current="page"] { border-color: var(--line); background: var(--surface-2); color: var(--pine-strong); font-weight: 650; }
+
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 28px 120px; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 0 0 22px; }
+    .heading-copy { max-width: 74ch; }
+    h1, h2, h3, h4, p { overflow-wrap: anywhere; }
+    h1 { margin: 0; font-size: clamp(1.55rem, 2vw, 2rem); font-weight: 650; letter-spacing: -.027em; line-height: 1.18; }
+    .page-description { margin: 8px 0 0; max-width: 70ch; color: var(--ink-soft); font-size: 14px; }
+    h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.018em; line-height: 1.3; }
+    h3 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; line-height: 1.35; }
+    .section-intro { margin: 5px 0 0; color: var(--ink-soft); font-size: 13px; }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .panel-pad { padding: 19px; }
+    .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+    .label-caps { color: var(--ink-soft); font-size: 12px; font-weight: 700; letter-spacing: .075em; text-transform: uppercase; }
+    .muted { color: var(--ink-soft); }
+    .small { font-size: 12px; }
+    .mono, .number { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .status-pill, .tag, .count-pill, .audience-pill, .scope-pill {
+      display: inline-flex; min-height: 24px; align-items: center; gap: 5px; padding: 2px 8px;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--surface-3); color: var(--ink-soft);
+      font-size: 12px; font-weight: 600; line-height: 1.25; white-space: nowrap;
+    }
+    .audience-pill { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    .thread-labels .audience-pill .icon { display: none; }
+    .status-pill.green, .tag.green { border-color: hsl(150 48% 44% / .28); background: var(--pine-wash); color: var(--pine-strong); }
+    .status-pill.amber, .tag.amber { border-color: hsl(38 69% 37% / .3); background: var(--amber-wash); color: var(--amber); }
+    .status-pill.red, .tag.red { border-color: hsl(5 58% 42% / .3); background: var(--red-wash); color: var(--red); }
+    .status-pill.blue, .tag.blue { border-color: hsl(206 63% 39% / .25); background: var(--blue-wash); color: var(--blue); }
+    .field { display: grid; min-width: 0; gap: 6px; }
+    .field label, .field-label { color: var(--ink); font-size: 12px; font-weight: 650; }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--ink); font-size: 13px;
+    }
+    textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
+    input::placeholder, textarea::placeholder { color: var(--ink-soft); opacity: .85; }
+    .helper { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+    .inline-note { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-3); color: var(--ink-soft); font-size: 12px; }
+    .inline-note strong { color: var(--ink); }
+    .inline-note.target { border-color: hsl(38 69% 37% / .32); background: var(--amber-wash); color: var(--ink); }
+    .inline-note.danger { border-color: hsl(5 58% 42% / .32); background: var(--red-wash); color: var(--ink); }
+    .inline-note.success { border-color: hsl(150 48% 44% / .28); background: var(--pine-wash); color: var(--ink); }
+    .inline-note .note-title { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; font-weight: 650; }
+    .inline-note p { margin: 0; }
+    .stack { display: grid; gap: 16px; }
+    .row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+    .spread { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .divider { height: 1px; margin: 14px 0; background: var(--line); }
+    .empty-state { padding: 28px 20px; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); color: var(--ink-soft); text-align: center; }
+    .empty-state strong { display: block; margin-bottom: 5px; color: var(--ink); font-size: 14px; }
+    .empty-state p { max-width: 45ch; margin: 0 auto; font-size: 12px; }
+    .status-line { min-height: 20px; color: var(--ink-soft); font-size: 12px; }
+
+    .organization-layout { display: grid; grid-template-columns: minmax(250px, .78fr) minmax(0, 1.55fr); gap: 18px; align-items: start; }
+    .institution-panel { padding: 21px; background: var(--pine-wash-2); }
+    .institution-seal { display: grid; width: 46px; height: 46px; place-items: center; margin-bottom: 16px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--pine-strong); }
+    .institution-name { max-width: 16ch; margin: 8px 0 0; font-size: 21px; font-weight: 650; line-height: 1.2; letter-spacing: -.025em; }
+    .institution-details { display: grid; gap: 12px; margin: 20px 0 0; padding: 0; list-style: none; }
+    .institution-details li { display: flex; align-items: flex-start; gap: 9px; color: var(--ink-soft); font-size: 12px; }
+    .institution-details .icon { color: var(--pine-strong); }
+    .directory-panel { padding: 19px; }
+    .department-list { display: grid; gap: 16px; }
+    .department { padding-top: 14px; border-top: 1px solid var(--line); }
+    .department:first-child { padding-top: 0; border-top: 0; }
+    .department-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .program-links { display: grid; gap: 7px; }
+    .program-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); text-align: left; }
+    .program-row:hover { border-color: var(--pine); background: var(--pine-wash-2); }
+    .program-row strong { display: block; font-size: 13px; font-weight: 650; }
+    .program-row small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12px; }
+    .program-code { color: var(--pine-strong); font: 600 12px/1 var(--mono); }
+    .organization-a { grid-template-columns: minmax(245px, .78fr) minmax(0, 1.5fr); }
+    .organization-b { grid-template-columns: minmax(250px, .78fr) minmax(0, 1.55fr); }
+    .hierarchy-layout { display: grid; grid-template-columns: minmax(175px, .68fr) minmax(0, 1.32fr); gap: 14px; align-items: start; }
+    .department-choices { display: grid; align-content: start; gap: 6px; }
+    .department-choice { display: grid; gap: 3px; width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; }
+    .department-choice:hover { border-color: var(--pine); background: var(--pine-wash-2); }
+    .department-choice[aria-current="true"] { border-color: var(--pine); background: var(--pine-wash); color: var(--pine-strong); }
+    .department-choice strong { font-size: 12px; font-weight: 650; }
+    .department-choice small { color: var(--ink-soft); font-size: 12px; }
+    .selected-department { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-3); }
+    .selected-department .program-links { margin-top: 12px; }
+    .organization-path { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 12px; color: var(--ink-soft); font-size: 12px; }
+    .organization-path strong { color: var(--pine-strong); font-weight: 650; }
+    .organization-back { display: inline-flex; align-items: center; gap: 7px; color: var(--pine-strong); font-size: 12px; font-weight: 600; text-decoration: none; }
+    .organization-back:hover { text-decoration: underline; }
+
+    .overview-heading-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .scope-control { display: grid; min-width: 225px; gap: 5px; }
+    .scope-control label { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+    .summary-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; margin: 18px 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--line); }
+    .summary-cell { min-width: 0; padding: 15px 17px; background: var(--surface); }
+    .summary-cell dt { color: var(--ink-soft); font-size: 12px; }
+    .summary-cell dd { margin: 5px 0 0; font: 600 24px/1.1 var(--mono); letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+    .summary-cell dd small { font: 500 12px/1 var(--sans); color: var(--ink-soft); }
+    .data-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .quota-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .quota-table th, .quota-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .quota-table th { background: var(--surface-3); color: var(--ink-soft); font-size: 12px; font-weight: 650; letter-spacing: .035em; }
+    .quota-table td { font-size: 13px; }
+    .quota-table tr:last-child td { border-bottom: 0; }
+    .quota-table .program-name strong { display: block; font-size: 13px; }
+    .quota-table .program-name small { color: var(--ink-soft); font-size: 12px; }
+    .quota-table .number { font-size: 13px; }
+    .table-link { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; color: var(--pine-strong); font-size: 12px; font-weight: 650; text-decoration: none; white-space: nowrap; }
+    .table-link:hover { text-decoration: underline; }
+
+    .program-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; padding: 19px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .program-head-main { min-width: 0; }
+    .program-code-large { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 7px; color: var(--pine-strong); font: 600 12px/1.3 var(--mono); letter-spacing: .03em; }
+    .program-head h1 { font-size: clamp(1.45rem, 2vw, 1.85rem); }
+    .program-head .page-description { margin-top: 6px; }
+    .program-selectors { display: flex; min-width: 240px; flex-direction: column; gap: 9px; }
+    .program-tabs { display: flex; gap: 4px; overflow-x: auto; margin: 13px 0 18px; padding: 0 0 7px; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+    .tab-link { min-height: 37px; border-color: transparent; background: transparent; color: var(--ink-soft); white-space: nowrap; }
+    .tab-link[aria-selected="true"] { border-color: var(--line); background: var(--surface); color: var(--pine-strong); box-shadow: 0 1px 3px hsl(150 20% 10% / .08); font-weight: 650; }
+    .program-section { padding: 20px; }
+    .overview-columns { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(250px, .75fr); gap: 16px; }
+    .overview-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 17px 0 0; }
+    .overview-facts div { padding: 10px 0; border-top: 1px solid var(--line); }
+    .overview-facts dt { color: var(--ink-soft); font-size: 12px; }
+    .overview-facts dd { margin: 3px 0 0; font-size: 13px; font-weight: 600; }
+    .quota-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 17px 0; }
+    .quota-stat { padding: 13px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-3); }
+    .quota-stat dt { color: var(--ink-soft); font-size: 12px; }
+    .quota-stat dd { margin: 5px 0 0; font: 600 22px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
+    .quota-editor { display: grid; gap: 13px; padding: 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-3); }
+    .suggestion-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .suggestion { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-soft); cursor: pointer; font-size: 12px; }
+    .suggestion:hover { border-color: var(--pine); color: var(--pine-strong); }
+    .history-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+    .history-item { display: grid; grid-template-columns: minmax(100px, .45fr) minmax(0, 1fr); gap: 9px 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+    .history-item:first-child { border-top: 0; }
+    .history-date { color: var(--ink-soft); font-size: 12px; }
+    .history-detail strong { font-size: 12px; font-weight: 650; }
+    .history-detail p { margin: 2px 0 0; color: var(--ink-soft); font-size: 12px; }
+    .access-panel, .discussion-panel, .publication-preview { padding: 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-3); }
+    .access-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+    .access-row:first-of-type { margin-top: 10px; }
+    .access-row strong { display: block; font-size: 12px; }
+    .access-row small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12px; }
+    .discussion-message { padding: 12px 0; border-top: 1px solid var(--line); }
+    .discussion-message:first-of-type { margin-top: 9px; }
+    .discussion-meta { display: flex; justify-content: space-between; gap: 10px; color: var(--ink-soft); font-size: 12px; }
+    .discussion-message p { margin: 5px 0 0; font-size: 12px; }
+    .publication-list { display: grid; gap: 0; }
+    .publication-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); }
+    .publication-row:first-child { border-top: 0; }
+    .publication-title { padding: 0; border: 0; background: none; color: var(--pine-strong); cursor: pointer; font-size: 14px; font-weight: 650; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+    .publication-row p { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; }
+    .publication-preview { margin-top: 14px; }
+    .publication-preview .preview-body { margin: 11px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; white-space: pre-wrap; }
+    .discussion-topic { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .discussion-topic:first-of-type { margin-top: 8px; }
+    .discussion-topic p { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; }
+
+    .case-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 13px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .case-identity { min-width: 0; }
+    .case-identity strong { display: block; font-size: 14px; font-weight: 650; }
+    .case-identity span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .scenario-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 12px; padding: 11px 13px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-3); }
+    .scenario-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+    .scenario-controls label { color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+    .scenario-controls select { width: auto; min-width: 170px; min-height: 36px; padding: 6px 28px 6px 9px; }
+    .scenario-copy { color: var(--ink-soft); font-size: 12px; }
+    .conversation-shell { display: grid; min-height: 590px; gap: 12px; align-items: stretch; }
+    .conversation-shell.variant-a { grid-template-columns: minmax(238px, 270px) minmax(0, 1fr) minmax(205px, 235px); }
+    .conversation-shell.variant-b { grid-template-columns: minmax(250px, 310px) minmax(0, 1fr); }
+    .conversation-sidebar, .conversation-main, .context-panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .conversation-sidebar { display: flex; min-height: 0; flex-direction: column; overflow: hidden; }
+    .sidebar-head { padding: 14px; border-bottom: 1px solid var(--line); }
+    .sidebar-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .sidebar-title-row h2 { font-size: 14px; }
+    .lane-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-bottom: 11px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-3); }
+    .lane-tab { display: flex; min-height: 36px; align-items: center; justify-content: center; gap: 6px; padding: 5px 7px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 12px; font-weight: 600; }
+    .lane-tab[aria-selected="true"] { border-color: var(--line); background: var(--surface); color: var(--pine-strong); box-shadow: 0 1px 3px hsl(150 20% 10% / .08); }
+    .search-wrap { position: relative; }
+    .search-wrap .icon { position: absolute; top: 50%; left: 10px; width: 15px; height: 15px; color: var(--ink-soft); transform: translateY(-50%); pointer-events: none; }
+    .search-wrap input { min-height: 38px; padding-left: 32px; }
+    .sidebar-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; }
+    .sidebar-action .button { min-height: 35px; padding: 0 10px; font-size: 12px; }
+    .thread-list { display: grid; align-content: start; gap: 4px; overflow: auto; padding: 6px; }
+    .thread-list-button { display: block; width: 100%; padding: 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
+    .thread-list-button:hover { background: var(--surface-3); }
+    .thread-list-button[aria-current="true"] { border-color: hsl(150 45% 45% / .34); background: var(--pine-wash-2); }
+    .thread-list-subject { display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; font-size: 12px; font-weight: 650; line-height: 1.35; }
+    .thread-list-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; color: var(--ink-soft); font-size: 12px; }
+    .thread-list-audience { display: block; margin-top: 5px; color: var(--ink-soft); font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
+    .unread-tag { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 999px; background: var(--pine-wash); color: var(--pine-strong); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .closed-tag { display: inline-flex; padding: 2px 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+    .new-thread-form { display: grid; gap: 9px; padding: 12px; border-bottom: 1px solid var(--line); background: var(--pine-wash-2); }
+    .new-thread-form h3 { font-size: 12px; }
+    .new-thread-form input, .new-thread-form textarea { min-height: 37px; padding: 8px; font-size: 12px; }
+    .new-thread-form textarea { min-height: 74px; }
+    .new-thread-form .button { min-height: 36px; padding: 0 9px; font-size: 12px; }
+    .conversation-main { display: flex; min-height: 0; flex-direction: column; overflow: hidden; }
+    .thread-head { padding: 16px 18px 13px; border-bottom: 1px solid var(--line); }
+    .thread-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .thread-title-wrap { min-width: 0; }
+    .thread-title-wrap h2 { font-size: 16px; }
+    .thread-title-wrap p { margin: 5px 0 0; color: var(--ink-soft); font-size: 12px; }
+    .thread-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .thread-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 11px; color: var(--ink-soft); font-size: 12px; }
+    .back-button { display: none; min-height: 34px; margin: 0 0 8px; padding: 0 10px; font-size: 12px; }
+    .message-stream { display: flex; min-height: 210px; flex: 1; flex-direction: column; gap: 13px; overflow-y: auto; padding: 17px; background: var(--surface-3); }
+    .message-day { align-self: center; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-soft); font-size: 12px; }
+    .message-row { display: flex; width: 100%; justify-content: flex-start; }
+    .message-row.self { justify-content: flex-end; }
+    .message-bubble { max-width: min(82%, 560px); min-width: 0; padding: 9px 11px 8px; border: 1px solid var(--line); border-radius: 8px 8px 8px 3px; background: var(--surface); }
+    .message-row.self .message-bubble { border-color: hsl(150 42% 45% / .38); border-radius: 8px 8px 3px 8px; background: var(--pine-wash); }
+    .message-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--ink-soft); font-size: 12px; }
+    .message-meta strong { color: var(--ink); font-weight: 650; }
+    .message-meta time { font-variant-numeric: tabular-nums; }
+    .message-bubble p { margin: 6px 0 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .composer { display: grid; gap: 9px; padding: 13px 15px 15px; border-top: 1px solid var(--line); background: var(--surface); }
+    .composer textarea { min-height: 70px; max-height: 180px; resize: vertical; }
+    .composer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .composer-bottom .button { min-height: 38px; }
+    .send-pending { display: grid; gap: 9px; padding: 11px; border: 1px solid hsl(38 69% 37% / .33); border-radius: var(--radius-sm); background: var(--amber-wash); }
+    .send-pending p { margin: 0; color: var(--ink); font-size: 12px; }
+    .pending-identity { color: var(--ink-soft); font: 12px var(--mono); overflow-wrap: anywhere; }
+    .pending-exact-message, .inquiry-preview-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .inquiry-preview-subject { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+    .context-panel { align-self: start; padding: 15px; }
+    .context-panel h2 { font-size: 13px; }
+    .context-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .context-section:first-of-type { border-top: 0; }
+    .context-section dt { color: var(--ink-soft); font-size: 12px; }
+    .context-section dd { margin: 3px 0 0; font-size: 12px; font-weight: 600; }
+    .context-section p { margin: 7px 0 0; color: var(--ink-soft); font-size: 12px; }
+    .variant-b-top { display: grid; gap: 11px; margin-bottom: 12px; }
+    .variant-b-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .variant-b-tools .lane-tabs { width: min(410px, 100%); margin: 0; }
+    .variant-b-tools .search-wrap { width: min(280px, 100%); }
+    .variant-b-tools .button { min-height: 38px; white-space: nowrap; }
+    .variant-b-identity { padding: 4px 0; }
+    .variant-b-identity strong { font-size: 16px; }
+    .variant-b-identity span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .variant-b .conversation-sidebar { grid-column: 1; grid-row: 1; }
+    .variant-b .conversation-main { grid-column: 2; grid-row: 1; }
+    .variant-b .sidebar-head { padding: 12px; }
+    .variant-b .sidebar-head .lane-tabs, .variant-b .sidebar-head .search-wrap, .variant-b .sidebar-head .sidebar-title-row { display: none; }
+    .variant-b .sidebar-head { min-height: 51px; }
+    .variant-b .thread-head { padding: 20px 22px 14px; }
+    .variant-b .message-stream { padding: 22px; }
+    .variant-b .message-bubble { max-width: min(75%, 680px); padding: 11px 13px; }
+    .variant-b .message-bubble p { font-size: 14px; }
+    .variant-b .composer { padding: 16px 20px 19px; }
+    .variant-b .context-panel { display: none; }
+    .applicant-view-note { margin: 0 0 13px; padding: 11px 13px; border: 1px solid var(--blue); border-radius: var(--radius-sm); background: var(--blue-wash); color: var(--ink); font-size: 12px; }
+    .applicant-view-note strong { color: var(--blue); }
+    .mobile-only { display: none; }
+
+    .flow-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .flow-column { padding: 18px; }
+    .flow-column h2 { display: flex; align-items: center; gap: 8px; }
+    .flow-column ul { display: grid; gap: 10px; margin: 14px 0 0; padding-left: 19px; color: var(--ink-soft); font-size: 12px; }
+    .flow-column li strong { color: var(--ink); }
+    .boundary-panel { margin-top: 14px; padding: 18px; }
+    .contract-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 13px; }
+    .contract-item { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-3); }
+    .contract-item strong { display: block; font-size: 12px; }
+    .contract-item p { margin: 5px 0 0; color: var(--ink-soft); font-size: 12px; }
+    .manual-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 18px; margin: 12px 0 0; padding-left: 20px; color: var(--ink-soft); font-size: 12px; }
+    .manual-list code { color: var(--pine-strong); font: 12px var(--mono); }
+
+    .variant-dock {
+      position: fixed; z-index: 60; right: 50%; bottom: 14px; display: flex; max-width: calc(100vw - 24px); align-items: center; gap: 4px;
+      padding: 5px; border: 1px solid hsl(150 16% 28% / .62); border-radius: 999px; background: hsl(150 28% 10%); color: hsl(145 25% 95%);
+      box-shadow: 0 12px 32px -12px hsl(150 35% 5% / .55); transform: translateX(50%);
+    }
+    .variant-dock-label { overflow: hidden; max-width: 180px; padding: 0 9px; color: hsl(145 18% 86%); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .variant-button { min-height: 33px; padding: 0 10px; border-color: hsl(150 10% 34%); border-radius: 999px; background: transparent; color: hsl(145 18% 92%); font-size: 12px; }
+    .variant-button[aria-pressed="true"] { border-color: hsl(150 75% 40%); background: hsl(150 55% 25%); color: white; }
+    .variant-button:hover { border-color: hsl(150 65% 52%); background: hsl(150 40% 20%); color: white; }
+    #liveStatus { position: fixed; z-index: 80; right: 12px; bottom: 66px; max-width: min(480px, calc(100vw - 24px)); padding: 8px 11px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-size: 12px; }
+    #liveStatus:empty { display: none; }
+
+    @media (max-width: 1100px) {
+      .conversation-shell.variant-a { grid-template-columns: minmax(225px, 255px) minmax(0, 1fr); }
+      .conversation-shell.variant-a .context-panel { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      .conversation-shell.variant-a .context-panel > h2 { grid-column: 1 / -1; }
+      .conversation-shell.variant-a .context-section { margin: 0; padding: 0; border: 0; }
+    }
+    @media (max-width: 760px) {
+      .header-inner { padding: 0 14px; }
+      .draft-notice { min-height: 32px; font-size: 12px; }
+      .brand-row { min-height: 57px; }
+      .brand-mark { width: 32px; height: 32px; }
+      .brand-title { font-size: 13px; }
+      .brand-subtitle { font-size: 12px; }
+      .actor-label { display: none; }
+      .theme-button { min-height: 36px; padding: 0 9px; font-size: 12px; }
+      .primary-nav { gap: 2px; padding-bottom: 6px; }
+      .nav-link { min-height: 35px; padding: 0 10px; font-size: 12px; }
+      .page { padding: 20px 14px 116px; }
+      .page-heading { display: block; margin-bottom: 16px; }
+      .page-heading .scope-control, .page-heading .header-actions { margin-top: 13px; }
+      .organization-layout { grid-template-columns: 1fr; gap: 12px; }
+      .hierarchy-layout { grid-template-columns: 1fr; }
+      .department-choices { grid-template-columns: 1fr; }
+      .institution-panel { padding: 16px; }
+      .institution-name { max-width: none; font-size: 19px; }
+      .institution-details { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+      .directory-panel, .panel-pad, .program-section { padding: 15px; }
+      .overview-heading-row { display: grid; gap: 12px; }
+      .scope-control { min-width: 0; width: 100%; }
+      .summary-strip { margin: 14px 0; }
+      .summary-cell { padding: 11px 10px; }
+      .summary-cell dd { font-size: 18px; }
+      .summary-cell dt { min-height: 31px; font-size: 12px; }
+      .quota-table { min-width: 650px; }
+      .program-head { display: grid; gap: 13px; padding: 15px; }
+      .program-selectors { display: grid; min-width: 0; grid-template-columns: 1fr 1fr; }
+      .program-tabs { margin: 11px 0 14px; }
+      .program-section { padding: 15px; }
+      .overview-columns { grid-template-columns: 1fr; }
+      .quota-stats { gap: 6px; }
+      .quota-stat { padding: 10px 8px; }
+      .quota-stat dt { min-height: 32px; font-size: 12px; }
+      .quota-stat dd { font-size: 18px; }
+      .history-item { grid-template-columns: 1fr; gap: 4px; }
+      .field-grid { grid-template-columns: 1fr; }
+      .case-banner { align-items: flex-start; padding: 12px; }
+      .scenario-bar { display: grid; gap: 7px; padding: 9px; }
+      .scenario-controls { justify-content: space-between; }
+      .scenario-controls select { flex: 1; min-width: 150px; }
+      .conversation-shell.variant-a, .conversation-shell.variant-b { display: grid; min-height: 600px; grid-template-columns: minmax(0, 1fr); }
+      .conversation-shell .conversation-sidebar { grid-column: 1; grid-row: 1; min-height: 500px; }
+      .conversation-shell .conversation-main { grid-column: 1; grid-row: 1; min-height: 600px; }
+      .conversation-shell:not(.mobile-show-thread) .conversation-main { display: none; }
+      .conversation-shell.mobile-show-thread .conversation-sidebar { display: none; }
+      main.mobile-detail .variant-b-top { display: none; }
+      .conversation-shell .context-panel { display: none !important; }
+      .conversation-shell.variant-a .sidebar-head { padding: 12px; }
+      .conversation-shell.variant-b .sidebar-head { display: block; min-height: 0; padding: 11px; }
+      .conversation-shell.variant-b .sidebar-head .lane-tabs,
+      .conversation-shell.variant-b .sidebar-head .search-wrap,
+      .conversation-shell.variant-b .sidebar-head .sidebar-title-row { display: none; }
+      .variant-b-tools { display: grid; gap: 9px; padding: 10px; }
+      .variant-b-tools .lane-tabs, .variant-b-tools .search-wrap { width: 100%; }
+      .variant-b-tools .button { justify-self: start; }
+      .variant-b .conversation-shell { min-height: 600px; }
+      .variant-b .thread-head { padding: 13px 13px 11px; }
+      .variant-b .message-stream { padding: 13px; }
+      .variant-b .message-bubble { max-width: 88%; }
+      .variant-b .composer { padding: 11px; }
+      .back-button { display: inline-flex; }
+      .message-bubble { max-width: 88%; }
+      .composer-bottom { align-items: flex-start; flex-direction: column; }
+      .composer-bottom .button { width: 100%; }
+      .flow-layout, .contract-list, .manual-list { grid-template-columns: 1fr; }
+      .flow-column, .boundary-panel { padding: 15px; }
+      .variant-dock { position: relative; z-index: 1; right: auto; bottom: auto; display: flex; max-width: calc(100% - 22px); flex-wrap: wrap; justify-content: center; gap: 2px; margin: 12px auto 14px; padding: 4px; transform: none; }
+      .variant-dock-label { max-width: 92px; padding: 0 5px; font-size: 12px; }
+      .variant-button { min-height: 31px; padding: 0 8px; font-size: 12px; }
+      #liveStatus { right: 8px; bottom: 56px; }
+    }
+    @media (max-width: 390px) {
+      .header-inner { padding: 0 11px; }
+      .page { padding-right: 11px; padding-left: 11px; }
+      .brand-row { gap: 8px; }
+      .brand-lockup { gap: 8px; }
+      .brand-title { font-size: 12px; }
+      .brand-subtitle { font-size: 12px; }
+      .theme-button { padding: 0 7px; }
+      .nav-link { padding: 0 8px; font-size: 12px; }
+      .institution-details { grid-template-columns: 1fr; }
+      .summary-cell { padding: 10px 7px; }
+      .summary-cell dd { font-size: 16px; }
+      .quota-stat dd { font-size: 16px; }
+      .program-selectors { grid-template-columns: 1fr; }
+      .thread-head-row { display: grid; }
+      .thread-toolbar { align-items: flex-start; flex-direction: column; }
+      .variant-dock-label { max-width: 68px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" class="sr-only" aria-hidden="true">
+    <symbol id="i-brand-n" viewBox="0 0 24 24"><path d="M6 19V5h2l10 14V5"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18M5 21V6l7-3 7 3v15M9 21v-5h6v5M9 8h.01M15 8h.01M9 12h.01M15 12h.01"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 6h8M8 10h8"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-4.6a9 9 0 0 1-.9-4.4A8.5 8.5 0 0 1 12.5 3h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3M12 14v3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13A8.5 8.5 0 0 1 11 3.1 8.5 8.5 0 1 0 20.9 13Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5m6 6-6-6 6-6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.5 6.5L20 11l-6.5 1.5L12 19l-1.5-6.5L4 11l6.5-1.5L12 3ZM19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z"/></symbol>
+  </svg>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="draft-notice" role="note"><span class="notice-dot" aria-hidden="true"></span><span>Design draft · synthetic data · no production changes</span></div>
+      <div class="brand-row">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true"><svg class="icon large"><use href="#i-brand-n"></use></svg></span>
+          <div class="brand-copy">
+            <p class="brand-title">Admissions &amp; program workspace</p>
+            <p class="brand-subtitle">Northbridge State University · UI Lab</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <span class="actor-label"><span class="actor-dot"></span><span id="actor-label">Staff preview · Guidance</span></span>
+          <button class="theme-button" type="button" data-action="theme" aria-label="Switch color theme"><svg class="icon small" id="theme-icon"><use href="#i-moon"></use></svg><span id="theme-label">Dark mode</span></button>
+        </div>
+      </div>
+      <div class="nav-scroll">
+        <nav class="primary-nav" aria-label="Workspace navigation" id="primary-nav"></nav>
+      </div>
+    </div>
+  </header>
+
+  <div id="view" aria-live="off"></div>
+  <div id="liveStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="variant-dock" role="group" aria-label="Conversation layout variants">
+    <button class="variant-button" type="button" data-action="variant" data-variant="A" aria-pressed="true">A · Context</button>
+    <span class="variant-dock-label" id="variant-caption">A · Context embedded</span>
+    <button class="variant-button" type="button" data-action="variant" data-variant="B" aria-pressed="false">B · Focus</button>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const icon = (name, size = '') => `<svg class="icon ${size}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+      const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value);
+      const timeLabel = (value) => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+      const dateLabel = (value) => new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(value));
+      const nowIso = () => new Date().toISOString();
+      const screenNames = ['organization', 'quota-overview', 'program-workspace', 'applicant-workspace', 'applicant-messages', 'flow'];
+      const navItems = [
+        ['organization', 'Organization', 'building'],
+        ['quota-overview', 'Quota overview', 'users'],
+        ['program-workspace', 'Program workspace', 'book'],
+        ['applicant-workspace', 'Applicant workspace', 'message'],
+        ['applicant-messages', 'Applicant messages', 'lock'],
+        ['flow', 'Flow & boundaries', 'info'],
+      ];
+      const programs = [
+        { id: 'bsn', code: 'BSN', name: 'Bachelor of Science in Nursing', department: 'Health Sciences', description: 'A four-year program preparing students for professional nursing practice.' },
+        { id: 'bscs', code: 'BSCS', name: 'Bachelor of Science in Computer Science', department: 'Computing & Information', description: 'A program in software systems, data, and computational foundations.' },
+        { id: 'bacomm', code: 'BACOMM', name: 'Bachelor of Arts in Communication', department: 'Arts & Letters', description: 'A program in media, public communication, and community practice.' },
+      ];
+      const cycles = [
+        { id: '2026-27-s1', label: 'AY 2026–27 · Semester 1', short: '2026–27 · Sem 1' },
+        { id: '2025-26-s2', label: 'AY 2025–26 · Semester 2', short: '2025–26 · Sem 2' },
+      ];
+      const applicants = {
+        bsn: { name: 'Eli Navarro', application: 'A-26-0418', attempt: 'attempt-0418', program: 'BSN' },
+        bscs: { name: 'Nia Reyes', application: 'A-26-0772', attempt: 'attempt-0772', program: 'BSCS' },
+        bacomm: { name: 'Sam Dela Cruz', application: 'A-26-0913', attempt: 'attempt-0913', program: 'BACOMM' },
+      };
+      const staffPreviewActors = [
+        { id: 'staff:guidance-maya', name: 'Maya Santos', office: 'Guidance' },
+        { id: 'staff:registrar-flores', name: 'A. Flores', office: 'Registrar' },
+      ];
+      const registrarRecipient = { id: 'registrar-r-villanueva', name: 'R. Villanueva', office: 'Registrar' };
+      const seedQuota = {
+        'bsn|2026-27-s1': { capacity: 84, committed: 61, history: [{ date: '2026-09-18T08:30:00', actor: 'R. Villanueva · Registrar', from: 80, to: 84, note: 'Updated after the approved cycle review.' }, { date: '2026-08-29T09:00:00', actor: 'M. Santos · Guidance', from: 76, to: 80, note: 'Aligned capacity with confirmed faculty sections.' }] },
+        'bscs|2026-27-s1': { capacity: 120, committed: 94, history: [{ date: '2026-09-12T10:10:00', actor: 'A. Flores · Registrar', from: 115, to: 120, note: 'Additional lab section confirmed.' }] },
+        'bacomm|2026-27-s1': { capacity: 64, committed: 52, history: [{ date: '2026-09-02T14:20:00', actor: 'M. Santos · Guidance', from: 60, to: 64, note: 'Capacity reviewed with the department.' }] },
+        'bsn|2025-26-s2': { capacity: 76, committed: 74, history: [{ date: '2026-02-03T09:00:00', actor: 'R. Villanueva · Registrar', from: 72, to: 76, note: 'Historical cycle adjustment.' }] },
+        'bscs|2025-26-s2': { capacity: 110, committed: 103, history: [{ date: '2026-02-06T11:15:00', actor: 'A. Flores · Registrar', from: 105, to: 110, note: 'Historical lab section adjustment.' }] },
+        'bacomm|2025-26-s2': { capacity: 60, committed: 58, history: [{ date: '2026-02-05T13:25:00', actor: 'M. Santos · Guidance', from: 56, to: 60, note: 'Historical cycle adjustment.' }] },
+      };
+      const seedThreads = [
+        {
+          id: 'record-internal-bsn', type: 'internal', source: 'RecordThread', programId: 'bsn', cycleId: '2026-27-s1', attempt: 'attempt-0418', subject: 'Clinical placement readiness', status: 'open', unread: 2, eligible: true,
+          audience: 'Internal · authorized admissions and guidance staff', scopeLabel: 'Staff only · not visible to applicant',
+          messages: [
+            { id: 'ri-1', sender: 'Maya Santos', self: false, createdAt: '2026-10-06T08:42:00', body: 'The partner clinic confirmed two additional orientation places. Please check the student’s availability before we update the placement note.' },
+            { id: 'ri-2', sender: 'You', self: true, createdAt: '2026-10-06T09:06:00', body: 'I will confirm with the department this morning. The eligibility decision stays in the application record, not in this conversation.' },
+            { id: 'ri-3', sender: 'Maya Santos', self: false, createdAt: '2026-10-06T09:18:00', body: 'Understood. I have left the applicant-facing checklist unchanged until the department confirms.' },
+          ],
+        },
+        {
+          id: 'record-support-bsn', type: 'applicant', source: 'RecordThread', programId: 'bsn', cycleId: '2026-27-s1', attempt: 'attempt-0418', subject: 'Clarifying the transcript upload', status: 'open', unread: 1, eligible: true,
+          audience: 'Applicant support · visible to Eli Navarro and eligible staff', scopeLabel: 'Applicant-visible support thread',
+          messages: [
+            { id: 'rs-1', sender: 'You', self: true, createdAt: '2026-10-05T11:03:00', body: 'We received your school record. One page is difficult to read; could you confirm whether the original has the same faded section?' },
+            { id: 'rs-2', sender: 'Eli Navarro', self: false, createdAt: '2026-10-05T14:34:00', body: 'The original is readable. I can bring it to the Registrar desk if that is easier.' },
+          ],
+        },
+        {
+          id: 'office-inquiry-bsn', type: 'applicant', source: 'ApplicantOfficeInquiry', office: 'Registrar', programId: 'bsn', cycleId: '2026-27-s1', attempt: 'attempt-0418', subject: 'Registrar office inquiry · certified transcript', status: 'open', unread: 1, eligible: true,
+          audience: 'Private Registrar office inquiry · eligible participants only', scopeLabel: 'Applicant-visible · Registrar office only',
+          messages: [
+            { id: 'oi-1', sender: 'Eli Navarro', self: false, createdAt: '2026-10-06T08:15:00', body: 'Good morning. May I ask whether a certified copy of my transcript can be submitted after the first advising appointment?' },
+            { id: 'oi-2', sender: 'A. Flores · Registrar', self: false, createdAt: '2026-10-06T10:28:00', body: 'Please bring the certified copy to the Registrar desk before your next document review. We will record the receipt against your application.' },
+          ],
+        },
+        {
+          id: 'record-closed-bsn', type: 'internal', source: 'RecordThread', programId: 'bsn', cycleId: '2026-27-s1', attempt: 'attempt-0418', subject: 'Course-code cross-check', status: 'closed', unread: 0, eligible: true,
+          audience: 'Internal · authorized admissions and guidance staff', scopeLabel: 'Staff only · closed thread',
+          messages: [
+            { id: 'rc-1', sender: 'Maya Santos', self: false, createdAt: '2026-09-28T08:14:00', body: 'The department confirmed the equivalent course code for this cycle.' },
+            { id: 'rc-2', sender: 'You', self: true, createdAt: '2026-09-28T08:50:00', body: 'Recorded in the advising note. Closing this thread; the note remains the authoritative record.' },
+          ],
+        },
+        {
+          id: 'record-internal-bscs', type: 'internal', source: 'RecordThread', programId: 'bscs', cycleId: '2026-27-s1', attempt: 'attempt-0772', subject: 'Portfolio review handoff', status: 'open', unread: 0, eligible: true,
+          audience: 'Internal · authorized admissions and guidance staff', scopeLabel: 'Staff only · not visible to applicant',
+          messages: [
+            { id: 'cs-1', sender: 'Anya Flores', self: false, createdAt: '2026-10-04T09:02:00', body: 'The department has received the portfolio packet. Please keep the review outcome in the program’s governed record.' },
+            { id: 'cs-2', sender: 'You', self: true, createdAt: '2026-10-04T09:20:00', body: 'Acknowledged. I will use the assigned program review process and leave the status unchanged here.' },
+          ],
+        },
+        {
+          id: 'record-applicant-bscs', type: 'applicant', source: 'RecordThread', programId: 'bscs', cycleId: '2026-27-s1', attempt: 'attempt-0772', subject: 'Next steps for the portfolio review', status: 'open', unread: 0, eligible: true,
+          audience: 'Applicant support · visible to Nia Reyes and eligible staff', scopeLabel: 'Applicant-visible support thread',
+          messages: [
+            { id: 'ca-1', sender: 'You', self: true, createdAt: '2026-10-04T10:25:00', body: 'Your program will contact you when the review is complete. This message does not change your application status.' },
+          ],
+        },
+        {
+          id: 'office-inquiry-bscs', type: 'applicant', source: 'ApplicantOfficeInquiry', office: 'Guidance', programId: 'bscs', cycleId: '2026-27-s1', attempt: 'attempt-0772', subject: 'Guidance office inquiry · appointment time', status: 'open', unread: 0, eligible: true,
+          audience: 'Private Guidance office inquiry · eligible participants only', scopeLabel: 'Applicant-visible · Guidance office only',
+          messages: [
+            { id: 'gq-1', sender: 'Nia Reyes', self: false, createdAt: '2026-10-03T13:12:00', body: 'Could I confirm the time of the appointment listed in my applicant portal?' },
+            { id: 'gq-2', sender: 'You', self: true, createdAt: '2026-10-03T13:40:00', body: 'Your appointment is listed for Thursday at 10:00 a.m. Please use the appointment details shown in your portal if they change.' },
+          ],
+        },
+      ];
+      const publications = {
+        announcements: [
+          { id: 'announcement-1', title: 'Application document review schedule', kind: 'Announcement', published: 'Oct 02, 2026', channel: 'Program public page', summary: 'Registrar review appointments will be available during the first two weeks of the semester.', body: 'The Registrar desk will review submitted application documents during the first two weeks of Semester 1. Applicants should check their portal for their own appointment details. This public notice does not include private application information.' },
+          { id: 'announcement-2', title: 'Department orientation briefing', kind: 'Announcement', published: 'Sep 24, 2026', channel: 'Program public page', summary: 'An orientation briefing for newly admitted students is scheduled for October 19.', body: 'The Health Sciences Department will host an orientation briefing on October 19. Please refer to the published program calendar for the venue and arrival information.' },
+        ],
+        policies: [
+          { id: 'policy-1', title: 'Document submission and verification', kind: 'Policy', published: 'Aug 18, 2026', channel: 'Admissions policy library', summary: 'Requirements for submitting original and certified academic records.', body: 'Academic records must be submitted in the format specified for the application. Where a certified copy is required, the Registrar records its receipt against the application. Policy text is published separately from private case conversations.' },
+          { id: 'policy-2', title: 'Program capacity and cycle allocation', kind: 'Policy', published: 'Jun 11, 2026', channel: 'Admissions policy library', summary: 'Explains how approved cycle capacity is published to applicants.', body: 'Cycle capacity is governed through the program quota process. Discussion messages do not approve or change capacity. Published policy does not expose staff discussion or applicant case messages.' },
+        ],
+      };
+
+      const search = new URLSearchParams(location.search);
+      const initialScreen = screenNames.includes(search.get('screen')) ? search.get('screen') : 'organization';
+      const state = {
+        staffPreviewActorId: 'staff:guidance-maya',
+        screen: initialScreen,
+        variant: search.get('variant') === 'B' ? 'B' : 'A',
+        programId: programs.some((program) => program.id === search.get('program')) ? search.get('program') : 'bsn',
+        departmentId: ['health', 'computing', 'arts'].includes(search.get('department')) ? search.get('department') : 'health',
+        cycleId: cycles.some((cycle) => cycle.id === search.get('cycle')) ? search.get('cycle') : '2026-27-s1',
+        programTab: ['overview', 'quota', 'discussions', 'announcements', 'policies', 'benchmarks'].includes(search.get('tab')) ? search.get('tab') : 'overview',
+        applicantLane: 'internal',
+        selectedThreadId: 'record-internal-bsn',
+        staffReturnThreadId: 'record-internal-bsn',
+        staffReturnLane: 'internal',
+        applicantReturnThreadId: null,
+        mobileDetail: false,
+        scenario: 'normal',
+        loadingComplete: false,
+        staffSearch: '',
+        applicantSearch: '',
+        newConversationOpen: false,
+        newConversationDrafts: new Map(),
+        applicantInquiryTarget: 'Guidance',
+        applicantInquiryOpen: false,
+        applicantInquiryReviewKey: null,
+        applicantInquiryDrafts: new Map(),
+        threadDrafts: new Map(),
+        revokedThreads: new Set(),
+        threadData: JSON.parse(JSON.stringify(seedThreads)),
+        quotaData: new Map(),
+        quotaDrafts: new Map(),
+        registrarAccess: new Map(),
+        quotaDiscussionOpen: false,
+        registrarControlsOpen: false,
+        quotaDiscussionDrafts: new Map(),
+        quotaDiscussions: new Map(),
+        programDiscussionIndex: null,
+        programNewDiscussionOpen: false,
+        programDiscussionReplyDrafts: new Map(),
+        programNewDiscussionDrafts: new Map(),
+        programDiscussions: new Map(),
+        publicationPreview: null,
+        theme: 'light',
+        sendSequence: 0,
+        grantSequence: 0,
+        createdSequence: 0,
+        status: '',
+      };
+      Object.defineProperties(state, {
+        quotaDiscussionDraft: {
+          get() { return state.quotaDiscussionDrafts.get(quotaDiscussionDraftKey()) ?? ''; },
+          set(value) { state.quotaDiscussionDrafts.set(quotaDiscussionDraftKey(), value); },
+        },
+        programDiscussionDraft: {
+          get() {
+            const key = currentProgramDiscussionDraftKey();
+            return key ? state.programDiscussionReplyDrafts.get(key) ?? '' : '';
+          },
+          set(value) {
+            const key = currentProgramDiscussionDraftKey();
+            if (key) state.programDiscussionReplyDrafts.set(key, value);
+          },
+        },
+      });
+
+      const currentProgram = () => programs.find((program) => program.id === state.programId) ?? programs[0];
+      const currentCycle = () => cycles.find((cycle) => cycle.id === state.cycleId) ?? cycles[0];
+      const applicantFor = (programId = state.programId) => applicants[programId] ?? applicants.bsn;
+      const staffPreviewActor = (actorId = state.staffPreviewActorId) => staffPreviewActors.find((actor) => actor.id === actorId) ?? staffPreviewActors[0];
+      const staffPreviewActorOptions = () => staffPreviewActors.map((actor) => ({ value: actor.id, label: `${actor.office} · ${actor.name}` }));
+      const scopeKey = (programId = state.programId, cycleId = state.cycleId) => `${programId}|${cycleId}`;
+      const quotaKey = (programId = state.programId, cycleId = state.cycleId) => `${programId}|${cycleId}`;
+      const roleForScreen = () => state.screen === 'applicant-messages' ? 'applicant' : 'staff';
+      const getThread = (threadId) => state.threadData.find((thread) => thread.id === threadId) ?? null;
+      const threadScopeKey = (thread) => `${thread.programId}|${thread.cycleId}|${thread.attempt}|${thread.id}`;
+      const activeActorId = (role = roleForScreen()) => role === 'applicant' ? `applicant:${applicantFor('bsn').attempt}` : state.staffPreviewActorId;
+      const draftKeyFor = (thread, lane = state.applicantLane, role = roleForScreen(), principalId = activeActorId(role)) => `${role}|${principalId}|${thread.attempt}|${thread.programId}|${thread.cycleId}|${lane}|${thread.id}`;
+      const createDraftKey = (lane = state.applicantLane, principalId = activeActorId('staff')) => `staff|${principalId}|${applicantFor().attempt}|${state.programId}|${state.cycleId}|${lane}|new`;
+      const applicantInquiryDraftKey = (office = state.applicantInquiryTarget) => `applicant|${activeActorId('applicant')}|${applicantFor('bsn').attempt}|bsn|2026-27-s1|${office}|new`;
+      const quotaDiscussionDraftKey = (programId = state.programId, cycleId = state.cycleId, actorId = activeActorId('staff')) => `${programId}|${cycleId}|quota-governance|quota-discussion|${actorId}`;
+      const programDiscussionDraftKey = (topicId, programId = state.programId, cycleId = state.cycleId, actorId = activeActorId('staff')) => `${programId}|${cycleId}|${topicId}|${actorId}`;
+      const programNewDiscussionDraftKey = () => programDiscussionDraftKey('new');
+      const currentProgramDiscussionDraftKey = () => {
+        const topic = state.programDiscussionIndex === null ? null : findProgramDiscussion()[state.programDiscussionIndex] ?? null;
+        return topic ? programDiscussionDraftKey(topic.id) : null;
+      };
+      const revokedKeyFor = (thread, role = roleForScreen(), principalId = activeActorId(role)) => `${role}|${principalId}|${threadScopeKey(thread)}`;
+      const isRevoked = (thread, role = roleForScreen(), principalId = activeActorId(role)) => state.revokedThreads.has(revokedKeyFor(thread, role, principalId));
+      const findQuota = (programId = state.programId, cycleId = state.cycleId) => {
+        const key = quotaKey(programId, cycleId);
+        if (!state.quotaData.has(key)) {
+          const seed = seedQuota[key] ?? { capacity: 0, committed: 0, history: [] };
+          state.quotaData.set(key, JSON.parse(JSON.stringify(seed)));
+        }
+        return state.quotaData.get(key);
+      };
+      const findRegistrarAccess = (programId = state.programId, cycleId = state.cycleId, recipientId = registrarRecipient.id) => {
+        const key = `${scopeKey(programId, cycleId)}|${recipientId}`;
+        if (!state.registrarAccess.has(key)) {
+          const seededGrant = programId === 'bsn' && cycleId === '2026-27-s1'
+            ? { version: 1, active: true, latestReceiptId: 'lab-grant-seed-0001', history: [{ version: 1, receiptId: 'lab-grant-seed-0001', programId, cycleId, recipientId, action: 'issued', actor: 'Synthetic grant manager', date: '2026-09-18T08:30:00', reason: 'Seeded active grant fixture for review.' }] }
+            : { version: 0, active: false, latestReceiptId: null, history: [] };
+          state.registrarAccess.set(key, seededGrant);
+        }
+        return state.registrarAccess.get(key);
+      };
+      const findQuotaDiscussion = (programId = state.programId, cycleId = state.cycleId) => {
+        const key = scopeKey(programId, cycleId);
+        if (!state.quotaDiscussions.has(key)) {
+          state.quotaDiscussions.set(key, [
+            { sender: 'R. Villanueva · Registrar', time: '2026-10-04T08:25:00', body: 'Could the department confirm whether the additional lab section is available for this cycle? This discussion is advisory; quota authority remains with the authorized editor.' },
+            { sender: 'M. Santos · Guidance', time: '2026-10-04T09:10:00', body: 'The department confirmed the section. I will record any approved capacity change in the quota editor with its own history entry.' },
+          ]);
+        }
+        return state.quotaDiscussions.get(key);
+      };
+      const findProgramDiscussion = (programId = state.programId, cycleId = state.cycleId) => {
+        const key = scopeKey(programId, cycleId);
+        if (!state.programDiscussions.has(key)) {
+          const program = programs.find((entry) => entry.id === programId) ?? programs[0];
+          state.programDiscussions.set(key, [
+            { id: 'orientation-handoff', title: `${program.department} orientation handoff`, owner: `${program.department} · staff coordination`, preview: `Confirm the public schedule for ${program.code} before the department sends its orientation reminder.`, topic: 'Program operations', messages: [{ sender: 'Maya Santos', self: false, time: '2026-10-03T09:15:00', body: `Please confirm the ${program.code} orientation date before the next public notice is published.` }, { sender: 'You', self: true, time: '2026-10-03T09:37:00', body: 'The program office will keep publication in the announcements tab.' }] },
+            { id: 'cycle-review', title: 'Cycle review notes', owner: 'Guidance · Registrar', preview: 'A discussion record linked to the selected program and academic cycle.', topic: 'Cycle coordination', messages: [] },
+          ]);
+        }
+        return state.programDiscussions.get(key);
+      };
+      const getCurrentThread = () => getThread(state.selectedThreadId);
+      const effectiveStatus = (thread) => {
+        if (thread?.status === 'revoked') return 'revoked';
+        if (thread?.status === 'closed') return 'closed';
+        if (state.scenario === 'read-only') return 'read_only';
+        return thread?.status ?? 'open';
+      };
+
+      const canRead = (thread, role = roleForScreen(), principalId = activeActorId(role)) => {
+        if (!thread || !thread.eligible || isRevoked(thread, role, principalId)) return false;
+        if (role === 'applicant') return thread.source === 'ApplicantOfficeInquiry' && thread.programId === 'bsn' && thread.cycleId === '2026-27-s1' && thread.attempt === applicantFor('bsn').attempt;
+        const actor = staffPreviewActor(principalId);
+        return thread.source !== 'ApplicantOfficeInquiry' || thread.office === actor.office;
+      };
+      const canSend = (thread, role = roleForScreen(), principalId = activeActorId(role)) => Boolean(canRead(thread, role, principalId) && effectiveStatus(thread) === 'open');
+      const conversationLane = (thread) => thread.type === 'internal' ? 'internal' : 'applicant';
+      const relevantThreads = (role = roleForScreen()) => {
+        const programId = role === 'applicant' ? 'bsn' : state.programId;
+        const cycleId = role === 'applicant' ? '2026-27-s1' : state.cycleId;
+        let found = state.threadData.filter((thread) => thread.programId === programId && thread.cycleId === cycleId && canRead(thread, role));
+        if (role === 'applicant') {
+          found = found.filter((thread) => thread.source === 'ApplicantOfficeInquiry' && thread.attempt === applicantFor('bsn').attempt);
+        } else {
+          found = found.filter((thread) => conversationLane(thread) === state.applicantLane);
+        }
+        if (state.scenario === 'empty') found = found.filter((thread) => thread.synthetic === true);
+        const query = (role === 'applicant' ? state.applicantSearch : state.staffSearch).trim().toLocaleLowerCase();
+        if (query) found = found.filter((thread) => `${thread.subject} ${thread.audience} ${thread.scopeLabel}`.toLocaleLowerCase().includes(query));
+        return found;
+      };
+      const activeConversationDraft = (thread, role = roleForScreen(), principalId = activeActorId(role)) => {
+        if (!thread) return { body: '', pending: null, feedback: '', sendState: 'idle' };
+        const key = draftKeyFor(thread, role === 'applicant' ? 'applicant' : conversationLane(thread), role, principalId);
+        if (!state.threadDrafts.has(key)) state.threadDrafts.set(key, { body: '', pending: null, feedback: '', sendState: 'idle' });
+        return state.threadDrafts.get(key);
+      };
+      const saveConversationDraft = (thread, patch, role = roleForScreen(), principalId = activeActorId(role)) => {
+        if (!thread) return;
+        const key = draftKeyFor(thread, role === 'applicant' ? 'applicant' : conversationLane(thread), role, principalId);
+        const current = state.threadDrafts.get(key) ?? { body: '', pending: null, feedback: '', sendState: 'idle' };
+        state.threadDrafts.set(key, { ...current, ...patch });
+      };
+      const labelForStatus = (status) => status === 'read_only' ? 'Read only' : status.replaceAll('_', ' ');
+      const quotaRemaining = (quota) => Math.max(0, quota.capacity - quota.committed);
+      const updateStatus = (message) => {
+        state.status = message;
+        document.getElementById('liveStatus').textContent = message;
+      };
+      const urlFor = (patch = {}) => {
+        const url = new URL(location.href);
+        const values = {
+          screen: state.screen,
+          variant: state.variant,
+          program: state.programId,
+          cycle: state.cycleId,
+          tab: state.programTab,
+          department: state.departmentId,
+        };
+        for (const [key, value] of Object.entries({ ...values, ...patch })) {
+          if (value === null || value === undefined || value === '') url.searchParams.delete(key);
+          else url.searchParams.set(key, String(value));
+        }
+        return `${url.pathname}${url.search}${url.hash}`;
+      };
+      const saveUrl = (replace = false, patch = {}) => {
+        const url = urlFor(patch);
+        history[replace ? 'replaceState' : 'pushState']({}, '', url);
+      };
+      const selectOptions = (id, selectedValue, items, label, name) => `<div class="field"><label for="${id}">${escapeHtml(label)}</label><select id="${id}" data-control="${name}">${items.map((item) => `<option value="${escapeHtml(item.value)}" ${item.value === selectedValue ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}</select></div>`;
+      const heading = (title, description, actions = '') => `<div class="page-heading"><div class="heading-copy"><h1>${escapeHtml(title)}</h1><p class="page-description">${escapeHtml(description)}</p></div>${actions}</div>`;
+      const programOptionItems = () => programs.map((program) => ({ value: program.id, label: `${program.code} · ${program.name}` }));
+      const cycleOptionItems = () => cycles.map((cycle) => ({ value: cycle.id, label: cycle.label }));
+      const changeScopeOptions = (programId, cycleId) => {
+        state.programId = programId;
+        state.departmentId = ({ bsn: 'health', bscs: 'computing', bacomm: 'arts' })[programId];
+        state.cycleId = cycleId;
+        state.staffSearch = '';
+        const available = relevantThreads('staff');
+        state.selectedThreadId = available.some((thread) => thread.id === state.selectedThreadId) ? state.selectedThreadId : available[0]?.id ?? null;
+        state.staffReturnThreadId = state.selectedThreadId;
+        state.staffReturnLane = state.applicantLane;
+        state.mobileDetail = false;
+        saveUrl(true);
+        render();
+      };
+
+      function renderNav() {
+        const nav = document.getElementById('primary-nav');
+        nav.innerHTML = navItems.map(([screen, label, glyph]) => `<a class="nav-link" href="${escapeHtml(urlFor({ screen }))}" data-screen="${screen}" ${state.screen === screen ? 'aria-current="page"' : ''}>${icon(glyph, 'small')}<span>${escapeHtml(label)}</span></a>`).join('');
+        const variantNames = state.screen === 'organization'
+          ? { A: 'A · Hierarchy', B: 'B · Directory' }
+          : { A: 'A · Context', B: 'B · Focus' };
+        document.querySelectorAll('.variant-button').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.variant === state.variant));
+          button.textContent = variantNames[button.dataset.variant];
+        });
+        const caption = state.screen === 'organization'
+          ? state.variant === 'A' ? 'A · Institution → department → program' : 'B · Departments and programs together'
+          : state.variant === 'A' ? 'A · Context embedded' : 'B · Conversation focused';
+        document.getElementById('variant-caption').textContent = caption;
+        const actor = staffPreviewActor();
+        document.getElementById('actor-label').textContent = state.screen === 'applicant-messages' ? 'Applicant preview · Eli Navarro' : `Staff preview · ${actor.office} · ${actor.name}`;
+        const themeIcon = document.querySelector('#theme-icon use');
+        themeIcon.setAttribute('href', state.theme === 'dark' ? '#i-sun' : '#i-moon');
+        document.getElementById('theme-label').textContent = state.theme === 'dark' ? 'Light mode' : 'Dark mode';
+      }
+
+      function renderOrganization() {
+        const departmentGroups = [
+          { id: 'health', name: 'Health Sciences', programs: ['bsn'], note: 'Health and clinical practice' },
+          { id: 'computing', name: 'Computing & Information', programs: ['bscs'], note: 'Computing and digital systems' },
+          { id: 'arts', name: 'Arts & Letters', programs: ['bacomm'], note: 'Communication and public culture' },
+        ];
+        const selectedDepartment = departmentGroups.find((department) => department.id === state.departmentId) ?? departmentGroups[0];
+        const programRows = (department) => department.programs.map((programId) => {
+          const program = programs.find((entry) => entry.id === programId);
+          return `<a class="program-row" href="${escapeHtml(urlFor({ screen: 'program-workspace', program: program.id, tab: 'overview' }))}" data-action="open-program" data-program="${program.id}" data-tab="overview"><span><strong>${escapeHtml(program.name)}</strong><small>${escapeHtml(program.department)} · open workspace</small></span><span class="program-code">${escapeHtml(program.code)} ${icon('chevron', 'small')}</span></a>`;
+        }).join('');
+        const backLink = `<a class="organization-back" href="./ui-design-lab.html#context-workspaces-lab-link">${icon('arrow-left', 'small')}Back to UI Design Lab</a>`;
+        if (state.variant === 'A') {
+          return `<main id="institution-workspace" class="page">
+            ${heading('Organization', 'Start with the institution, choose a department, then open a program workspace. Every record in this guided hierarchy is synthetic.', backLink)}
+            <div class="organization-layout organization-a">
+              <section class="panel institution-panel" aria-labelledby="institution-heading">
+                <span class="institution-seal" aria-hidden="true">${icon('building', 'large')}</span>
+                <span class="label-caps">Institution</span>
+                <h2 class="institution-name" id="institution-heading">Northbridge State University</h2>
+                <p class="section-intro">Office of Admissions · synthetic institution profile</p>
+                <ul class="institution-details">
+                  <li>${icon('building', 'small')}<span>Central Admissions Office</span></li>
+                  <li>${icon('clock', 'small')}<span>Academic year 2026–27</span></li>
+                  <li>${icon('users', 'small')}<span>Academic departments</span></li>
+                </ul>
+                <div class="divider"></div>
+                <p class="small muted">Institution context is shown before any department or program details. This draft does not connect to institution, staff, or applicant services.</p>
+                <a class="table-link" href="#department-directory">Browse departments ${icon('arrow', 'small')}</a>
+              </section>
+              <section class="panel directory-panel" id="department-directory" aria-labelledby="directory-heading">
+                <div class="panel-header"><div><span class="label-caps">Guided hierarchy · Variant A</span><h2 id="directory-heading" style="margin-top:5px">Choose a department</h2><p class="section-intro">Selecting a department reveals its program entry points.</p></div><span class="scope-pill">Institution directory</span></div>
+                <div class="organization-path"><span>Institution</span>${icon('chevron', 'small')}<strong>${escapeHtml(selectedDepartment.name)}</strong>${icon('chevron', 'small')}<span>Program</span></div>
+                <div class="hierarchy-layout">
+                  <nav class="department-choices" aria-label="Departments">${departmentGroups.map((department) => `<button class="department-choice" type="button" data-action="select-department" data-department="${department.id}" aria-current="${department.id === selectedDepartment.id}"><strong>${escapeHtml(department.name)}</strong><small>${escapeHtml(department.note)}</small></button>`).join('')}</nav>
+                  <section class="selected-department" aria-labelledby="selected-department-heading"><span class="label-caps">Department</span><h3 id="selected-department-heading" style="margin-top:5px">${escapeHtml(selectedDepartment.name)}</h3><p class="section-intro">Choose a program to open its Overview, Quota, Discussions, Announcements, Policies, and Benchmarks.</p><div class="program-links">${programRows(selectedDepartment)}</div></section>
+                </div>
+              </section>
+            </div>
+          </main>`;
+        }
+        return `<main id="institution-workspace" class="page">
+          ${heading('Organization', 'An at-a-glance institution directory. Departments and their programs are visible together; choose a program to open its workspace.', backLink)}
+          <div class="organization-layout organization-b">
+            <section class="panel institution-panel" aria-labelledby="institution-heading">
+              <span class="institution-seal" aria-hidden="true">${icon('building', 'large')}</span>
+              <span class="label-caps">Institution</span>
+              <h2 class="institution-name" id="institution-heading">Northbridge State University</h2>
+              <p class="section-intro">Office of Admissions · synthetic institution profile</p>
+              <ul class="institution-details">
+                <li>${icon('building', 'small')}<span>Central Admissions Office</span></li>
+                <li>${icon('clock', 'small')}<span>Academic year 2026–27</span></li>
+                <li>${icon('users', 'small')}<span>Academic departments</span></li>
+              </ul>
+              <div class="divider"></div>
+              <p class="small muted">Institution settings are represented for navigation only. This draft does not connect to institution, staff, or applicant services.</p>
+            </section>
+            <section class="panel directory-panel" aria-labelledby="directory-heading">
+              <div class="panel-header"><div><span class="label-caps">Institution directory · Variant B</span><h2 id="directory-heading" style="margin-top:5px">Departments and programs</h2><p class="section-intro">Open a program directly from the complete directory.</p></div><span class="scope-pill">Program workspace</span></div>
+              <div class="department-list">${departmentGroups.map((department) => `<section class="department"><div class="department-heading"><div><h3>${escapeHtml(department.name)}</h3><p class="helper">${escapeHtml(department.note)}</p></div><span class="label-caps">Department</span></div><div class="program-links">${programRows(department)}</div></section>`).join('')}</div>
+            </section>
+          </div>
+        </main>`;
+      }
+
+      function renderQuotaOverview() {
+        const cycleOptions = cycles.map((cycle) => ({ value: cycle.id, label: cycle.label }));
+        const currentCycleData = programs.map((program) => ({ program, quota: findQuota(program.id, state.cycleId) }));
+        const totals = currentCycleData.reduce((acc, row) => ({ capacity: acc.capacity + row.quota.capacity, committed: acc.committed + row.quota.committed }), { capacity: 0, committed: 0 });
+        const remaining = Math.max(0, totals.capacity - totals.committed);
+        return `<main class="page">
+          ${heading('Quota overview', 'A read-only view across programs for the selected academic year and semester. Open a program to edit its quota in one canonical workspace.', `<div class="scope-control"><label for="overview-cycle">Academic year · Semester</label><select id="overview-cycle" data-control="overview-cycle">${cycleOptions.map((cycle) => `<option value="${cycle.value}" ${cycle.value === state.cycleId ? 'selected' : ''}>${escapeHtml(cycle.label)}</option>`).join('')}</select></div>`)}
+          <section aria-label="Cycle totals">
+            <div class="spread"><div><h2>${escapeHtml(currentCycle().label)}</h2><p class="section-intro">Authorized synthetic program quotas · overview only</p></div><span class="tag">No editor on this page</span></div>
+            <dl class="summary-strip"><div class="summary-cell"><dt>Total capacity</dt><dd>${formatNumber(totals.capacity)} <small>slots</small></dd></div><div class="summary-cell"><dt>Committed applicants</dt><dd>${formatNumber(totals.committed)}</dd></div><div class="summary-cell"><dt>Remaining capacity</dt><dd>${formatNumber(remaining)}</dd></div></dl>
+            <div class="data-table-wrap"><table class="quota-table"><thead><tr><th scope="col">Program</th><th scope="col">Capacity</th><th scope="col">Committed</th><th scope="col">Remaining</th><th scope="col"><span class="sr-only">Action</span></th></tr></thead><tbody>${currentCycleData.map(({ program, quota }) => `<tr><td class="program-name"><strong>${escapeHtml(program.name)}</strong><small>${escapeHtml(program.department)}</small></td><td class="number">${formatNumber(quota.capacity)}</td><td class="number">${formatNumber(quota.committed)}</td><td class="number">${formatNumber(quotaRemaining(quota))}</td><td><a class="table-link" href="${escapeHtml(urlFor({ screen: 'program-workspace', program: program.id, cycle: state.cycleId, tab: 'quota' }))}" data-action="open-program" data-program="${program.id}" data-tab="quota">Open quota ${icon('arrow', 'small')}</a></td></tr>`).join('')}</tbody></table></div>
+            <p class="helper" style="margin-top:10px">Capacity changes belong in the selected program’s Quota tab. Discussion access never changes quota authority.</p>
+          </section>
+        </main>`;
+      }
+
+      function programTabs() {
+        const tabs = [['overview', 'Overview'], ['quota', 'Quota'], ['discussions', 'Discussions'], ['announcements', 'Announcements'], ['policies', 'Policies'], ['benchmarks', 'Benchmarks']];
+        return `<nav class="program-tabs" role="tablist" aria-label="Program workspace sections">${tabs.map(([id, label]) => `<a role="tab" class="tab-link" aria-selected="${state.programTab === id}" href="${escapeHtml(urlFor({ screen: 'program-workspace', tab: id }))}" data-tab="${id}">${escapeHtml(label)}</a>`).join('')}</nav>`;
+      }
+
+      function quotaEditor() {
+        const program = currentProgram();
+        const cycle = currentCycle();
+        const quota = findQuota();
+        const key = quotaKey();
+        const draft = state.quotaDrafts.get(key) ?? { capacity: String(quota.capacity), note: '' };
+        const access = findRegistrarAccess();
+        const historyRows = quota.history.slice(0, 8);
+        const discussion = state.quotaDiscussionOpen ? findQuotaDiscussion() : [];
+        return `<section class="stack" aria-label="Quota editor for ${escapeHtml(program.code)} ${escapeHtml(cycle.short)}">
+          <div class="panel program-section">
+            <div class="spread"><div><h2>Program quota</h2><p class="section-intro">Capacity and commitments for ${escapeHtml(program.code)} · ${escapeHtml(cycle.label)}.</p></div><span class="tag green">Canonical editor</span></div>
+            <dl class="quota-stats"><div class="quota-stat"><dt>Capacity</dt><dd>${formatNumber(quota.capacity)}</dd></div><div class="quota-stat"><dt>Committed applicants</dt><dd>${formatNumber(quota.committed)}</dd></div><div class="quota-stat"><dt>Remaining capacity</dt><dd>${formatNumber(quotaRemaining(quota))}</dd></div></dl>
+            ${quota.committed > quota.capacity ? `<div class="inline-note danger"><strong>Existing commitments exceed capacity by ${formatNumber(quota.committed - quota.capacity)}.</strong> Current commitments remain unchanged in this draft.</div>` : ''}
+            <form class="quota-editor" data-form="quota">
+              <div class="field-grid"><div class="field"><label for="quota-capacity">Capacity slots</label><input id="quota-capacity" type="number" inputmode="numeric" min="0" max="100000" step="1" required value="${escapeHtml(draft.capacity)}" data-control="quota-capacity"><p class="helper">Only the authorized quota editor changes this value.</p></div><div class="field"><label for="quota-note">Change note <span class="muted">· optional</span></label><textarea id="quota-note" maxlength="2000" rows="3" placeholder="Record why this capacity changed." data-control="quota-note">${escapeHtml(draft.note)}</textarea><p class="helper">The note is editable; suggestions below insert starting text.</p></div></div>
+              <p class="helper">Prototype suggestions for future QA only; not shipped policy or quota guidance.</p>
+              <div><span class="field-label">Note suggestions</span><div class="suggestion-list" style="margin-top:7px"><button class="suggestion" type="button" data-action="note-suggestion" data-text="Capacity reviewed against confirmed cycle commitments.">Reviewed against commitments</button><button class="suggestion" type="button" data-action="note-suggestion" data-text="Department capacity confirmed for this academic year and semester.">Department capacity confirmed</button></div></div>
+              <div class="spread"><span class="helper">Save is in-memory only · scoped to ${escapeHtml(program.code)} and ${escapeHtml(cycle.short)}.</span><button class="button primary" type="submit">Save quota</button></div>
+              <div class="status-line" id="quota-save-status" aria-live="polite"></div>
+            </form>
+          </div>
+          <section class="panel program-section" aria-labelledby="quota-history-title"><div class="panel-header"><div><h2 id="quota-history-title">Quota change history</h2><p class="section-intro">Recent synthetic changes for ${escapeHtml(cycle.label)} · this preview shows at most eight rows.</p></div><span class="scope-pill">${historyRows.length} recent</span></div>${historyRows.length ? `<ol class="history-list">${historyRows.map((row) => `<li class="history-item"><span class="history-date">${escapeHtml(dateLabel(row.date))} · ${escapeHtml(timeLabel(row.date))}</span><div class="history-detail"><strong>${row.from === null ? 'Not set' : formatNumber(row.from)} → ${formatNumber(row.to)} slots · ${escapeHtml(row.actor)}</strong><p>${escapeHtml(row.note || 'No change note recorded.')}</p></div></li>`).join('')}</ol>` : `<div class="empty-state"><strong>No quota changes recorded</strong><p>Saved synthetic changes for this program and cycle will appear here.</p></div>`}</section>
+          <section class="panel program-section"><div class="spread"><div><h2>Quota discussion</h2><p class="section-intro">A separate thread for this program and cycle. Discussion does not mutate capacity.</p></div><button class="quiet-button" type="button" data-action="toggle-quota-discussion" aria-expanded="${state.quotaDiscussionOpen}">${state.quotaDiscussionOpen ? 'Close discussion' : 'Open thread discussion'} ${icon('chevron', 'small')}</button></div>${state.quotaDiscussionOpen ? `<div class="discussion-panel" style="margin-top:13px"><div class="spread"><div><span class="label-caps">Quota governance thread</span><p class="helper">${escapeHtml(program.code)} · ${escapeHtml(cycle.label)} · staff-governed discussion</p></div><span class="tag">No quota write rights</span></div>${discussion.map((message) => `<article class="discussion-message"><div class="discussion-meta"><strong>${escapeHtml(message.sender)}</strong><time datetime="${escapeHtml(message.time)}">${escapeHtml(dateLabel(message.time))} · ${escapeHtml(timeLabel(message.time))}</time></div><p>${escapeHtml(message.body)}</p></article>`).join('')}<form class="field" data-form="quota-discussion" style="margin-top:12px"><label for="quota-discussion-reply">Add a discussion reply</label><textarea id="quota-discussion-reply" rows="2" maxlength="8000" placeholder="Write within the quota discussion thread…" data-control="quota-discussion-draft">${escapeHtml(state.quotaDiscussionDraft)}</textarea><div class="spread"><p class="helper">Adds only a discussion message; it cannot change capacity.</p><button class="button" type="submit">Add reply</button></div></form></div>` : `<p class="helper" style="margin-top:12px">The thread is opened on demand. It remains separate from the quota editor and its change history.</p>`}</section>
+          <section class="panel program-section" aria-labelledby="registrar-controls-title"><div class="spread"><div><h2 id="registrar-controls-title">Registrar access</h2><p class="section-intro">One recipient-specific quota-governance grant, scoped to a program and academic cycle.</p></div><button class="quiet-button" type="button" data-action="toggle-registrar-controls" aria-expanded="${state.registrarControlsOpen}">${state.registrarControlsOpen ? 'Close controls' : 'Open access controls'} ${icon('lock', 'small')}</button></div>${state.registrarControlsOpen ? `<div class="access-panel" style="margin-top:13px"><div class="inline-note"><strong>${escapeHtml(registrarRecipient.name)} · ${escapeHtml(registrarRecipient.office)} recipient</strong><p>Scope: ${escapeHtml(program.code)} · ${escapeHtml(cycle.label)}. This one grant bundles quota read, quota-history read, quota-discussion read, and quota-discussion reply. It grants no quota edit or approval, applicant case, or benchmark rights.</p></div><div class="inline-note"><strong>${access.active ? 'Active bundled grant' : 'No active grant'}</strong><p>Version ${access.version} · latest receipt ${escapeHtml(access.latestReceiptId ?? 'none')} · ${access.active ? 'active' : 'revoked'}</p><p>Grant state and history are synthetic and in memory only.</p></div><form class="quota-editor" data-form="registrar-grant" data-version="${access.version}"><div class="field"><label for="registrar-grant-reason">Required reason</label><textarea id="registrar-grant-reason" name="reason" maxlength="2000" rows="2" required placeholder="Record why this bundled grant is being issued or revoked."></textarea></div><div class="row"><button class="button primary" type="submit" name="grant-action" value="issue" ${access.active ? 'disabled' : ''}>Issue bundled grant</button><button class="button danger" type="submit" name="grant-action" value="revoke" ${!access.active ? 'disabled' : ''}>Revoke bundled grant</button></div></form><h3 style="margin-top:14px">Version receipts and history</h3>${access.history.length ? `<ol class="history-list">${[...access.history].reverse().map((receipt) => `<li class="history-item"><span class="history-date">Version ${receipt.version} · ${escapeHtml(dateLabel(receipt.date))} · ${escapeHtml(timeLabel(receipt.date))}</span><div class="history-detail"><strong>${escapeHtml(receipt.action)} · ${escapeHtml(receipt.receiptId)} · ${escapeHtml(receipt.actor)}</strong><p>${escapeHtml(receipt.reason)}</p></div></li>`).join('')}</ol>` : `<div class="empty-state"><strong>No grant history for this scope</strong><p>Issue or revoke the bundled grant with a reason to append a version receipt.</p></div>`}</div>` : `<p class="helper" style="margin-top:12px">Recipient and grant history are scoped to this program and cycle. The grant does not provide quota editing, applicant case, or benchmark access.</p>`}</section>
+        </section>`;
+      }
+
+      function programOverview() {
+        const program = currentProgram();
+        const quota = findQuota();
+        return `<section class="panel program-section"><div class="overview-columns"><div><span class="label-caps">Program overview</span><h2 style="margin-top:6px">${escapeHtml(program.name)}</h2><p class="section-intro">${escapeHtml(program.description)}</p><dl class="overview-facts"><div><dt>Department</dt><dd>${escapeHtml(program.department)}</dd></div><div><dt>Academic year · semester</dt><dd>${escapeHtml(currentCycle().label)}</dd></div><div><dt>Program code</dt><dd class="mono">${escapeHtml(program.code)}</dd></div><div><dt>Quota context</dt><dd>${formatNumber(quota.capacity)} capacity · ${formatNumber(quota.committed)} committed</dd></div></dl></div><aside class="inline-note"><div class="note-title">${icon('info', 'small')} Program workspace</div><p>Announcements and policies are published content. They are not conversation messages. Quota decisions are recorded in the Quota tab; discussions do not approve them.</p><div class="row" style="margin-top:12px"><a class="table-link" href="${escapeHtml(urlFor({ tab: 'quota' }))}" data-tab="quota">Open quota ${icon('arrow', 'small')}</a><a class="table-link" href="${escapeHtml(urlFor({ screen: 'applicant-workspace' }))}" data-screen="applicant-workspace">Applicant workspace ${icon('arrow', 'small')}</a></div></aside></div></section>`;
+      }
+
+      function programDiscussions() {
+        const topics = findProgramDiscussion();
+        const activeIndex = state.programDiscussionIndex;
+        const active = activeIndex === null ? null : topics[activeIndex] ?? null;
+        const newDraft = state.programNewDiscussionDrafts.get(programNewDiscussionDraftKey()) ?? { subject: '', body: '' };
+        const replyDraft = active ? state.programDiscussionReplyDrafts.get(programDiscussionDraftKey(active.id)) ?? '' : '';
+        return `<section class="panel program-section"><div class="panel-header"><div><h2>Program discussions</h2><p class="section-intro">Staff coordination scoped to ${escapeHtml(currentProgram().code)} · ${escapeHtml(currentCycle().label)}.</p></div><div class="row"><span class="tag">Discussion only</span><button class="button" type="button" data-action="open-program-discussion-form" aria-expanded="${state.programNewDiscussionOpen}">${icon('plus', 'small')} New discussion</button></div></div><div class="inline-note"><strong>Separate from applicant messaging.</strong> These synthetic governance discussions have their own audience and context; they do not publish announcements, change policy, or mutate quota.</div>${state.programNewDiscussionOpen ? `<form class="new-thread-form" data-form="program-new-discussion" style="margin-top:12px"><h3>New program governance discussion</h3><span class="tag amber">Target behavior · atomic backend creation required</span><p class="helper">Governance threads open subject-only today. The target creates the subject and first message in one backend transaction; this is a synthetic preview only.</p><div class="field"><label for="program-discussion-subject">Subject</label><input id="program-discussion-subject" type="text" required placeholder="Name the program or cycle topic" value="${escapeHtml(newDraft.subject)}" data-control="program-discussion-subject"><p class="helper">Subject length and validation remain domain-specific backend decisions.</p></div><div class="field"><label for="program-discussion-first-message">First message</label><textarea id="program-discussion-first-message" rows="3" maxlength="8000" required placeholder="Write the first governance discussion message…" data-control="program-discussion-first-message">${escapeHtml(newDraft.body)}</textarea><p class="helper">Governance reply limit: 8,000 characters. Atomic retry identity remains a backend contract decision.</p></div><div class="row"><button class="button primary" type="submit">Preview synthetic discussion</button><button class="quiet-button" type="button" data-action="close-program-discussion-form">Cancel</button></div></form>` : ''}<div style="margin-top:11px">${topics.map((topic, index) => `<article class="discussion-topic"><div><strong>${escapeHtml(topic.title)}</strong><p>${escapeHtml(topic.preview)}</p><span class="helper">${escapeHtml(topic.owner)} · ${escapeHtml(topic.topic)}</span></div><button class="quiet-button" type="button" data-action="open-program-discussion" data-index="${index}" aria-expanded="${activeIndex === index}">${activeIndex === index ? 'Close thread' : 'Open thread'}</button></article>`).join('')}</div>${active ? `<div class="discussion-panel" style="margin-top:13px"><div class="spread"><div><h3>${escapeHtml(active.title)}</h3><p class="helper">${escapeHtml(active.owner)} · ${escapeHtml(currentProgram().code)} · ${escapeHtml(currentCycle().label)}</p></div><span class="scope-pill">Scoped thread</span></div>${active.messages.length ? active.messages.map((message) => `<article class="discussion-message"><div class="discussion-meta"><strong>${escapeHtml(message.sender)}</strong><time>${escapeHtml(dateLabel(message.time))} · ${escapeHtml(timeLabel(message.time))}</time></div><p>${escapeHtml(message.body)}</p></article>`).join('') : `<p class="helper" style="margin-top:10px">No replies in this thread yet.</p>`}<form class="field" data-form="program-discussion" data-index="${activeIndex}" style="margin-top:11px"><label for="program-discussion-reply">Add a coordination reply</label><textarea id="program-discussion-reply" rows="2" maxlength="8000" placeholder="Keep publication and quota decisions in their own workflows…" data-control="program-discussion-draft">${escapeHtml(replyDraft)}</textarea><div class="spread"><span class="helper">In-memory preview only · discussion does not change quota.</span><button class="button" type="submit">Add reply</button></div></form></div>` : ''}</section>`;
+      }
+
+      function renderPublications(kind) {
+        const rows = publications[kind];
+        const label = kind === 'announcements' ? 'Announcements' : 'Policies';
+        const preview = rows.find((item) => item.id === state.publicationPreview);
+        return `<section class="panel program-section"><div class="panel-header"><div><h2>Program ${label.toLowerCase()}</h2><p class="section-intro">Published ${kind === 'announcements' ? 'notices' : 'policies'} for ${escapeHtml(currentProgram().code)}. Publication is separate from staff and applicant conversation threads.</p></div><span class="tag green">Published content</span></div><div class="publication-list">${rows.map((item) => `<article class="publication-row"><div><button class="publication-title" type="button" data-action="preview-publication" data-id="${item.id}">${escapeHtml(item.title)}</button><p>${escapeHtml(item.summary)}</p><p class="helper">${escapeHtml(item.channel)} · Published ${escapeHtml(item.published)}</p></div><span class="status-pill green">${escapeHtml(item.kind)}</span></article>`).join('')}</div>${preview ? `<div class="publication-preview" aria-live="polite"><div class="spread"><div><span class="label-caps">Read-only publication preview</span><h3 style="margin-top:5px">${escapeHtml(preview.title)}</h3></div><button class="quiet-button" type="button" data-action="close-publication">Close</button></div><p class="preview-body">${escapeHtml(preview.body)}</p><p class="helper" style="margin-top:10px">This content is a publication preview, not a message and not editable from this prototype.</p></div>` : `<p class="helper" style="margin-top:12px">Select a title to open its read-only preview. No publisher integration or live edit is simulated.</p>`}</section>`;
+      }
+
+      function benchmarks() {
+        const benchmarks = state.programId === 'bsn' ? [['Minimum overall average', '82%'], ['Science prerequisite', '80%'], ['Program cycle', currentCycle().short]] : state.programId === 'bscs' ? [['Minimum overall average', '80%'], ['Mathematics prerequisite', '82%'], ['Program cycle', currentCycle().short]] : [['Minimum overall average', '78%'], ['Portfolio review', 'Published separately'], ['Program cycle', currentCycle().short]];
+        return `<section class="panel program-section"><div class="panel-header"><div><h2>Published benchmarks</h2><p class="section-intro">A read-only summary for ${escapeHtml(currentProgram().code)} · ${escapeHtml(currentCycle().label)}.</p></div><span class="tag">Synthetic preview</span></div><div class="overview-facts">${benchmarks.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</div><div class="inline-note" style="margin-top:14px"><strong>Separate authority.</strong><p>Benchmarks are not quota data or messaging permissions. Values are illustrative synthetic UI content and do not make an applicant decision.</p></div></section>`;
+      }
+
+      function renderProgram() {
+        const program = currentProgram();
+        const tabContent = state.programTab === 'quota' ? quotaEditor() : state.programTab === 'discussions' ? programDiscussions() : state.programTab === 'announcements' ? renderPublications('announcements') : state.programTab === 'policies' ? renderPublications('policies') : state.programTab === 'benchmarks' ? benchmarks() : programOverview();
+        return `<main class="page">
+          <header class="program-head"><div class="program-head-main"><span class="program-code-large">${icon('building', 'small')} ${escapeHtml(program.department)} · ${escapeHtml(program.code)}</span><h1>${escapeHtml(program.name)}</h1><p class="page-description">Program workspace · overview, quota governance, discussions, announcements, policies, and benchmarks.</p></div><div class="program-selectors"><div class="field"><label for="program-select">Program</label><select id="program-select" data-control="program-select">${programOptionItems().map((option) => `<option value="${option.value}" ${option.value === state.programId ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div><div class="field"><label for="program-cycle">Academic year · Semester</label><select id="program-cycle" data-control="program-cycle">${cycleOptionItems().map((option) => `<option value="${option.value}" ${option.value === state.cycleId ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div></div></header>
+          ${programTabs()}<section role="tabpanel" aria-label="${escapeHtml(state.programTab)}" id="program-panel">${tabContent}</section>
+        </main>`;
+      }
+
+      function scenarioLabel() {
+        return ({ normal: 'Normal', loading: 'Loading', empty: 'Empty', 'read-only': 'Read-only', error: 'Error on send', unknown: 'Unknown send', revoked: 'Revoked' })[state.scenario] ?? 'Normal';
+      }
+      function scenarioBar() {
+        const options = [['normal', 'Normal'], ['loading', 'Loading'], ['empty', 'Empty'], ['read-only', 'Read-only'], ['error', 'Error'], ['unknown', 'Unknown send'], ['revoked', 'Revoked']];
+        return `<div class="scenario-bar"><div class="scenario-controls"><label for="scenario-select">Conversation scenario</label><select id="scenario-select" data-control="scenario">${options.map(([key, label]) => `<option value="${key}" ${state.scenario === key ? 'selected' : ''}>${label}</option>`).join('')}</select><button class="quiet-button" type="button" data-action="reset-demo">Reset demo · restore fixtures</button></div><span class="scenario-copy">Local synthetic state only · no network calls.</span></div>`;
+      }
+      function identityForStaff() {
+        const applicant = applicantFor();
+        const actor = staffPreviewActor();
+        return `<div class="case-banner"><div class="case-identity"><strong>${escapeHtml(applicant.name)} <span class="tag" style="vertical-align:2px">Synthetic applicant</span></strong><span>${escapeHtml(applicant.application)} · ${escapeHtml(currentProgram().name)} · ${escapeHtml(currentCycle().label)}</span><span>Staff preview actor: ${escapeHtml(actor.name)} · ${escapeHtml(actor.office)} office</span></div><div class="row"><span class="scope-pill">Applicant attempt ${escapeHtml(applicant.application)}</span><span class="scope-pill">${escapeHtml(currentProgram().code)} · ${escapeHtml(currentCycle().short)}</span></div></div>`;
+      }
+      function portalBanner() {
+        const applicant = applicantFor('bsn');
+        const office = state.threadData.find((thread) => thread.id === state.selectedThreadId && thread.source === 'ApplicantOfficeInquiry')?.office;
+        return `<div class="case-banner"><div class="case-identity"><strong>${escapeHtml(applicant.name)} <span class="tag blue" style="vertical-align:2px">Applicant view</span></strong><span>${escapeHtml(applicant.application)} · Bachelor of Science in Nursing · ${escapeHtml(cycles[0].label)}</span></div><span class="scope-pill">${office ? `${escapeHtml(office)} office inquiry` : 'Your office inquiries'}</span></div>`;
+      }
+      function laneTabs(role = 'staff') {
+        if (role === 'applicant') return '';
+        const laneCount = (lane) => state.scenario === 'loading' && !state.loadingComplete ? 0 : state.threadData.filter((thread) => thread.programId === state.programId && thread.cycleId === state.cycleId && conversationLane(thread) === lane && canRead(thread, 'staff') && (state.scenario !== 'empty' || thread.synthetic)).length;
+        const internalThreads = laneCount('internal');
+        const applicantThreads = laneCount('applicant');
+        return `<div class="lane-tabs" role="tablist" aria-label="Conversation audiences"><button class="lane-tab" type="button" role="tab" aria-selected="${state.applicantLane === 'internal'}" data-action="lane" data-lane="internal">Internal staff <span class="count-pill">${internalThreads}</span></button><button class="lane-tab" type="button" role="tab" aria-selected="${state.applicantLane === 'applicant'}" data-action="lane" data-lane="applicant">With applicant <span class="count-pill">${applicantThreads}</span></button></div>`;
+      }
+      function filteredThreads(role = 'staff') {
+        return relevantThreads(role);
+      }
+      function currentListThread(role = 'staff') {
+        const list = filteredThreads(role);
+        return list.find((thread) => thread.id === state.selectedThreadId) ?? list[0] ?? null;
+      }
+      function applicantInquiryFormMarkup() {
+        if (!state.applicantInquiryOpen) return '';
+        const key = applicantInquiryDraftKey();
+        const draft = state.applicantInquiryDrafts.get(key) ?? { subject: '', body: '' };
+        const reviewing = state.applicantInquiryReviewKey === key;
+        const office = state.applicantInquiryTarget;
+        const audience = `Private ${office} office inquiry · only you and eligible ${office} office staff can read and reply.`;
+        if (reviewing) {
+          return `<form class="new-thread-form applicant-inquiry-form" data-form="create-applicant-inquiry"><div class="spread"><h3>Review exact inquiry</h3><button class="button subtle" type="button" data-action="cancel-new-inquiry">Cancel</button></div><span class="tag blue">Demo only · no production message is sent</span><div class="inline-note"><strong>To: ${escapeHtml(office)} office</strong><p>${escapeHtml(audience)}</p></div><div class="field"><span class="field-label">Subject · exact preview</span><p class="inquiry-preview-subject">${escapeHtml(draft.subject.trim())}</p></div><div class="field"><span class="field-label">First message · exact preview</span><p class="inquiry-preview-body">${escapeHtml(draft.body.trim())}</p></div><div class="row"><button class="quiet-button" type="button" data-action="edit-new-inquiry">Edit inquiry</button><button class="button primary" type="submit">Confirm &amp; create inquiry</button></div></form>`;
+        }
+        return `<form class="new-thread-form applicant-inquiry-form" data-form="review-applicant-inquiry"><div class="spread"><h3>New office inquiry</h3><button class="button subtle" type="button" data-action="cancel-new-inquiry">Cancel</button></div><span class="tag blue">Demo only · no production message is sent</span><p class="helper">This demo offers the eligible Registrar and Guidance destinations only. Choose the office that can answer your question.</p>${selectOptions('new-inquiry-office', office, [{ value: 'Registrar', label: 'Registrar office' }, { value: 'Guidance', label: 'Guidance office' }], 'Send to office', 'new-inquiry-office')}<div class="inline-note"><strong>Audience: ${escapeHtml(office)} office only</strong><p>${escapeHtml(audience)}</p></div><div class="field"><label for="new-inquiry-subject">Subject</label><input id="new-inquiry-subject" type="text" maxlength="120" required placeholder="What do you need help with?" value="${escapeHtml(draft.subject)}" data-control="new-inquiry-subject"></div><div class="field"><label for="new-inquiry-first-message">First message</label><textarea id="new-inquiry-first-message" maxlength="4000" rows="3" required placeholder="Write your question…" data-control="new-inquiry-first-message">${escapeHtml(draft.body)}</textarea></div><div class="field"><span class="field-label">Exact first-message preview</span><p class="inquiry-preview-body">${draft.body.trim() ? escapeHtml(draft.body.trim()) : 'Your exact first message will appear here before confirmation.'}</p></div><button class="button primary" type="submit">Review exact inquiry</button></form>`;
+      }
+      function threadListMarkup(role = 'staff') {
+        const threads = filteredThreads(role);
+        const selected = currentListThread(role);
+        if (selected && selected.id !== state.selectedThreadId) state.selectedThreadId = selected.id;
+        const query = role === 'applicant' ? state.applicantSearch : state.staffSearch;
+        const countLabel = role === 'applicant' ? '' : `<span class="scope-pill">${threads.length} thread${threads.length === 1 ? '' : 's'}</span>`;
+        let newForm = '';
+        if (role === 'staff' && state.applicantLane === 'internal' && state.newConversationOpen) {
+          const key = createDraftKey('internal');
+          const draft = state.newConversationDrafts.get(key) ?? { subject: '', body: '' };
+          newForm = `<form class="new-thread-form" data-form="new-thread"><div class="spread"><h3>New internal conversation</h3><button class="button subtle" type="button" data-action="close-new-thread" aria-label="Close new conversation">×</button></div><span class="tag amber">Target behavior · backend contract change required</span><p class="helper">Opening the subject and first message must be one atomic backend action. This form creates only a synthetic preview.</p><div class="field"><label for="new-thread-subject">Subject</label><input id="new-thread-subject" type="text" required placeholder="A clear subject for the staff discussion" value="${escapeHtml(draft.subject)}" data-control="new-subject"><p class="helper">Subject validation remains specific to the record-thread backend contract.</p></div><div class="field"><label for="new-thread-first-message">First message</label><textarea id="new-thread-first-message" rows="3" maxlength="4000" required placeholder="Write the first staff-only message…" data-control="new-first-message">${escapeHtml(draft.body)}</textarea><p class="helper">Record-thread message limit shown here: 4,000 characters. No generic recipient picker.</p></div><button class="button primary" type="submit">Preview synthetic conversation</button></form>`;
+        } else if (role === 'applicant') {
+          newForm = applicantInquiryFormMarkup();
+        }
+        const loading = state.scenario === 'loading' && !state.loadingComplete;
+        const listBody = loading ? `<div class="empty-state"><strong>Loading authorized thread list…</strong><p>This is a manual synthetic loading state. Complete it to reveal the local fixture.</p><button class="button" type="button" data-action="complete-loading" style="margin-top:11px">Complete synthetic load</button></div>` : threads.length ? threads.map((thread) => `<button class="thread-list-button" type="button" data-action="select-thread" data-thread="${thread.id}" aria-current="${thread.id === state.selectedThreadId}"><span class="thread-list-subject"><span>${escapeHtml(thread.subject)}</span>${role === 'staff' && thread.unread > 0 ? `<span class="unread-tag">${thread.unread} unread</span>` : ''}</span><span class="thread-list-meta"><span>${escapeHtml(thread.source === 'ApplicantOfficeInquiry' ? `${thread.office} office inquiry` : conversationLane(thread) === 'internal' ? 'Internal staff' : 'With applicant')}</span>${thread.status === 'closed' ? '<span class="closed-tag">Closed</span>' : ''}</span>${role === 'staff' ? `<span class="thread-list-audience">${escapeHtml(thread.scopeLabel)}</span>` : ''}</button>`).join('') : `<div class="empty-state"><strong>${state.scenario === 'empty' ? 'No conversations in this scenario' : query ? 'No matching subjects' : role === 'applicant' ? 'No eligible office inquiries' : state.applicantLane === 'internal' ? 'No internal staff conversations' : 'No applicant conversations'}</strong><p>${role === 'applicant' ? 'Only your eligible Registrar or Guidance office inquiries appear here. Staff-only threads and staff counts are not part of this view.' : state.applicantLane === 'internal' ? 'Start a target internal conversation with a subject and first message, or switch to the applicant lane.' : 'Assigned-program support stays in its own record context. This role does not start applicant-support threads from this workspace.'}</p></div>`;
+        return `<aside class="conversation-sidebar thread-list-pane" aria-label="${role === 'applicant' ? 'Eligible office inquiries' : 'Conversation list'}"><div class="sidebar-head"><div class="sidebar-title-row"><h2>${role === 'applicant' ? 'Office inquiries' : 'Conversations'}</h2>${countLabel}</div>${role === 'staff' ? laneTabs(role) : ''}<div class="search-wrap">${icon('search')}<label class="sr-only" for="thread-search">Search conversation subjects</label><input id="thread-search" type="search" autocomplete="off" placeholder="Search subjects" value="${escapeHtml(query)}" data-control="thread-search" aria-label="Search conversation subjects"></div>${role === 'staff' && state.applicantLane === 'internal' ? `<div class="sidebar-action"><span class="helper">Staff-only audience</span><button class="button" type="button" data-action="open-new-thread">${icon('plus', 'small')} New conversation</button></div>` : role === 'staff' ? `<div class="sidebar-action"><span class="helper">Office-matched inquiries and assigned support only</span></div>` : `<div class="sidebar-action"><span class="helper">Demo only · synthetic inquiry creation</span><button class="button" type="button" data-action="open-new-inquiry">${icon('plus', 'small')} New inquiry</button></div>`}</div>${newForm}<div class="thread-list" role="list">${listBody}</div></aside>`;
+      }
+      function threadContextPanel(role = 'staff', thread = currentListThread(role)) {
+        const applicant = role === 'applicant' ? applicantFor('bsn') : applicantFor();
+        return `<aside class="context-panel" aria-label="Case context"><h2>Case context</h2><div class="context-section"><dt>Applicant</dt><dd>${escapeHtml(applicant.name)}</dd><p class="mono">${escapeHtml(applicant.application)}</p></div><div class="context-section"><dt>Program and cycle</dt><dd>${escapeHtml(role === 'applicant' ? 'BSN' : currentProgram().code)} · ${escapeHtml(role === 'applicant' ? cycles[0].short : currentCycle().short)}</dd></div><div class="context-section"><dt>Conversation audience</dt><dd>${thread ? escapeHtml(thread.audience) : role === 'applicant' ? 'Eligible office only' : state.applicantLane === 'internal' ? 'Authorized admissions and guidance staff' : 'Applicant-visible participants'}</dd><p>${thread ? escapeHtml(thread.scopeLabel) : 'Select a conversation to inspect its audience.'}</p></div><div class="context-section"><dt>Record boundary</dt><dd>Conversation is not a decision</dd><p>Eligibility, advising notes, and quota changes remain in their governed records.</p></div></aside>`;
+      }
+      function conversationContent(role = 'staff') {
+        const thread = currentListThread(role);
+        if (state.scenario === 'loading' && !state.loadingComplete) return `<section class="conversation-main thread-pane" aria-label="Conversation loading"><div class="thread-head"><button class="quiet-button back-button" type="button" data-action="back-list">${icon('arrow-left', 'small')} Back to list</button><h2>Loading conversation</h2><p class="section-intro">Authorized messages will appear after the local loading scenario completes.</p></div><div class="message-stream"><div class="empty-state"><strong>Loading protected history…</strong><p>No history is exposed until this synthetic load completes.</p><button class="button" type="button" data-action="complete-loading" style="margin-top:11px">Complete synthetic load</button></div></div></section>`;
+        if (!thread) return `<section class="conversation-main thread-pane" aria-label="No selected conversation"><div class="thread-head"><button class="quiet-button back-button" type="button" data-action="back-list">${icon('arrow-left', 'small')} Back to list</button><h2>No conversation selected</h2><p class="section-intro">Choose a subject from the list to read its eligible history.</p></div><div class="message-stream"><div class="empty-state"><strong>Choose a conversation</strong><p>${role === 'applicant' ? 'Only your eligible office inquiry conversations can be opened in this applicant view.' : 'The list shows only threads available to the selected office preview actor.'}</p></div></div></section>`;
+        if (!canRead(thread, role)) return `<section class="conversation-main thread-pane" aria-label="Conversation access unavailable"><div class="message-stream"><div class="inline-note danger" role="status"><div class="note-title">${icon('lock', 'small')} Conversation unavailable</div><p>Protected conversation details are hidden because this preview actor cannot access them. Reset demo restores the synthetic fixtures.</p></div></div></section>`;
+        const status = effectiveStatus(thread);
+        const principalId = activeActorId(role);
+        const draft = activeConversationDraft(thread, role, principalId);
+        const messages = thread.messages.map((message) => ({
+          ...message,
+          self: message.senderRole ? message.senderRole === role && message.senderId === principalId : role === 'applicant' ? message.sender === applicantFor('bsn').name : message.self,
+        }));
+        const canSendCurrent = canSend(thread, role, principalId);
+        const audienceText = role === 'applicant' ? `Private ${thread.office} office inquiry · only you and eligible ${thread.office} office staff can read these messages.` : thread.audience;
+        const closedNote = status === 'closed' ? 'This conversation is closed. Its history remains readable, but new messages are unavailable.' : status === 'read_only' ? 'This conversation is read-only. History remains available; new messages are unavailable.' : '';
+        const pendingPanel = draft.pending ? `<div class="send-pending" role="status" aria-live="polite"><p><strong>${draft.pending.state === 'sending' ? 'Sending this exact message…' : draft.pending.state === 'unknown' ? 'The send result is unknown. The server may already have accepted it.' : 'The synthetic send returned an error.'}</strong> The message text and send identity stay unchanged until confirmed.</p><span class="pending-identity">${escapeHtml(draft.pending.id)}</span><div class="field"><span class="field-label">Exact pending text</span><p class="pending-exact-message">${escapeHtml(draft.pending.body)}</p></div>${draft.pending.state !== 'sending' ? `<div class="row"><button class="button primary" type="button" data-action="retry-send" data-thread="${thread.id}">Retry same message</button><span class="helper">Retry reuses this exact identity and cannot create a duplicate.</span>${draft.pending.state === 'unknown' ? `<button class="quiet-button" type="button" data-action="abandon-send" data-thread="${thread.id}">Abandon retry</button><span class="helper">Abandoning cannot undo a message already saved on the server.</span>` : ''}</div>` : ''}</div>` : '';
+        const composer = canSendCurrent ? `<form class="composer" data-form="send-message" data-thread="${thread.id}"><div class="field"><label for="message-composer">${role === 'applicant' ? 'Reply to this office inquiry' : 'Your message'}</label><textarea id="message-composer" maxlength="4000" rows="3" placeholder="Write a message…" data-control="message-draft" data-thread="${thread.id}" ${draft.pending ? 'disabled' : ''}>${escapeHtml(draft.body)}</textarea><p class="helper">${role === 'applicant' ? 'Replies stay in this eligible office-inquiry thread.' : 'Press Enter for a new line. Ctrl+Enter or Command+Enter sends. This thread has its own audience.'} · 4,000-character message limit.</p></div>${pendingPanel}${draft.feedback ? `<p class="helper" role="status">${escapeHtml(draft.feedback)}</p>` : ''}<div class="composer-bottom"><span class="helper">${escapeHtml(audienceText)}</span><button class="button primary" type="submit" ${draft.pending ? 'disabled' : ''}>${icon('send', 'small')} Send message</button></div></form>` : `<div class="composer"><div class="inline-note ${status === 'closed' || status === 'read_only' ? '' : 'danger'}"><strong>${escapeHtml(closedNote || (role === 'applicant' ? 'This office inquiry is not available for replies.' : 'Replies are unavailable for this conversation.'))}</strong><p>${escapeHtml(audienceText)}</p></div></div>`;
+        return `<section class="conversation-main thread-pane" aria-label="Conversation thread"><header class="thread-head"><button class="quiet-button back-button" type="button" data-action="back-list">${icon('arrow-left', 'small')} Back to list</button><div class="thread-head-row"><div class="thread-title-wrap"><h2>${escapeHtml(thread.subject)}</h2><p>${escapeHtml(thread.source)} · ${escapeHtml(role === 'applicant' ? 'Applicant view' : `${currentProgram().code} · ${currentCycle().short}`)}</p><div class="thread-labels"><span class="audience-pill">${icon(role === 'applicant' || thread.type === 'applicant' ? 'users' : 'lock', 'small')}${escapeHtml(audienceText)}</span><span class="status-pill ${status === 'open' ? 'green' : status === 'closed' ? '' : 'amber'}">${escapeHtml(labelForStatus(status))}</span>${role === 'staff' && thread.unread ? `<span class="unread-tag">${thread.unread} unread</span>` : ''}</div></div><span class="scope-pill">${escapeHtml(role === 'applicant' ? 'Your office inquiry' : thread.type === 'internal' ? 'Staff only' : 'Applicant-visible')}</span></div><div class="thread-toolbar"><span>${messages.length ? `${messages.length} synthetic messages · ${escapeHtml(audienceText)}` : 'No messages in this conversation yet.'}</span>${role === 'staff' ? '<span class="helper">No decision or quota mutation occurs in chat.</span>' : ''}</div></header><div class="message-stream" role="region" aria-label="Conversation messages" tabindex="0"><span class="message-day">${messages.length ? escapeHtml(dateLabel(messages[messages.length - 1].createdAt)) : 'Conversation opened'}</span>${messages.length ? messages.map((message) => `<div class="message-row ${message.self ? 'self' : ''}"><article class="message-bubble"><div class="message-meta"><strong>${escapeHtml(message.sender)}${message.self ? ' · You' : ''}</strong><time datetime="${escapeHtml(message.createdAt)}">${escapeHtml(timeLabel(message.createdAt))}</time></div><p>${escapeHtml(message.body)}</p></article></div>`).join('') : `<div class="empty-state"><strong>No messages yet</strong><p>The thread is open, but no conversation history is present in this synthetic fixture.</p></div>`}</div>${composer}</section>`;
+      }
+      function newVariantBTools(role = 'staff') {
+        const query = role === 'applicant' ? state.applicantSearch : state.staffSearch;
+        return `<div class="variant-b-tools">${role === 'staff' ? laneTabs(role) : `<span class="tag blue">Eligible office inquiries only</span>`}<div class="search-wrap">${icon('search')}<label class="sr-only" for="thread-search">Search conversation subjects</label><input id="thread-search" type="search" placeholder="Search subjects" autocomplete="off" value="${escapeHtml(query)}" data-control="thread-search" aria-label="Search conversation subjects"></div>${role === 'staff' && state.applicantLane === 'internal' ? `<button class="button" type="button" data-action="open-new-thread">${icon('plus', 'small')} New conversation</button>` : ''}</div>`;
+      }
+      function renderConversationWorkspace(role = 'staff') {
+        const selectedThread = getThread(state.selectedThreadId);
+        if (selectedThread && !canRead(selectedThread, role)) {
+          const title = role === 'applicant' ? 'Applicant messages' : 'Applicant workspace';
+          return `<main class="page">${heading(title, 'Conversation details are not available to this preview actor.')}${scenarioBar()}<section class="panel program-section" role="status" aria-label="Conversation unavailable"><div class="inline-note danger"><div class="note-title">${icon('lock', 'small')} Conversation unavailable</div><p>Access to this conversation is unavailable. Its subject, audience, participants, message count, message history, and draft are hidden. Use Reset demo · restore fixtures to begin again.</p></div></section></main>`;
+        }
+        const program = role === 'applicant' ? programs[0] : currentProgram();
+        const cycle = role === 'applicant' ? cycles[0] : currentCycle();
+        const banner = role === 'applicant' ? portalBanner() : identityForStaff();
+        const bodyVariant = state.variant === 'A' ? `<div class="conversation-shell variant-a ${state.mobileDetail ? 'mobile-show-thread' : ''}">${threadListMarkup(role)}${conversationContent(role)}${threadContextPanel(role)}</div>` : `<div class="variant-b-top"><div class="variant-b-identity"><strong>${escapeHtml(role === 'applicant' ? 'Your messages with an office' : 'Conversation workspace')}</strong><span>${escapeHtml(program.code)} · ${escapeHtml(cycle.label)} · ${role === 'applicant' ? 'private office inquiry' : 'select a lane, then focus on the thread'}</span></div>${newVariantBTools(role)}</div><div class="conversation-shell variant-b ${state.mobileDetail ? 'mobile-show-thread' : ''}">${threadListMarkup(role)}${conversationContent(role)}</div>`;
+        const screenTitle = role === 'applicant' ? 'Applicant messages' : 'Applicant workspace';
+        const description = role === 'applicant' ? 'A private applicant-facing view of your eligible office inquiries only. Internal staff threads and staff counts are never included.' : 'Case conversations grouped by audience. Applicant identity, application, and academic cycle stay visible beside the thread.';
+        const applicantNote = role === 'applicant' ? `<div class="applicant-view-note"><strong>Office-only view.</strong> Only your eligible Registrar or Guidance office inquiries appear here. New inquiry creation is demo-only and creates synthetic content in this page; no production message is sent.</div>` : '';
+        const actorSelector = role === 'staff' ? selectOptions('staff-preview-actor', state.staffPreviewActorId, staffPreviewActorOptions(), 'Staff preview actor · office', 'staff-preview-actor') : '';
+        return `<main class="page ${state.mobileDetail ? 'mobile-detail' : ''}">${heading(screenTitle, description)}${applicantNote}${scenarioBar()}${banner}${state.scenario === 'revoked' && !state.selectedThreadId ? `<div class="inline-note danger" style="margin:12px 0">Choose a protected conversation before applying the Revoked scenario.</div>` : ''}${role === 'staff' ? `<div class="row" style="margin:11px 0 12px">${actorSelector}${selectOptions('conversation-program', state.programId, programOptionItems(), 'Program', 'conversation-program')}${selectOptions('conversation-cycle', state.cycleId, cycleOptionItems(), 'Academic year · Semester', 'conversation-cycle')}</div>` : ''}${bodyVariant}</main>`;
+      }
+
+      function flowPanel() {
+        return `<main class="page">
+          ${heading('Flow & boundaries', 'A presentation prototype for reviewing workspace separation. The current state is evidence; the proposed behavior is not an implementation or authorization promise.')}
+          <div class="inline-note" style="margin-bottom:14px"><strong>Typography baseline.</strong> This standalone lab uses the incumbent Inter/system-sans stack without a remote font dependency. The production IBM Plex contract remains separate and unchanged.</div>
+          <div class="flow-layout">
+            <section class="panel flow-column"><h2>${icon('book', 'small')} Current baseline</h2><p class="section-intro">Observed in the named source references and backend review.</p><ul><li><strong>CaseConversation</strong> renders authorized messages in an existing conversation, aligns self/other messages, and holds a 4,000-character draft with exact retry identity.</li><li><strong>OfficeInquiryWorkspace</strong> currently mounts that conversation component; applicant-support cards remain static, so this draft does not claim a blanket chat rollout.</li><li><strong>Applicant support initiation is not universal.</strong> Current assigned-program support is distinct; Guidance cannot initiate those case threads from this prototype surface.</li><li><strong>Program governance discussion</strong> opens subject-only today; first-message opening is not already an atomic thread-creation capability.</li><li><strong>Program Hub</strong> has quota governance, discussion, and separate announcements/policies tabs. The cross-program quota editor is duplicated in setup today.</li><li>Quota History is a recent-change projection (up to eight entries), not a full unbounded history API. The preview shows at most eight rows.</li><li>Applicant office inquiry is a separate office-scoped channel. Eligibility and available Registrar/Guidance destinations are server-controlled, not a generic recipient picker.</li></ul><p class="helper" style="margin-top:13px">References: <code>CaseConversation.svelte</code> · <code>Setup/Programs/Hub.svelte</code> · source files are read-only for this lab.</p></section>
+            <section class="panel flow-column"><h2>${icon('spark', 'small')} Proposed validation target</h2><p class="section-intro">What this draft lets a founder review, with no production endpoints.</p><ul><li>One <strong>cross-program, cycle-scoped quota overview</strong> with totals and Open quota links only; one canonical editor inside each Program workspace.</li><li>The editor retains capacity, committed, remaining, optional note suggestions, in-memory save, recent history, on-demand discussion, and a named-recipient Registrar grant bundling quota/history read with quota-discussion read/reply and a versioned reason receipt.</li><li>Applicant workspace separates <strong>Internal staff</strong> from <strong>With applicant</strong>. Staff cannot create a new applicant-support thread here.</li><li>Applicant Messages presents only the applicant's eligible office inquiries. A demo-only New inquiry choice for eligible Registrar/Guidance offices previews exact content before creating one synthetic thread and first message together.</li><li>Proposed subject + first-message opening is explicitly <strong>target behavior requiring an atomic backend contract migration</strong>; synthetic creation does not call production endpoints.</li></ul></section>
+          </div>
+          <section class="panel boundary-panel"><div class="panel-header"><div><h2>Backend and authority holds</h2><p class="section-intro">A shared chat presentation does not imply shared storage, authorization, audience, or cursors.</p></div><span class="tag amber">Not implemented here</span></div><div class="contract-list"><div class="contract-item"><strong>ProgramGovernanceThread</strong><p>Institution + program + academic cycle + topic. Staff configuration discussion; opening is subject-only today. The target creates the subject and first message atomically; replies use the governance 8,000-character limit.</p></div><div class="contract-item"><strong>RecordThread</strong><p>Admission attempt + program + type. Keep internal Guidance/Program Head discussion distinct from applicant-support. Case message bodies are 4,000 characters; do not imply a generic role can initiate support.</p></div><div class="contract-item"><strong>ApplicantOfficeInquiry</strong><p>Institution + cycle + attempt + applicant identity + destination office. Applicant inquiry opening uses its own 120-character subject / 4,000-character body contract and is currently limited to eligible local/testing registered-demo actors.</p></div><div class="contract-item"><strong>Quota save and access grants</strong><p>Registrar access remains scoped read/history/discussion only. Discussion cannot change quota. Expected-version, locking, idempotency, and full history semantics remain backend decisions; the in-memory Save button proves none of them.</p></div><div class="contract-item"><strong>Atomic first message</strong><p>Target governance/internal creation requires one transaction for thread + initial message and a stable idempotency identity. A lost/unknown result must preserve exact text and identity through retry.</p></div><div class="contract-item"><strong>Keep other records separate</strong><p>Announcements/policies are publication, not messaging. Advising notes remain revisioned records; chat does not decide admissions or quota. No presence, read ticks, uploads, or integrations are represented.</p></div></div></section>
+          <section class="panel boundary-panel"><h2>Manual click scenarios</h2><p class="section-intro">Use the top navigation, scenario selector, and bottom variant switcher. Every action changes in-memory state only.</p><ol class="manual-list"><li>Open <code>?screen=program-workspace&amp;program=bsn&amp;tab=quota</code>; save a new capacity and note, then switch program or cycle to confirm isolation.</li><li>Open Registrar access controls; issue or revoke the single bundled grant to R. Villanueva with a reason, then inspect the version receipt and history. It grants no quota edit, case, or benchmark rights.</li><li>Open Program workspace → Discussions; draft a reply in one topic, switch topics and programs, then return to confirm only the matching program/cycle/topic/actor draft returns.</li><li>Open Applicant workspace; compare Guidance and Registrar preview actors. Guidance cannot read or reply to the Registrar inquiry; office-matched threads and counts change with the actor.</li><li>Switch Internal staff / With applicant, search subjects, and create a synthetic internal thread; no assigned-program support thread is opened here.</li><li>Choose <code>Error</code> or <code>Unknown send</code>; send a message, inspect its locked exact text and identity, retry the same identity, or explicitly abandon an unknown result with the non-recall warning.</li><li>Choose <code>Read-only</code> or select the Closed thread; history stays readable while the composer is unavailable.</li><li>Choose <code>Revoked</code>; all selected conversation list metadata, transcript, draft, and pending work disappear. Reset demo restores synthetic fixtures.</li><li>Choose <code>Loading</code>, then Complete synthetic load; choose <code>Empty</code> for a helpful no-thread state.</li><li>Open Applicant messages; verify only your eligible office inquiries appear, then create a demo inquiry, review its exact subject, audience, and first message, and cancel or confirm.</li></ol></section>
+        </main>`;
+      }
+
+      function render() {
+        renderNav();
+        let html = '';
+        if (state.screen === 'organization') html = renderOrganization();
+        else if (state.screen === 'quota-overview') html = renderQuotaOverview();
+        else if (state.screen === 'program-workspace') html = renderProgram();
+        else if (state.screen === 'applicant-workspace') html = renderConversationWorkspace('staff');
+        else if (state.screen === 'applicant-messages') html = renderConversationWorkspace('applicant');
+        else html = flowPanel();
+        document.getElementById('view').innerHTML = html;
+        document.documentElement.dataset.theme = state.theme;
+        document.querySelectorAll('.variant-button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.variant === state.variant)));
+      }
+
+      function updateHistory(push = true) {
+        saveUrl(!push);
+      }
+      function resetScreenView(screen) {
+        const previousScreen = state.screen;
+        if (previousScreen === 'applicant-workspace' && screen !== 'applicant-workspace') {
+          state.staffReturnThreadId = state.selectedThreadId;
+          state.staffReturnLane = state.applicantLane;
+        }
+        if (previousScreen === 'applicant-messages' && screen !== 'applicant-messages') {
+          state.applicantReturnThreadId = state.selectedThreadId;
+          state.applicantInquiryDrafts.clear();
+        }
+        state.screen = screen;
+        state.mobileDetail = false;
+        state.staffSearch = '';
+        state.applicantSearch = '';
+        state.publicationPreview = null;
+        state.quotaDiscussionOpen = false;
+        state.registrarControlsOpen = false;
+        state.newConversationOpen = false;
+        state.applicantInquiryOpen = false;
+        state.applicantInquiryReviewKey = null;
+        state.programNewDiscussionOpen = false;
+        state.programDiscussionIndex = null;
+        if (screen === 'applicant-workspace') {
+          state.applicantLane = state.staffReturnLane ?? 'internal';
+          const list = relevantThreads('staff');
+          state.selectedThreadId = list.some((thread) => thread.id === state.staffReturnThreadId) ? state.staffReturnThreadId : list[0]?.id ?? null;
+        } else if (screen === 'applicant-messages') {
+          const list = relevantThreads('applicant');
+          state.selectedThreadId = list.some((thread) => thread.id === state.applicantReturnThreadId) ? state.applicantReturnThreadId : list[0]?.id ?? null;
+        }
+      }
+      function chooseScreen(screen, push = true) {
+        if (!screenNames.includes(screen)) return;
+        resetScreenView(screen);
+        updateHistory(push);
+        render();
+      }
+      function switchStaffPreviewActor(actorId) {
+        if (!staffPreviewActors.some((actor) => actor.id === actorId) || actorId === state.staffPreviewActorId) return;
+        const previousActorId = state.staffPreviewActorId;
+        const draftPrefix = `staff|${previousActorId}|`;
+        for (const key of [...state.threadDrafts.keys()]) if (key.startsWith(draftPrefix)) state.threadDrafts.delete(key);
+        for (const key of [...state.newConversationDrafts.keys()]) if (key.startsWith(draftPrefix)) state.newConversationDrafts.delete(key);
+        state.staffPreviewActorId = actorId;
+        state.applicantLane = 'applicant';
+        state.staffSearch = '';
+        state.newConversationOpen = false;
+        state.mobileDetail = false;
+        const list = relevantThreads('staff');
+        state.staffReturnLane = 'applicant';
+        state.staffReturnThreadId = list[0]?.id ?? null;
+        state.selectedThreadId = state.staffReturnThreadId;
+        render();
+        const actor = staffPreviewActor();
+        updateStatus(`Preview actor changed to ${actor.name} · ${actor.office}. Prior actor's unsent message drafts and pending work were cleared.`);
+      }
+      function openProgram(programId, tab = 'overview') {
+        if (!programs.some((program) => program.id === programId)) return;
+        state.programId = programId;
+        state.departmentId = ({ bsn: 'health', bscs: 'computing', bacomm: 'arts' })[programId];
+        state.programTab = ['overview', 'quota', 'discussions', 'announcements', 'policies', 'benchmarks'].includes(tab) ? tab : 'overview';
+        state.screen = 'program-workspace';
+        state.publicationPreview = null;
+        state.quotaDiscussionOpen = false;
+        state.registrarControlsOpen = false;
+        state.programDiscussionIndex = null;
+        state.programNewDiscussionOpen = false;
+        updateHistory(true);
+        render();
+      }
+      function setVariant(variant) {
+        state.variant = variant === 'B' ? 'B' : 'A';
+        updateHistory(false);
+        render();
+        const layout = state.screen === 'organization'
+          ? state.variant === 'A' ? 'guided hierarchy' : 'all-departments directory'
+          : state.variant === 'A' ? 'context embedded' : 'conversation focused';
+        updateStatus(`Variant ${state.variant} selected · ${layout}.`);
+      }
+      function activateScenario(value) {
+        const beforeThread = currentListThread(roleForScreen()) ?? getCurrentThread();
+        state.scenario = value;
+        state.loadingComplete = false;
+        if (value === 'revoked' && beforeThread) revokeThread(beforeThread, roleForScreen(), activeActorId(roleForScreen()));
+        if (value === 'empty') state.mobileDetail = false;
+        render();
+        updateStatus(`Conversation scenario: ${scenarioLabel()}. Synthetic state only.`);
+      }
+      function revokeThread(thread, role = roleForScreen(), principalId = activeActorId(role)) {
+        if (!thread) return;
+        state.revokedThreads.add(revokedKeyFor(thread, role, principalId));
+        thread.messages = [];
+        thread.subject = '';
+        thread.audience = '';
+        thread.scopeLabel = '';
+        thread.unread = 0;
+        thread.status = 'revoked';
+        const prefix = `${role}|${principalId}|${thread.attempt}|${thread.programId}|${thread.cycleId}|`;
+        for (const key of [...state.threadDrafts.keys()]) if (key.startsWith(prefix) && key.endsWith(`|${thread.id}`)) state.threadDrafts.delete(key);
+      }
+      function createSyntheticThread(subject, body) {
+        const applicant = applicantFor();
+        const id = `synthetic-${++state.createdSequence}`;
+        const openingId = `lab-opening-${String(state.createdSequence).padStart(4, '0')}`;
+        const actor = staffPreviewActor();
+        const thread = {
+          id, type: 'internal', source: 'RecordThread · proposed', programId: state.programId, cycleId: state.cycleId, attempt: applicant.attempt,
+          subject, status: 'open', unread: 0, eligible: true, synthetic: true,
+          audience: 'Internal · authorized admissions and guidance staff', scopeLabel: 'Staff only · synthetic target preview',
+          messages: [{ id: openingId, sender: actor.name, senderRole: 'staff', senderId: actor.id, self: true, createdAt: nowIso(), body }],
+        };
+        state.threadData.unshift(thread);
+        state.newConversationDrafts.set(createDraftKey('internal'), { subject: '', body: '' });
+        state.selectedThreadId = id;
+        state.staffReturnThreadId = id;
+        state.applicantLane = 'internal';
+        state.staffReturnLane = 'internal';
+        state.newConversationOpen = false;
+        state.mobileDetail = true;
+        state.scenario = 'normal';
+        updateHistory(true);
+        render();
+        updateStatus(`Synthetic thread preview opened with ${openingId}. In production, the thread and first message must be created atomically; no backend request was made.`);
+      }
+      function setApplicantInquiryDraft(field, value) {
+        const key = applicantInquiryDraftKey();
+        const current = state.applicantInquiryDrafts.get(key) ?? { subject: '', body: '' };
+        state.applicantInquiryDrafts.set(key, { ...current, [field]: value });
+      }
+      function cancelApplicantInquiry() {
+        state.applicantInquiryDrafts.delete(applicantInquiryDraftKey());
+        state.applicantInquiryOpen = false;
+        state.applicantInquiryReviewKey = null;
+        render();
+        updateStatus('New inquiry canceled. No conversation or message was created.');
+      }
+      function createSyntheticApplicantInquiry() {
+        const key = applicantInquiryDraftKey();
+        const draft = state.applicantInquiryDrafts.get(key) ?? { subject: '', body: '' };
+        if (!draft.subject.trim() || !draft.body.trim() || state.applicantInquiryReviewKey !== key) {
+          updateStatus('Review a subject and first message before confirming this inquiry.');
+          return;
+        }
+        const applicant = applicantFor('bsn');
+        const sequence = ++state.createdSequence;
+        const openingId = `lab-inquiry-opening-${String(sequence).padStart(4, '0')}`;
+        const thread = {
+          id: `synthetic-office-inquiry-${String(sequence).padStart(4, '0')}`,
+          type: 'applicant',
+          source: 'ApplicantOfficeInquiry',
+          office: state.applicantInquiryTarget,
+          programId: 'bsn',
+          cycleId: '2026-27-s1',
+          attempt: applicant.attempt,
+          subject: draft.subject.trim(),
+          status: 'open',
+          unread: 0,
+          eligible: true,
+          synthetic: true,
+          audience: `Private ${state.applicantInquiryTarget} office inquiry · visible to ${applicant.name} and eligible ${state.applicantInquiryTarget} staff`,
+          scopeLabel: `Applicant-visible · ${state.applicantInquiryTarget} office only`,
+          messages: [{ id: openingId, sender: applicant.name, senderRole: 'applicant', senderId: activeActorId('applicant'), self: false, createdAt: nowIso(), body: draft.body.trim() }],
+        };
+        state.threadData.unshift(thread);
+        state.applicantInquiryDrafts.delete(key);
+        state.applicantInquiryOpen = false;
+        state.applicantInquiryReviewKey = null;
+        state.applicantSearch = '';
+        state.selectedThreadId = thread.id;
+        state.applicantReturnThreadId = thread.id;
+        state.mobileDetail = true;
+        state.scenario = 'normal';
+        updateHistory(true);
+        render();
+        updateStatus(`Synthetic ${thread.office} inquiry created with its first message together (${openingId}). Demo only; no production message was sent.`);
+      }
+      function handleSend(threadId, retry = false) {
+        const thread = getThread(threadId);
+        const role = roleForScreen();
+        const principalId = activeActorId(role);
+        if (!thread || !canSend(thread, role, principalId)) return;
+        const lane = role === 'applicant' ? 'applicant' : conversationLane(thread);
+        const key = draftKeyFor(thread, lane, role, principalId);
+        const scope = threadScopeKey(thread);
+        const draft = state.threadDrafts.get(key) ?? { body: '', pending: null, feedback: '', sendState: 'idle' };
+        let pending = draft.pending;
+        if (!pending) {
+          if (!draft.body.trim()) {
+            updateStatus('Enter a message before sending.');
+            return;
+          }
+          pending = { id: `lab-send-${String(++state.sendSequence).padStart(4, '0')}`, body: draft.body, state: 'sending', attempts: 0 };
+        } else if (retry) {
+          pending = { ...pending, state: 'sending', attempts: pending.attempts + 1 };
+        } else {
+          return;
+        }
+        const pendingIdentity = { id: pending.id, body: pending.body, attempts: pending.attempts };
+        state.threadDrafts.set(key, { ...draft, pending, sendState: 'sending', feedback: '' });
+        render();
+        window.setTimeout(() => {
+          const latest = state.threadDrafts.get(key);
+          if (!latest?.pending || latest.pending.id !== pendingIdentity.id || latest.pending.body !== pendingIdentity.body || threadScopeKey(thread) !== scope) return;
+          if (!canSend(thread, role, principalId)) {
+            state.threadDrafts.delete(key);
+            render();
+            updateStatus(`Protected send ${pendingIdentity.id} was canceled because access was lost. Its text and pending identity were cleared.`);
+            return;
+          }
+          if (state.scenario === 'error' && pendingIdentity.attempts === 0) {
+            state.threadDrafts.set(key, { ...latest, pending: { ...latest.pending, state: 'error' }, sendState: 'error', feedback: 'Synthetic send failed. Text and identity are retained; retry the exact message.' });
+            render();
+            updateStatus(`Synthetic send error · retained ${pendingIdentity.id}.`);
+            return;
+          }
+          if (state.scenario === 'unknown' && pendingIdentity.attempts === 0) {
+            state.threadDrafts.set(key, { ...latest, pending: { ...latest.pending, state: 'unknown' }, sendState: 'uncertain', feedback: 'The result is unknown. The message may already exist; retry uses the same identity.' });
+            render();
+            updateStatus(`Unknown result · retained exact text and ${pendingIdentity.id} for safe retry.`);
+            return;
+          }
+          if (!thread.messages.some((message) => message.id === pendingIdentity.id)) {
+            const sender = role === 'applicant' ? applicantFor('bsn').name : `${staffPreviewActor(principalId).name} · ${staffPreviewActor(principalId).office}`;
+            thread.messages.push({ id: pendingIdentity.id, sender, senderRole: role, senderId: principalId, self: true, createdAt: nowIso(), body: pendingIdentity.body });
+          }
+          state.threadDrafts.set(key, { ...latest, body: '', pending: null, sendState: 'idle', feedback: '' });
+          thread.unread = 0;
+          render();
+          updateStatus(`Message ${pendingIdentity.id} confirmed once in the synthetic thread.`);
+        }, 180);
+      }
+      function abandonPendingSend(threadId) {
+        const thread = getThread(threadId);
+        const role = roleForScreen();
+        const principalId = activeActorId(role);
+        if (!thread) return;
+        const key = draftKeyFor(thread, role === 'applicant' ? 'applicant' : conversationLane(thread), role, principalId);
+        const draft = state.threadDrafts.get(key);
+        if (draft?.pending?.state !== 'unknown') return;
+        const id = draft.pending.id;
+        state.threadDrafts.set(key, { ...draft, body: '', pending: null, sendState: 'idle', feedback: 'Retry abandoned. If the server saved this message, it cannot be undone here.' });
+        render();
+        updateStatus(`Retry abandoned for ${id}. If the server saved this message, it cannot be undone here.`);
+      }
+      function setNewDraft(field, value) {
+        const key = createDraftKey('internal');
+        const current = state.newConversationDrafts.get(key) ?? { subject: '', body: '' };
+        state.newConversationDrafts.set(key, { ...current, [field]: value });
+      }
+      function setThreadDraft(thread, value) {
+        if (!thread) return;
+        const role = roleForScreen();
+        saveConversationDraft(thread, { body: value }, role, activeActorId(role));
+      }
+      function saveQuotaDraft(field, value) {
+        const key = quotaKey();
+        const quota = findQuota();
+        const current = state.quotaDrafts.get(key) ?? { capacity: String(quota.capacity), note: '' };
+        state.quotaDrafts.set(key, { ...current, [field]: value });
+      }
+      function saveQuotaChange(event) {
+        event.preventDefault();
+        const key = quotaKey();
+        const quota = findQuota();
+        const draft = state.quotaDrafts.get(key) ?? { capacity: String(quota.capacity), note: '' };
+        const nextCapacity = Number(draft.capacity);
+        if (!Number.isInteger(nextCapacity) || nextCapacity < 0 || nextCapacity > 100000) {
+          updateStatus('Enter a whole-number capacity from 0 to 100,000.');
+          return;
+        }
+        const previous = quota.capacity;
+        quota.capacity = nextCapacity;
+        quota.history.unshift({ date: nowIso(), actor: 'You · synthetic quota editor', from: previous, to: nextCapacity, note: draft.note.trim() });
+        state.quotaDrafts.set(key, { capacity: String(nextCapacity), note: '' });
+        render();
+        const status = document.getElementById('quota-save-status');
+        if (status) status.textContent = 'Quota saved in memory for this program and cycle.';
+        updateStatus(`Quota saved in memory: ${currentProgram().code} · ${currentCycle().label} · ${formatNumber(previous)} → ${formatNumber(nextCapacity)}.`);
+      }
+      function changeRegistrarGrant(action, expectedVersion, reason) {
+        const access = findRegistrarAccess();
+        if (!['issue', 'revoke'].includes(action) || !reason.trim()) {
+          updateStatus('Choose one bundled grant action and provide a reason.');
+          return;
+        }
+        if (access.version !== expectedVersion) {
+          updateStatus(`Grant version changed from ${expectedVersion} to ${access.version}. Review the current receipt before trying again.`);
+          render();
+          return;
+        }
+        if ((action === 'issue' && access.active) || (action === 'revoke' && !access.active)) {
+          updateStatus(`The bundled grant is already ${access.active ? 'active' : 'revoked'} for this recipient and scope.`);
+          render();
+          return;
+        }
+        const version = access.version + 1;
+        const receiptId = `lab-grant-receipt-${String(++state.grantSequence).padStart(4, '0')}`;
+        const receipt = { version, receiptId, programId: state.programId, cycleId: state.cycleId, recipientId: registrarRecipient.id, action: action === 'issue' ? 'issued' : 'revoked', actor: 'Synthetic grant manager', date: nowIso(), reason: reason.trim() };
+        access.version = version;
+        access.active = action === 'issue';
+        access.latestReceiptId = receiptId;
+        access.history.push(receipt);
+        render();
+        updateStatus(`Bundled Registrar grant ${receipt.action} for ${registrarRecipient.name} · ${currentProgram().code} · ${currentCycle().label}, version ${version} (${receiptId}).`);
+      }
+      function addDiscussionReply(event, kind) {
+        event.preventDefault();
+        const programId = state.programId;
+        const cycleId = state.cycleId;
+        const actorId = activeActorId('staff');
+        const actor = staffPreviewActor(actorId);
+        const sender = `${actor.name} · ${actor.office}`;
+        if (kind === 'quota') {
+          const key = quotaDiscussionDraftKey(programId, cycleId, actorId);
+          const draft = (state.quotaDiscussionDrafts.get(key) ?? '').trim();
+          if (!draft) {
+            updateStatus('Enter a discussion reply before adding it.');
+            return;
+          }
+          findQuotaDiscussion(programId, cycleId).push({ sender, time: nowIso(), body: draft });
+          state.quotaDiscussionDrafts.set(key, '');
+        } else {
+          const index = Number(event.target.dataset.index);
+          const topic = findProgramDiscussion(programId, cycleId)[index];
+          if (!topic) return;
+          const key = programDiscussionDraftKey(topic.id, programId, cycleId, actorId);
+          const draft = (state.programDiscussionReplyDrafts.get(key) ?? '').trim();
+          if (!draft) {
+            updateStatus('Enter a discussion reply before adding it.');
+            return;
+          }
+          topic.messages.push({ sender, self: true, time: nowIso(), body: draft });
+          state.programDiscussionReplyDrafts.set(key, '');
+        }
+        render();
+        updateStatus('Discussion reply added in memory. Quota capacity and publication status are unchanged.');
+      }
+      function resetDemo() {
+        state.threadData = JSON.parse(JSON.stringify(seedThreads));
+        state.quotaData.clear();
+        state.quotaDrafts.clear();
+        state.registrarAccess.clear();
+        state.quotaDiscussions.clear();
+        state.programDiscussions.clear();
+        state.quotaDiscussionDrafts.clear();
+        state.programDiscussionReplyDrafts.clear();
+        state.programNewDiscussionDrafts.clear();
+        state.programDiscussionIndex = null;
+        state.programNewDiscussionOpen = false;
+        state.threadDrafts.clear();
+        state.newConversationDrafts.clear();
+        state.applicantInquiryDrafts.clear();
+        state.applicantInquiryOpen = false;
+        state.applicantInquiryReviewKey = null;
+        state.applicantInquiryTarget = 'Guidance';
+        state.revokedThreads.clear();
+        state.scenario = 'normal';
+        state.loadingComplete = false;
+        state.staffPreviewActorId = 'staff:guidance-maya';
+        state.staffSearch = '';
+        state.applicantSearch = '';
+        state.applicantLane = 'internal';
+        state.staffReturnLane = 'internal';
+        state.staffReturnThreadId = state.programId === 'bscs' ? 'record-internal-bscs' : 'record-internal-bsn';
+        state.applicantReturnThreadId = 'office-inquiry-bsn';
+        state.selectedThreadId = state.screen === 'applicant-messages' ? 'office-inquiry-bsn' : state.screen === 'applicant-workspace' ? relevantThreads('staff')[0]?.id ?? null : state.staffReturnThreadId;
+        state.newConversationOpen = false;
+        state.mobileDetail = false;
+        state.quotaDiscussionOpen = false;
+        state.registrarControlsOpen = false;
+        state.publicationPreview = null;
+        state.sendSequence = 0;
+        state.grantSequence = 0;
+        state.createdSequence = 0;
+        render();
+        updateStatus('Synthetic fixtures restored in memory, including conversation content and scoped grant receipts. No production data was changed.');
+      }
+
+      document.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-action], [data-screen], [data-tab], [data-variant]');
+        if (!target) return;
+        if (target.matches('a')) event.preventDefault();
+        if (target.dataset.screen) {
+          chooseScreen(target.dataset.screen);
+          return;
+        }
+        if (target.dataset.action === 'open-program') {
+          openProgram(target.dataset.program, target.dataset.tab ?? 'overview');
+          return;
+        }
+        if (target.dataset.tab) {
+          state.programTab = target.dataset.tab;
+          state.screen = 'program-workspace';
+          state.publicationPreview = null;
+          updateHistory(true);
+          render();
+          return;
+        }
+        if (target.dataset.variant) {
+          setVariant(target.dataset.variant);
+          return;
+        }
+        const action = target.dataset.action;
+        if (action === 'theme') {
+          state.theme = state.theme === 'light' ? 'dark' : 'light';
+          render();
+          updateStatus(`${state.theme === 'dark' ? 'Dark' : 'Light'} theme selected.`);
+        } else if (action === 'select-department') {
+          state.departmentId = target.dataset.department;
+          saveUrl(true);
+          render();
+          updateStatus(`Department selected: ${state.departmentId}. Choose a listed program to open its workspace.`);
+        } else if (action === 'open-new-thread') {
+          state.newConversationOpen = true;
+          render();
+          document.getElementById('new-thread-subject')?.focus();
+        } else if (action === 'close-new-thread') {
+          state.newConversationOpen = false;
+          render();
+        } else if (action === 'open-new-inquiry') {
+          state.applicantInquiryOpen = true;
+          state.applicantInquiryReviewKey = null;
+          render();
+          document.getElementById('new-inquiry-subject')?.focus();
+        } else if (action === 'cancel-new-inquiry') {
+          cancelApplicantInquiry();
+        } else if (action === 'edit-new-inquiry') {
+          state.applicantInquiryReviewKey = null;
+          render();
+          document.getElementById('new-inquiry-subject')?.focus();
+        } else if (action === 'lane') {
+          state.applicantLane = target.dataset.lane;
+          state.staffReturnLane = state.applicantLane;
+          state.newConversationOpen = false;
+          state.mobileDetail = false;
+          const list = relevantThreads('staff');
+          if (!list.some((thread) => thread.id === state.selectedThreadId)) state.selectedThreadId = list[0]?.id ?? null;
+          state.staffReturnThreadId = state.selectedThreadId;
+          render();
+          updateStatus(`${state.applicantLane === 'internal' ? 'Internal staff' : 'With applicant'} lane selected.`);
+        } else if (action === 'select-thread') {
+          state.selectedThreadId = target.dataset.thread;
+          const selected = getThread(state.selectedThreadId);
+          if (state.scenario === 'revoked' && selected) revokeThread(selected, roleForScreen(), activeActorId(roleForScreen()));
+          if (roleForScreen() === 'staff') state.staffReturnThreadId = state.selectedThreadId;
+          else state.applicantReturnThreadId = state.selectedThreadId;
+          state.mobileDetail = true;
+          render();
+        } else if (action === 'back-list') {
+          state.mobileDetail = false;
+          render();
+          document.getElementById('thread-search')?.focus();
+        } else if (action === 'complete-loading') {
+          state.loadingComplete = true;
+          render();
+          updateStatus('Synthetic load completed. Authorized fixture messages are available.');
+        } else if (action === 'retry-send') {
+          handleSend(target.dataset.thread, true);
+        } else if (action === 'abandon-send') {
+          abandonPendingSend(target.dataset.thread);
+        } else if (action === 'reset-demo') {
+          resetDemo();
+        } else if (action === 'note-suggestion') {
+          const key = quotaKey();
+          const quota = findQuota();
+          const current = state.quotaDrafts.get(key) ?? { capacity: String(quota.capacity), note: '' };
+          const nextNote = current.note ? `${current.note}\n${target.dataset.text}` : target.dataset.text;
+          state.quotaDrafts.set(key, { ...current, note: nextNote });
+          render();
+          document.getElementById('quota-note')?.focus();
+        } else if (action === 'toggle-quota-discussion') {
+          state.quotaDiscussionOpen = !state.quotaDiscussionOpen;
+          render();
+          updateStatus(state.quotaDiscussionOpen ? 'Quota discussion opened. Replies do not change quota.' : 'Quota discussion closed.');
+        } else if (action === 'toggle-registrar-controls') {
+          state.registrarControlsOpen = !state.registrarControlsOpen;
+          render();
+          updateStatus(state.registrarControlsOpen ? 'Recipient-scoped Registrar grant controls opened.' : 'Registrar grant controls closed.');
+        } else if (action === 'open-program-discussion-form') {
+          state.programNewDiscussionOpen = !state.programNewDiscussionOpen;
+          render();
+          if (state.programNewDiscussionOpen) document.getElementById('program-discussion-subject')?.focus();
+        } else if (action === 'close-program-discussion-form') {
+          state.programNewDiscussionOpen = false;
+          render();
+        } else if (action === 'open-program-discussion') {
+          const index = Number(target.dataset.index);
+          state.programDiscussionIndex = state.programDiscussionIndex === index ? null : index;
+          render();
+        } else if (action === 'preview-publication') {
+          state.publicationPreview = target.dataset.id;
+          render();
+          document.querySelector('.publication-preview')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else if (action === 'close-publication') {
+          state.publicationPreview = null;
+          render();
+        }
+      });
+
+      document.addEventListener('input', (event) => {
+        const control = event.target.dataset.control;
+        if (control === 'thread-search') {
+          if (roleForScreen() === 'applicant') state.applicantSearch = event.target.value;
+          else state.staffSearch = event.target.value;
+          const cursor = event.target.selectionStart;
+          const shell = event.target.closest('.conversation-shell') ?? event.target.closest('main');
+          const refreshed = roleForScreen() === 'applicant' ? renderConversationWorkspace('applicant') : renderConversationWorkspace('staff');
+          const temp = document.createElement('div');
+          temp.innerHTML = refreshed;
+          const main = document.querySelector('#view main');
+          if (main && shell) {
+            const newMain = temp.querySelector('main');
+            if (newMain) main.replaceWith(newMain);
+          }
+          const newSearch = document.getElementById('thread-search');
+          if (newSearch) {
+            newSearch.focus();
+            try { newSearch.setSelectionRange(cursor, cursor); } catch (_) { }
+          }
+          return;
+        }
+        if (control === 'message-draft') {
+          setThreadDraft(getThread(event.target.dataset.thread), event.target.value);
+          return;
+        }
+        if (control === 'new-subject') {
+          setNewDraft('subject', event.target.value);
+          return;
+        }
+        if (control === 'new-first-message') {
+          setNewDraft('body', event.target.value);
+          return;
+        }
+        if (control === 'new-inquiry-subject') {
+          setApplicantInquiryDraft('subject', event.target.value);
+          return;
+        }
+        if (control === 'new-inquiry-first-message') {
+          setApplicantInquiryDraft('body', event.target.value);
+          const preview = document.querySelector('.applicant-inquiry-form .inquiry-preview-body');
+          if (preview) preview.textContent = event.target.value.trim() || 'Your exact first message will appear here before confirmation.';
+          return;
+        }
+        if (control === 'quota-capacity') {
+          saveQuotaDraft('capacity', event.target.value);
+          return;
+        }
+        if (control === 'quota-note') {
+          saveQuotaDraft('note', event.target.value);
+          return;
+        }
+        if (control === 'quota-discussion-draft') {
+          state.quotaDiscussionDraft = event.target.value;
+          return;
+        }
+        if (control === 'program-discussion-draft') {
+          state.programDiscussionDraft = event.target.value;
+          return;
+        }
+        if (control === 'program-discussion-subject' || control === 'program-discussion-first-message') {
+          const key = programNewDiscussionDraftKey();
+          const draft = state.programNewDiscussionDrafts.get(key) ?? { subject: '', body: '' };
+          draft[control === 'program-discussion-subject' ? 'subject' : 'body'] = event.target.value;
+          state.programNewDiscussionDrafts.set(key, draft);
+        }
+      });
+
+      document.addEventListener('change', (event) => {
+        const control = event.target.dataset.control;
+        if (control === 'staff-preview-actor') {
+          switchStaffPreviewActor(event.target.value);
+          return;
+        }
+        if (control === 'new-inquiry-office') {
+          state.applicantInquiryTarget = event.target.value === 'Registrar' ? 'Registrar' : 'Guidance';
+          state.applicantInquiryReviewKey = null;
+          render();
+          return;
+        }
+        if (control === 'scenario') {
+          activateScenario(event.target.value);
+          return;
+        }
+        if (control === 'overview-cycle') {
+          state.cycleId = event.target.value;
+          saveUrl(true);
+          render();
+          updateStatus(`Quota overview opened for ${currentCycle().label}.`);
+          return;
+        }
+        if (control === 'program-select') {
+          state.programId = event.target.value;
+          state.departmentId = ({ bsn: 'health', bscs: 'computing', bacomm: 'arts' })[state.programId];
+          state.programDiscussionIndex = null;
+          state.programNewDiscussionOpen = false;
+          state.quotaDiscussionOpen = false;
+          state.registrarControlsOpen = false;
+          state.publicationPreview = null;
+          saveUrl(true);
+          render();
+          return;
+        }
+        if (control === 'program-cycle') {
+          state.cycleId = event.target.value;
+          state.programDiscussionIndex = null;
+          state.programNewDiscussionOpen = false;
+          state.quotaDiscussionOpen = false;
+          state.registrarControlsOpen = false;
+          state.publicationPreview = null;
+          saveUrl(true);
+          render();
+          return;
+        }
+        if (control === 'conversation-program') {
+          changeScopeOptions(event.target.value, state.cycleId);
+          return;
+        }
+        if (control === 'conversation-cycle') {
+          changeScopeOptions(state.programId, event.target.value);
+          return;
+        }
+      });
+
+      document.addEventListener('submit', (event) => {
+        const form = event.target;
+        const kind = form.dataset.form;
+        if (!kind) return;
+        event.preventDefault();
+        if (kind === 'quota') {
+          saveQuotaChange(event);
+        } else if (kind === 'quota-discussion') {
+          addDiscussionReply(event, 'quota');
+        } else if (kind === 'program-discussion') {
+          addDiscussionReply(event, 'program');
+        } else if (kind === 'new-thread') {
+          const key = createDraftKey('internal');
+          const draft = state.newConversationDrafts.get(key) ?? { subject: '', body: '' };
+          if (!draft.subject.trim() || !draft.body.trim()) {
+            updateStatus('A subject and first message are both required for the synthetic preview.');
+            return;
+          }
+          createSyntheticThread(draft.subject.trim(), draft.body.trim());
+        } else if (kind === 'review-applicant-inquiry') {
+          const key = applicantInquiryDraftKey();
+          const draft = state.applicantInquiryDrafts.get(key) ?? { subject: '', body: '' };
+          if (!draft.subject.trim() || !draft.body.trim()) {
+            updateStatus('A subject and first message are required before reviewing an inquiry.');
+            return;
+          }
+          state.applicantInquiryReviewKey = key;
+          render();
+        } else if (kind === 'create-applicant-inquiry') {
+          createSyntheticApplicantInquiry();
+        } else if (kind === 'registrar-grant') {
+          const action = event.submitter?.value;
+          const expectedVersion = Number(form.dataset.version);
+          const reason = new FormData(form).get('reason');
+          changeRegistrarGrant(action, expectedVersion, String(reason ?? ''));
+        } else if (kind === 'program-new-discussion') {
+          const key = programNewDiscussionDraftKey();
+          const draft = state.programNewDiscussionDrafts.get(key) ?? { subject: '', body: '' };
+          if (!draft.subject.trim() || !draft.body.trim()) {
+            updateStatus('A subject and first message are both required for the synthetic governance preview.');
+            return;
+          }
+          const actor = staffPreviewActor();
+          const topicId = `synthetic-program-discussion-${++state.createdSequence}`;
+          findProgramDiscussion().unshift({
+            id: topicId,
+            title: draft.subject.trim(),
+            owner: `${actor.name} · ${actor.office} · synthetic`,
+            preview: draft.body.trim(),
+            topic: 'Program governance',
+            messages: [{ sender: `${actor.name} · ${actor.office}`, self: true, time: nowIso(), body: draft.body.trim() }],
+          });
+          state.programDiscussionIndex = 0;
+          state.programNewDiscussionOpen = false;
+          state.programNewDiscussionDrafts.set(key, { subject: '', body: '' });
+          render();
+          updateStatus('Synthetic governance discussion preview opened. The backend atomic-create contract is still required; no request was made.');
+        } else if (kind === 'send-message') {
+          handleSend(form.dataset.thread, false);
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && event.target.matches('[data-control="message-draft"]')) {
+          event.preventDefault();
+          handleSend(event.target.dataset.thread, false);
+        }
+      });
+
+      window.addEventListener('popstate', () => {
+        const params = new URLSearchParams(location.search);
+        const screen = params.get('screen');
+        const validScreen = screenNames.includes(screen) ? screen : 'organization';
+        state.variant = params.get('variant') === 'B' ? 'B' : 'A';
+        const program = params.get('program');
+        if (programs.some((entry) => entry.id === program)) state.programId = program;
+        const cycle = params.get('cycle');
+        const department = params.get('department');
+        if (['health', 'computing', 'arts'].includes(department)) state.departmentId = department;
+        if (cycles.some((entry) => entry.id === cycle)) state.cycleId = cycle;
+        const tab = params.get('tab');
+        if (['overview', 'quota', 'discussions', 'announcements', 'policies', 'benchmarks'].includes(tab)) state.programTab = tab;
+        resetScreenView(validScreen);
+        render();
+      });
+
+      Object.defineProperties(window, {
+        labState: {
+          configurable: false,
+          enumerable: true,
+          value: Object.freeze({
+            get screen() { return state.screen; },
+            get variant() { return state.variant; },
+            get scenario() { return state.scenario; },
+            get programId() { return state.programId; },
+            get cycleId() { return state.cycleId; },
+            get selectedThreadId() {
+              const thread = getCurrentThread();
+              return thread && canRead(thread, roleForScreen()) ? thread.id : null;
+            },
+            snapshot() {
+              const thread = getCurrentThread();
+              const visibleThread = thread && canRead(thread, roleForScreen()) ? thread : null;
+              const quota = findQuota();
+              return {
+                screen: state.screen,
+                variant: state.variant,
+                scenario: state.scenario,
+                programId: state.programId,
+                cycleId: state.cycleId,
+                programTab: state.programTab,
+                selectedThreadId: visibleThread?.id ?? null,
+                selectedThreadStatus: visibleThread ? effectiveStatus(visibleThread) : null,
+                selectedThreadMessageCount: visibleThread ? visibleThread.messages.length : null,
+                quota: { capacity: quota.capacity, committed: quota.committed, remaining: quotaRemaining(quota) },
+                status: state.status,
+                screens: [...screenNames],
+                scenarios: ['normal', 'loading', 'empty', 'read-only', 'error', 'unknown', 'revoked'],
+              };
+            },
+          }),
+        },
+      });
+
+      const initialProgram = search.get('program');
+      const initialCycle = search.get('cycle');
+      const initialTab = search.get('tab');
+      if (programs.some((program) => program.id === initialProgram)) state.programId = initialProgram;
+      if (cycles.some((cycle) => cycle.id === initialCycle)) state.cycleId = initialCycle;
+      if (['overview', 'quota', 'discussions', 'announcements', 'policies', 'benchmarks'].includes(initialTab)) state.programTab = initialTab;
+
+      const requestedThread = search.get('thread');
+      if (requestedThread && getThread(requestedThread)) state.selectedThreadId = requestedThread;
+      if (state.screen === 'applicant-messages') state.selectedThreadId = relevantThreads('applicant')[0]?.id ?? null;
+      document.documentElement.dataset.theme = state.theme;
+      render();
+    })();
+  </script>
+</body>
+</html>

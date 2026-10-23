@@ -23,7 +23,15 @@ final class CommandIdempotency
      */
     public function claim(User $actor, string $command, string $aggregate, array $payload, string $idempotencyKey): Operation
     {
-        $namespacedKey = sprintf('%s:%s:%s:%s', $actor->id, $command, $aggregate, $idempotencyKey);
+        return $this->claimForPrincipal((string) $actor->id, $command, $aggregate, $payload, $idempotencyKey);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function claimForPrincipal(string $principalNamespace, string $command, string $aggregate, array $payload, string $idempotencyKey): Operation
+    {
+        $namespacedKey = sprintf('%s:%s:%s:%s', $principalNamespace, $command, $aggregate, $idempotencyKey);
         $requestHash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($namespacedKey, $command, $requestHash, $payload): Operation {

@@ -21,7 +21,21 @@ class ResultDocument extends Model
         'storage_path',
         'preview_path',
         'version',
+        'snapshot_payload_json',
+        'artifact_manifest',
+        'predecessor_id',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'snapshot_payload_json' => 'array',
+            'artifact_manifest' => 'array',
+        ];
+    }
 
     /**
      * @return BelongsTo<AdmissionAttempt, $this>

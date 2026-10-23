@@ -1,16 +1,17 @@
 <?php
 
 use App\Assessment\Actions\Omr\PreflightOmrCapture;
-use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
 use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
+use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
 use App\Assessment\Omr\OmrCapturePreflight;
+use App\Http\Requests\Assessment\PreflightOmrCaptureRequest;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
+use App\Models\Assessment\OmrQuestionBookletVersion;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Foundation\AptitudeArea;
 use App\Models\User;
-use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 
@@ -58,7 +59,7 @@ function omrPreflightMarkerDraft(string $code, User $actor): OmrAnswerSheetTempl
     );
 }
 
-function omrPreflightBooklet(string $code, User $actor): \App\Models\Assessment\OmrQuestionBookletVersion
+function omrPreflightBooklet(string $code, User $actor): OmrQuestionBookletVersion
 {
     $questions = [];
     $position = 1;
@@ -101,7 +102,7 @@ function omrPreflightImageBytes(): string
 function omrPreflightWorkerResponse(string $runId, array $overrides = []): array
 {
     $payload = array_merge([
-        'contract_version' => 'nexiam.omr.detection.v2',
+        'contract_version' => 'nexiam.omr.detection.v3',
         'run_id' => $runId,
         'correlation_id' => 'omr:diagnostic:1',
         'outcome' => 'validated',
@@ -126,7 +127,7 @@ function omrPreflightWorkerResponse(string $runId, array $overrides = []): array
 
     return [$resultBytes, [
         'Content-Type' => 'application/json',
-        'X-Nexiam-Contract' => 'nexiam.omr.detection.v2',
+        'X-Nexiam-Contract' => 'nexiam.omr.detection.v3',
         'X-Nexiam-Run-Id' => $runId,
         'X-Nexiam-Timestamp' => $timestamp,
         'X-Nexiam-Result-SHA256' => $resultHash,
@@ -201,7 +202,7 @@ test('scan batch preflight is not applicable and never calls the worker', functi
         ->whereHas('template', fn ($query) => $query->where('code', 'SYN-OMR-ONE-PAGE'))
         ->where('version', 4)
         ->firstOrFail();
-    $scanBooklet = \App\Models\Assessment\OmrQuestionBookletVersion::query()
+    $scanBooklet = OmrQuestionBookletVersion::query()
         ->whereHas('booklet', fn ($query) => $query->where('code', 'SYN-OMR-BOOKLET-A'))
         ->where('version', 4)
         ->firstOrFail();
@@ -230,7 +231,7 @@ test('preflight route requires the OMR scoring capability', function (): void {
 
     $upload = UploadedFile::fake()->createWithContent('sheet.png', omrPreflightImageBytes(), 'image/png');
     $this->actingAs($fixture['registrar'])
-        ->postJson(route('grading.sessions.omr.batches.preflight', ['gradingSession' => $batch->grading_session_id, 'batch' => $batch->id]), ['image' => $upload])
+        ->postJson(route('scoring.sessions.omr.batches.preflight', ['examSession' => $fixture['session'], 'batch' => $batch->id]), ['image' => $upload])
         ->assertForbidden();
 });
 
@@ -255,7 +256,7 @@ test('preflight route validates the marker gate and never mutates state', functi
 
     $upload = UploadedFile::fake()->createWithContent('sheet.png', omrPreflightImageBytes(), 'image/png');
     $response = $this->actingAs($guidance)
-        ->postJson(route('grading.sessions.omr.batches.preflight', ['gradingSession' => $batch->grading_session_id, 'batch' => $batch->id]), ['image' => $upload]);
+        ->postJson(route('scoring.sessions.omr.batches.preflight', ['examSession' => $fixture['session'], 'batch' => $batch->id]), ['image' => $upload]);
 
     $response->assertOk()
         ->assertJson([
@@ -274,4 +275,20 @@ test('preflight route validates the marker gate and never mutates state', functi
         ->and(OmrCaptureSheet::query()->count())->toBe($before['sheets'])
         ->and(OmrTemplateBookletPair::query()->count())->toBe($before['pairs'])
         ->and($template->fresh()->status)->toBe($before['template_status']);
+});
+
+test('capture preflight accepts exactly one original image authority', function (): void {
+    $rules = (new PreflightOmrCaptureRequest)->rules();
+    $stage = [
+        'staged_frame_id' => '6d54ae0a-531f-42a6-8cea-b1070f05aaca',
+        'pairing_id' => '45b26ffd-d4dc-4f8a-bebf-ddff6c565c45',
+        'camera_command_id' => '5959ad21-5340-41e5-92ad-0e9db3021237',
+    ];
+    $image = UploadedFile::fake()->image('original.png', 100, 150);
+
+    expect(validator($stage, $rules)->fails())->toBeFalse()
+        ->and(validator(['image' => $image], $rules)->fails())->toBeFalse()
+        ->and(validator([...$stage, 'image' => $image], $rules)->fails())->toBeTrue()
+        ->and(validator([], $rules)->fails())->toBeTrue()
+        ->and(validator(['staged_frame_id' => $stage['staged_frame_id']], $rules)->fails())->toBeTrue();
 });

@@ -2,6 +2,9 @@
 
 namespace App\Assessment\Omr;
 
+use App\Assessment\Omr\Canonical\OmrPageDimensionMath;
+use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
+use Illuminate\Support\Facades\Storage;
 use JsonException;
 use RuntimeException;
 
@@ -9,6 +12,7 @@ use function array_keys;
 use function array_unique;
 use function array_values;
 use function basename;
+use function config;
 use function count;
 use function explode;
 use function file_get_contents;
@@ -20,9 +24,10 @@ use function is_numeric;
 use function json_decode;
 use function json_encode;
 use function ksort;
+use function max;
 use function preg_match;
-use function sprintf;
 use function sort;
+use function sprintf;
 use function str_contains;
 use function str_ends_with;
 use function str_starts_with;
@@ -40,11 +45,11 @@ use function str_starts_with;
 final readonly class NativeBundle
 {
     /**
-     * @param array<string, mixed> $template
-     * @param array<string, mixed> $config
-     * @param array<string, mixed> $manifest
-     * @param array<string, string> $fileHashes
-     * @param list<array<string, mixed>> $pages
+     * @param  array<string, mixed>  $template
+     * @param  array<string, mixed>  $config
+     * @param  array<string, mixed>  $manifest
+     * @param  array<string, string>  $fileHashes
+     * @param  list<array<string, mixed>>  $pages
      */
     private function __construct(
         public string $code,
@@ -55,18 +60,13 @@ final readonly class NativeBundle
         public array $fileHashes,
         public string $bundleHash,
         public array $pages,
-    ) {
-    }
+        private string $directory,
+    ) {}
 
-    /**
-     * Resolves the bundle directory: durable private storage first, legacy
-     * in-tree bundles second. New saves stage under storage/app/private/
-     * omr-bundles/<code>/v<N>; the shipped v1-v5 demo bundles remain in the
-     * source tree as a read-only fallback.
-     */
+    /** Resolve legacy demo bundles only for unbound synthetic fixtures. */
     private static function resolveDirectory(string $code, int $version): string
     {
-        $durable = \Illuminate\Support\Facades\Storage::disk('local')->path('omr-bundles/'.$code.'/v'.$version);
+        $durable = Storage::disk('local')->path('omr-bundles/'.$code.'/v'.$version);
         if (is_dir($durable)) {
             return $durable;
         }
@@ -79,6 +79,57 @@ final readonly class NativeBundle
         throw new RuntimeException("OMR native bundle {$code} v{$version} not found.");
     }
 
+    public static function loadForVersion(OmrAnswerSheetTemplateVersion $version): self
+    {
+        $persisted = $version->newQuery()->with('template')->find($version->getKey());
+        if (! $persisted instanceof OmrAnswerSheetTemplateVersion
+            || ! in_array($persisted->status, [
+                OmrAnswerSheetTemplateVersion::STATUS_DRAFT,
+                OmrAnswerSheetTemplateVersion::STATUS_COMPILED,
+                OmrAnswerSheetTemplateVersion::STATUS_ACTIVE,
+                OmrAnswerSheetTemplateVersion::STATUS_RETIRED,
+            ], true)
+            || ! is_array($persisted->native_bundle_json)
+            || ! is_string($persisted->native_bundle_json['relative_dir'] ?? null)
+            || ! is_string($persisted->native_bundle_hash)
+            || preg_match('/^[a-f0-9]{64}$/', $persisted->native_bundle_hash) !== 1
+            || ! $persisted->template) {
+            throw new RuntimeException('The persisted OMR template version has no valid native bundle identity.');
+        }
+
+        $institutionId = (int) $persisted->template->institution_id;
+        $templateId = (int) $persisted->template_id;
+        $versionNumber = (int) $persisted->version;
+        $relativeDirectory = $persisted->native_bundle_json['relative_dir'];
+        $expectedDirectory = sprintf(
+            'omr-bundles/institutions/%d/templates/%d/v%d',
+            $institutionId,
+            $templateId,
+            $versionNumber,
+        );
+        if ($institutionId < 1 || $templateId < 1 || $versionNumber < 1
+            || $relativeDirectory !== $expectedDirectory) {
+            throw new RuntimeException('The persisted OMR native bundle directory does not match its owner and version.');
+        }
+
+        $directory = Storage::disk('local')->path($relativeDirectory);
+        $realDirectory = realpath($directory);
+        $realRoot = realpath(Storage::disk('local')->path('omr-bundles/institutions/'.$institutionId.'/templates/'.$templateId));
+        if ($realDirectory === false || $realRoot === false
+            || ! str_starts_with($realDirectory, $realRoot.DIRECTORY_SEPARATOR)
+            || ! is_dir($realDirectory)) {
+            throw new RuntimeException('The persisted OMR native bundle directory is missing or escapes its owner namespace.');
+        }
+
+        $bundle = self::loadFromDirectory($realDirectory, (string) $persisted->template->code, $versionNumber);
+        if ($bundle->bundleHash !== $persisted->native_bundle_hash
+            || ($persisted->native_bundle_json['files'] ?? null) !== $bundle->fileHashes) {
+            throw new RuntimeException('The persisted OMR native bundle does not match its immutable file identity.');
+        }
+
+        return $bundle;
+    }
+
     public static function load(string $code, int $version): self
     {
         return self::loadFromDirectory(self::resolveDirectory($code, $version), $code, $version);
@@ -87,8 +138,8 @@ final readonly class NativeBundle
     /**
      * Load a candidate bundle from a caller-owned directory.
      *
-     * Candidate materialization uses this same validation path before any
-     * immutable version is created. The directory is never retained here.
+     * immutable version is created; the resolved directory is retained for
+     * subsequent private asset reads.
      */
     public static function loadFromDirectory(string $directory, string $code, int $version): self
     {
@@ -107,9 +158,12 @@ final readonly class NativeBundle
             $paths[basename($referencePath)] = $referencePath;
         }
 
+        $realDirectory = realpath($directory);
         foreach ($paths as $name => $path) {
-            if (! is_file($path)) {
-                throw new RuntimeException(sprintf('OMR native bundle file is missing: %s.', $name));
+            $realPath = realpath($path);
+            if (! is_file($path) || is_link($path) || $realDirectory === false || $realPath === false
+                || ! str_starts_with($realPath, $realDirectory.DIRECTORY_SEPARATOR)) {
+                throw new RuntimeException(sprintf('OMR native bundle file is missing or escapes its directory: %s.', $name));
             }
         }
 
@@ -123,7 +177,8 @@ final readonly class NativeBundle
         }
 
         $pages = self::pagesOf($template);
-        self::validateBundleShape($pages, $config, $manifest, $code, $version);
+        self::validateBundleShape($pages, $config, $manifest, $code, $version, [(int) $bubble[0], (int) $bubble[1]]);
+        self::validateRegistrationPolicy($template, $pages, $manifest);
 
         $markerAsset = self::markerAssetNameOf($template);
         if ($markerAsset !== null) {
@@ -131,13 +186,10 @@ final readonly class NativeBundle
                 throw new RuntimeException(sprintf('OMR native bundle declares an unsafe marker asset name: %s.', $markerAsset));
             }
             $assetPath = $directory.'/'.$markerAsset;
-            if (! is_file($assetPath)) {
-                throw new RuntimeException(sprintf(
-                    'OMR native bundle %s v%d declares marker asset %s but the bundle file is missing; a marker-bearing bundle must carry its fiducial asset.',
-                    $code,
-                    $version,
-                    $markerAsset,
-                ));
+            $realAssetPath = realpath($assetPath);
+            if (! is_file($assetPath) || is_link($assetPath) || $realDirectory === false || $realAssetPath === false
+                || ! str_starts_with($realAssetPath, $realDirectory.DIRECTORY_SEPARATOR)) {
+                throw new RuntimeException(sprintf('OMR native bundle marker asset is missing or escapes its directory: %s.', $markerAsset));
             }
             $paths[$markerAsset] = $assetPath;
         }
@@ -148,6 +200,10 @@ final readonly class NativeBundle
         }
         ksort($fileHashes);
         self::validateManifestFileHashes($manifest, $fileHashes, $markerAsset);
+        if (($manifest['registration_mode'] ?? null) === OmrRegistrationMode::FiducialAnchored->value
+            && ($manifest['marker_profile']['asset_sha256'] ?? null) !== ($fileHashes[$markerAsset] ?? null)) {
+            throw new RuntimeException('OMR native bundle marker profile hash differs from its immutable asset.');
+        }
 
         $bundleHash = self::hashCanonical([
             'files' => $fileHashes,
@@ -155,7 +211,7 @@ final readonly class NativeBundle
             'bundle_version' => $manifest['bundle_version'],
         ]);
 
-        return new self($code, $version, $template, $config, $manifest, $fileHashes, $bundleHash, $pages);
+        return new self($code, $version, $template, $config, $manifest, $fileHashes, $bundleHash, $pages, $directory);
     }
 
     public function pageCount(): int
@@ -185,10 +241,14 @@ final readonly class NativeBundle
             throw new RuntimeException(sprintf('OMR native bundle has no asset %s.', $name));
         }
 
-        $path = self::resolveDirectory($this->code, $this->version).'/'.$name;
+        $path = $this->directory.'/'.$name;
         $bytes = @file_get_contents($path);
         if ($bytes === false) {
             throw new RuntimeException(sprintf('OMR native bundle asset is unreadable: %s.', $name));
+        }
+
+        if (hash('sha256', $bytes) !== $this->fileHashes[$name]) {
+            throw new RuntimeException(sprintf('OMR native bundle asset hash mismatch after load: %s.', $name));
         }
 
         return $bytes;
@@ -241,6 +301,7 @@ final readonly class NativeBundle
     {
         $allowed = array_flip([
             'fieldType',
+            'bubbleDimensions',
             'fieldLabels',
             'origin',
             'bubblesGap',
@@ -248,6 +309,7 @@ final readonly class NativeBundle
             'bubbleValues',
             'direction',
             'emptyValue',
+            'bubblePositions',
         ]);
 
         return array_map(
@@ -270,6 +332,7 @@ final readonly class NativeBundle
         foreach ($labels as $label) {
             if (str_starts_with($label, 'APPLICANT_NUMBER_')) {
                 $grouped['APPLICANT_NUMBER'][] = $label;
+
                 continue;
             }
             if (preg_match('/^([A-Z0-9_]+)_Q_\d+$/', $label, $matches) === 1) {
@@ -279,7 +342,6 @@ final readonly class NativeBundle
 
         return $grouped;
     }
-
 
     /** @return array{0: int, 1: int} */
     public function pageDimensions(int $pageNo): array
@@ -382,12 +444,17 @@ final readonly class NativeBundle
     }
 
     /**
-     * @param list<array<string, mixed>> $pages
-     * @param array<string, mixed> $config
-     * @param array<string, mixed> $manifest
+     * @param  list<array<string, mixed>>  $pages
+     * @param  array<string, mixed>  $config
+     * @param  array<string, mixed>  $manifest
+     * @param  array{0:int,1:int}  $bubbleDimensions
      */
-    private static function validateBundleShape(array $pages, array $config, array $manifest, string $code, int $version): void
+    private static function validateBundleShape(array $pages, array $config, array $manifest, string $code, int $version, array $bubbleDimensions): void
     {
+        if (count($pages) < 1 || count($pages) > 4) {
+            throw new RuntimeException('OMR native bundle must contain between one and four ordered pages.');
+        }
+
         $configDimensions = $config['dimensions'] ?? null;
         $labels = [];
 
@@ -420,6 +487,90 @@ final readonly class NativeBundle
                         throw new RuntimeException(sprintf('OMR native field block %s has invalid %s.', $blockName, $key));
                     }
                 }
+                if (array_key_exists('bubblePositions', $block)) {
+                    if (! in_array($block['direction'] ?? 'horizontal', ['horizontal', 'vertical'], true)) {
+                        throw new RuntimeException(sprintf('OMR native field block %s has an unsupported explicit-position direction.', $blockName));
+                    }
+                    $fieldLabels = [];
+                    foreach ((array) ($block['fieldLabels'] ?? []) as $fieldLabel) {
+                        $fieldLabels = [...$fieldLabels, ...self::expandLabel((string) $fieldLabel)];
+                    }
+                    $fieldType = (string) ($block['fieldType'] ?? '');
+                    if (array_key_exists('bubbleValues', $block)
+                        && (! is_array($block['bubbleValues']) || ! array_is_list($block['bubbleValues']))) {
+                        throw new RuntimeException(sprintf('OMR native field block %s has an unsupported explicit option set.', $blockName));
+                    }
+                    if (isset($block['bubbleValues']) && is_array($block['bubbleValues'])) {
+                        $optionCount = count($block['bubbleValues']);
+                        $expectedOptionCount = $optionCount;
+                    } else {
+                        $optionCount = match ($fieldType) {
+                            'QTYPE_MCQ4' => 4,
+                            'QTYPE_MCQ5' => 5,
+                            'QTYPE_INT' => 10,
+                            default => 0,
+                        };
+                        $expectedOptionCount = match ($fieldType) {
+                            'QTYPE_MCQ4' => 4,
+                            'QTYPE_MCQ5' => 5,
+                            'QTYPE_INT' => 10,
+                            default => 0,
+                        };
+                    }
+                    if ($fieldLabels === []) {
+                        throw new RuntimeException(sprintf('OMR native field block %s has no explicit-position fields.', $blockName));
+                    }
+                    if ($optionCount !== $expectedOptionCount) {
+                        throw new RuntimeException(sprintf('OMR native field block %s option count does not match its declared field type.', $blockName));
+                    }
+                    if ($optionCount <= 0 || (isset($block['bubbleValues']) && ! array_is_list($block['bubbleValues']))) {
+                        throw new RuntimeException(sprintf('OMR native field block %s has an unsupported explicit option set.', $blockName));
+                    }
+                    $positions = $block['bubblePositions'];
+                    if (! is_array($positions) || ! array_is_list($positions) || count($positions) !== count($fieldLabels)) {
+                        throw new RuntimeException(sprintf('OMR native field block %s has invalid bubblePositions rows.', $blockName));
+                    }
+                    $blockBubbleDimensions = $bubbleDimensions;
+                    if (array_key_exists('bubbleDimensions', $block)) {
+                        if (! is_array($block['bubbleDimensions']) || count($block['bubbleDimensions']) !== 2
+                            || ! is_int($block['bubbleDimensions'][0] ?? null) || ! is_int($block['bubbleDimensions'][1] ?? null)
+                            || $block['bubbleDimensions'][0] <= 0 || $block['bubbleDimensions'][1] <= 0) {
+                            throw new RuntimeException(sprintf('OMR native field block %s has invalid bubbleDimensions.', $blockName));
+                        }
+                        $blockBubbleDimensions = [$block['bubbleDimensions'][0], $block['bubbleDimensions'][1]];
+                    }
+                    $bubbleRects = [];
+                    $minimumGapPx = max(1, OmrPageDimensionMath::pixelsFromMillimetres((float) config('omr.canonical.limits.minimum_option_edge_gap_mm', 1.26)) - 1);
+                    foreach ($positions as $positionRow) {
+                        if (! is_array($positionRow) || ! array_is_list($positionRow) || count($positionRow) !== $optionCount) {
+                            throw new RuntimeException(sprintf('OMR native field block %s has invalid bubblePositions options.', $blockName));
+                        }
+                        foreach ($positionRow as $position) {
+                            if (! is_array($position) || ! array_is_list($position) || count($position) !== 2
+                                || ! is_int($position[0] ?? null) || ! is_int($position[1] ?? null)) {
+                                throw new RuntimeException(sprintf('OMR native field block %s has non-integer bubblePositions.', $blockName));
+                            }
+                            [$x, $y] = $position;
+                            if ($x < 0 || $y < 0
+                                || $x + $blockBubbleDimensions[0] >= (int) $dims[0]
+                                || $y + $blockBubbleDimensions[1] >= (int) $dims[1]) {
+                                throw new RuntimeException(sprintf('OMR native field block %s has out-of-bounds bubblePositions.', $blockName));
+                            }
+                            $rect = ['x' => $x, 'y' => $y, 'w' => $blockBubbleDimensions[0], 'h' => $blockBubbleDimensions[1]];
+                            foreach ($bubbleRects as $otherRect) {
+                                $gapX = max(0, $otherRect['x'] - ($x + $blockBubbleDimensions[0]), $x - ($otherRect['x'] + $otherRect['w']));
+                                $gapY = max(0, $otherRect['y'] - ($y + $blockBubbleDimensions[1]), $y - ($otherRect['y'] + $otherRect['h']));
+                                if ($gapX * $gapX + $gapY * $gapY < $minimumGapPx * $minimumGapPx) {
+                                    throw new RuntimeException(sprintf('OMR native field block %s has explicit bubbles below the minimum edge gap.', $blockName));
+                                }
+                            }
+                            $bubbleRects[] = $rect;
+                        }
+                    }
+                    if (($manifest['engine']['patch_set'] ?? null) !== 'nexiam-explicit-bubble-positions-v1') {
+                        throw new RuntimeException('OMR native bundle explicit bubble positions require their pinned engine patch.');
+                    }
+                }
                 foreach ((array) ($block['fieldLabels'] ?? []) as $label) {
                     $labels = [...$labels, ...self::expandLabel((string) $label)];
                 }
@@ -444,6 +595,55 @@ final readonly class NativeBundle
         }
     }
 
+    /** @param array<string, mixed> $template @param list<array<string, mixed>> $pages @param array<string, mixed> $manifest */
+    private static function validateRegistrationPolicy(array $template, array $pages, array $manifest): void
+    {
+        $declaresPolicy = isset($template['registration_mode'], $template['qr_mode'], $template['compiled_pages'])
+            || isset($manifest['registration_mode'], $manifest['qr_mode'], $manifest['compiled_pages']);
+        if (! $declaresPolicy) {
+            return; // Historical native bundles predate explicit registration and QR policy.
+        }
+        $registration = $manifest['registration_mode'] ?? null;
+        $qr = $manifest['qr_mode'] ?? null;
+        $orderedPages = array_map(
+            static fn (array $page): array => ['page_no' => (int) $page['page_no']],
+            $pages,
+        );
+        if (! in_array($registration, ['fiducial_anchored', 'document_bound'], true)
+            || ! in_array($qr, ['qr_signed', 'qr_disabled'], true)
+            || ($template['registration_mode'] ?? null) !== $registration
+            || ($template['qr_mode'] ?? null) !== $qr
+            || ($template['compiled_pages'] ?? null) !== $orderedPages
+            || ($manifest['compiled_pages'] ?? null) !== $orderedPages) {
+            throw new RuntimeException('OMR native bundle registration, QR, or ordered page policy is inconsistent.');
+        }
+        if ($qr === OmrQrMode::Disabled->value) {
+            foreach ((array) ($template['visualComponents'] ?? []) as $component) {
+                if (is_array($component) && in_array($component['type'] ?? null, ['qr', 'blank_instance_qr'], true)) {
+                    throw new RuntimeException('QR-disabled native bundle must not contain production QR geometry.');
+                }
+            }
+            if (isset($template['qr_reservation']) || isset($manifest['qr_reservation'])) {
+                throw new RuntimeException('QR-disabled native bundle must not contain production QR geometry.');
+            }
+        }
+        foreach ($pages as $page) {
+            $markers = $page['markers'] ?? null;
+            $preProcessors = $page['preProcessors'] ?? [];
+            if ($registration === OmrRegistrationMode::DocumentBound->value) {
+                if (array_key_exists('markers', $page) || $preProcessors !== [] || array_key_exists('marker_profile', $manifest)) {
+                    throw new RuntimeException('Document-bound native bundle must not contain marker geometry or preProcessors.');
+                }
+            } elseif (! is_array($markers) || count((array) ($markers['centers'] ?? [])) !== 4
+                || count((array) $preProcessors) !== 1
+                || ($preProcessors[0]['name'] ?? null) !== 'CropOnMarkers'
+                || ($preProcessors[0]['options']['relativePath'] ?? null) !== ($markers['asset_name'] ?? null)
+                || ($manifest['marker_profile']['asset_sha256'] ?? null) === null) {
+                throw new RuntimeException('Fiducial-anchored native bundle requires four marker centers and CropOnMarkers.');
+            }
+        }
+    }
+
     /** @param array<string, mixed> $manifest @param array<string, string> $fileHashes */
     private static function validateManifestFileHashes(array $manifest, array $fileHashes, ?string $markerAsset = null): void
     {
@@ -460,9 +660,13 @@ final readonly class NativeBundle
         }
 
         $manifestFiles = $manifest['files'] ?? null;
+        $manifestKeys = is_array($manifestFiles) ? array_keys($manifestFiles) : [];
+        sort($manifestKeys);
+        $expectedSorted = $expectedFiles;
+        sort($expectedSorted);
 
         if (! is_array($manifestFiles) || count($manifestFiles) !== count($expectedFiles)
-            || array_keys($manifestFiles) !== $expectedFiles) {
+            || $manifestKeys !== $expectedSorted) {
             throw new RuntimeException($markerAsset !== null
                 ? 'OMR native bundle manifest must declare template, config, reference, and fiducial asset hashes.'
                 : 'OMR native bundle manifest must declare template, config, and reference asset hashes.');

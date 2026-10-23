@@ -16,7 +16,7 @@ it('renders the ui kit gallery for authenticated staff', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('UiKit/Gallery')
-            ->has('nexi', fn (Assert $nexi) => $nexi
+            ->has('xiam', fn (Assert $xiam) => $xiam
                 ->where('enabled', true)
                 ->where('mode', 'degraded')
                 ->has('disclosure')
@@ -30,7 +30,7 @@ it('renders the ui kit gallery for authenticated staff', function () {
                 ->etc()));
 });
 
-it('shares nexi presentation seam on staff home', function () {
+it('shares xiam presentation seam on staff home', function () {
     seedE2Foundation();
     $user = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
 
@@ -38,8 +38,8 @@ it('shares nexi presentation seam on staff home', function () {
         ->get(route('staff.home'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('nexi.enabled')
-            ->where('nexi.mode', 'degraded')
-            ->has('nexi.interaction_modes')
-            ->has('nexi.usage.limit'));
+            ->has('xiam.enabled')
+            ->where('xiam.mode', 'degraded')
+            ->has('xiam.interaction_modes')
+            ->has('xiam.usage.limit'));
 });

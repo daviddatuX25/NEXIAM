@@ -19,7 +19,10 @@ class PreflightOmrCaptureRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['required', 'file', 'mimes:jpeg,png,webp', 'max:25600'],
+            'image' => ['required_without:staged_frame_id', 'prohibits:staged_frame_id,pairing_id,camera_command_id', 'file', 'mimes:jpeg,png,webp', 'max:25600'],
+            'staged_frame_id' => ['required_without:image', 'prohibits:image', 'uuid'],
+            'pairing_id' => ['required_with:staged_frame_id', 'prohibits:image', 'uuid'],
+            'camera_command_id' => ['required_with:staged_frame_id', 'prohibits:image', 'uuid'],
         ];
     }
 }

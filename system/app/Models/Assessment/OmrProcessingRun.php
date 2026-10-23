@@ -9,10 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OmrProcessingRun extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_CLAIMED = 'claimed';
+
     public const STATUS_SUCCEEDED = 'succeeded';
+
     public const STATUS_RETRYABLE_FAILED = 'retryable_failed';
+
     public const STATUS_TERMINAL_FAILED = 'terminal_failed';
+
+    public const STATUS_SUPERSEDED = 'superseded';
 
     protected $table = 'omr_processing_runs';
 
@@ -21,7 +27,7 @@ class OmrProcessingRun extends Model
         'provider_name', 'provider_version', 'provider_commit', 'request_version',
         'expected_sheet_version', 'input_hash', 'template_hash', 'booklet_hash',
         'native_bundle_hash', 'manifest_hash', 'config_hash', 'patch_identity',
-        'page_no', 'response_version', 'claim_token', 'claimed_at', 'claim_expires_at',
+        'page_no', 'page_revision', 'response_version', 'claim_token', 'claimed_at', 'claim_expires_at',
         'attempts', 'next_retry_at', 'diagnostic_code', 'duration_ms',
         'timings_json', 'output_json',
     ];
@@ -34,6 +40,7 @@ class OmrProcessingRun extends Model
             'claimed_at' => 'datetime',
             'claim_expires_at' => 'datetime',
             'page_no' => 'integer',
+            'page_revision' => 'integer',
             'attempts' => 'integer',
             'next_retry_at' => 'datetime',
             'duration_ms' => 'integer',

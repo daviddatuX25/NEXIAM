@@ -1,0 +1,53 @@
+services:
+    public-ispsc-app:
+        extends:
+            file: compose.yaml
+            service: app
+        image: nexiam-system-app
+        environment:
+            APP_NAME: NEXIAM
+            APP_ENV: production
+            APP_DEBUG: 'false'
+            APP_URL: https://nexiam.dxtechph.online
+            ASSET_URL: ''
+            DB_DATABASE: nexiam_public_ispsc_20261016
+            DB_URL: ''
+            APP_CONFIG_CACHE: /tmp/nexiam-public-ispsc-config.php
+            SESSION_COOKIE: nexiam_public_ispsc_session
+            SESSION_SECURE_COOKIE: 'true'
+            SESSION_DOMAIN: nexiam.dxtechph.online
+            TRUSTED_PROXIES: ${NEXIAM_TEST_TRUSTED_PROXIES:?Set the existing HTTPS proxy addresses}
+            CACHE_STORE: database
+            QUEUE_CONNECTION: database
+            MAIL_MAILER: array
+            CIAM_MFA_ENABLED: 'true'
+            ADMISSION_QUOTA_WRITES_ENABLED: ${NEXIAM_PUBLIC_QUOTA_WRITES_ENABLED:-false}
+            VITE_HOT_FILE: /tmp/nexiam-public-ispsc-no-hot-file
+            NIGHTWATCH_ENABLED: 'false'
+            TELESCOPE_ENABLED: 'false'
+            PULSE_ENABLED: 'false'
+        command:
+            - sh
+            - -c
+            - >-
+              mkdir -p storage/app/public storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+              && exec php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+        ports: !override
+            - '127.0.0.1:18155:8000'
+        volumes: !override
+            - type: bind
+              source: .
+              target: /var/www/html
+              read_only: true
+            - public_ispsc_storage:/var/www/html/storage
+            - type: bind
+              source: ./storage/app/nexiam-public-build
+              target: /var/www/html/public/build
+              read_only: true
+              bind:
+                create_host_path: false
+        tmpfs:
+            - /tmp:rw,noexec,nosuid,size=134217728,mode=1777
+
+volumes:
+    public_ispsc_storage:

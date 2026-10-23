@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" role="img" aria-labelledby="title desc">
+  <title id="title">Academic Building Room 101 entrance</title>
+  <desc id="desc">Illustrated classroom entrance with a Room 101 plaque, window, and yellow floor caution line.</desc>
+  <defs>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#f0ece2"/><stop offset="1" stop-color="#d6c9b6"/></linearGradient>
+    <linearGradient id="door" x2="1" y2="1"><stop stop-color="#75583d"/><stop offset="1" stop-color="#493523"/></linearGradient>
+    <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#d8edf0"/><stop offset="1" stop-color="#83aeb7"/></linearGradient>
+  </defs>
+  <path fill="#283640" d="M0 0h300v400H0z"/>
+  <path fill="url(#wall)" d="M18 18h264v342H18z"/>
+  <path fill="#c5b49d" d="M18 342h264v18H18z"/>
+  <path fill="#594832" d="M52 73h196v269H52z"/>
+  <path fill="#e5ded1" d="M60 81h180v253H60z"/>
+  <path fill="url(#door)" d="M72 91h156v243H72z"/>
+  <path fill="url(#glass)" stroke="#ece6da" stroke-width="5" d="M89 111h121v125H89z"/>
+  <path fill="#f7f5ec" d="M101 126h96v78h-96z" opacity=".88"/>
+  <path fill="#78929a" d="M110 139h76v51h-76z"/>
+  <path fill="#bed0cd" d="M116 145h64v38h-64z"/>
+  <path fill="#8d9c91" d="M122 171h52v12h-52z"/>
+  <path fill="#6b5038" d="M148 111v125h5V111z" opacity=".55"/>
+  <rect x="198" y="251" width="7" height="34" rx="3.5" fill="#c9a45d"/>
+  <circle cx="201.5" cy="267" r="2" fill="#fff0bd"/>
+  <path fill="#594832" d="M78 45h144v32H78z"/>
+  <path fill="#f8f5ec" d="M83 49h134v24H83z"/>
+  <text x="150" y="60" fill="#493b2b" font-family="Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle">ROOM 101 - CLASSROOM</text>
+  <text x="150" y="69" fill="#82745f" font-family="Arial,sans-serif" font-size="5.5" letter-spacing="1.2" text-anchor="middle">ACADEMIC BUILDING</text>
+  <path fill="#46515a" d="M28 360h244v24H28z"/>
+  <path fill="#f0c64c" d="M35 364h230v7H35z"/>
+  <path stroke="#35424a" stroke-width="4" d="m39 371 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7"/>
+  <path fill="#202c34" d="M0 384h300v16H0z"/>
+</svg>

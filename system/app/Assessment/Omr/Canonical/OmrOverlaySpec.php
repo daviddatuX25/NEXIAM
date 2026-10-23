@@ -6,7 +6,6 @@ use RuntimeException;
 
 use function hash;
 use function json_encode;
-use function preg_match;
 
 final class OmrOverlayException extends RuntimeException
 {
@@ -19,7 +18,9 @@ final class OmrOverlayException extends RuntimeException
 final class OmrOverlaySpec
 {
     public const SCOPE_TEMPLATE = 'template';
+
     public const SCOPE_PRINT_JOB = 'print_job';
+
     public const SCOPE_BLANK_INSTANCE = 'blank_instance';
 
     public const ALLOWED_TAGS = [
@@ -44,7 +45,7 @@ final class OmrOverlaySpec
     public const SCOPES = [self::SCOPE_TEMPLATE, self::SCOPE_PRINT_JOB, self::SCOPE_BLANK_INSTANCE];
 
     /**
-     * @param array<string, mixed> $overlay
+     * @param  array<string, mixed>  $overlay
      * @return array<string, mixed>
      */
     public function validate(array $overlay): array
@@ -65,6 +66,10 @@ final class OmrOverlaySpec
             }
             if (! in_array($scope, self::SCOPES, true)) {
                 throw new OmrOverlayException('overlay_scope_invalid', "Overlay scope {$scope} is not permitted.");
+            }
+            $pageNo = (int) ($box['page_no'] ?? 1);
+            if ($pageNo < 1 || $pageNo > 4) {
+                throw new OmrOverlayException('overlay_page_invalid', "Overlay box {$index} has an invalid page number.");
             }
             if (! isset($box['x'], $box['y'], $box['width'], $box['height'])
                 || (float) $box['x'] < 0 || (float) $box['y'] < 0
@@ -92,6 +97,7 @@ final class OmrOverlaySpec
                 : null;
 
             $normalized[] = [
+                'page_no' => $pageNo,
                 'tag' => $tag,
                 'scope' => $scope,
                 'x' => (float) $box['x'],

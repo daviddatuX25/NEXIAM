@@ -1,0 +1,124 @@
+{
+  "notice": "EXPLICIT SYNTHETIC RESEARCH PROBE ONLY. Every person, program, score target, feature value, and benchmark row below is invented for isolated model compatibility testing. This payload contains no applicant identifiers and is not a real applicant record. Do not use outputs for admissions decisions or production; this probe does not authorize hosted/API or live-application use.",
+  "feature_definitions": [
+    {
+      "feature_key": "shs_strand",
+      "label": "Senior High School strand",
+      "logical_type": "categorical",
+      "is_required": true,
+      "source_definition": null
+    },
+    {
+      "feature_key": "gwa",
+      "label": "Grade-weighted average",
+      "logical_type": "numeric",
+      "is_required": true,
+      "source_definition": null
+    },
+    {
+      "feature_key": "intake_biology",
+      "label": "Synthetic intake biology indicator",
+      "logical_type": "numeric",
+      "is_required": false,
+      "source_definition": {
+        "source_id": "synthetic-research-source-01",
+        "source_code": "SYNTH-BIO-01",
+        "source_version": "1",
+        "unit": "points on invented 0-100 scale",
+        "min_value": 0,
+        "max_value": 100
+      }
+    },
+    {
+      "feature_key": "riasec_i",
+      "label": "Synthetic investigative-interest indicator",
+      "logical_type": "binary",
+      "is_required": false,
+      "source_definition": {
+        "source_id": "synthetic-research-source-02",
+        "source_code": "SYNTH-RIASEC-I",
+        "source_version": "1"
+      }
+    }
+  ],
+  "query_applicant": {
+    "shs_strand": "SYNTH-ARTS",
+    "gwa": 88.4,
+    "intake_biology": null,
+    "riasec_i": 1
+  },
+  "context_exemplars": [
+    {
+      "program_code": "SYN-PROGRAM-A",
+      "program_name": "Synthetic Program A",
+      "target_class": 0,
+      "shs_strand": "SYNTH-STEM",
+      "gwa": 78.0,
+      "intake_biology": 40,
+      "riasec_i": 0
+    },
+    {
+      "program_code": "SYN-PROGRAM-A",
+      "program_name": "Synthetic Program A",
+      "target_class": 1,
+      "shs_strand": "SYNTH-STEM",
+      "gwa": 93.0,
+      "intake_biology": 86,
+      "riasec_i": 1
+    },
+    {
+      "program_code": "SYN-PROGRAM-A",
+      "program_name": "Synthetic Program A",
+      "target_class": 0,
+      "shs_strand": "SYNTH-ABM",
+      "gwa": 82.0,
+      "intake_biology": 51,
+      "riasec_i": 0
+    },
+    {
+      "program_code": "SYN-PROGRAM-A",
+      "program_name": "Synthetic Program A",
+      "target_class": 1,
+      "shs_strand": "SYNTH-ABM",
+      "gwa": 96.0,
+      "intake_biology": 90,
+      "riasec_i": 1
+    },
+    {
+      "program_code": "SYN-PROGRAM-B",
+      "program_name": "Synthetic Program B",
+      "target_class": 0,
+      "shs_strand": "SYNTH-ARTS",
+      "gwa": 75.0,
+      "intake_biology": 33,
+      "riasec_i": 0
+    },
+    {
+      "program_code": "SYN-PROGRAM-B",
+      "program_name": "Synthetic Program B",
+      "target_class": 1,
+      "shs_strand": "SYNTH-STEM",
+      "gwa": 91.0,
+      "intake_biology": 80,
+      "riasec_i": 1
+    },
+    {
+      "program_code": "SYN-PROGRAM-B",
+      "program_name": "Synthetic Program B",
+      "target_class": 0,
+      "shs_strand": "SYNTH-ABM",
+      "gwa": 79.0,
+      "intake_biology": 45,
+      "riasec_i": 0
+    },
+    {
+      "program_code": "SYN-PROGRAM-B",
+      "program_name": "Synthetic Program B",
+      "target_class": 1,
+      "shs_strand": "SYNTH-ARTS",
+      "gwa": 94.0,
+      "intake_biology": 88,
+      "riasec_i": 1
+    }
+  ]
+}

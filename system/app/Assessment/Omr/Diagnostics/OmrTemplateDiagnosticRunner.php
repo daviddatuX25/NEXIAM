@@ -2,17 +2,23 @@
 
 namespace App\Assessment\Omr\Diagnostics;
 
+use App\Assessment\Omr\Canonical\OmrSourcePolicy;
+use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrDetectionIssue;
 use App\Assessment\Omr\OmrDetectionOutcome;
 use App\Assessment\Omr\OmrDetectionPort;
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrDetectionSuccess;
-use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
+use App\Assessment\Omr\OmrDocumentRectification;
+use App\Assessment\Omr\OmrIdentityField;
 use App\Assessment\Omr\OmrLayoutVerificationPort;
 use App\Assessment\Omr\OmrLayoutVerificationResult;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Omr\OmrTemplateGeometryProjector;
 
 use function array_filter;
+use function array_map;
 use function count;
 use function hash;
 use function is_array;
@@ -39,8 +45,7 @@ final class OmrTemplateDiagnosticRunner
         private readonly OmrDiagnosticRequestBuilder $requests,
         private readonly OmrLayoutVerificationPort $layout,
         private readonly OmrDetectionPort $detector,
-    ) {
-    }
+    ) {}
 
     public function verify(
         OmrDiagnosticTarget $target,
@@ -48,6 +53,8 @@ final class OmrTemplateDiagnosticRunner
         string $mime,
         ?OmrProofPlan $plan = null,
         int $pageNo = 1,
+        ?OmrLayoutVerificationResult $verifiedLayout = null,
+        ?OmrDetectionRequest $preparedRequest = null,
     ): OmrDiagnosticEvidence {
         if ($pageNo < 1 || $pageNo > $target->pageCount()) {
             throw new OmrDiagnosticTargetException(
@@ -84,8 +91,8 @@ final class OmrTemplateDiagnosticRunner
             );
         }
 
-        $request = $target->buildRequest($this->requests, $bytes, $mime, $pageNo);
-        $layoutResult = $this->layout->verifyLayout($request);
+        $request = $preparedRequest ?? $target->buildRequest($this->requests, $bytes, $mime, $pageNo);
+        $layoutResult = $verifiedLayout ?? $this->layout->verifyLayout($request);
         $timings = [];
         if ($layoutResult->preprocessMs !== null) {
             $timings['preprocess_ms'] = $layoutResult->preprocessMs;
@@ -93,7 +100,27 @@ final class OmrTemplateDiagnosticRunner
         if ($layoutResult->verificationMs !== null) {
             $timings['layout_verification_ms'] = $layoutResult->verificationMs;
         }
-
+        if ($layoutResult->succeeded()
+            && $target->registrationMode() === OmrRegistrationMode::DocumentBound
+            && ! OmrDocumentRectification::isAccepted($layoutResult->rectification)) {
+            return OmrDiagnosticEvidence::failed(
+                target: $target,
+                pageNo: $pageNo,
+                code: 'document_rectification_rejected',
+                detail: 'The server did not accept one document boundary and warp.',
+                inputHash: $inputHash,
+                capturedMime: $mime,
+                capturedBytes: $bytes,
+                timings: $timings,
+                plan: $plan,
+                layout: $layoutResult,
+                gates: [
+                    'registration' => 'fail',
+                    'document' => 'fail',
+                    'content' => (($layoutResult->rectification['content_gate']['accepted'] ?? null) === true) ? 'pass' : 'fail',
+                ],
+            );
+        }
         if (! $layoutResult->succeeded()) {
             return OmrDiagnosticEvidence::failed(
                 target: $target,
@@ -133,12 +160,42 @@ final class OmrTemplateDiagnosticRunner
                 plan: $plan,
                 layout: $layoutResult,
                 gates: $gates,
-                issues: $this->safeIssues([], $gates),
+                issues: $this->safeIssues([], $gates, $target->registrationMode(), $plan, $pageNo),
+                providerResult: $detection,
             );
         }
 
+        if ($target->registrationMode() === OmrRegistrationMode::DocumentBound
+            && ! OmrDocumentRectification::sameSelectedWarp($layoutResult->rectification, $detection->success->rectification)) {
+            return OmrDiagnosticEvidence::failed(
+                target: $target,
+                pageNo: $pageNo,
+                code: 'rectification_mismatch',
+                detail: 'Layout verification and detection selected different document rectifications.',
+                inputHash: $inputHash,
+                capturedMime: $mime,
+                capturedBytes: $bytes,
+                timings: $timings,
+                plan: $plan,
+                layout: $layoutResult,
+                gates: [
+                    'registration' => 'fail',
+                    'document' => 'fail',
+                    'rectification_consistency' => 'fail',
+                ],
+                issues: [[
+                    'code' => 'rectification_mismatch',
+                    'severity' => OmrDetectionIssue::SEVERITY_TERMINAL,
+                ]],
+                providerResult: $detection,
+            );
+        }
+        if ($target->registrationMode() === OmrRegistrationMode::DocumentBound) {
+            $gates['rectification_consistency'] = 'pass';
+        }
+
         $items = $this->itemEvidence($request, $layoutResult, $detection->success, $plan, $pageNo);
-        $identity = $this->identityEvidence($detection->success, $plan, $pageNo);
+        $identity = $this->identityEvidence($request, $detection->success, $plan, $pageNo);
 
         return OmrDiagnosticEvidence::successful(
             target: $target,
@@ -151,9 +208,10 @@ final class OmrTemplateDiagnosticRunner
             items: $items,
             identity: $identity,
             timings: $timings,
-            issues: $this->safeIssues($detection->success->issues, $gates),
+            issues: $this->safeIssues($detection->success->issues, $gates, $target->registrationMode(), $plan, $pageNo),
             plan: $plan,
             calibrationStatus: $detection->success->calibrationStatus,
+            providerResult: $detection,
         );
     }
 
@@ -170,6 +228,23 @@ final class OmrTemplateDiagnosticRunner
         $aligned = is_array($result->alignedImage) ? $result->alignedImage : [];
         $dimensionsPass = (int) ($aligned['width'] ?? 0) === (int) ($frame[0] ?? 0)
             && (int) ($aligned['height'] ?? 0) === (int) ($frame[1] ?? 0);
+        if ($request->registrationMode === OmrRegistrationMode::DocumentBound) {
+            $rectification = $result->rectification;
+            $rectificationPass = OmrDocumentRectification::isAccepted($rectification);
+            $keepOriginal = ($rectification['crop_policy'] ?? null) === 'keep_original';
+
+            return [
+                'marker_count' => 'not_applicable',
+                'registration' => $rectificationPass ? 'pass' : 'fail',
+                'document' => $keepOriginal || (($rectification['document_gates']['accepted'] ?? null) === true) ? 'pass' : 'fail',
+                'content' => $keepOriginal || (($rectification['content_gate']['accepted'] ?? null) === true) ? 'pass' : 'fail',
+                'dimensions' => $dimensionsPass ? 'pass' : 'fail',
+                'shifts' => $unsafe === [] ? 'pass' : 'fail',
+                'rectification_consistency' => 'pending',
+                'unsafe_blocks' => $unsafe,
+            ];
+        }
+
         $markerCountPass = is_array($result->markerMatches) && count($result->markerMatches) === 4;
 
         return [
@@ -208,34 +283,50 @@ final class OmrTemplateDiagnosticRunner
                 }
             }
         }
+        $registeredRegions = OmrTemplateGeometryProjector::registeredOptionRegions($layout);
 
         $items = [];
         foreach ($request->items as $geometry) {
             $detected = $detectedByKey[strtoupper($geometry->areaCode).'_Q_'.(int) $geometry->questionNo] ?? null;
             $expectedValue = $expected[$geometry->nativeLabel] ?? null;
             $options = [];
+            $hasRegisteredRegion = false;
             foreach ($geometry->options as $option) {
                 $meanKey = $geometry->nativeLabel.'|'.$option->code;
+                $regionKey = $geometry->nativeLabel.'|'.$option->code;
+                $hasRegisteredRegion = $hasRegisteredRegion || isset($registeredRegions[$regionKey]);
                 $options[] = [
                     'code' => $option->code,
-                    'region' => $option->region->toArray(),
+                    'region' => $registeredRegions[$regionKey] ?? $option->region->toArray(),
                     'display_order' => $option->displayOrder,
                     'mean' => $means[$meanKey] ?? null,
                     'threshold_status' => 'unqualified',
                 ];
             }
+            $itemRegion = $hasRegisteredRegion
+                ? OmrTemplateGeometryProjector::unionRegions(array_map(
+                    static fn (array $option): array => $option['region'],
+                    $options,
+                ))
+                : $geometry->region->toArray();
             $items[] = [
                 'position' => $geometry->position,
                 'area_code' => $geometry->areaCode,
                 'question_no' => $geometry->questionNo,
                 'native_label' => $geometry->nativeLabel,
                 'page_no' => $pageNo,
-                'region' => $geometry->region->toArray(),
+                'region' => $itemRegion,
                 'options' => $options,
                 'detected' => $detected !== null ? [
                     'state' => $detected->state,
                     'selected_option' => $detected->selectedOption,
                     'confidence' => $detected->confidence,
+                    'observed_options' => $detected->observedOptions,
+                    'option_observations' => array_map(
+                        static fn ($observation): array => $observation->toArray(),
+                        $detected->optionObservations,
+                    ),
+                    'issue_codes' => $detected->issueCodes,
                 ] : null,
                 'expected' => $expectedValue,
                 'exact' => $detected !== null && $expectedValue !== null
@@ -249,17 +340,38 @@ final class OmrTemplateDiagnosticRunner
 
     /**
      * Declared-option ID evidence: observed applicant-number digits with the
-     * plan's calibration digits when an identity grid is mapped. Advisory
-     * only — never binds an applicant.
+     * plan's expected digits and the same pinned option geometry used for
+     * answer bubbles. Advisory only — never binds an applicant.
      *
      * @return list<array<string, mixed>>
      */
-    private function identityEvidence(OmrDetectionSuccess $success, ?OmrProofPlan $plan, int $pageNo): array
-    {
+    private function identityEvidence(
+        OmrDetectionRequest $request,
+        OmrDetectionSuccess $success,
+        ?OmrProofPlan $plan,
+        int $pageNo,
+    ): array {
+        $optionsByLabel = [];
+        foreach ((array) ($request->reviewManifest['fields'] ?? []) as $manifestField) {
+            if (! is_array($manifestField) || (int) ($manifestField['page'] ?? 0) !== $pageNo) {
+                continue;
+            }
+            $label = is_string($manifestField['label'] ?? null) ? $manifestField['label'] : null;
+            $option = is_scalar($manifestField['option'] ?? null) ? (string) $manifestField['option'] : null;
+            $region = is_array($manifestField['region'] ?? null) ? $manifestField['region'] : null;
+            if ($label === null || ! str_starts_with($label, 'APPLICANT_NUMBER_') || $option === null || $region === null) {
+                continue;
+            }
+            $optionsByLabel[$label][] = [
+                'code' => $option,
+                'region' => $region,
+            ];
+        }
+
         $identity = [];
         $calibration = $plan !== null ? $plan->calibrationDigits : [];
         foreach ($success->identityFields as $index => $field) {
-            if ($field->code !== \App\Assessment\Omr\OmrIdentityField::CODE_APPLICANT_NUMBER) {
+            if ($field->code !== OmrIdentityField::CODE_APPLICANT_NUMBER) {
                 continue;
             }
             $position = $index + 1;
@@ -269,6 +381,16 @@ final class OmrTemplateDiagnosticRunner
                 'position' => $position,
                 'page_no' => $pageNo,
                 'region' => $field->region->toArray(),
+                'options' => array_map(
+                    static fn (array $option): array => [
+                        ...$option,
+                        'observed' => $field->value !== null && (string) $option['code'] === (string) $field->value,
+                        'classification' => $field->value !== null && (string) $option['code'] === (string) $field->value
+                            ? 'marked'
+                            : 'unmarked',
+                    ],
+                    $optionsByLabel[$label] ?? [],
+                ),
                 'confidence' => $field->confidence,
                 'detected_value' => $field->value,
                 'expected_digit' => $calibration[$label] ?? null,
@@ -289,18 +411,37 @@ final class OmrTemplateDiagnosticRunner
      * @param  array<string, mixed>  $gates
      * @return list<array<string, mixed>>
      */
-    private function safeIssues(array $detectionIssues, array $gates): array
-    {
+    private function safeIssues(
+        array $detectionIssues,
+        array $gates,
+        OmrRegistrationMode $mode,
+        ?OmrProofPlan $plan,
+        int $pageNo,
+    ): array {
+        $blankNegative = $plan !== null
+            && $plan->purpose !== ProofPurpose::Digital
+            && $plan->sourceKind === OmrSourcePolicy::UPLOADED_ORIGINAL
+            && $plan->method === OmrProofPlan::METHOD_PRE_SHADED
+            && $plan->expectedVectorForPage($pageNo) === [];
         $issues = [];
         foreach ($detectionIssues as $issue) {
+            $severity = $blankNegative && $issue->code === OmrDetectionIssue::CODE_IDENTITY_UNRESOLVED
+                ? OmrDetectionIssue::SEVERITY_WARNING
+                : $issue->severity;
             $issues[] = [
                 'code' => $issue->code,
-                'severity' => $issue->severity,
+                'severity' => $severity,
                 'area_code' => $issue->areaCode,
                 'question_no' => $issue->questionNo,
             ];
         }
-        $failed = array_filter($gates, static fn (mixed $status, string $name): bool => $name !== 'unsafe_blocks' && $status !== 'pass', ARRAY_FILTER_USE_BOTH);
+        $failed = array_filter(
+            $gates,
+            static fn (mixed $status, string $name): bool => $name !== 'unsafe_blocks'
+                && ! ($mode === OmrRegistrationMode::DocumentBound && $name === 'marker_count' && $status === 'not_applicable')
+                && $status !== 'pass',
+            ARRAY_FILTER_USE_BOTH,
+        );
         if ($failed !== []) {
             $issues[] = [
                 'code' => OmrDetectionIssue::CODE_SHEET_MISALIGNED,

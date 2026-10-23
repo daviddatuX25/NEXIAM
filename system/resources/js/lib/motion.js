@@ -15,23 +15,27 @@ export function reveal(node, opts = {}) {
   const delay = opts.delay ?? 0;
   const amount = opts.amount ?? 0.25;
 
-  node.style.opacity = '0';
-  node.style.transform = `translateY(${y}px)`;
-
   if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    node.style.opacity = '1';
-    node.style.transform = 'none';
+    node.style.opacity = '';
+    node.style.transform = '';
     return {};
   }
+
+  node.style.opacity = '0';
+  node.style.transform = `translateY(${y}px)`;
 
   const stop = inView(
     node,
     (element) => {
-      animate(
+      const anim = animate(
         element,
         { opacity: 1, transform: 'translateY(0px)' },
         { duration, delay, easing: [0.22, 1, 0.36, 1] }
       );
+      anim.finished.then(() => {
+        element.style.transform = '';
+        element.style.opacity = '';
+      });
     },
     { amount }
   );
@@ -54,29 +58,29 @@ export function revealChildren(node, opts = {}) {
   const duration = opts.duration ?? 0.5;
   const stagger = opts.stagger ?? 0.08;
 
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return {};
+  }
+
   const kids = /** @type {HTMLElement[]} */ ([...node.querySelectorAll(selector)]);
   kids.forEach((el) => {
     el.style.opacity = '0';
     el.style.transform = `translateY(${y}px)`;
   });
 
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    kids.forEach((el) => {
-      el.style.opacity = '1';
-      el.style.transform = 'none';
-    });
-    return {};
-  }
-
   const stop = inView(
     node,
     () => {
       kids.forEach((el, i) => {
-        animate(
+        const anim = animate(
           el,
           { opacity: 1, transform: 'translateY(0px)' },
           { duration, delay: i * stagger, easing: [0.22, 1, 0.36, 1] }
         );
+        anim.finished.then(() => {
+          el.style.transform = '';
+          el.style.opacity = '';
+        });
       });
     },
     { amount: 0.2 }

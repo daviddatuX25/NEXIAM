@@ -22,9 +22,11 @@ class PreviewResultSheetTemplateRequest extends FormRequest
             'mode' => ['required', Rule::in([ResultSheetTemplate::MODE_HTML, ResultSheetTemplate::MODE_DOCX])],
             'paper_size' => ['sometimes', Rule::in([ResultSheetTemplate::PAPER_A4, ResultSheetTemplate::PAPER_LEGAL, ResultSheetTemplate::PAPER_LETTER])],
             'orientation' => ['sometimes', Rule::in([ResultSheetTemplate::ORIENTATION_PORTRAIT, ResultSheetTemplate::ORIENTATION_LANDSCAPE])],
-            'logical_unit' => ['sometimes', Rule::in([ResultSheetTemplate::LOGICAL_FULL, ResultSheetTemplate::LOGICAL_HALF_A4, ResultSheetTemplate::LOGICAL_HALF_LEGAL, ResultSheetTemplate::LOGICAL_HALF_LETTER])],
+            'logical_unit' => ['sometimes', Rule::in([ResultSheetTemplate::LOGICAL_FULL])],
             'content' => ['nullable', 'string'],
-            'document' => ['nullable', 'file', 'mimes:docx,odt', 'max:5120'],
+            'document' => ['nullable', 'file', 'mimes:docx,odt', 'max:16384'],
+            'builder_json' => ['nullable'],
+            'template_id' => ['nullable', 'integer', 'exists:result_sheet_templates,id'],
         ];
     }
 }

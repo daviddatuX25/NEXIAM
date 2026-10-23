@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models\Ai;
 
 use Illuminate\Database\Eloquent\Model;
@@ -44,6 +46,8 @@ class KnowledgeSourceVersion extends Model
         'status',
         'title',
         'body_text',
+        'question',
+        'answer',
         'content_checksum',
         'quarantine_path',
         'extraction_digest',
@@ -58,9 +62,7 @@ class KnowledgeSourceVersion extends Model
         'failure_reason',
     ];
 
-    /**
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     protected function casts(): array
     {
         return [
@@ -70,27 +72,51 @@ class KnowledgeSourceVersion extends Model
         ];
     }
 
-    /**
-     * @return BelongsTo<KnowledgeSource, $this>
-     */
+    /** @return BelongsTo<KnowledgeSource, $this> */
     public function source(): BelongsTo
     {
         return $this->belongsTo(KnowledgeSource::class, 'knowledge_source_id');
     }
 
-    /**
-     * @return HasMany<KnowledgeCitationFixture, $this>
-     */
+    /** @return HasMany<KnowledgeCitationFixture, $this> */
     public function fixtures(): HasMany
     {
         return $this->hasMany(KnowledgeCitationFixture::class, 'knowledge_source_version_id');
     }
 
-    /**
-     * @return HasOne<KnowledgeIndexEntry, $this>
-     */
+    /** @return HasOne<KnowledgeIndexEntry, $this> */
     public function indexEntry(): HasOne
     {
         return $this->hasOne(KnowledgeIndexEntry::class, 'knowledge_source_version_id');
+    }
+
+    /** @return HasMany<KnowledgeSourceApproval, $this> */
+    public function officeApprovals(): HasMany
+    {
+        return $this->hasMany(KnowledgeSourceApproval::class, 'knowledge_source_version_id')->orderBy('office');
+    }
+
+    /** @return HasMany<KnowledgeSourceConsensusSignature, $this> */
+    public function consensusSignatures(): HasMany
+    {
+        return $this->hasMany(KnowledgeSourceConsensusSignature::class, 'knowledge_source_version_id');
+    }
+
+    /** @return HasMany<KnowledgeSourcePolicyDependency, $this> */
+    public function policyDependencies(): HasMany
+    {
+        return $this->hasMany(KnowledgeSourcePolicyDependency::class, 'knowledge_source_version_id');
+    }
+
+    /** @return HasMany<KnowledgeSourceReconciliation, $this> */
+    public function reconciliations(): HasMany
+    {
+        return $this->hasMany(KnowledgeSourceReconciliation::class, 'knowledge_source_version_id');
+    }
+
+    /** @return HasOne<KnowledgeSourceReconciliation, $this> */
+    public function latestReconciliation(): HasOne
+    {
+        return $this->hasOne(KnowledgeSourceReconciliation::class, 'knowledge_source_version_id')->latestOfMany();
     }
 }

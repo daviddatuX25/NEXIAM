@@ -2,6 +2,7 @@
 
 namespace App\Assessment\Omr\Canonical;
 
+use App\Assessment\Omr\OmrRenderException;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\QrCode;
@@ -21,16 +22,28 @@ final class OmrQrCodeRenderer
 {
     public function svg(string $payload, ?int $size = null): string
     {
-        $result = (new SvgWriter)->write($this->code($payload, $size));
+        $code = $this->code($payload, $size);
 
-        return $result->getString();
+        try {
+            $result = (new SvgWriter)->write($code);
+
+            return $result->getString();
+        } catch (\Throwable $exception) {
+            throw new OmrRenderException($exception);
+        }
     }
 
     public function png(string $payload, ?int $size = null): string
     {
-        $result = (new PngWriter)->write($this->code($payload, $size));
+        $code = $this->code($payload, $size);
 
-        return $result->getString();
+        try {
+            $result = (new PngWriter)->write($code);
+
+            return $result->getString();
+        } catch (\Throwable $exception) {
+            throw new OmrRenderException($exception);
+        }
     }
 
     private function code(string $payload, ?int $size): QrCode

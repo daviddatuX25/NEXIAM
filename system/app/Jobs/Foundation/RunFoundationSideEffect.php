@@ -15,9 +15,7 @@ class RunFoundationSideEffect implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(public string $operationId)
-    {
-    }
+    public function __construct(public string $operationId) {}
 
     public function handle(RecordAuditEvent $recordAuditEvent): void
     {

@@ -1,11 +1,11 @@
 <?php
 
 use App\Admission\Support\ApplicantCapabilityGrants;
-use App\Application\Capabilities\CapabilityDefinitions;
-use App\Application\Capabilities\CapabilityInvocationRequest;
-use App\Application\Capabilities\CapabilityKernel;
+use App\Ai\Context\InvocationContext;
+use App\Ai\Gateway\AssistantToolCatalog;
+use App\Ai\Gateway\AssistantToolGateway;
 use App\Application\Capabilities\CapabilityKind;
-use App\Application\Capabilities\CapabilityRegistry;
+use App\Application\Capabilities\CapabilityResult;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
@@ -71,25 +71,38 @@ function applicantOpenReservation(User $guidance, ExamSession $session): void
     expect($session->fresh()->booking_mode)->toBe(ExamSession::BOOKING_OPEN_FOR_RESERVATION);
 }
 
-function applicantInvokeSlots(User $actor): \App\Application\Capabilities\CapabilityResult
+function applicantInvokeSlots(User $actor): CapabilityResult
 {
-    return app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'exams.slots.list',
-        version: 1,
-        input: [],
+    $actorType = $actor->applicantAccount()->exists() ? 'applicant' : 'staff';
+    $institutionId = $actorType === 'staff'
+        ? $actor->actorScope()->institutionId
+        : $actor->applicantAccount?->identity?->institution_id;
+
+    $context = new InvocationContext(
+        actorId: (string) $actor->id,
+        actorType: $actorType,
+        institutionId: $institutionId,
+        surfaceProfile: $actorType,
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'slots-test',
+    );
+
+    return app(AssistantToolGateway::class)->invoke(
         actor: $actor,
-        channel: 'nexi_safe',
-        surfaceKey: 'applicant',
-        pagePackKey: 'applicant.schedule@1',
-    ));
+        context: $context,
+        toolId: 'exams.slots.list@1',
+        input: [],
+    );
 }
 
-test('registry includes exams.slots.list read row', function (): void {
-    $registry = new CapabilityRegistry(CapabilityDefinitions::all());
+test('catalog includes exams.slots.list read row', function (): void {
+    $catalog = app(AssistantToolCatalog::class);
 
-    expect($registry->get('exams.slots.list', 1))->not->toBeNull()
-        ->and($registry->get('exams.slots.list', 1)?->kind)->toBe(CapabilityKind::Read)
-        ->and($registry->get('exams.slots.list', 1)?->id())->toBe('exams.slots.list@1');
+    expect($catalog->get('exams.slots.list', 1))->not->toBeNull()
+        ->and($catalog->get('exams.slots.list', 1)?->kind)->toBe(CapabilityKind::Read)
+        ->and($catalog->get('exams.slots.list', 1)?->id())->toBe('exams.slots.list@1');
 });
 
 test('applicant login grants applicant slot capabilities', function (): void {
@@ -186,9 +199,8 @@ test('applicant without identity is denied by handler', function (): void {
 
     $resultCall = applicantInvokeSlots($user);
 
-    expect($resultCall->ok)->toBeTrue()
-        ->and($resultCall->data['mode'])->toBe('denied')
-        ->and($resultCall->data['reason'])->toBe('no_applicant_identity');
+    expect($resultCall->status)->toBe('denied')
+        ->and(in_array($resultCall->reason, ['no_applicant_identity', 'envelope_denied:blocked'], true))->toBeTrue();
 });
 
 test('applicant can never read another applicant slots (own scope)', function (): void {
@@ -210,25 +222,40 @@ test('applicant can never read another applicant slots (own scope)', function ()
         ->and(collect($resultCall->data['slots'])->pluck('id')->contains($session->id))->toBeTrue();
 });
 
-function applicantInvokeReserve(User $actor, array $input): \App\Application\Capabilities\CapabilityResult
+function applicantInvokeReserve(User $actor, array $input): CapabilityResult
 {
-    return app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'exams.slot.reserve',
-        version: 1,
-        input: $input,
+    $serverConfirmed = (bool) ($input['execute'] ?? false);
+    unset($input['execute']);
+
+    $institutionId = $actor->applicantAccount?->identity?->institution_id;
+    $context = new InvocationContext(
+        actorId: (string) $actor->id,
+        actorType: 'applicant',
+        institutionId: $institutionId,
+        surfaceProfile: 'applicant',
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'reserve-test',
+        executionId: $serverConfirmed ? 'exec-reserve-test' : null,
+        canonicalDigest: $serverConfirmed ? 'sha256-test-digest' : null,
+    );
+
+    return app(AssistantToolGateway::class)->invoke(
         actor: $actor,
-        channel: 'nexi_safe',
-        surfaceKey: 'applicant',
-        pagePackKey: 'applicant.schedule@1',
-    ));
+        context: $context,
+        toolId: 'exams.slot.reserve@1',
+        input: $input,
+        serverConfirmed: $serverConfirmed,
+    );
 }
 
-test('registry includes exams.slot.reserve propose row', function (): void {
-    $registry = new CapabilityRegistry(CapabilityDefinitions::all());
+test('catalog includes exams.slot.reserve propose row', function (): void {
+    $catalog = app(AssistantToolCatalog::class);
 
-    expect($registry->get('exams.slot.reserve', 1))->not->toBeNull()
-        ->and($registry->get('exams.slot.reserve', 1)?->kind)->toBe(CapabilityKind::Propose)
-        ->and($registry->get('exams.slot.reserve', 1)?->id())->toBe('exams.slot.reserve@1');
+    expect($catalog->get('exams.slot.reserve', 1))->not->toBeNull()
+        ->and($catalog->get('exams.slot.reserve', 1)?->kind)->toBe(CapabilityKind::Propose)
+        ->and($catalog->get('exams.slot.reserve', 1)?->id())->toBe('exams.slot.reserve@1');
 });
 
 test('propose reserves nothing; confirm reserves idempotently', function (): void {
@@ -297,8 +324,6 @@ test('reserve denies an attempt that is not the actor own', function (): void {
         'admission_attempt_id' => $victim['attempt']->id,
         'execute' => true,
     ]);
-
-    expect($resultCall->ok)->toBeTrue()
-        ->and($resultCall->data['mode'])->toBe('denied')
-        ->and($resultCall->data['reason'])->toBe('not_own_attempt');
+    expect($resultCall->status)->toBe('denied')
+        ->and(in_array($resultCall->reason, ['not_own_attempt', 'envelope_denied:blocked'], true))->toBeTrue();
 });

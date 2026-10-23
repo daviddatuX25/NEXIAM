@@ -16,7 +16,7 @@ test('canonical authoring workflow page renders nine stages with correct gate lo
 
     $draft = OmrTemplateAuthoringDraft::query()->create([
         'code' => 'WORKFLOW-STAGE-TEST',
-        'name' => 'Workflow stage test',
+        'name' => 'Canonical Workflow Stage Test',
         'source_kind' => 'preset',
         'stage' => OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE,
         'authoring_json' => ['pages' => [], 'mapping' => ['input' => ['blocks' => []]]],
@@ -25,11 +25,12 @@ test('canonical authoring workflow page renders nine stages with correct gate lo
     ]);
 
     $this->actingAs($user)
-        ->get(route('setup.omr.templates.canonical.drafts.show', $draft))
+        ->get(route('setup.exam-materials.answer-sheets.edit', $draft))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Setup/OmrConfiguration/Canonical/CanonicalWorkflow')
             ->where('draft.id', $draft->id)
+            ->where('draft.name', 'Answer sheet Workflow Stage Test')
             ->where('draft.stage', 'mapping_complete')
             ->where('draft.can_edit', true)
             ->has('stages', 9)
@@ -42,6 +43,10 @@ test('canonical authoring workflow page renders nine stages with correct gate lo
             ->has('urls.compile')
             ->has('urls.digital_verification')
         );
+
+    $this->actingAs($user)
+        ->get("/setup/omr/templates/canonical/drafts/{$draft->id}")
+        ->assertRedirect(route('setup.exam-materials.answer-sheets.edit', $draft));
 });
 
 test('canonical authoring workflow rejects unauthenticated and unauthorized staff', function (): void {
@@ -56,10 +61,17 @@ test('canonical authoring workflow rejects unauthenticated and unauthorized staf
         'owner_user_id' => $owner->id,
     ]);
 
-    $this->get(route('setup.omr.templates.canonical.drafts.show', $draft))->assertRedirect(route('login'));
+    $this->get(route('setup.exam-materials.answer-sheets.edit', $draft))->assertRedirect(route('login'));
 
     $unauthorized = User::factory()->create();
     $this->actingAs($unauthorized)
-        ->get(route('setup.omr.templates.canonical.drafts.show', $draft))
+        ->get(route('setup.exam-materials.answer-sheets.edit', $draft))
         ->assertForbidden();
+
+    Permission::findOrCreate(CapabilityCatalog::GUIDANCE_SCORING_OMR, 'web');
+    $authorizedNonOwner = User::factory()->create();
+    $authorizedNonOwner->givePermissionTo(CapabilityCatalog::GUIDANCE_SCORING_OMR);
+    $this->actingAs($authorizedNonOwner)
+        ->get("/setup/omr/templates/canonical/drafts/{$draft->id}")
+        ->assertNotFound();
 });

@@ -16,11 +16,16 @@ return [
         'undo_stack' => 200,
         'autosave_debounce_ms' => 800,
         'effective_dpi_floor' => 150.0,
+        'minimum_uploaded_bubble_mm' => 2.5,
         'minimum_bubble_mm' => 4.2,
         'minimum_option_edge_gap_mm' => 1.26,
         'snap_px' => 4,
         'keyboard_step_px' => 1,
         'keyboard_shift_step_px' => 10,
+        // Physical qualification measurement tolerance (35.30): printed
+        // marker-center distance must match the pinned paper geometry within
+        // this many mm before the run-derived pass may qualify a template.
+        'physical_measurement_tolerance_mm' => 1.0,
     ],
 
     'paper_mm' => [

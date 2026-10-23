@@ -24,6 +24,7 @@ class CreateConsultationSessionRequest extends FormRequest
             'code' => ['required', 'string', 'max:64'],
             'scheduled_at' => ['required', 'date'],
             'booking_mode' => ['required', Rule::in(ConsultationSession::BOOKING_MODES)],
+            'auto_assign_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

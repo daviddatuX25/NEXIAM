@@ -6,7 +6,6 @@ use App\Printing\DomPdfPrintRenderer;
 use RuntimeException;
 
 use function file_put_contents;
-use function hash;
 use function sys_get_temp_dir;
 use function tempnam;
 

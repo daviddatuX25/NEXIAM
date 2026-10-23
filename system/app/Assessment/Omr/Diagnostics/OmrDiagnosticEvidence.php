@@ -3,6 +3,7 @@
 namespace App\Assessment\Omr\Diagnostics;
 
 use App\Assessment\Omr\OmrDetectedItem;
+use App\Assessment\Omr\OmrDetectionResult;
 use App\Assessment\Omr\OmrLayoutVerificationResult;
 
 use function array_diff_key;
@@ -32,6 +33,7 @@ use function max;
 final readonly class OmrDiagnosticEvidence
 {
     public const OUTCOME_SUCCEEDED = 'succeeded';
+
     public const OUTCOME_FAILED = 'failed';
 
     /**
@@ -62,6 +64,7 @@ final readonly class OmrDiagnosticEvidence
         public ?string $planHash,
         public ?string $planPurpose,
         public ?array $providerItemEvidence,
+        public ?OmrDetectionResult $providerResult = null,
     ) {
         $this->summary = self::summarize($this->items);
     }
@@ -135,17 +138,23 @@ final readonly class OmrDiagnosticEvidence
         $expected = 0;
         $exact = 0;
         $ambiguous = 0;
+        $expectedAmbiguous = 0;
         foreach ($items as $item) {
-            if (! is_array($item) || ($item['expected'] ?? null) === null) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $isAmbiguous = (string) ($item['detected']['state'] ?? '') === OmrDetectedItem::STATE_AMBIGUOUS;
+            if ($isAmbiguous) {
+                $ambiguous++;
+            }
+            if (($item['expected'] ?? null) === null) {
                 continue;
             }
             $expected++;
             if (($item['exact'] ?? null) === true) {
                 $exact++;
-                continue;
-            }
-            if ((string) ($item['detected']['state'] ?? '') === OmrDetectedItem::STATE_AMBIGUOUS) {
-                $ambiguous++;
+            } elseif ($isAmbiguous) {
+                $expectedAmbiguous++;
             }
         }
 
@@ -154,7 +163,7 @@ final readonly class OmrDiagnosticEvidence
             'expected' => $expected,
             'exact' => $exact,
             'ambiguous' => $ambiguous,
-            'missing' => max(0, $expected - $exact - $ambiguous),
+            'missing' => max(0, $expected - $exact - $expectedAmbiguous),
             'vector_match' => $expected > 0 ? $exact === $expected : null,
         ];
     }
@@ -177,6 +186,7 @@ final readonly class OmrDiagnosticEvidence
         ?OmrLayoutVerificationResult $layout = null,
         ?array $gates = null,
         array $issues = [],
+        ?OmrDetectionResult $providerResult = null,
     ): self {
         $timings = self::normalizeTimings($timings);
         $hashes = ['input' => $inputHash, 'aligned' => null, 'overlay' => null, 'plan' => $plan?->planHash()];
@@ -210,6 +220,7 @@ final readonly class OmrDiagnosticEvidence
             planHash: $plan?->planHash(),
             planPurpose: $plan?->purpose->value,
             providerItemEvidence: $layout?->itemEvidence,
+            providerResult: $providerResult,
         );
     }
 
@@ -233,6 +244,7 @@ final readonly class OmrDiagnosticEvidence
         array $issues,
         ?OmrProofPlan $plan = null,
         ?string $calibrationStatus = null,
+        ?OmrDetectionResult $providerResult = null,
     ): self {
         $timings = self::normalizeTimings($timings);
         $hashes = ['input' => $inputHash, 'aligned' => null, 'overlay' => null, 'plan' => $plan?->planHash()];
@@ -262,6 +274,7 @@ final readonly class OmrDiagnosticEvidence
             planHash: $plan?->planHash(),
             planPurpose: $plan?->purpose->value,
             providerItemEvidence: $layout->itemEvidence,
+            providerResult: $providerResult,
         );
     }
 
@@ -275,6 +288,9 @@ final readonly class OmrDiagnosticEvidence
             'id' => $target->targetId(),
             'page_count' => $target->pageCount(),
             'page_no' => $pageNo,
+            'registration_mode' => $target->registrationMode()->value,
+            'qr_mode' => $target->qrMode()->value,
+            'compiled_pages' => $target->compiledPages(),
             'qualification_capable' => $target->qualificationCapable(),
             'marker_profile' => [
                 'code' => $target->markerProfileCode(),
@@ -302,7 +318,7 @@ final readonly class OmrDiagnosticEvidence
      * @param  array<string, mixed>|null  $image
      * @return array<string, mixed>|null
      */
-        private static function asset(?string $bytes, ?array $image): ?array
+    private static function asset(?string $bytes, ?array $image): ?array
     {
         if ($bytes === null || ! is_array($image)) {
             return null;

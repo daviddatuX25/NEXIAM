@@ -1,6 +1,8 @@
 <?php
 
+use App\Assessment\Omr\Verification\OmrPhysicalAssuranceCoordinator;
 use App\Assessment\Omr\Verification\OmrVerificationRunService;
+use App\Models\Assessment\OmrPhysicalChallenge;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\Assessment\OmrTemplateVerificationCapture;
 use App\Models\Assessment\OmrTemplateVerificationRun;
@@ -183,7 +185,7 @@ test('retry refuses non-failed runs', function (): void {
     expect(fn () => $runs->retry($passed->id))->toThrow(RuntimeException::class, 'verification_retry_status_invalid');
 });
 
-test('worker timeout finalizes only stale-heartbeat active runs as worker_timeout', function (): void {
+test('worker timeout finalizes only stale-heartbeat worker-owned runs', function (): void {
     $actor = User::factory()->create();
     $stale = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_VARIANT_MATRIX, ['last_heartbeat_at' => now()->subHours(2)]);
     $fresh = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_VARIANT_MATRIX, ['last_heartbeat_at' => now()]);
@@ -194,6 +196,91 @@ test('worker timeout finalizes only stale-heartbeat active runs as worker_timeou
         ->and($stale->fresh()->error_code)->toBe('worker_timeout');
     expect($runs->finalizeTimedOut($fresh->id))->toBeFalse();
     expect($fresh->fresh()->status)->toBe(OmrTemplateVerificationRun::STATUS_VARIANT_MATRIX);
+});
+
+test('human-controlled waiting states never timeout from an old heartbeat', function (): void {
+    $actor = User::factory()->create();
+    $awaitingPrint = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_AWAITING_PRINT, ['last_heartbeat_at' => now()->subHours(2)]);
+    $awaitingCapture = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_AWAITING_CAPTURE, ['last_heartbeat_at' => now()->subHours(2)]);
+    $needsReview = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_NEEDS_REVIEW, ['last_heartbeat_at' => now()->subHours(2)]);
+    $runs = app(OmrVerificationRunService::class);
+
+    expect($runs->finalizeTimedOut($awaitingPrint->id))->toBeFalse()
+        ->and($runs->finalizeTimedOut($awaitingCapture->id))->toBeFalse()
+        ->and($runs->finalizeTimedOut($needsReview->id))->toBeFalse()
+        ->and($awaitingPrint->fresh()->status)->toBe(OmrTemplateVerificationRun::STATUS_AWAITING_PRINT)
+        ->and($awaitingCapture->fresh()->status)->toBe(OmrTemplateVerificationRun::STATUS_AWAITING_CAPTURE)
+        ->and($needsReview->fresh()->status)->toBe(OmrTemplateVerificationRun::STATUS_NEEDS_REVIEW);
+});
+
+test('physical retry resumes an unprinted challenge at awaiting_print with the same challenge', function (): void {
+    $actor = User::factory()->create();
+    $run = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_FAILED, [
+        'mode' => OmrTemplateVerificationRun::MODE_QUICK_REHEARSAL,
+        'challenge_code' => 'CHAL-A3620EF501',
+        'finished_at' => now(),
+    ]);
+    $challenge = OmrPhysicalChallenge::query()->create([
+        'run_id' => $run->id,
+        'attempt' => 1,
+        'mode' => OmrPhysicalChallenge::MODE_QUICK,
+        'challenge_code' => $run->challenge_code,
+        'plan_hash' => $run->plan_hash,
+        'expected_vector_hash' => $run->expected_vector_hash,
+        'status' => OmrPhysicalChallenge::STATUS_CREATED,
+        'created_by_user_id' => $actor->id,
+    ]);
+
+    $retried = app(OmrPhysicalAssuranceCoordinator::class)->retryRun($run, $actor);
+
+    expect($retried->status)->toBe(OmrTemplateVerificationRun::STATUS_AWAITING_PRINT)
+        ->and($retried->attempt)->toBe(2)
+        ->and($retried->challenge_code)->toBe($challenge->challenge_code)
+        ->and($retried->challenges()->first()->id)->toBe($challenge->id)
+        ->and($retried->challenges()->first()->status)->toBe(OmrPhysicalChallenge::STATUS_CREATED);
+});
+
+test('physical retry resumes a printed challenge at awaiting_capture with the same challenge', function (): void {
+    $actor = User::factory()->create();
+    $run = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_FAILED, [
+        'mode' => OmrTemplateVerificationRun::MODE_QUICK_REHEARSAL,
+        'challenge_code' => 'CHAL-B3620EF501',
+        'finished_at' => now(),
+    ]);
+    $challenge = OmrPhysicalChallenge::query()->create([
+        'run_id' => $run->id,
+        'attempt' => 1,
+        'mode' => OmrPhysicalChallenge::MODE_QUICK,
+        'challenge_code' => $run->challenge_code,
+        'plan_hash' => $run->plan_hash,
+        'expected_vector_hash' => $run->expected_vector_hash,
+        'status' => OmrPhysicalChallenge::STATUS_PRINTED,
+        'created_by_user_id' => $actor->id,
+    ]);
+
+    $retried = app(OmrPhysicalAssuranceCoordinator::class)->retryRun($run, $actor);
+
+    expect($retried->status)->toBe(OmrTemplateVerificationRun::STATUS_AWAITING_CAPTURE)
+        ->and($retried->attempt)->toBe(2)
+        ->and($retried->challenge_code)->toBe($challenge->challenge_code)
+        ->and($retried->challenges()->first()->id)->toBe($challenge->id)
+        ->and($retried->challenges()->first()->status)->toBe(OmrPhysicalChallenge::STATUS_AWAITING_CAPTURE);
+});
+
+test('physical retry refuses when its challenge is missing', function (): void {
+    $actor = User::factory()->create();
+    $run = verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_FAILED, [
+        'mode' => OmrTemplateVerificationRun::MODE_QUICK_REHEARSAL,
+        'challenge_code' => 'CHAL-MISSING01',
+        'finished_at' => now(),
+    ]);
+
+    expect(fn () => app(OmrVerificationRunService::class)->retry($run->id))
+        ->toThrow(RuntimeException::class, 'physical_challenge_missing');
+
+    $unchanged = $run->fresh();
+    expect($unchanged->status)->toBe(OmrTemplateVerificationRun::STATUS_FAILED)
+        ->and($unchanged->attempt)->toBe(1);
 });
 
 test('the active-run partial unique index allows only one active run per target', function (): void {
@@ -207,7 +294,16 @@ test('the active-run partial unique index allows only one active run per target'
     verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_FAILED, ['finished_at' => now()], $draftId);
 
     // A second ACTIVE run for the same target violates the partial unique index.
-    expect(fn () => verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_QUEUED, [], $draftId))->toThrow(QueryException::class);
+    // On PostgreSQL a failed INSERT poisons the surrounding transaction; run it
+    // inside its own savepoint so the rest of the test keeps executing.
+    DB::beginTransaction();
+    try {
+        verificationRunRow($actor, OmrTemplateVerificationRun::STATUS_QUEUED, [], $draftId);
+        DB::rollBack();
+        $this->fail('Expected the partial unique index to reject a second active run.');
+    } catch (QueryException) {
+        DB::rollBack();
+    }
 
     // Terminal runs release the slot.
     OmrTemplateVerificationRun::query()->where('draft_id', $draftId)->whereIn('status', OmrTemplateVerificationRun::ACTIVE_STATUSES)->update(['status' => OmrTemplateVerificationRun::STATUS_FAILED, 'finished_at' => now()]);
@@ -242,4 +338,28 @@ test('run status CHECKs reject invalid values on PostgreSQL (exercised in Compos
         'created_at' => now(),
         'updated_at' => now(),
     ]))->toThrow(QueryException::class);
+});
+
+test('digital no-go false_accept evidence is allowed by the capture contract', function (): void {
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        $this->markTestSkipped('PostgreSQL CHECK constraints are exercised in the Compose runtime.');
+    }
+    $actor = User::factory()->create();
+    $run = verificationRunRow($actor);
+    $capture = OmrTemplateVerificationCapture::query()->create([
+        'run_id' => $run->id,
+        'attempt' => 1,
+        'page_no' => 1,
+        'mode' => OmrTemplateVerificationRun::MODE_DIGITAL,
+        'variant' => 'missing_marker',
+        'expected' => OmrTemplateVerificationCapture::ACTUAL_TYPED_REJECTION,
+        'actual' => OmrTemplateVerificationCapture::ACTUAL_FALSE_ACCEPT,
+        'status' => OmrTemplateVerificationCapture::STATUS_FAIL,
+        'input_hash' => str_repeat('i', 64),
+        'evidence_hash' => str_repeat('h', 64),
+        'captured_by_user_id' => $actor->id,
+        'captured_at' => now(),
+    ]);
+
+    expect($capture->actual)->toBe(OmrTemplateVerificationCapture::ACTUAL_FALSE_ACCEPT);
 });

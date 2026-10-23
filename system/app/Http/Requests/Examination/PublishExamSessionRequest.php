@@ -18,6 +18,7 @@ class PublishExamSessionRequest extends FormRequest
     {
         return [
             'expected_version' => ['required', 'integer', 'min:1'],
+            'test_kit_version_id' => ['sometimes', 'nullable', 'integer', 'min:1', 'exists:test_kit_versions,id'],
         ];
     }
 }

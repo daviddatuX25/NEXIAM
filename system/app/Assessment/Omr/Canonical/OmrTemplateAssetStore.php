@@ -13,11 +13,14 @@ use RuntimeException;
 use function config;
 use function hash;
 use function is_string;
+use function preg_replace;
+use function sprintf;
+use function strlen;
 
 final class OmrTemplateAssetStore
 {
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function putDraftAsset(
         OmrTemplateAuthoringDraft $draft,
@@ -31,19 +34,28 @@ final class OmrTemplateAssetStore
         $sha256 = hash('sha256', $bytes);
         $extension = $this->extensionForMime($mime);
         $disk = (string) config('omr.canonical.storage.disk', 'local');
-        $path = sprintf('omr-canonical/drafts/%d/%s-%s%s', $draft->id, $kind, $sha256, $extension);
+        $pageSuffix = $pageNo === null ? '' : sprintf('-p%d', $pageNo);
+        $path = sprintf('omr-canonical/drafts/%d/%s%s%s-%s%s', $draft->id, $kind, $this->evidenceRoleSuffix($kind, $metadata), $pageSuffix, $sha256, $extension);
 
         return DB::transaction(function () use ($draft, $kind, $bytes, $mime, $pageNo, $metadata, $sha256, $disk, $path): OmrTemplateAsset {
             Storage::disk($disk)->put($path, $bytes);
 
             $existing = OmrTemplateAsset::query()
-                ->where('disk', $disk)
-                ->where('path', $path)
+                ->where('authoring_draft_id', $draft->id)
+                ->where('kind', $kind)
+                ->where('sha256', $sha256)
+                ->where('page_no', $pageNo)
                 ->first();
             if ($existing !== null) {
+                if ($metadata !== [] && $metadata !== (array) $existing->metadata) {
+                    DB::table('omr_template_assets')
+                        ->where('id', $existing->id)
+                        ->update(['metadata' => json_encode($metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)]);
+                    $existing->metadata = $metadata;
+                }
+
                 return $existing;
             }
-
             try {
                 return DB::transaction(fn (): OmrTemplateAsset => OmrTemplateAsset::query()->create([
                     'authoring_draft_id' => $draft->id,
@@ -58,8 +70,10 @@ final class OmrTemplateAssetStore
                 ]));
             } catch (QueryException $exception) {
                 $existing = OmrTemplateAsset::query()
-                    ->where('disk', $disk)
-                    ->where('path', $path)
+                    ->where('authoring_draft_id', $draft->id)
+                    ->where('kind', $kind)
+                    ->where('sha256', $sha256)
+                    ->where('page_no', $pageNo)
                     ->first();
                 if ($existing !== null) {
                     return $existing;
@@ -99,6 +113,92 @@ final class OmrTemplateAssetStore
             'sha256' => $asset->sha256,
             'metadata' => [...(array) $asset->metadata, 'pinned_from_asset_id' => $asset->id],
         ]);
+    }
+
+    /**
+     * Store a NEW immutable asset owned by a compiled template version
+     * (OpenSpec 35.27/35.28, AD-10). Used by the version-scoped physical
+     * challenge flow for sheet/guide/forensic/aligned/overlay assets that
+     * cannot be owned by a draft (compiled drafts are immutable).
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function putVersionAsset(
+        OmrAnswerSheetTemplateVersion $version,
+        string $kind,
+        string $bytes,
+        string $mime,
+        ?int $pageNo = null,
+        array $metadata = [],
+    ): OmrTemplateAsset {
+        $this->assertKind($kind);
+        $sha256 = hash('sha256', $bytes);
+        $extension = $this->extensionForMime($mime);
+        $disk = (string) config('omr.canonical.storage.disk', 'local');
+        $path = sprintf('omr-canonical/versions/%d/run-%s%s-%s%s', $version->id, $kind, $this->evidenceRoleSuffix($kind, $metadata), $sha256, $extension);
+
+        return DB::transaction(function () use ($version, $kind, $bytes, $mime, $pageNo, $metadata, $sha256, $disk, $path): OmrTemplateAsset {
+            Storage::disk($disk)->put($path, $bytes);
+
+            $existing = OmrTemplateAsset::query()
+                ->where('disk', $disk)
+                ->where('path', $path)
+                ->first();
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            try {
+                return DB::transaction(fn (): OmrTemplateAsset => OmrTemplateAsset::query()->create([
+                    'template_version_id' => $version->id,
+                    'kind' => $kind,
+                    'page_no' => $pageNo,
+                    'disk' => $disk,
+                    'path' => $path,
+                    'mime' => $mime,
+                    'bytes' => strlen($bytes),
+                    'sha256' => $sha256,
+                    'metadata' => $metadata,
+                ]));
+            } catch (QueryException $exception) {
+                $existing = OmrTemplateAsset::query()
+                    ->where('disk', $disk)
+                    ->where('path', $path)
+                    ->first();
+                if ($existing !== null) {
+                    return $existing;
+                }
+                Storage::disk($disk)->delete($path);
+                throw $exception;
+            } catch (RuntimeException $exception) {
+                Storage::disk($disk)->delete($path);
+                throw $exception;
+            }
+        });
+    }
+
+    /**
+     * Purge all files and directories associated with an authoring draft upon discard.
+     */
+    public function purgeDraftStorage(OmrTemplateAuthoringDraft $draft): void
+    {
+        $disk = (string) config('omr.canonical.storage.disk', 'local');
+        $directory = sprintf('omr-canonical/drafts/%d', $draft->id);
+        Storage::disk($disk)->deleteDirectory($directory);
+    }
+
+    /** @param array<string, mixed> $metadata */
+    private function evidenceRoleSuffix(string $kind, array $metadata): string
+    {
+        if ($kind === OmrTemplateAsset::KIND_DIGITAL_PROOF && isset($metadata['run_id'])) {
+            return sprintf('-run-%d-attempt-%d', (int) $metadata['run_id'], (int) ($metadata['attempt'] ?? 1));
+        }
+        if ($kind !== OmrTemplateAsset::KIND_EVIDENCE || ! is_string($metadata['role'] ?? null)) {
+            return '';
+        }
+        $role = preg_replace('/[^a-z0-9_-]+/i', '-', trim($metadata['role']));
+
+        return is_string($role) && $role !== '' ? '-'.$role : '';
     }
 
     private function assertKind(string $kind): void

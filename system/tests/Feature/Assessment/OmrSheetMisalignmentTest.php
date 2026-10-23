@@ -2,18 +2,23 @@
 
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
 use App\Assessment\Actions\Omr\RunOmrSheetAnalysis;
+use App\Assessment\Omr\FakeOmrDetection;
+use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrDetectionIssue;
 use App\Assessment\Omr\OmrDetectionOutcome;
 use App\Assessment\Omr\OmrDetectionPort;
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrDetectionResult;
-use App\Assessment\Omr\FakeOmrDetection;
 use App\Assessment\Omr\OmrDetectionResultValidator;
 use App\Assessment\Omr\OmrDetectionSuccess;
-use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrIdentityField;
 use App\Assessment\Omr\OmrInvalidDetectionOutput;
+use App\Assessment\Omr\OmrItemGeometry;
+use App\Assessment\Omr\OmrLayoutVerificationPort;
+use App\Assessment\Omr\OmrOptionGeometry;
 use App\Assessment\Omr\OmrRegion;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Omr\OmrSourceImage;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrProcessingRun;
 use App\Models\Assessment\OmrTemplateBookletPair;
@@ -35,13 +40,115 @@ function omrSolidPng(int $width, int $height): string
         .pack('N', 0).'IEND'.pack('N', crc32('IEND'));
 }
 
+/** @return list<OmrOptionGeometry> */
+function omrSheetMisalignmentOptions(): array
+{
+    return [
+        new OmrOptionGeometry('A', new OmrRegion(0.10, 0.20, 0.04, 0.02), 1),
+        new OmrOptionGeometry('B', new OmrRegion(0.28, 0.20, 0.04, 0.02), 2),
+        new OmrOptionGeometry('C', new OmrRegion(0.46, 0.20, 0.04, 0.02), 3),
+        new OmrOptionGeometry('D', new OmrRegion(0.64, 0.20, 0.04, 0.02), 4),
+    ];
+}
+
+function omrSheetMisalignmentBaseRequest(): OmrDetectionRequest
+{
+    $bytes = omrSolidPng(1, 1);
+    $sourceImage = OmrSourceImage::fromBytes($bytes);
+
+    return new OmrDetectionRequest(
+        envelopeVersion: OmrDetectionRequest::ENVELOPE_VERSION,
+        runId: 'test-run',
+        correlationId: 'test-corr',
+        imageBytes: $bytes,
+        registrationMode: OmrRegistrationMode::FiducialAnchored,
+        templateVersionId: 1,
+        candidateTargetId: null,
+        sourceImage: $sourceImage,
+        inputHash: $sourceImage->inputHash,
+        imageMime: 'image/png',
+        imageWidth: $sourceImage->width,
+        imageHeight: $sourceImage->height,
+        areas: ['VER' => 2, 'NUM' => 2],
+        items: [
+            new OmrItemGeometry(1, 'VER', 1, 'VER_Q_001', new OmrRegion(0.08, 0.25, 0.84, 0.01), omrSheetMisalignmentOptions()),
+            new OmrItemGeometry(2, 'VER', 2, 'VER_Q_002', new OmrRegion(0.08, 0.28, 0.84, 0.01), omrSheetMisalignmentOptions()),
+            new OmrItemGeometry(3, 'NUM', 1, 'NUM_Q_001', new OmrRegion(0.08, 0.31, 0.84, 0.01), omrSheetMisalignmentOptions()),
+            new OmrItemGeometry(4, 'NUM', 2, 'NUM_Q_002', new OmrRegion(0.08, 0.34, 0.84, 0.01), omrSheetMisalignmentOptions()),
+        ],
+        identityRegions: ['applicant_number' => new OmrRegion(0.08, 0.08, 0.24, 0.08)],
+        nativeBundleHash: str_repeat('a', 64),
+        manifestHash: str_repeat('b', 64),
+        configHash: hash('sha256', '{"fixture":true}'),
+        bookletHash: str_repeat('d', 64),
+        nativeTemplate: [],
+        nativeConfigJson: '{"fixture":true}',
+        nativeBundleMetadata: [
+            'files' => ['config.json' => hash('sha256', '{"fixture":true}')],
+            'registration_mode' => OmrRegistrationMode::FiducialAnchored->value,
+            'qr_mode' => 'qr_signed',
+            'compiled_pages' => [['page_no' => 1]],
+        ],
+        reviewManifest: [],
+        engineName: 'nexiam.fake',
+        engineCommit: null,
+        patchIdentity: 'nexiam-headless-overlay-v1',
+        expectedFieldLabels: ['APPLICANT_NUMBER_1', 'VER_Q_001', 'NUM_Q_001'],
+        expectedOptionCodes: [
+            'APPLICANT_NUMBER_1' => ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            'VER_Q_001' => ['A', 'B', 'C', 'D'],
+            'NUM_Q_001' => ['A', 'B', 'C', 'D'],
+        ],
+        providerDeadline: 30.0,
+        pageNo: 1,
+    );
+}
+
+function omrSheetMisalignmentCopySuccess(OmrDetectionSuccess $success, array $overrides = []): OmrDetectionSuccess
+{
+    return new OmrDetectionSuccess(
+        engineName: $overrides['engineName'] ?? $success->engineName,
+        engineVersion: $overrides['engineVersion'] ?? $success->engineVersion,
+        engineCommit: $overrides['engineCommit'] ?? $success->engineCommit,
+        inputHash: $overrides['inputHash'] ?? $success->inputHash,
+        configHash: $overrides['configHash'] ?? $success->configHash,
+        applicantNumberProposal: $overrides['applicantNumberProposal'] ?? $success->applicantNumberProposal,
+        applicantNumberConfidence: $overrides['applicantNumberConfidence'] ?? $success->applicantNumberConfidence,
+        identityFields: $overrides['identityFields'] ?? $success->identityFields,
+        items: $overrides['items'] ?? $success->items,
+        issues: $overrides['issues'] ?? $success->issues,
+        sheetConfidence: $overrides['sheetConfidence'] ?? $success->sheetConfidence,
+        responseEnvelopeVersion: $overrides['responseEnvelopeVersion'] ?? $success->responseEnvelopeVersion,
+        runId: $overrides['runId'] ?? $success->runId,
+        correlationId: $overrides['correlationId'] ?? $success->correlationId,
+        bookletHash: $overrides['bookletHash'] ?? $success->bookletHash,
+        nativeBundleHash: $overrides['nativeBundleHash'] ?? $success->nativeBundleHash,
+        manifestHash: $overrides['manifestHash'] ?? $success->manifestHash,
+        patchIdentity: $overrides['patchIdentity'] ?? $success->patchIdentity,
+        registrationMode: $overrides['registrationMode'] ?? $success->registrationMode,
+        templateVersionId: $overrides['templateVersionId'] ?? $success->templateVersionId,
+        candidateTargetId: $overrides['candidateTargetId'] ?? $success->candidateTargetId,
+        expectedPageNo: $overrides['expectedPageNo'] ?? $success->expectedPageNo,
+        sourceImage: $overrides['sourceImage'] ?? $success->sourceImage,
+        calibrationStatus: $overrides['calibrationStatus'] ?? $success->calibrationStatus,
+        fieldBlockShifts: $overrides['fieldBlockShifts'] ?? $success->fieldBlockShifts,
+        alignedImage: $overrides['alignedImage'] ?? $success->alignedImage,
+        imageMime: $overrides['imageMime'] ?? $success->imageMime,
+        imageWidth: $overrides['imageWidth'] ?? $success->imageWidth,
+        imageHeight: $overrides['imageHeight'] ?? $success->imageHeight,
+        birthdateProposal: $overrides['birthdateProposal'] ?? $success->birthdateProposal,
+        providerDiagnostics: $overrides['providerDiagnostics'] ?? $success->providerDiagnostics,
+        rectification: $overrides['rectification'] ?? $success->rectification,
+    );
+}
+
 /**
  * The compact profile block geometry solved by the layout solver: 40px
  * bubbles, 52px option pitch, 80px row pitch, and a compact applicant grid.
  */
 function omrMisalignedRequest(): OmrDetectionRequest
 {
-    $request = omrTestRequest();
+    $request = omrSheetMisalignmentBaseRequest();
 
     return new OmrDetectionRequest(
         envelopeVersion: $request->envelopeVersion,
@@ -55,6 +162,10 @@ function omrMisalignedRequest(): OmrDetectionRequest
         areas: $request->areas,
         items: $request->items,
         identityRegions: $request->identityRegions,
+        registrationMode: $request->registrationMode,
+        templateVersionId: $request->templateVersionId,
+        candidateTargetId: $request->candidateTargetId,
+        sourceImage: $request->sourceImage,
         nativeBundleHash: $request->nativeBundleHash,
         manifestHash: $request->manifestHash,
         configHash: $request->configHash,
@@ -86,7 +197,7 @@ function omrMisalignedRequest(): OmrDetectionRequest
                 ],
             ],
         ],
-        nativeConfig: $request->nativeConfig,
+        nativeConfigJson: $request->nativeConfigJson,
         nativeBundleMetadata: $request->nativeBundleMetadata,
         reviewManifest: $request->reviewManifest,
         engineName: $request->engineName,
@@ -132,9 +243,7 @@ function omrMisalignedIssues(OmrDetectionSuccess $success): array
  */
 final class ShiftedOmrDetection implements OmrDetectionPort
 {
-    public function __construct(private readonly int $unsafeX = 128)
-    {
-    }
+    public function __construct(private readonly int $unsafeX = 128) {}
 
     public function detect(OmrDetectionRequest $request): OmrDetectionResult
     {
@@ -151,14 +260,11 @@ final class ShiftedOmrDetection implements OmrDetectionPort
         foreach ($request->items as $geometry) {
             $position++;
             $selected = $position <= 5 ? $falseAnswers[$position - 1] : null;
-            $items[] = new OmrDetectedItem(
-                position: $geometry->position,
-                areaCode: $geometry->areaCode,
-                questionNo: $geometry->questionNo,
+            $items[] = OmrDetectedItem::fromGeometry(
+                geometry: $geometry,
                 selectedOption: $selected,
                 state: $selected !== null ? OmrDetectedItem::STATE_MARKED : OmrDetectedItem::STATE_BLANK,
                 confidence: null,
-                region: $geometry->region,
             );
         }
 
@@ -187,6 +293,11 @@ final class ShiftedOmrDetection implements OmrDetectionPort
             manifestHash: $request->manifestHash,
             patchIdentity: $request->patchIdentity,
             calibrationStatus: 'unqualified',
+            registrationMode: $request->registrationMode->value,
+            templateVersionId: $request->templateVersionId,
+            candidateTargetId: $request->candidateTargetId,
+            expectedPageNo: $request->pageNo,
+            sourceImage: $request->sourceImage->toArray(),
             fieldBlockShifts: omrShifts($blocks, $target, $this->unsafeX),
             alignedImage: [
                 'mime' => 'image/png',
@@ -211,6 +322,13 @@ final class ShiftedOmrDetection implements OmrDetectionPort
 function misalignmentOmrFixture(TestCase $test): array
 {
     Storage::fake('sensitive');
+    // The production layout port shares the detector adapter. This fixture
+    // overrides detection with a detection-only fake; marker-less grading
+    // bypasses layout, so provide an inert layout adapter explicitly.
+    app()->instance(
+        OmrLayoutVerificationPort::class,
+        new FakeOmrDetection,
+    );
     $fixture = buildGradingFixture($test);
     seedE2OmrFoundation();
     $guidance = $fixture['guidance'];
@@ -220,13 +338,7 @@ function misalignmentOmrFixture(TestCase $test): array
         ->whereHas('templateVersion.template', fn ($query) => $query->where('code', 'SYN-OMR-PROFILE-150'))
         ->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'misalignment-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'misalignment-'.uniqid());
 
     $assetStore = app(SensitiveAssetStore::class);
     $bytes = omrSolidPng(512, 512);
@@ -253,6 +365,7 @@ function misalignmentOmrFixture(TestCase $test): array
         'run_no' => 1,
         'run_uuid' => (string) Str::uuid(),
         'status' => OmrProcessingRun::STATUS_PENDING,
+        'page_no' => 1,
         'provider_name' => 'nexiam.fake',
         'provider_version' => '1',
         'request_version' => OmrDetectionRequest::ENVELOPE_VERSION,
@@ -273,7 +386,7 @@ function misalignmentOmrFixture(TestCase $test): array
 test('an option-crossing shift derives a required sheet_misaligned issue', function (): void {
     $request = omrMisalignedRequest();
     $success = (new FakeOmrDetection)->detect($request)->success;
-    $success = omrCopySuccess($success, [
+    $success = omrSheetMisalignmentCopySuccess($success, [
         'fieldBlockShifts' => omrShifts($request->nativeTemplate['fieldBlocks'], 'PROFILE_VERBALPartA', 96),
     ]);
 
@@ -294,12 +407,12 @@ test('the observed 128px shift is unsafe and 0px stays valid', function (): void
     $validator = app(OmrDetectionResultValidator::class);
     $base = (new FakeOmrDetection)->detect($request)->success;
 
-    $unsafe = $validator->validate($request, OmrDetectionResult::succeeded(omrCopySuccess($base, [
+    $unsafe = $validator->validate($request, OmrDetectionResult::succeeded(omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => omrShifts($request->nativeTemplate['fieldBlocks'], 'LOGICPartC', 128),
     ])));
     expect(omrIssueCodes($unsafe))->toContain(OmrDetectionIssue::CODE_SHEET_MISALIGNED);
 
-    $zero = omrCopySuccess($base, [
+    $zero = omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => omrShifts($request->nativeTemplate['fieldBlocks'], 'LOGICPartC', 0),
     ]);
     $validated = $validator->validate($request, OmrDetectionResult::succeeded($zero));
@@ -312,22 +425,22 @@ test('sub-pitch shifts and missing geometry stay valid', function (): void {
     $validator = app(OmrDetectionResultValidator::class);
     $base = (new FakeOmrDetection)->detect($request)->success;
 
-    $small = $validator->validate($request, OmrDetectionResult::succeeded(omrCopySuccess($base, [
+    $small = $validator->validate($request, OmrDetectionResult::succeeded(omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => omrShifts($request->nativeTemplate['fieldBlocks'], 'PROFILE_VERBALPartA', 10),
     ])));
     expect(omrIssueCodes($small))->not->toContain(OmrDetectionIssue::CODE_SHEET_MISALIGNED);
 
-    $noGeometry = omrCopySuccess($base, [
+    $noGeometry = omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => omrShifts([], 'PROFILE_VERBALPartA', 128),
     ]);
-    $validated = $validator->validate(omrTestRequest(), OmrDetectionResult::succeeded($noGeometry));
+    $validated = $validator->validate(omrSheetMisalignmentBaseRequest(), OmrDetectionResult::succeeded($noGeometry));
     expect(omrIssueCodes($validated))->not->toContain(OmrDetectionIssue::CODE_SHEET_MISALIGNED);
 });
 
 test('a provider-emitted required issue is retained without duplication', function (): void {
     $request = omrMisalignedRequest();
     $success = (new FakeOmrDetection)->detect($request)->success;
-    $success = omrCopySuccess($success, [
+    $success = omrSheetMisalignmentCopySuccess($success, [
         'issues' => [
             new OmrDetectionIssue(OmrDetectionIssue::CODE_SHEET_MISALIGNED, OmrDetectionIssue::SEVERITY_REQUIRED),
         ],
@@ -343,7 +456,7 @@ test('a provider-emitted required issue is retained without duplication', functi
 test('a provider warning is upgraded to a required sheet_misaligned issue', function (): void {
     $request = omrMisalignedRequest();
     $success = (new FakeOmrDetection)->detect($request)->success;
-    $success = omrCopySuccess($success, [
+    $success = omrSheetMisalignmentCopySuccess($success, [
         'issues' => [
             new OmrDetectionIssue(OmrDetectionIssue::CODE_SHEET_MISALIGNED, OmrDetectionIssue::SEVERITY_WARNING),
         ],
@@ -364,7 +477,7 @@ test('vertical digit grids gate on the digit and column pitch', function (): voi
     $validator = app(OmrDetectionResultValidator::class);
     $base = (new FakeOmrDetection)->detect($request)->success;
 
-    $verticalUnsafe = $validator->validate($request, OmrDetectionResult::succeeded(omrCopySuccess($base, [
+    $verticalUnsafe = $validator->validate($request, OmrDetectionResult::succeeded(omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => [
             ['block' => 'ApplicantNumber', 'x' => 0, 'y' => 30],
             ['block' => 'PROFILE_VERBALPartA', 'x' => 0, 'y' => 0],
@@ -373,7 +486,7 @@ test('vertical digit grids gate on the digit and column pitch', function (): voi
     ])));
     expect(omrIssueCodes($verticalUnsafe))->toContain(OmrDetectionIssue::CODE_SHEET_MISALIGNED);
 
-    $verticalSafe = $validator->validate($request, OmrDetectionResult::succeeded(omrCopySuccess($base, [
+    $verticalSafe = $validator->validate($request, OmrDetectionResult::succeeded(omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => [
             ['block' => 'ApplicantNumber', 'x' => 10, 'y' => 10],
             ['block' => 'PROFILE_VERBALPartA', 'x' => 0, 'y' => 0],
@@ -384,7 +497,7 @@ test('vertical digit grids gate on the digit and column pitch', function (): voi
 });
 
 test('unknown block orientation degrades to the smaller gap on both axes', function (): void {
-    $request = omrTestRequest();
+    $request = omrSheetMisalignmentBaseRequest();
     $request = new OmrDetectionRequest(
         envelopeVersion: $request->envelopeVersion,
         runId: $request->runId,
@@ -406,10 +519,14 @@ test('unknown block orientation degrades to the smaller gap on both axes', funct
                 'MysteryBlock' => ['fieldType' => 'QTYPE_MCQ8', 'bubblesGap' => 60, 'origin' => [200, 300]],
             ],
         ],
-        nativeConfig: $request->nativeConfig,
         nativeBundleMetadata: $request->nativeBundleMetadata,
         reviewManifest: $request->reviewManifest,
+        nativeConfigJson: $request->nativeConfigJson,
         engineName: $request->engineName,
+        registrationMode: $request->registrationMode,
+        templateVersionId: $request->templateVersionId,
+        candidateTargetId: $request->candidateTargetId,
+        sourceImage: $request->sourceImage,
         engineCommit: $request->engineCommit,
         patchIdentity: $request->patchIdentity,
         expectedFieldLabels: $request->expectedFieldLabels,
@@ -420,12 +537,12 @@ test('unknown block orientation degrades to the smaller gap on both axes', funct
     $validator = app(OmrDetectionResultValidator::class);
     $base = (new FakeOmrDetection)->detect($request)->success;
 
-    $unsafe = $validator->validate($request, OmrDetectionResult::succeeded(omrCopySuccess($base, [
+    $unsafe = $validator->validate($request, OmrDetectionResult::succeeded(omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => [['block' => 'MysteryBlock', 'x' => 35, 'y' => 0]],
     ])));
     expect(omrIssueCodes($unsafe))->toContain(OmrDetectionIssue::CODE_SHEET_MISALIGNED);
 
-    $safe = $validator->validate($request, OmrDetectionResult::succeeded(omrCopySuccess($base, [
+    $safe = $validator->validate($request, OmrDetectionResult::succeeded(omrSheetMisalignmentCopySuccess($base, [
         'fieldBlockShifts' => [['block' => 'MysteryBlock', 'x' => 20, 'y' => 20]],
     ])));
     expect(omrIssueCodes($safe))->not->toContain(OmrDetectionIssue::CODE_SHEET_MISALIGNED);
@@ -435,7 +552,7 @@ test('malformed shifts still fail validation', function (): void {
     config(['omr.fake.with_aligned_image' => true]);
     $request = omrMisalignedRequest();
     $success = (new FakeOmrDetection)->detect($request)->success;
-    $success = omrCopySuccess($success, [
+    $success = omrSheetMisalignmentCopySuccess($success, [
         'calibrationStatus' => 'unqualified',
         'fieldBlockShifts' => [['block' => 'LOGICPartC', 'x' => 128]],
     ]);
@@ -452,7 +569,6 @@ test('non-succeeded outcomes still pass through as null', function (): void {
 test('an unsafe field-block shift fails closed end to end without persisting marks', function (): void {
     app()->instance(OmrDetectionPort::class, new ShiftedOmrDetection(128));
     [$sheet, $run] = misalignmentOmrFixture($this);
-
     app(RunOmrSheetAnalysis::class)->handle($run->id);
     $sheet->refresh();
 

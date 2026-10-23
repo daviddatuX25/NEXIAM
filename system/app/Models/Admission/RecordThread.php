@@ -33,6 +33,7 @@ class RecordThread extends Model
         'subject',
         'status',
         'created_by_user_id',
+        'latest_message_sequence',
         'created_at',
         'updated_at',
     ];
@@ -40,6 +41,7 @@ class RecordThread extends Model
     protected function casts(): array
     {
         return [
+            'latest_message_sequence' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

@@ -43,6 +43,17 @@ return [
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',
         ],
+        'tam' => [
+            'driver' => 'sqlite',
+            'url' => env('DB_TAM_URL'),
+            'database' => env('DB_TAM_DATABASE', database_path('tam_evaluations.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => env('DB_TAM_FOREIGN_KEYS', true),
+            'busy_timeout' => null,
+            'journal_mode' => null,
+            'synchronous' => null,
+            'transaction_mode' => 'DEFERRED',
+        ],
 
         'mysql' => [
             'driver' => 'mysql',

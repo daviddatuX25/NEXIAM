@@ -3,6 +3,7 @@
 namespace App\Models\Admission;
 
 use App\Models\Foundation\Institution;
+use App\Testing\HasPracticeProvenance;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,8 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ApplicantIdentity extends Model
 {
+    use HasPracticeProvenance;
+
+    protected $hidden = ['practice_fixture_set_id'];
+
     protected $fillable = [
         'institution_id',
+        'practice_fixture_set_id',
         'normalized_key',
         'first_name',
         'middle_name',
@@ -31,6 +37,11 @@ class ApplicantIdentity extends Model
         return [
             'birthdate' => 'date',
         ];
+    }
+
+    public function fullName(): string
+    {
+        return trim(implode(' ', array_filter([$this->first_name, $this->middle_name, $this->last_name, $this->suffix])));
     }
 
     /**

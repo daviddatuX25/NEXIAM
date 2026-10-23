@@ -1,0 +1,58 @@
+services:
+  https-test-app:
+    extends:
+      file: compose.yaml
+      service: app
+    image: nexiam-system-app
+    environment:
+      APP_URL: ${NEXIAM_TEST_APP_URL:-https://nexiam.dxtechph.online}
+      APP_DEBUG: 'false'
+      DB_DATABASE: nexiam_public_ispsc_20261016
+      DB_URL: ''
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      SESSION_COOKIE: nexiam_https_test_session
+      SESSION_SECURE_COOKIE: 'true'
+      TRUSTED_PROXIES: ${NEXIAM_TEST_TRUSTED_PROXIES:?Set the loopback and Docker gateway proxy addresses}
+      VITE_HOT_FILE: /var/www/html/storage/framework/nexiam-https-testing.hot
+      PUBLIC_SITE_PREVIEW: 'false'
+      # Founder-approved same-Wi-Fi/hotspot pairing trial; TURN remains optional/unconfigured.
+      OMR_CAMERA_REMOTE_ENABLED: 'true'
+    ports: !override
+      - '127.0.0.1:18002:8000'
+    volumes:
+      - .:/var/www/html
+      - public_ispsc_storage:/var/www/html/storage
+      - type: bind
+        source: ./storage/app/nexiam-public-build
+        target: /var/www/html/public/build
+        read_only: true
+        bind:
+          create_host_path: false
+  https-test-queue:
+    extends:
+      file: compose.yaml
+      service: queue
+    image: nexiam-system-app
+    restart: unless-stopped
+    environment:
+      APP_URL: ${NEXIAM_TEST_APP_URL:-https://nexiam.dxtechph.online}
+      APP_DEBUG: 'false'
+      DB_DATABASE: nexiam_public_ispsc_20261016
+      DB_URL: ''
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      SESSION_COOKIE: nexiam_https_test_session
+      SESSION_SECURE_COOKIE: 'true'
+    volumes:
+      - .:/var/www/html
+      - public_ispsc_storage:/var/www/html/storage
+      - type: bind
+        source: ./storage/app/nexiam-public-build
+        target: /var/www/html/public/build
+        read_only: true
+        bind:
+          create_host_path: false
+
+volumes:
+  public_ispsc_storage:

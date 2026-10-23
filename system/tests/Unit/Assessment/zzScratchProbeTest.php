@@ -8,7 +8,7 @@ test('probe capture-policy keys in test process', function (): void {
     try {
         $frozen = OmrCapturePolicy::frozen();
         fwrite(STDERR, 'PROBE frozen() = '.json_encode(array_keys($frozen)).PHP_EOL);
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         fwrite(STDERR, 'PROBE frozen() threw: '.$e->getMessage().PHP_EOL);
     }
     expect(true)->toBeTrue();

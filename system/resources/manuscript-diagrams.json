@@ -1,0 +1,28 @@
+{
+  "assets": [
+    {"fileName":"appendix_c_applicant_use_cases.png","source":"V2_RESOURCES/figures/appendix_c_applicant_use_cases.png","aliases":["../../V2_RESOURCES/figures/appendix_c_applicant_use_cases.png"],"width":1372,"height":1600},
+    {"fileName":"appendix_c_registrar_use_cases.png","source":"V2_RESOURCES/figures/appendix_c_registrar_use_cases.png","aliases":["../../V2_RESOURCES/figures/appendix_c_registrar_use_cases.png"],"width":1608,"height":1600},
+    {"fileName":"appendix_c_guidance_use_cases.png","source":"V2_RESOURCES/figures/appendix_c_guidance_use_cases.png","aliases":["../../V2_RESOURCES/figures/appendix_c_guidance_use_cases.png"],"width":1602,"height":2452},
+    {"fileName":"appendix_c_academic_use_cases.png","source":"V2_RESOURCES/figures/appendix_c_academic_use_cases.png","aliases":["../../V2_RESOURCES/figures/appendix_c_academic_use_cases.png"],"width":1680,"height":1316},
+    {"fileName":"appendix_c_admin_use_cases.png","source":"V2_RESOURCES/figures/appendix_c_admin_use_cases.png","aliases":["../../V2_RESOURCES/figures/appendix_c_admin_use_cases.png"],"width":1596,"height":1884},
+    {"fileName":"appendix_d_level_0_context.png","source":"V2_RESOURCES/figures/appendix_d_level_0_context.png","aliases":["../../V2_RESOURCES/figures/appendix_d_level_0_context.png"],"width":2614,"height":1400},
+    {"fileName":"appendix_e_processes_1_to_4.png","source":"V2_RESOURCES/figures/appendix_e_processes_1_to_4.png","aliases":["../../V2_RESOURCES/figures/appendix_e_processes_1_to_4.png"],"width":1772,"height":2102},
+    {"fileName":"appendix_e_processes_5_to_7.png","source":"V2_RESOURCES/figures/appendix_e_processes_5_to_7.png","aliases":["../../V2_RESOURCES/figures/appendix_e_processes_5_to_7.png"],"width":1662,"height":1354},
+    {"fileName":"appendix_f_domain_1_identity.png","source":"V2_RESOURCES/figures/appendix_f_domain_1_identity.png","aliases":["../../V2_RESOURCES/figures/appendix_f_domain_1_identity.png"],"width":1636,"height":1880},
+    {"fileName":"appendix_f_domain_2_admissions.png","source":"V2_RESOURCES/figures/appendix_f_domain_2_admissions.png","aliases":["../../V2_RESOURCES/figures/appendix_f_domain_2_admissions.png"],"width":1304,"height":2744},
+    {"fileName":"appendix_f_domain_3_examination.png","source":"V2_RESOURCES/figures/appendix_f_domain_3_examination.png","aliases":["../../V2_RESOURCES/figures/appendix_f_domain_3_examination.png"],"width":824,"height":2842},
+    {"fileName":"appendix_f_domain_4_assessment.png","source":"V2_RESOURCES/figures/appendix_f_domain_4_assessment.png","aliases":["../../V2_RESOURCES/figures/appendix_f_domain_4_assessment.png"],"width":1682,"height":2770},
+    {"fileName":"appendix_f_domain_5_advising.png","source":"V2_RESOURCES/figures/appendix_f_domain_5_advising.png","aliases":["../../V2_RESOURCES/figures/appendix_f_domain_5_advising.png"],"width":3214,"height":1350},
+    {"fileName":"appendix_f_domain_6_clearance_audit.png","source":"V2_RESOURCES/figures/appendix_f_domain_6_clearance_audit.png","aliases":["../../V2_RESOURCES/figures/appendix_f_domain_6_clearance_audit.png"],"width":2472,"height":676},
+    {"fileName":"appendix_n_xiam_privacy_pipeline.png","source":"V2_RESOURCES/figures/appendix_n_xiam_privacy_pipeline.png","aliases":["../../V2_RESOURCES/figures/appendix_n_xiam_privacy_pipeline.png"],"width":1026,"height":2872},
+    {"fileName":"appendix_n_tabfm_compatibility.png","source":"V2_RESOURCES/figures/appendix_n_tabfm_compatibility.png","aliases":["../../V2_RESOURCES/figures/appendix_n_tabfm_compatibility.png"],"width":1436,"height":1484},
+    {"fileName":"appendix_n_audit_event_chain.png","source":"V2_RESOURCES/figures/appendix_n_audit_event_chain.png","aliases":["../../V2_RESOURCES/figures/appendix_n_audit_event_chain.png"],"width":942,"height":990},
+    {"fileName":"appendixo_step_1.png","source":"V2_RESOURCES/figures/appendixo_step_1.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_1.png"],"width":1202,"height":2314},
+    {"fileName":"appendixo_step_2.png","source":"V2_RESOURCES/figures/appendixo_step_2.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_2.png"],"width":806,"height":2448},
+    {"fileName":"appendixo_step_3.png","source":"V2_RESOURCES/figures/appendixo_step_3.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_3.png"],"width":816,"height":2812},
+    {"fileName":"appendixo_step_4.png","source":"V2_RESOURCES/figures/appendixo_step_4.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_4.png"],"width":948,"height":2958},
+    {"fileName":"appendixo_step_5.png","source":"V2_RESOURCES/figures/appendixo_step_5.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_5.png"],"width":834,"height":2448},
+    {"fileName":"appendixo_step_6.png","source":"V2_RESOURCES/figures/appendixo_step_6.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_6.png"],"width":1750,"height":3176},
+    {"fileName":"appendixo_step_7.png","source":"V2_RESOURCES/figures/appendixo_step_7.png","aliases":["../../V2_RESOURCES/figures/appendixo_step_7.png"],"width":1750,"height":2854}
+  ]
+}

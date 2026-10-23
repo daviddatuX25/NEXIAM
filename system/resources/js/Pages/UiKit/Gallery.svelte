@@ -38,7 +38,8 @@
     import GuideSection from '@/Components/kit/Guide/GuideSection.svelte';
     import GuideNote from '@/Components/kit/Guide/GuideNote.svelte';
     import MarketingHomePreview from '@/Components/kit/samples/MarketingHomePreview.svelte';
-    import NexiWalkthroughPreview from '@/Components/kit/samples/NexiWalkthroughPreview.svelte';
+    import XiamWalkthroughPreview from '@/Components/kit/samples/XiamWalkthroughPreview.svelte';
+    import ImportEnginePreview from '@/Components/kit/samples/ImportEnginePreview.svelte';
     import AdmissionsGateway from '@/Components/public/AdmissionsGateway.svelte';
     import AnnouncementRail from '@/Components/public/AnnouncementRail.svelte';
     import MediaFrame from '@/Components/public/MediaFrame.svelte';
@@ -74,7 +75,8 @@
     const sections = [
         { id: 'public-foundation', label: 'Public foundation' },
         { id: 'home-sample', label: 'Homepage sample' },
-        { id: 'nexi-sample', label: 'Nexi assist' },
+        { id: 'xiam-sample', label: 'Xiam assist' },
+        { id: 'import-engine', label: 'Import pipeline' },
         { id: 'locked-set', label: 'Locked start set' },
         { id: 'tokens', label: 'Color tokens' },
         { id: 'typography', label: 'Typography' },
@@ -514,40 +516,52 @@
             <ProgramExplorer programs={publicPreview.programs} preview />
             <AdmissionsGateway
                 activeSeason={{
-                    name: 'Preview intake window',
-                    window: 'replace with approved dates',
+                    academic_year: '2026–2027',
+                    is_open: true,
                 }}
             />
             <AnnouncementRail announcements={publicPreview.announcements} />
         </section>
 
-        <!-- Nexi companion sample -->
-        <section id="nexi-sample" class="space-y-4" use:reveal={{ y: 10 }}>
-            <div>
-                <h2 class="text-foreground text-xl font-semibold">
-                    Nexi (universal assist)
-                </h2>
-                <p class="text-muted-foreground mt-1 max-w-3xl text-sm">
-                    Mounted on every authenticated staff page (bottom-right
-                    FAB). Conversation-first companion with character stage on
-                    mobile and desktop. Header uses Assistant / Inquiry mode
-                    switch + usage limit meter (page matrix can disable modes
-                    later). Confirm gates open as overlays. Provider remains
-                    demo.
+        <!-- Xiam companion sample -->
+        <section id="xiam-sample" class="space-y-4" use:reveal={{ y: 10 }}>
+            <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-foreground text-xl font-semibold">
+                        Xiam Assistant & Office Governance Lab
+                    </h2>
+                    <Badge variant="outline" class="border-primary/40 text-primary text-xs">
+                        Delivered Cuts 0–6 Live Dock
+                    </Badge>
+                    <Badge variant="outline" class="border-amber-500/40 text-amber-600 dark:text-amber-400 text-xs">
+                        Planned Cuts 8–10 Staff Lab
+                    </Badge>
+                </div>
+                <p class="text-muted-foreground max-w-3xl text-sm">
+                    Xiam operates as an auxiliary assistant across staff desks and applicant surfaces. Operational controls adhere to strict authority boundaries: office policy can narrow channel availability, but cannot widen domain capabilities or bypass institutional gates.
                 </p>
             </div>
             <div
                 class="border-border/50 bg-muted/20 text-muted-foreground rounded-xl border p-4 text-sm"
             >
-                <p class="text-foreground font-medium">Try it on this page</p>
-                <p class="mt-1">
-                    Open <strong class="text-foreground">Nexi</strong> bottom-right.
-                    Header is minimal: mode pill (icon + label + chevron) and circular
-                    usage. The character frame sits bottom-left with dialogue wrapping
-                    around it. Apply prompts open the confirmation gate as an overlay.
+                <p>
+                    Test the live runtime helper at the bottom-right floating button, or use the simulated controls below to preview upcoming office channel, usage, quota, and knowledge governance settings.
                 </p>
             </div>
-            <NexiWalkthroughPreview />
+            <XiamWalkthroughPreview />
+        </section>
+
+        <!-- Next-Gen Import Pipeline Showcase -->
+        <section id="import-engine" class="space-y-4" use:reveal={{ y: 14 }}>
+            <div class="space-y-1">
+                <h2 class="text-foreground text-xl font-semibold">
+                    Dynamic Ingestion & Import Pipeline
+                </h2>
+                <p class="text-muted-foreground text-sm">
+                    Interactive prototype: multi-sheet workbook inspector, pre-upload health checks, column mapping, and single-pass All-in-One intake.
+                </p>
+            </div>
+            <ImportEnginePreview />
         </section>
 
         <!-- Locked start set -->
@@ -1634,7 +1648,7 @@
                             </Table.Root>
                         {/snippet}
                         {#snippet cards()}
-                            <div class="grid gap-3 sm:grid-cols-2">
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 {#each listRows as row (row.id)}
                                     <Card.Root>
                                         <Card.Content
@@ -2073,12 +2087,12 @@
                         </div>
                         {#if mgmtFiltered.length > 0}
                             <ul
-                                class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                                class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
                                 role="list"
                             >
                                 {#each mgmtFiltered as row (row.id)}
                                     <li
-                                        class="border-border bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm"
+                                        class="border-border/80 bg-card flex min-w-0 flex-col gap-3.5 rounded-[1.25rem] border p-5 shadow-sm dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] hover:-translate-y-0.5 hover:border-primary/40 transition-all duration-200"
                                     >
                                         <div class="flex items-start gap-3">
                                             <Checkbox
@@ -2109,17 +2123,17 @@
                                                 >{row.status}</Badge
                                             >
                                         </div>
-                                        <div class="flex gap-2">
+                                        <div class="flex gap-2 pt-1 border-t border-border/60">
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                class="min-h-[40px] flex-1"
+                                                class="min-h-[38px] flex-1 rounded-xl text-xs font-semibold"
                                                 >Edit</Button
                                             >
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                class="text-destructive min-h-[40px]"
+                                                class="text-destructive min-h-[38px] rounded-xl text-xs font-semibold"
                                                 >Delete</Button
                                             >
                                         </div>

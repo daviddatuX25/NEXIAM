@@ -19,6 +19,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/app/nexiam-public-build/
 /vendor
 Homestead.json
 Homestead.yaml
@@ -29,3 +30,27 @@ Thumbs.db
 # Dev-only docs workspace SQLite store (client brief decisions)
 database/*.sqlite
 database/*.sqlite-journal
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Manuscript reader publication artifacts and persistent private share token
+/public/manuscript-review/
+/storage/app/private/manuscript-review-token
+*.pyo
+
+# Private configuration, database backups and local verification output
+.env.*
+!.env.example
+/backups/
+/test-results/
+/playwright-report/
+.qa-*.xml
+.omr-*.json
+*.sqlite*
+*.dump
+
+# Licensed external model artifacts are supplied separately
+/docker/tabfm/*.ckpt
+/docker/tabfm/*.safetensors

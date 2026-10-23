@@ -15,5 +15,8 @@ export default defineConfig({
             '@': path.resolve(__dirname, 'resources/js'),
         },
     },
-    server: { watch: { ignored: ['**/storage/framework/views/**'] } },
+    server: {
+        hmr: { host: 'localhost', overlay: false },
+        watch: { ignored: ['**/storage/framework/views/**'] },
+    },
 });

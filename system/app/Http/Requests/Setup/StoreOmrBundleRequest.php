@@ -2,13 +2,17 @@
 
 namespace App\Http\Requests\Setup;
 
+use App\Authorization\CapabilityAuthorizer;
+use App\Authorization\CapabilityCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreOmrBundleRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        return $user !== null && app(CapabilityAuthorizer::class)->allows($user, CapabilityCatalog::GUIDANCE_SCORING_OMR);
     }
 
     /**

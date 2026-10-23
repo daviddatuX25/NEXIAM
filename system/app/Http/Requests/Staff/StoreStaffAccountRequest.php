@@ -16,6 +16,16 @@ class StoreStaffAccountRequest extends FormRequest
             && app(StaffRoleCeiling::class)->canManagePersonnel($actor);
     }
 
+    protected function prepareForValidation(): void
+    {
+        $ceiling = app(StaffRoleCeiling::class);
+        $office = $ceiling->resolveCreateOffice($this->user(), $this->input('office'));
+
+        if ($office !== 'program') {
+            $this->merge(['program_codes' => []]);
+        }
+    }
+
     /**
      * HR may create permanent staff (role checklist) or support staff
      * (office-derived role). Office actors may only create their office
@@ -25,19 +35,26 @@ class StoreStaffAccountRequest extends FormRequest
     {
         $ceiling = app(StaffRoleCeiling::class);
         $isHr = $ceiling->isFullHr($this->user());
+        $office = $ceiling->resolveCreateOffice($this->user(), $this->input('office'));
+        $institutionId = (int) ($this->user()?->actorScope()->institutionId ?? 0);
+        $programCodeRule = Rule::exists('programs', 'code')
+            ->where('institution_id', $institutionId)
+            ->where('is_active', true);
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', 'min:8'],
+            'email' => ['nullable', 'sometimes', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['prohibited'],
             'roles' => ['sometimes', 'array'],
             'roles.*' => $isHr
                 ? ['string', Rule::in($ceiling->permanentRoleHelpers())]
                 : ['string'],
             'account_type' => ['sometimes', 'string', Rule::in(['permanent', 'support'])],
-            'office' => ['sometimes', 'string', 'max:64'],
+            'office' => ['sometimes', 'string', Rule::in(['admin', 'registrar', 'guidance', 'program'])],
             'program_codes' => ['sometimes', 'array'],
-            'program_codes.*' => ['string', 'max:32'],
+            'program_codes.*' => $office === 'program'
+                ? ['string', 'max:32', $programCodeRule]
+                : ['string', 'max:32', Rule::in([])],
         ];
     }
 }

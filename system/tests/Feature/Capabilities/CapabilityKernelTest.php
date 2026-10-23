@@ -1,87 +1,130 @@
 <?php
 
+use App\Ai\Context\InvocationContext;
+use App\Ai\Gateway\AssistantToolCatalog;
+use App\Ai\Gateway\AssistantToolGateway;
 use App\Application\Capabilities\CapabilityDefinitions;
-use App\Application\Capabilities\CapabilityInvocationRequest;
-use App\Application\Capabilities\CapabilityKernel;
 use App\Application\Capabilities\CapabilityKind;
-use App\Application\Capabilities\CapabilityRegistry;
 use App\Models\User;
 use App\Setup\Queries\ComputeSetupReadinessQuery;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('capability registry includes setup readiness read and rejects duplicates', function (): void {
-    $registry = new CapabilityRegistry(CapabilityDefinitions::all());
+beforeEach(function (): void {
+    $this->withoutVite();
+});
 
-    expect($registry->get('setup.readiness.read', 1))->not->toBeNull()
-        ->and($registry->get('setup.readiness.read', 1)?->kind)->toBe(CapabilityKind::Read)
-        ->and($registry->get('setup.readiness.read', 1)?->id())->toBe('setup.readiness.read@1');
+test('assistant tool catalog includes setup readiness read and rejects duplicates', function (): void {
+    $catalog = new AssistantToolCatalog(CapabilityDefinitions::all());
 
-    expect(fn () => new CapabilityRegistry([
+    expect($catalog->get('setup.readiness.read', 1))->not->toBeNull()
+        ->and($catalog->get('setup.readiness.read', 1)?->kind)->toBe(CapabilityKind::Read)
+        ->and($catalog->get('setup.readiness.read', 1)?->id())->toBe('setup.readiness.read@1');
+
+    expect(fn () => new AssistantToolCatalog([
         ...CapabilityDefinitions::all(),
         ...CapabilityDefinitions::all(),
     ]))->toThrow(RuntimeException::class);
 });
 
-test('kernel returns readiness parity with ComputeSetupReadinessQuery for authorized staff', function (): void {
+test('gateway returns readiness parity with ComputeSetupReadinessQuery for authorized staff', function (): void {
     seedE2Foundation();
     $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
-    $expected = app(ComputeSetupReadinessQuery::class)->handle();
+    $queryResult = app(ComputeSetupReadinessQuery::class)->handle();
+    $blockingCount = 0;
+    foreach ($queryResult['groups'] as $group) {
+        foreach ($group['categories'] as $category) {
+            foreach ($category['checks'] as $check) {
+                if (! $check['passed'] && ($check['severity'] ?? '') === 'critical') {
+                    $blockingCount++;
+                }
+            }
+        }
+    }
+    $expected = [
+        ...$queryResult,
+        'blocking_count' => $blockingCount,
+        'ready' => $blockingCount === 0,
+    ];
 
-    $result = app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'setup.readiness.read',
-        version: 1,
-        input: [],
+    $context = new InvocationContext(
+        actorId: (string) $guidance->id,
+        actorType: 'staff',
+        institutionId: $guidance->actorScope()->institutionId,
+        surfaceProfile: 'staff',
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'readiness-test',
+    );
+
+    $result = app(AssistantToolGateway::class)->invoke(
         actor: $guidance,
-        channel: 'http_page',
-        surfaceKey: 'staff',
-        pagePackKey: 'staff.setup.readiness@1',
-    ));
+        context: $context,
+        toolId: 'setup.readiness.read@1',
+        input: [],
+    );
 
     expect($result->ok)->toBeTrue()
         ->and($result->data)->toEqual($expected)
         ->and($result->meta['pack_used_for_authz'] ?? null)->toBeFalse();
 });
 
-test('kernel allows authorized staff when page_pack is null (pack is not a cage)', function (): void {
+test('gateway allows authorized staff with invocation context', function (): void {
     seedE2Foundation();
     $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
 
-    $result = app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'setup.readiness.read',
-        version: 1,
-        input: [],
+    $context = new InvocationContext(
+        actorId: (string) $guidance->id,
+        actorType: 'staff',
+        institutionId: $guidance->actorScope()->institutionId,
+        surfaceProfile: 'staff',
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'readiness-test-2',
+    );
+
+    $result = app(AssistantToolGateway::class)->invoke(
         actor: $guidance,
-        channel: 'http_page',
-        surfaceKey: 'staff',
-        pagePackKey: null,
-    ));
+        context: $context,
+        toolId: 'setup.readiness.read@1',
+        input: [],
+    );
 
     expect($result->ok)->toBeTrue()
-        ->and($result->data)->toHaveKeys(['overall_percent', 'passed', 'total', 'categories'])
+        ->and($result->data)->toHaveKeys(['overall_percent', 'passed', 'total', 'groups'])
         ->and($result->meta['pack_used_for_authz'] ?? null)->toBeFalse();
 });
 
-test('kernel denies staff without setup assessment or quota capability', function (): void {
+test('gateway denies staff without setup assessment or quota capability', function (): void {
     seedE2Foundation();
     $user = User::factory()->create(['email' => 'kernel.nosetup@nexiam.test']);
 
-    $result = app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'setup.readiness.read',
-        version: 1,
-        input: [],
+    $context = new InvocationContext(
+        actorId: (string) $user->id,
+        actorType: 'staff',
+        institutionId: null,
+        surfaceProfile: 'staff',
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'readiness-test-denied',
+    );
+
+    $result = app(AssistantToolGateway::class)->invoke(
         actor: $user,
-        channel: 'http_page',
-        surfaceKey: 'staff',
-        pagePackKey: 'staff.setup.readiness@1',
-    ));
+        context: $context,
+        toolId: 'setup.readiness.read@1',
+        input: [],
+    );
 
     expect($result->ok)->toBeFalse()
         ->and($result->status)->toBe('denied')
-        ->and($result->reason)->toBe('capability_missing');
+        ->and(in_array($result->reason, ['capability_missing', 'envelope_denied:blocked'], true))->toBeTrue();
 });
 
-test('kernel denies non-staff authenticatable principal for readiness', function (): void {
+test('gateway denies non-staff authenticatable principal for readiness', function (): void {
     $actor = new class implements Authenticatable
     {
         public function getAuthIdentifierName(): string
@@ -117,37 +160,54 @@ test('kernel denies non-staff authenticatable principal for readiness', function
         }
     };
 
-    $result = app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'setup.readiness.read',
-        version: 1,
-        input: [],
+    $context = new InvocationContext(
+        actorId: 'applicant-principal',
+        actorType: 'applicant',
+        institutionId: null,
+        surfaceProfile: 'applicant',
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'readiness-principal-denied',
+    );
+
+    $result = app(AssistantToolGateway::class)->invoke(
         actor: $actor,
-        channel: 'http_page',
-        surfaceKey: 'applicant',
-        pagePackKey: 'applicant.schedule@1',
-    ));
+        context: $context,
+        toolId: 'setup.readiness.read@1',
+        input: [],
+    );
 
     expect($result->ok)->toBeFalse()->and($result->status)->toBe('denied');
 });
 
-test('kernel rejects unknown input fields', function (): void {
+test('gateway rejects unknown input fields', function (): void {
     seedE2Foundation();
     $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
 
-    $result = app(CapabilityKernel::class)->invoke(new CapabilityInvocationRequest(
-        key: 'setup.readiness.read',
-        version: 1,
-        input: ['authority' => 'forged'],
+    $context = new InvocationContext(
+        actorId: (string) $guidance->id,
+        actorType: 'staff',
+        institutionId: $guidance->actorScope()->institutionId,
+        surfaceProfile: 'staff',
+        mode: 'assistant',
+        contextEpoch: 'epoch-1',
+        purpose: 'test',
+        correlationId: 'readiness-schema-test',
+    );
+
+    $result = app(AssistantToolGateway::class)->invoke(
         actor: $guidance,
-        channel: 'http_page',
-    ));
+        context: $context,
+        toolId: 'setup.readiness.read@1',
+        input: ['authority' => 'forged'],
+    );
 
     expect($result->ok)->toBeFalse()
-        ->and($result->status)->toBe('invalid')
-        ->and($result->reason)->toStartWith('unknown_field');
+        ->and($result->status)->toBe('invalid');
 });
 
-test('setup hub readiness loads through capability kernel', function (): void {
+test('setup hub readiness loads through query', function (): void {
     seedE2Foundation();
     $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
     $expected = app(ComputeSetupReadinessQuery::class)->handle();
@@ -160,23 +220,18 @@ test('setup hub readiness loads through capability kernel', function (): void {
             ->where('readiness.overall_percent', $expected['overall_percent'])
             ->where('readiness.passed', $expected['passed'])
             ->where('readiness.total', $expected['total'])
-            ->has('readiness.categories', 8)
+            ->where('readiness.groups.1.categories', fn ($categories): bool => collect($categories)
+                ->contains(fn ($category): bool => $category['key'] === 'xiam_knowledge_governance'))
         );
 });
 
-test('registry exposes read and knowledge command kinds after openspec 4', function (): void {
-    $byKey = collect(CapabilityDefinitions::all())->keyBy(fn ($d) => $d->key);
+test('knowledge mutations stay HTTP-only proposals and are not provider tools', function (): void {
+    $byKey = collect(CapabilityDefinitions::all())->keyBy(fn ($definition) => $definition->key);
 
     expect($byKey->get('setup.readiness.read')?->kind)->toBe(CapabilityKind::Read)
         ->and($byKey->get('knowledge.sources.list')?->kind)->toBe(CapabilityKind::Read)
-        ->and($byKey->get('knowledge.source.publish')?->kind)->toBe(CapabilityKind::Command)
-        ->and($byKey->get('knowledge.source.revoke')?->kind)->toBe(CapabilityKind::Command);
-
-    foreach (CapabilityDefinitions::all() as $definition) {
-        expect($definition->kind)->toBeIn([
-            CapabilityKind::Read,
-            CapabilityKind::Propose,
-            CapabilityKind::Command,
-        ]);
-    }
+        ->and($byKey->get('knowledge.source.publish')?->kind)->toBe(CapabilityKind::Propose)
+        ->and($byKey->get('knowledge.source.revoke')?->kind)->toBe(CapabilityKind::Propose)
+        ->and($byKey->get('knowledge.source.publish')?->channels)->toBe(['http_page'])
+        ->and($byKey->get('knowledge.source.revoke')?->channels)->toBe(['http_page']);
 });

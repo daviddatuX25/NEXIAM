@@ -44,9 +44,9 @@
             },
             {
                 number: 5,
-                name: 'Results & Consultation',
+                name: 'Release of Results',
                 description:
-                    'Wait for the scheduled release to personally receive academic advice and claim your official result sheet.',
+                    'Wait for the scheduled Release Day to receive the applicable result-release service and academic guidance.',
                 office: 'Guidance',
                 color: '#C87A1A',
             },

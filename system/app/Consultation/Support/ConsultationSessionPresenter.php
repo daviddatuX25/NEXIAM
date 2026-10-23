@@ -24,6 +24,7 @@ class ConsultationSessionPresenter
             'code' => $session->code,
             'status' => $session->status,
             'booking_mode' => $session->booking_mode ?? ConsultationSession::BOOKING_STAFF_ONLY,
+            'auto_assign_enabled' => (bool) $session->auto_assign_enabled,
             'reservation_opened_at' => $session->reservation_opened_at?->toIso8601String(),
             'reservation_closed_at' => $session->reservation_closed_at?->toIso8601String(),
             'scheduled_at' => $session->scheduled_at?->toIso8601String(),
@@ -39,6 +40,7 @@ class ConsultationSessionPresenter
                 'name' => $session->room->name,
                 'capacity' => $session->room->capacity,
             ] : null,
+            'academic_cycle_id' => (int) $session->academic_cycle_id,
             'academic_cycle' => $session->academicCycle ? [
                 'id' => $session->academicCycle->id,
                 'label' => $session->academicCycle->staffLabel(),
@@ -62,6 +64,7 @@ class ConsultationSessionPresenter
     {
         return [
             ...$this->listPayload($session),
+            'auto_assign_enabled' => (bool) $session->auto_assign_enabled,
             'version' => $session->version,
             'academic_cycle_id' => $session->academic_cycle_id,
             'room_id' => $session->room_id,

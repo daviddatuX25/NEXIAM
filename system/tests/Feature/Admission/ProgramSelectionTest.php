@@ -10,7 +10,6 @@ use App\Models\Foundation\Program;
 use App\Models\Foundation\ProgramQuota;
 use App\Models\User;
 
-
 test('guidance sets pool with advised default reserving quota', function (): void {
     [$attempt, , $guidance] = buildReleasedAdvisedAttempt($this, 'pool-set@example.test');
 

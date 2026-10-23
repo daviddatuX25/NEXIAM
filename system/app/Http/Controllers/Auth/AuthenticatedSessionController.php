@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Auth\Actions\EndStaffPresenceSession;
+use App\Auth\Actions\RevokeStaffSessionLease;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,38 +19,33 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Auth/Login');
     }
 
-    public function store(LoginRequest $request, RecordAuditEvent $recordAuditEvent): RedirectResponse
-    {
-        $request->authenticate();
-        $request->session()->regenerate();
-
-        $user = $request->user();
-        $recordAuditEvent->handle('auth.staff_login', [
-            'user_id' => $user?->id,
-            'email' => $user?->email,
-            'office' => $user?->actorScope()->office,
-        ], $user ? (string) $user->id : 'anonymous');
-
-        if ($user !== null && $user->applicantAccount()->exists() && ! $user->staffProfile()->exists()) {
-            return redirect()->intended(route('applicant.schedule'));
-        }
-
-        return redirect()->intended(route('staff.home'));
-    }
-
-    public function destroy(Request $request, RecordAuditEvent $recordAuditEvent): RedirectResponse
-    {
+    public function destroy(
+        Request $request,
+        RecordAuditEvent $recordAuditEvent,
+        EndStaffPresenceSession $endPresenceSession,
+        RevokeStaffSessionLease $revokeLease,
+    ): RedirectResponse {
         $user = $request->user();
         $isApplicantOnly = $user !== null
             && $user->applicantAccount()->exists()
             && ! $user->staffProfile()->exists();
 
+        $staffScope = ($user !== null && $request->session()->get('auth.surface') === 'staff')
+            ? $user->actorScope()
+            : null;
+
+        if ($user !== null && $request->session()->get('auth.surface') === 'staff') {
+            $revokeLease->handle($user, $request->session()->getId(), now());
+            $endPresenceSession->handle($request, 'logout');
+        }
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         $recordAuditEvent->handle($isApplicantOnly ? 'auth.applicant_logout' : 'auth.staff_logout', [
+            'institution_id' => $staffScope?->institutionId,
             'user_id' => $user?->id,
+            'office' => $staffScope?->office,
         ], $user ? (string) $user->id : 'anonymous');
 
         return redirect()->route($isApplicantOnly ? 'applicant.login' : 'login');

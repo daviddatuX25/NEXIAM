@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
+use App\Models\User;
+use App\Staffing\Support\StaffRoleCeiling;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,8 +19,7 @@ class EnsurePersonnelAccess
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -26,8 +27,16 @@ class EnsurePersonnelAccess
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+        $target = $request->route('user');
+        $isSelfMfaToggle = $user !== null
+            && $target instanceof User
+            && $target->is($user)
+            && $request->routeIs('staff.personnel.require-mfa', 'staff.personnel.disable-mfa')
+            && app(StaffRoleCeiling::class)->isOfficeHead($user);
         $allowed = $this->authorizer->allows($user, CapabilityCatalog::HR_STAFF_MANAGE)
-            || $this->authorizer->allows($user, CapabilityCatalog::OFFICE_SUPPORT_STAFF_MANAGE);
+            || $this->authorizer->allows($user, CapabilityCatalog::OFFICE_SUPPORT_STAFF_MANAGE)
+            || ($user !== null && app(StaffRoleCeiling::class)->isDean($user))
+            || $isSelfMfaToggle;
 
         if (! $allowed) {
             $this->recordAuditEvent->handle('authorization.denied', [

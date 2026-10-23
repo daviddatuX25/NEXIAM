@@ -1,32 +1,22 @@
-"""Read-only layout-verification child for POST /v1/layout-verification (task 10.5).
+"""Read-only v5 layout verification for fiducial and document-bound targets.
 
-Runs the SAME marker registration pipeline as detect.py (shared helpers) for a
-marker-bearing template, then returns the clean aligned raster, the engine
-`draw_template_layout(aligned, shifted=True, draw_qvals=True)` overlay PNG,
-per-bubble mean intensities, marker match diagnostics, and field-block shifts.
-
-Strictly read-only: it mutates nothing in NEXIAM (no activation, pairs, answer
-keys, or scores) and runs in the same isolated child-process envelope as
-detection. Marker-less templates are rejected with a typed error
-(`marker_versions_only`); a marker failure is a typed terminal state, never a
-degrade into the Hough fallback (shared with detect.py).
-
-Never modify this file to change registration or recognition behavior.
+Returns the clean aligned raster, the engine layout overlay, per-bubble means,
+field-block shifts, item evidence, and registration provenance. Fiducial targets
+retain the CropOnMarkers path. Document-bound targets use detect.py's explicit
+server-side quad gates and exactly one rectification warp; client geometry is
+diagnostic-only. Neither path qualifies calibration or creates answer authority.
 """
 
 import base64
+import io
 import json
 import time
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import sys
-
 import cv2
 import numpy as np
 
 import detect
-import marker_states
-
 
 def bubble_means(aligned: np.ndarray, template) -> dict:
     """Per-bubble mean intensities over the aligned frame.
@@ -41,10 +31,15 @@ def bubble_means(aligned: np.ndarray, template) -> dict:
     for block in template.field_blocks:
         box_w, box_h = block.bubble_dimensions
         entries: list[dict] = []
+        is_vertical = str(getattr(block, "direction", "")).lower() == "vertical"
         for bubbles in block.traverse_bubbles:
             for pt in bubbles:
-                x = int(pt.x + block.shift)
-                y = int(pt.y)
+                if is_vertical:
+                    x = int(pt.x)
+                    y = int(pt.y + block.shift)
+                else:
+                    x = int(pt.x + block.shift)
+                    y = int(pt.y)
                 right = min(width, x + box_w)
                 bottom = min(height, y + box_h)
                 if x < 0 or y < 0 or right <= x or bottom <= y:
@@ -120,100 +115,180 @@ def item_evidence(aligned: np.ndarray, manifest: dict, means: dict) -> list[dict
 
 def verify(manifest: dict, image_path: Path, output_directory: Path) -> dict:
     started = time.monotonic()
-    detect.validate_manifest(manifest)
-    image_bytes = image_path.read_bytes()
-    mime = detect.sniff_mime(image_bytes)
-    detect.require(mime == manifest.get("image_mime"), "image_metadata_mismatch", "Decoded image MIME does not match the request.")
-
-    encoded = np.frombuffer(image_bytes, dtype=np.uint8)
-    decode_flags = cv2.IMREAD_GRAYSCALE | getattr(cv2, "IMREAD_IGNORE_ORIENTATION", 0)
-    image = cv2.imdecode(encoded, decode_flags)
-    detect.require(image is not None and image.size > 0, "image_decode_failed", "Image decoding failed.")
-    decoded_height, decoded_width = image.shape[:2]
-    detect.require(decoded_width == manifest.get("image_width") and decoded_height == manifest.get("image_height"), "image_metadata_mismatch", "Decoded image dimensions do not match the request.")
-    image = detect.apply_exif_orientation(image, detect.exif_orientation(image_bytes))
-
-    # Layout verification is a marker-bearing diagnostic only.
-    detect.require(
-        detect.marker_bearing_template(manifest.get("native_template", {})),
-        "marker_versions_only",
-        "Layout verification requires a marker-bearing template version; scan (CropPage) profiles are not supported.",
-    )
-
-    defaults, template_class, image_ops_class = detect.load_omrchecker()
-    config = detect.merge_config(manifest["native_config"], defaults)
-    template_path = output_directory / "template.json"
-    template_path.write_text(json.dumps(manifest["native_template"], separators=(",", ":")), encoding="utf-8")
-    detect.materialize_native_assets(manifest, output_directory)
-
-    engine_log_capture = __import__("io").StringIO()
     try:
-        with redirect_stdout(engine_log_capture), redirect_stderr(engine_log_capture):
-            template = template_class(template_path, config)
-            image_ops = image_ops_class(config)
-            preprocess_started = time.monotonic()
-            processing_width = int(config.dimensions.processing_width)
-            processing_height = int(config.dimensions.processing_height)
-            camera_input = decoded_width != processing_width or decoded_height != processing_height
-            processed = image_ops.apply_preprocessors(str(image_path), image, template)
-    finally:
-        engine_text = engine_log_capture.getvalue()
-        sys.stderr.write(engine_text)
-    preprocess_ms = (time.monotonic() - preprocess_started) * 1000.0
+        native_config = detect.validate_manifest(manifest)
+    except detect.DetectionError as error:
+        if (
+            error.code == "native_preprocessor_mismatch"
+            and manifest.get("registration_mode") == "fiducial_anchored"
+            and not detect.marker_bearing_template(manifest.get("native_template", {}))
+        ):
+            raise detect.DetectionError(
+                "marker_versions_only",
+                "Layout verification requires a marker-bearing template version; document-bound layouts use the v5 document rectifier.",
+            ) from None
+        raise
+    detected = detect.detect(manifest, image_path, output_directory, require_expected_labels=False)
+    native_template = detect.native_template_for_page(manifest)
+    defaults, template_class, image_ops_class = detect.load_omrchecker()
+    config = detect.merge_config(native_config, defaults)
+    template_path = output_directory / "template.json"
+    with detect.capture_engine_logs(io.StringIO()):
+        template = template_class(template_path, config)
+        image_ops = image_ops_class(config)
 
-    if processed is None:
-        state = marker_states.classify(engine_text, detect.sheet_likely_present(image))
-        raise detect.DetectionError(
-            state["code"],
-            state["message"] + f" (orientation_hint={state['orientation_hint']})",
+    shifts = detected.get("field_block_shifts", [])
+    shifts_by_name = {
+        str(shift.get("block")): shift
+        for shift in shifts
+        if isinstance(shift, dict) and isinstance(shift.get("block"), str)
+    }
+    for block in template.field_blocks:
+        shift = shifts_by_name.get(str(block.name), {})
+        block.shift = int(
+            shift.get("y" if str(getattr(block, "direction", "")).lower() == "vertical" else "x", 0)
         )
-    if camera_input:
-        processed = detect.normalize_camera_lighting(processed)
 
-    marker_matches = marker_states.parse_match_scores(engine_text)
-
-    with redirect_stdout(sys.stderr):
-        # Patched contract: the second tuple value is the clean aligned raster.
-        response, aligned, _, _ = image_ops.read_omr_response(template, processed, image_path.name, save_dir=None)
-
-    detect.require(isinstance(response, dict), "provider_output_invalid", "OMRChecker returned malformed observations.")
-    detect.require(isinstance(aligned, np.ndarray) and aligned.size > 0, "aligned_image_invalid", "OMRChecker returned no aligned image.")
+    aligned_path = output_directory / "aligned.png"
+    aligned = cv2.imread(str(aligned_path), cv2.IMREAD_GRAYSCALE)
+    detect.require(isinstance(aligned, np.ndarray) and aligned.size > 0, "aligned_image_invalid", "Detector did not produce a readable aligned raster.")
+    aligned_height, aligned_width = aligned.shape[:2]
+    page_dimensions = native_template.get("pageDimensions")
+    detect.require(
+        isinstance(page_dimensions, (list, tuple))
+        and len(page_dimensions) == 2
+        and (aligned_width, aligned_height) == (int(page_dimensions[0]), int(page_dimensions[1])),
+        "aligned_image_invalid",
+        "Aligned image dimensions do not match the page-specific template.",
+    )
+    registered_items = detected.get("registered_items")
+    detect.require(
+        isinstance(registered_items, list) and len(registered_items) == len(manifest["items"]),
+        "provider_output_invalid",
+        "Detector omitted the registered item geometry.",
+    )
+    for declared, registered in zip(manifest["items"], registered_items):
+        detect.require(
+            isinstance(registered, dict)
+            and registered.get("native_label") == declared["native_label"]
+            and registered.get("position") == declared["position"]
+            and registered.get("area_code") == declared["area_code"]
+            and registered.get("question_no") == declared["question_no"]
+            and isinstance(registered.get("options"), list)
+            and len(registered["options"]) == len(declared["options"]),
+            "provider_output_invalid",
+            "Registered item identity differs from the declared mapping.",
+        )
+        for expected_option, registered_option in zip(declared["options"], registered["options"]):
+            detect.require(
+                isinstance(registered_option, dict)
+                and registered_option.get("code") == expected_option["code"]
+                and isinstance(registered_option.get("region"), dict),
+                "provider_output_invalid",
+                "Registered option identity differs from the declared mapping.",
+            )
+            region = registered_option["region"]
+            values = [region.get(key) for key in ("x", "y", "w", "h")]
+            detect.require(
+                all(type(value) in (int, float) and np.isfinite(value) for value in values),
+                "provider_output_invalid",
+                "Registered option geometry is malformed.",
+            )
+            x, y, w, h = (float(value) for value in values)
+            detect.require(
+                x >= 0.0 and y >= 0.0 and w > 0.0 and h > 0.0 and x + w <= 1.0 and y + h <= 1.0
+                and w == float(expected_option["region"]["w"])
+                and h == float(expected_option["region"]["h"]),
+                "provider_output_invalid",
+                "Registered option geometry is outside its declared frame.",
+            )
+    detect.apply_registered_items_to_template(template, registered_items, aligned_width, aligned_height)
 
     overlay = image_ops_class.draw_template_layout(aligned, template, shifted=True, draw_qvals=True)
-
     aligned_ok, aligned_encoded = cv2.imencode(".png", aligned, [cv2.IMWRITE_PNG_COMPRESSION, 9])
     overlay_ok, overlay_encoded = cv2.imencode(".png", overlay, [cv2.IMWRITE_PNG_COMPRESSION, 9])
     detect.require(bool(aligned_ok) and bool(overlay_ok), "aligned_image_invalid", "Layout overlay encoding failed.")
     (output_directory / "aligned.png").write_bytes(aligned_encoded.tobytes())
     (output_directory / "layout_overlay.png").write_bytes(overlay_encoded.tobytes())
-    aligned_height, aligned_width = aligned.shape[:2]
 
-    field_block_shifts = [
-        {"block": str(block.name), "x": int(block.shift), "y": 0}
-        for block in template.field_blocks
-    ]
     means = bubble_means(aligned, template)
+    field_block_shifts = detected.get("field_block_shifts", [])
+    rectification = detected.get("rectification", {})
+    unsafe_shifts = detect.find_unsafe_shifts(field_block_shifts, native_template.get("fieldBlocks", {}))
+    if manifest["registration_mode"] == "document_bound":
+        document_gates = rectification.get("document_gates", {})
+        keep_original = (
+            manifest.get("crop_policy") == "keep_original"
+            or rectification.get("crop_policy") == "keep_original"
+        )
+        gates = {
+            "accepted": (keep_original or document_gates.get("accepted") is True) and not unsafe_shifts,
+            "registration_mode": "document_bound",
+            "paper_quad_unique": document_gates.get("unique_quad") is True,
+            "aspect_ratio": document_gates.get("aspect_ratio") is True,
+            "homography": document_gates.get("homography") is True,
+            "distributed_content": document_gates.get("distributed_content") is True,
+            "unsafe_blocks": unsafe_shifts,
+        }
+    else:
+        marker_matches = detected.get("provider_diagnostics", {}).get("marker_matches", {})
+        gates = {
+            "accepted": len(marker_matches) == 4 and all(float(score) >= 0.30 for score in marker_matches.values()) and not unsafe_shifts,
+            "registration_mode": "fiducial_anchored",
+            "marker_count": len(marker_matches),
+            "registration": len(marker_matches) == 4 and all(float(score) >= 0.30 for score in marker_matches.values()),
+            "dimensions": (aligned_width, aligned_height) == (int(page_dimensions[0]), int(page_dimensions[1])),
+            "unsafe_blocks": unsafe_shifts,
+        }
 
+    source_image = manifest["source_image"]
+    marker_matches = detected.get("provider_diagnostics", {}).get("marker_matches", {})
     return {
         "contract_version": detect.CONTRACT_VERSION,
         "run_id": manifest["run_id"],
         "correlation_id": manifest["correlation_id"],
+        "registration_mode": manifest["registration_mode"],
+        "expected_page_no": manifest["expected_page_no"],
+        **detect.target_identity(manifest),
+        "source_image": {
+            "width": source_image["width"],
+            "height": source_image["height"],
+            "orientation": source_image["orientation"],
+            "input_hash": source_image["input_hash"],
+        },
         "outcome": "succeeded",
-        "engine": {"name": detect.ENGINE_NAME, "version": detect.ENGINE_COMMIT[:12], "commit": detect.ENGINE_COMMIT, "patch_identity": detect.PATCH_IDENTITY},
+        "engine": detected["engine"],
         "input_hash": manifest["input_hash"],
         "native_bundle_hash": manifest["native_bundle_hash"],
         "manifest_hash": manifest["manifest_hash"],
         "config_hash": manifest["config_hash"],
         "calibration_status": "unqualified",
-        "image": {"mime": mime, "width": decoded_width, "height": decoded_height},
+        "image": detected["image"],
         "marker_matches": marker_matches,
         "aligned_image": {"mime": "image/png", "width": int(aligned_width), "height": int(aligned_height)},
         "layout_overlay": {"mime": "image/png", "width": int(aligned_width), "height": int(aligned_height)},
         "field_block_shifts": field_block_shifts,
         "bubble_means": means,
-        "item_evidence": item_evidence(aligned, {**manifest, "field_block_shifts": field_block_shifts}, means),
-        "source_hashes": {"source": manifest.get("input_hash"), "mapping": manifest.get("mapping_hash"), "bundle": manifest.get("native_bundle_hash")},
-        "timings": {"preprocess_ms": round(preprocess_ms, 3), "verification_ms": round((time.monotonic() - started) * 1000.0, 3)},
+        "gates": gates,
+        "item_evidence": item_evidence(
+            aligned,
+            {
+                **manifest,
+                "items": registered_items,
+                "field_block_shifts": field_block_shifts,
+            },
+            means,
+        ),
+        "source_hashes": {
+            "source": manifest.get("input_hash"),
+            "mapping": manifest.get("mapping_hash"),
+            "bundle": manifest.get("native_bundle_hash"),
+        },
+        "timings": {
+            "preprocess_ms": detected.get("timings", {}).get("preprocess_ms"),
+            "verification_ms": round((time.monotonic() - started) * 1000.0, 3),
+        },
+        "rectification": rectification,
     }
 
 
@@ -227,7 +302,10 @@ def main() -> int:
         result_path.write_text(json.dumps(result, separators=(",", ":"), sort_keys=True), encoding="utf-8")
         return 0
     except detect.DetectionError as error:
-        print(json.dumps({"error": error.code, "detail": str(error)}, separators=(",", ":")), file=sys.stderr)
+        payload = {"error": error.code, "detail": str(error)}
+        if error.rectification:
+            payload["rectification"] = error.rectification
+        print(json.dumps(payload, separators=(",", ":")), file=sys.stderr)
         return 2
     except Exception:
         print(json.dumps({"error": "provider_failed", "detail": "OMR layout verification failed."}, separators=(",", ":")), file=sys.stderr)

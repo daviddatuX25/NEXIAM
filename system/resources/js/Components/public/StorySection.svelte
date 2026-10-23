@@ -31,6 +31,14 @@
         <p class="text-muted-foreground mt-5 max-w-[55ch] text-base leading-8 sm:text-lg">
             {story.body}
         </p>
+        {#if story.cta_label && story.cta_href}
+            <a
+                href={story.cta_href}
+                class="text-primary hover:text-primary/80 focus-visible:ring-ring mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
+            >
+                {story.cta_label}
+            </a>
+        {/if}
         <div class="mt-7 h-px w-16 bg-primary/50" aria-hidden="true"></div>
     </div>
 </section>

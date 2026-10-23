@@ -4,13 +4,11 @@ namespace App\Assessment\Omr\Canonical;
 
 use InvalidArgumentException;
 
-use function array_key_exists;
 use function array_values;
 use function config;
 use function count;
 use function is_array;
 use function is_numeric;
-use function max;
 use function min;
 use function round;
 use function sort;
@@ -25,13 +23,21 @@ use function sort;
 final class OmrPageDimensionMath
 {
     public const ALIGN_TOP_LEFT = 'top_left';
+
     public const ALIGN_TOP_CENTER = 'top_center';
+
     public const ALIGN_TOP_RIGHT = 'top_right';
+
     public const ALIGN_CENTER_LEFT = 'center_left';
+
     public const ALIGN_CENTER = 'center';
+
     public const ALIGN_CENTER_RIGHT = 'center_right';
+
     public const ALIGN_BOTTOM_LEFT = 'bottom_left';
+
     public const ALIGN_BOTTOM_CENTER = 'bottom_center';
+
     public const ALIGN_BOTTOM_RIGHT = 'bottom_right';
 
     public const ALIGNMENTS = [
@@ -61,9 +67,9 @@ final class OmrPageDimensionMath
     }
 
     /**
-     * @param array{width:int|float,height:int|float} $oldPage
-     * @param array{width:int|float,height:int|float} $newPage
-     * @param array{x:int|float,y:int|float,w:int|float,h:int|float} $rect
+     * @param  array{width:int|float,height:int|float}  $oldPage
+     * @param  array{width:int|float,height:int|float}  $newPage
+     * @param  array{x:int|float,y:int|float,w:int|float,h:int|float}  $rect
      * @return array{x:int,y:int,w:int,h:int}
      */
     public static function normalizedRect(array $rect, array $oldPage, array $newPage): array
@@ -90,9 +96,9 @@ final class OmrPageDimensionMath
      * Transform an OMRChecker fieldBlocks map from actual source pixels to
      * canonical pixels while preserving its semantic shape.
      *
-     * @param array<string, mixed> $fieldBlocks
-     * @param array{width:int|float,height:int|float} $oldPage
-     * @param array{width:int|float,height:int|float} $newPage
+     * @param  array<string, mixed>  $fieldBlocks
+     * @param  array{width:int|float,height:int|float}  $oldPage
+     * @param  array{width:int|float,height:int|float}  $newPage
      * @return array<string, mixed>
      */
     public static function transformFieldBlocks(array $fieldBlocks, array $oldPage, array $newPage): array
@@ -117,11 +123,44 @@ final class OmrPageDimensionMath
                 ];
             }
 
+            $sourceBubbleDimensions = $block['bubbleDimensions'] ?? null;
             if (isset($block['bubbleDimensions']) && is_array($block['bubbleDimensions']) && count($block['bubbleDimensions']) === 2) {
                 $block['bubbleDimensions'] = [
                     (int) round((float) $block['bubbleDimensions'][0] * $scaleX),
                     (int) round((float) $block['bubbleDimensions'][1] * $scaleY),
                 ];
+            }
+            if (array_key_exists('bubblePositions', $block)) {
+                if (! is_array($block['bubblePositions']) || ! array_is_list($block['bubblePositions'])
+                    || ! is_array($sourceBubbleDimensions) || count($sourceBubbleDimensions) !== 2
+                    || (int) $sourceBubbleDimensions[0] <= 0 || (int) $sourceBubbleDimensions[1] <= 0) {
+                    throw new InvalidArgumentException('Explicit bubble positions require ordered rows and positive bubble dimensions.');
+                }
+                $bubbleDimensions = $block['bubbleDimensions'];
+                foreach ($block['bubblePositions'] as $rowIndex => $row) {
+                    if (! is_array($row) || ! array_is_list($row)) {
+                        throw new InvalidArgumentException('Explicit bubble positions must be ordered option rows.');
+                    }
+                    foreach ($row as $optionIndex => $position) {
+                        if (! is_array($position) || ! array_is_list($position) || count($position) !== 2
+                            || ! is_int($position[0] ?? null) || ! is_int($position[1] ?? null)) {
+                            throw new InvalidArgumentException('Explicit bubble positions must contain integer pixel pairs.');
+                        }
+                        if ($position[0] < 0 || $position[1] < 0
+                            || $oldWidth < $position[0] + (int) $sourceBubbleDimensions[0]
+                            || $oldHeight < $position[1] + (int) $sourceBubbleDimensions[1]) {
+                            throw new InvalidArgumentException('Explicit bubble positions lie outside the source page.');
+                        }
+                        $x = (int) round($position[0] * $scaleX);
+                        $y = (int) round($position[1] * $scaleY);
+                        if ($x < 0 || $y < 0
+                            || $x + (int) $bubbleDimensions[0] > $newWidth
+                            || $y + (int) $bubbleDimensions[1] > $newHeight) {
+                            throw new InvalidArgumentException('Transformed explicit bubble positions lie outside the target page.');
+                        }
+                        $block['bubblePositions'][$rowIndex][$optionIndex] = [$x, $y];
+                    }
+                }
             }
 
             $direction = $block['direction'] ?? 'horizontal';
@@ -145,9 +184,9 @@ final class OmrPageDimensionMath
     }
 
     /**
-     * @param array{width:int|float,height:int|float} $source
-     * @param array{width:int|float,height:int|float} $canvas
-     * @param array{left?:int|float,right?:int|float,top?:int|float,bottom?:int|float} $padding
+     * @param  array{width:int|float,height:int|float}  $source
+     * @param  array{width:int|float,height:int|float}  $canvas
+     * @param  array{left?:int|float,right?:int|float,top?:int|float,bottom?:int|float}  $padding
      * @return array{scale:float,width:int,height:int,effective_dpi:float}
      */
     public static function scaleForPlacement(
@@ -196,9 +235,9 @@ final class OmrPageDimensionMath
     }
 
     /**
-     * @param array{width:int|float,height:int|float} $source
-     * @param array{width:int|float,height:int|float} $canvas
-     * @param array{left?:int|float,right?:int|float,top?:int|float,bottom?:int|float} $padding
+     * @param  array{width:int|float,height:int|float}  $source
+     * @param  array{width:int|float,height:int|float}  $canvas
+     * @param  array{left?:int|float,right?:int|float,top?:int|float,bottom?:int|float}  $padding
      * @return array{scale:float,x:int,y:int,width:int,height:int,effective_dpi:float,alignment:string}
      */
     public static function place(

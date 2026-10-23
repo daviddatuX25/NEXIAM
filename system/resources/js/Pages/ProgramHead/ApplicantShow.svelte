@@ -45,8 +45,7 @@ import { newIdempotencyKey } from '@/lib/utils';
   const canDecline = $derived(
     record?.tier === 'B' &&
       !!record?.selection?.selection_program &&
-      !(record?.stamp_state?.enrolling ?? false) &&
-      !(record?.stamp_state?.enrolled ?? false),
+      !record?.legacy_program_mutation_blocked,
   );
 
   function openDecline() {
@@ -130,8 +129,7 @@ import { newIdempotencyKey } from '@/lib/utils';
     advised: 'Advised',
     selection_pending_ack: 'Selection pending ack',
     selected: 'Selected',
-    enrolling: 'Enrolling',
-    enrolled: 'Enrolled',
+    ready_for_enrollment: 'Ready for enrollment',
   };
 
   function lifecycleLabel(value) {
@@ -139,8 +137,8 @@ import { newIdempotencyKey } from '@/lib/utils';
   }
 
   function lifecycleVariant(value) {
-    if (value === 'enrolled' || value === 'enrolling' || value === 'selected') return 'default';
-    if (value === 'selection_pending_ack') return 'outline';
+    if (value === 'ready_for_enrollment' || value === 'selected') return 'default';
+    if (value === 'selection_pending_ack' || value === 'result_released') return 'outline';
     return 'secondary';
   }
 
@@ -175,12 +173,13 @@ import { newIdempotencyKey } from '@/lib/utils';
     });
   }
 
-  function formatScore(value) {
+  function formatScore(value, scale = null) {
     if (value === null || value === undefined || value === '') return '—';
     const numeric = Number(value);
-    return Number.isNaN(numeric)
-      ? String(value) // converted-score text (e.g. "Above Average")
+    const formatted = Number.isNaN(numeric)
+      ? String(value)
       : numeric.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    return scale === 'percentile_rank' ? `${formatted} percentile rank` : formatted;
   }
 
   const scoreProfile = $derived(record?.score_profile ?? null);
@@ -270,12 +269,10 @@ import { newIdempotencyKey } from '@/lib/utils';
               <span class="tabular-nums font-semibold">{record.follow_up_count}</span>
             </div>
           {/if}
-          {#if record.stamp_state}
+          {#if record.legacy_program_mutation_blocked}
             <div class="flex items-center justify-between gap-3">
-              <span class="text-muted-foreground">Enrollment</span>
-              <span class="font-medium">
-                {record.stamp_state.enrolled ? 'Enrolled' : record.stamp_state.enrolling ? 'Enrolling' : 'Not enrolling'}
-              </span>
+              <span class="text-muted-foreground">Historical program record</span>
+              <span class="font-medium">Program changes unavailable</span>
             </div>
           {/if}
           {#if record.visibility_note}
@@ -399,7 +396,7 @@ import { newIdempotencyKey } from '@/lib/utils';
                     y={y + chart.barHeight / 2 + 4}
                     class="fill-foreground text-[11px] tabular-nums"
                   >
-                    {formatScore(s.score)}
+                    {formatScore(s.score, s.scale)}
                   </text>
                 {/each}
               </svg>
@@ -412,15 +409,13 @@ import { newIdempotencyKey } from '@/lib/utils';
                   <Table.Row>
                     <Table.Head>Area</Table.Head>
                     <Table.Head class="text-right">Score</Table.Head>
-                    <Table.Head>Source</Table.Head>
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
                   {#each series as s (s.area_code)}
                     <Table.Row>
                       <Table.Cell class="font-medium">{s.area_name}</Table.Cell>
-                      <Table.Cell class="text-right tabular-nums">{formatScore(s.score)}</Table.Cell>
-                      <Table.Cell class="text-muted-foreground">{s.source ?? '—'}</Table.Cell>
+                      <Table.Cell class="text-right tabular-nums">{formatScore(s.score, s.scale)}</Table.Cell>
                     </Table.Row>
                   {/each}
                 </Table.Body>

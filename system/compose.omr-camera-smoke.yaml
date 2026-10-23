@@ -1,0 +1,66 @@
+name: nexiam-omr-camera-smoke
+
+services:
+    app:
+        image: nexiam-system-app:latest
+        pull_policy: never
+        command: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000', '--no-reload']
+        restart: 'no'
+        env_file:
+            - .env
+        environment:
+            APP_NAME: NEXIAM OMR Camera Verification
+            APP_ENV: local
+            APP_DEBUG: 'true'
+            APP_URL: http://127.0.0.1:18448
+            APP_CONFIG_CACHE: /tmp/nexiam-omr-camera-smoke-config.php
+            VITE_HOT_FILE: ${OMR_CAMERA_SMOKE_VITE_HOT_FILE:-}
+            PHP_CLI_SERVER_WORKERS: '4'
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_DATABASE: nexiam_omr_assisted_verify_20261019_a4c8
+            DB_USERNAME: nexiam
+            DB_PASSWORD: nexiam-local-only
+            DB_URL: ''
+            SESSION_DRIVER: database
+            SESSION_COOKIE: nexiam_omr_camera_smoke_session
+            SESSION_DOMAIN: ''
+            SESSION_SECURE_COOKIE: 'false'
+            CACHE_STORE: database
+            QUEUE_CONNECTION: sync
+            FILESYSTEM_DISK: local
+            MAIL_MAILER: log
+            CIAM_MFA_ENABLED: 'false'
+            INERTIA_DEVTOOLS_ENABLED: 'false'
+            OMR_CAMERA_REMOTE_ENABLED: 'true'
+            OMR_CAMERA_TURN_URLS: ''
+            OMR_CAMERA_TURN_SHARED_SECRET: ''
+            OMR_WORKER_ENABLED: 'true'
+            OMR_WORKER_ENDPOINT: http://inference:8100
+        ports:
+            - '127.0.0.1:18448:8000'
+        volumes:
+            - .:/var/www/html
+            - camera_smoke_storage:/var/www/html/storage
+            - type: bind
+              source: /tmp/nexiam-omr-camera-smoke-build/build
+              target: /var/www/html/public/build
+              read_only: true
+              bind:
+                  create_host_path: false
+        networks:
+            - verified-local-network
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:8000/up']
+            interval: 5s
+            timeout: 3s
+            retries: 20
+
+networks:
+    verified-local-network:
+        name: nexiam-system_default
+        external: true
+
+volumes:
+    camera_smoke_storage:

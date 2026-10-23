@@ -8,21 +8,34 @@ use App\Assessment\Actions\Omr\RegisterNativeBundle;
 use App\Assessment\Actions\Omr\RetireOmrConfiguration;
 use App\Assessment\Actions\Omr\SaveAuthoredBookletVersion;
 use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
+use App\Assessment\Actions\Omr\SolveOmrTemplateLayout;
 use App\Assessment\Actions\Omr\TestCaptureOmrTemplate;
+use App\Assessment\Omr\Canonical\OmrCanonicalSheetPageResolver;
+use App\Assessment\Omr\Layout\OmrTemplateLayoutException;
+use App\Assessment\Omr\NativeBundle;
+use App\Assessment\Omr\OmrCapturePolicy;
+use App\Assessment\Omr\OmrRegistrationMode;
 use App\Authorization\CapabilityAuthorizer;
+use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Setup\Concerns\HasSetupCapabilities;
 use App\Http\Requests\Setup\StoreOmrBundleRequest;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
+use App\Models\Assessment\OmrBookletSet;
 use App\Models\Assessment\OmrQuestionBooklet;
 use App\Models\Assessment\OmrQuestionBookletVersion;
+use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\Assessment\OmrTemplateBookletPair;
 use App\Models\Foundation\AptitudeArea;
+use App\Models\Printing\PrintJob;
 use App\Printing\RenderBundlePdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -129,7 +142,7 @@ class OmrConfigurationController extends Controller
                     ->exists(),
                 'paper' => (string) config('print.paper', 'long'),
             ],
-            'print_jobs' => \App\Models\Printing\PrintJob::query()
+            'print_jobs' => PrintJob::query()
                 ->orderByDesc('id')
                 ->limit(10)
                 ->get(['id', 'artifact_type', 'status', 'progress_done', 'progress_total', 'created_at'])
@@ -178,7 +191,7 @@ class OmrConfigurationController extends Controller
         }
 
         return redirect()
-            ->route('setup.omr.index')
+            ->route('setup.exam-materials.answer-sheets.index')
             ->with('status', sprintf('%s v%d registered as draft.', $version->template->code, $version->version));
     }
 
@@ -211,7 +224,7 @@ class OmrConfigurationController extends Controller
                     'engine_name' => $version->engine_name,
                     'engine_commit' => $version->engine_commit,
                     'patch_identity' => $version->patch_identity,
-                    'capture_policy' => \App\Assessment\Omr\OmrCapturePolicy::forVersion($version),
+                    'capture_policy' => OmrCapturePolicy::forVersion($version),
                     'activated_at' => $version->activated_at?->toIso8601String(),
                     'pair_ids' => $version->pairs->pluck('id')->map(fn ($id) => (int) $id)->all(),
                 ])->values()->all(),
@@ -238,20 +251,20 @@ class OmrConfigurationController extends Controller
         ]);
     }
 
-    public function builder(Request $request, CapabilityAuthorizer $authorizer): Response|\Illuminate\Http\RedirectResponse
+    public function builder(Request $request, CapabilityAuthorizer $authorizer): Response|RedirectResponse
     {
         $this->requireAssessment($authorizer, $request);
         if ((bool) config('omr.canonical.enabled', true)) {
-            $targetDraft = \App\Models\Assessment\OmrTemplateAuthoringDraft::query()
+            $targetDraft = OmrTemplateAuthoringDraft::query()
                 ->where('source_kind', 'preset')
                 ->orWhere('stage', 'mapping_complete')
                 ->orderByDesc('id')
-                ->first() ?? \App\Models\Assessment\OmrTemplateAuthoringDraft::query()->first();
+                ->first() ?? OmrTemplateAuthoringDraft::query()->first();
             if ($targetDraft !== null) {
-                return redirect()->route('setup.omr.templates.canonical.drafts.show', $targetDraft);
+                return redirect()->route('setup.exam-materials.answer-sheets.edit', $targetDraft);
             }
 
-            return redirect()->route('setup.omr.templates.canonical.index');
+            return redirect()->route('setup.exam-materials.answer-sheets.index');
         }
         $draftVersion = null;
         $draftRefusal = null;
@@ -264,21 +277,19 @@ class OmrConfigurationController extends Controller
             } elseif ($version->status !== OmrAnswerSheetTemplateVersion::STATUS_DRAFT) {
                 $draftRefusal = 'Only draft versions can be edited. Open the show page to preview activated versions.';
             } else {
-                $templateJson = is_array($version->native_bundle_json) && isset($version->native_bundle_json['template'])
-                    ? $version->native_bundle_json['template']
-                    : null;
-                if ($templateJson === null) {
-                    $bundle = \App\Assessment\Omr\NativeBundle::load($version->template->code, (int) $version->version);
-                    $templateJson = $bundle->template;
+                try {
+                    $templateJson = NativeBundle::loadForVersion($version)->template;
+                    $draftVersion = [
+                        'id' => $version->id,
+                        'code' => $version->template->code,
+                        'name' => $version->template->name,
+                        'template_json' => $templateJson,
+                        'layout_blueprint_json' => $version->layout_blueprint_json ?? null,
+                        'overlay' => $version->print_overlay_json ?? [],
+                    ];
+                } catch (\Throwable $exception) {
+                    $draftRefusal = $exception->getMessage();
                 }
-                $draftVersion = [
-                    'id' => $version->id,
-                    'code' => $version->template->code,
-                    'name' => $version->template->name,
-                    'template_json' => $templateJson,
-                    'layout_blueprint_json' => $version->layout_blueprint_json ?? null,
-                    'overlay' => $version->print_overlay_json ?? [],
-                ];
             }
         }
 
@@ -387,6 +398,7 @@ class OmrConfigurationController extends Controller
             'capabilities' => $this->capabilities($authorizer, $request),
         ]);
     }
+
     public function booklets(Request $request, CapabilityAuthorizer $authorizer): Response
     {
         $this->requireAssessment($authorizer, $request);
@@ -515,7 +527,7 @@ class OmrConfigurationController extends Controller
         }
 
         return redirect()
-            ->route('setup.omr.index')
+            ->route('setup.exam-materials.answer-sheets.index')
             ->with('status', sprintf('Pair #%d activated and ready for capture.', $pair->id));
     }
 
@@ -537,30 +549,44 @@ class OmrConfigurationController extends Controller
         return back()->with('status', 'OMR configuration retired.');
     }
 
-
     public function previewVersion(
         Request $request,
         CapabilityAuthorizer $authorizer,
         OmrAnswerSheetTemplateVersion $version,
     ) {
         $this->requireAssessment($authorizer, $request);
+        $pageNo = max(1, $request->integer('page', 1));
+        $isUploadedOrDocumentBound = $version->registration_mode === OmrRegistrationMode::DocumentBound
+            || data_get($version->authoring_manifest, 'source_kind') === 'uploaded_original';
 
-        $templateJson = is_array($version->native_bundle_json) && isset($version->native_bundle_json['template'])
-            ? $version->native_bundle_json['template']
-            : null;
-
-        if ($templateJson === null) {
-            try {
-                $bundle = \App\Assessment\Omr\NativeBundle::load($version->template->code, (int) $version->version);
-                $templateJson = $bundle->template;
-            } catch (\Throwable $exception) {
-                abort(422, $exception->getMessage());
+        if ($isUploadedOrDocumentBound) {
+            if (! $request->has('page') && ! $request->wantsJson()) {
+                $draft = OmrTemplateAuthoringDraft::query()
+                    ->where('compiled_version_id', $version->id)
+                    ->first();
+                if ($draft !== null) {
+                    return redirect()->route(
+                        'setup.exam-materials.answer-sheets.edit',
+                        ['draft' => $draft->id] + $request->only(['test_kit_id', 'test_kit_version_id']),
+                    );
+                }
+            }
+            $resolver = app(OmrCanonicalSheetPageResolver::class);
+            $asset = $resolver->pageAssetForVersion($version, $pageNo);
+            if ($asset !== null) {
+                return $resolver->inlineResponse($asset, 'answer-sheet-'.$version->template->code.'-v'.$version->version.'-p'.$pageNo);
             }
         }
 
         try {
+            $templateJson = NativeBundle::loadForVersion($version)->template;
             $bytes = app(RenderBundlePdf::class)->renderTemplate($templateJson, $version->print_overlay_json);
         } catch (\Throwable $exception) {
+            $resolver = app(OmrCanonicalSheetPageResolver::class);
+            $asset = $resolver->pageAssetForVersion($version, $pageNo);
+            if ($asset !== null) {
+                return $resolver->inlineResponse($asset, 'answer-sheet-'.$version->template->code.'-v'.$version->version.'-p'.$pageNo);
+            }
             abort(422, $exception->getMessage());
         }
 
@@ -582,7 +608,7 @@ class OmrConfigurationController extends Controller
             }
 
             try {
-                $templateJson = app(\App\Assessment\Actions\Omr\SolveOmrTemplateLayout::class)->handle($blueprint)->template;
+                $templateJson = app(SolveOmrTemplateLayout::class)->handle($blueprint)->template;
             } catch (\Throwable $exception) {
                 return response()->json(['error' => $exception->getMessage()], 422);
             }
@@ -621,8 +647,8 @@ class OmrConfigurationController extends Controller
         }
 
         try {
-            $solved = app(\App\Assessment\Actions\Omr\SolveOmrTemplateLayout::class)->handle($blueprint);
-        } catch (\App\Assessment\Omr\Layout\OmrTemplateLayoutException $exception) {
+            $solved = app(SolveOmrTemplateLayout::class)->handle($blueprint);
+        } catch (OmrTemplateLayoutException $exception) {
             return response()->json(['diagnostics' => $exception->diagnosticsToArray()], 422);
         } catch (\Throwable $exception) {
             return response()->json(['error' => $exception->getMessage()], 422);
@@ -659,9 +685,28 @@ class OmrConfigurationController extends Controller
 
         $validated = $request->validate([
             'image' => ['required', 'file', 'image', 'mimes:jpeg,png,webp', 'max:25600'],
+            'booklet_version_id' => ['nullable', 'required_with:set_code', 'integer'],
+            'set_code' => ['nullable', 'required_with:booklet_version_id', 'string', 'in:A,B,C,D'],
         ]);
 
-        /** @var \Illuminate\Http\UploadedFile $image */
+        $booklet = null;
+        $bookletSet = null;
+        if (isset($validated['booklet_version_id'], $validated['set_code'])) {
+            $booklet = OmrQuestionBookletVersion::query()
+                ->with('booklet')
+                ->whereKey((int) $validated['booklet_version_id'])
+                ->whereNotNull('finalized_at')
+                ->firstOrFail();
+            if ((int) $booklet->template_version_id !== (int) $version->id) {
+                return response()->json(['error' => 'The selected Booklet does not inherit this Answer Sheet.'], 422);
+            }
+            $bookletSet = $booklet->sets()
+                ->finalized()
+                ->where('set_code', (string) $validated['set_code'])
+                ->firstOrFail();
+        }
+
+        /** @var UploadedFile $image */
         $image = $validated['image'];
         try {
             $result = $action->handle($version, (string) $image->get(), (string) $image->getMimeType(), $request->user());
@@ -674,12 +719,13 @@ class OmrConfigurationController extends Controller
                 'outcome' => 'failed',
                 'code' => $result->code,
                 'detail' => $result->detail,
+                'rectification' => $result->rectification,
             ], 422);
         }
 
-        $token = (string) \Illuminate\Support\Str::uuid();
+        $token = (string) Str::uuid();
         $directory = 'omr-diagnostics/'.$token;
-        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $disk = Storage::disk('local');
         $disk->put($directory.'/aligned.png', (string) $result->alignedBytes);
         $disk->put($directory.'/layout-overlay.png', (string) $result->overlayBytes);
 
@@ -693,13 +739,62 @@ class OmrConfigurationController extends Controller
             'field_block_shifts' => $result->fieldBlockShifts,
             'bubble_means' => $result->bubbleMeans,
             'item_evidence' => $result->itemEvidence,
+            'test_context' => $booklet === null || $bookletSet === null ? null : [
+                'booklet_version_id' => (int) $booklet->id,
+                'booklet_name' => (string) ($booklet->booklet?->name ?? 'Booklet'),
+                'set_code' => (string) $bookletSet->set_code,
+            ],
+            'score_projection' => $bookletSet === null
+                ? null
+                : $this->diagnosticScoreProjection($result->itemEvidence ?? [], $bookletSet),
             'gates' => $result->gates,
             'calibration_status' => 'unqualified',
+            'rectification' => $result->rectification,
             'timings' => [
                 'preprocess_ms' => $result->preprocessMs,
                 'verification_ms' => $result->verificationMs,
             ],
         ]);
+    }
+
+    /**
+     * @param  array<int, mixed>  $itemEvidence
+     * @return array{total: int, correct: int, incorrect: int, unanswered: int}
+     */
+    private function diagnosticScoreProjection(array $itemEvidence, OmrBookletSet $bookletSet): array
+    {
+        $itemsByPosition = collect($itemEvidence)->keyBy(
+            static fn (mixed $item): int => (int) data_get($item, 'position', data_get($item, 'global_position', 0)),
+        );
+        $correct = 0;
+        $incorrect = 0;
+        $unanswered = 0;
+        $answerKey = $bookletSet->answerKeyByPosition();
+
+        foreach ($answerKey as $position => $correctOption) {
+            $item = $itemsByPosition->get($position);
+            $selectedOption = data_get($item, 'machine.selected_option', data_get($item, 'selected_option'));
+            if (! is_string($selectedOption) || trim($selectedOption) === '') {
+                $observedOptions = data_get($item, 'machine.observed_options', data_get($item, 'observed_options', []));
+                $selectedOption = is_array($observedOptions) && count($observedOptions) === 1
+                    ? $observedOptions[0]
+                    : null;
+            }
+            if (! is_string($selectedOption) || trim($selectedOption) === '') {
+                $unanswered++;
+            } elseif (strtoupper(trim($selectedOption)) === strtoupper(trim($correctOption))) {
+                $correct++;
+            } else {
+                $incorrect++;
+            }
+        }
+
+        return [
+            'total' => count($answerKey),
+            'correct' => $correct,
+            'incorrect' => $incorrect,
+            'unanswered' => $unanswered,
+        ];
     }
 
     /** Streams one stored test-capture raster (capability-gated, no-store). */
@@ -710,7 +805,7 @@ class OmrConfigurationController extends Controller
         if (! in_array($file, ['aligned.png', 'layout-overlay.png'], true)) {
             abort(404);
         }
-        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $disk = Storage::disk('local');
         $path = 'omr-diagnostics/'.$token.'/'.$file;
         if (! $disk->exists($path)) {
             abort(404);
@@ -725,7 +820,9 @@ class OmrConfigurationController extends Controller
     public function storeOverlay(
         Request $request,
         SaveAuthoredTemplateDraft $action,
+        CapabilityAuthorizer $authorizer,
     ): RedirectResponse {
+        abort_unless($authorizer->allows($request->user(), CapabilityCatalog::GUIDANCE_SCORING_OMR), 403);
         $validated = $request->validate([
             'version_id' => ['required', 'integer', 'exists:omr_answer_sheet_template_versions,id'],
             'overlay' => ['nullable', 'array'],
@@ -749,9 +846,9 @@ class OmrConfigurationController extends Controller
             return back()->with('status', 'Sheet text saved on the draft.');
         }
 
-        // Active versions are immutable: copy the bundle into a new draft with the edited overlay.
+        // Active versions are immutable: copy the exact owned bundle into a staged successor draft.
         try {
-            $bundle = \App\Assessment\Omr\NativeBundle::load($version->template->code, (int) $version->version);
+            $bundle = NativeBundle::loadForVersion($version);
             $draft = $action->handle(
                 $version->template->code,
                 $version->template->name,
@@ -765,8 +862,8 @@ class OmrConfigurationController extends Controller
         }
 
         return redirect()
-            ->route('setup.omr.templates.builder', ['version' => $draft->id])
-            ->with('status', sprintf('New draft v%d created with your sheet text. Edit and preview it here.', $draft->version));
+            ->route('setup.omr.templates.show', $draft->template_id)
+            ->with('status', sprintf('New answer-sheet version v%d created with your sheet text. Continue editing it here.', $draft->version));
     }
 
     public function bookletShow(Request $request, CapabilityAuthorizer $authorizer, int $booklet): Response
@@ -947,6 +1044,7 @@ class OmrConfigurationController extends Controller
             $parts = preg_split('/[\s,]+/', $trimmed);
             if (count($parts) !== 3) {
                 $errors[] = sprintf('Line %d needs exactly "position area_code option".', $lineNo + 1);
+
                 continue;
             }
 
@@ -954,17 +1052,20 @@ class OmrConfigurationController extends Controller
             $area = AptitudeArea::query()->where('code', strtoupper((string) $areaCode))->first();
             if ($area === null) {
                 $errors[] = sprintf('Line %d: unknown area code "%s".', $lineNo + 1, $areaCode);
+
                 continue;
             }
 
             $option = strtoupper((string) $option);
             if (! in_array($option, ['A', 'B', 'C', 'D'], true)) {
                 $errors[] = sprintf('Line %d: option must be A–D.', $lineNo + 1);
+
                 continue;
             }
 
             if ((int) $position < 1 || (int) $position > 200) {
                 $errors[] = sprintf('Line %d: position must be 1–200.', $lineNo + 1);
+
                 continue;
             }
 

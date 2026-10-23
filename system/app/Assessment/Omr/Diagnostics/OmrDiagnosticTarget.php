@@ -4,6 +4,8 @@ namespace App\Assessment\Omr\Diagnostics;
 
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
+use App\Assessment\Omr\OmrQrMode;
+use App\Assessment\Omr\OmrRegistrationMode;
 
 /**
  * Uniform read-only view of a template the diagnostic kernel can verify
@@ -26,6 +28,7 @@ use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
 interface OmrDiagnosticTarget
 {
     public const KIND_CANDIDATE = 'candidate';
+
     public const KIND_COMPILED_VERSION = 'compiled_version';
 
     /** `candidate` or `compiled_version`. */
@@ -36,6 +39,21 @@ interface OmrDiagnosticTarget
 
     /** Number of pages the target covers. */
     public function pageCount(): int;
+
+    /** Explicit immutable paper registration policy; never inferred from markers. */
+    public function registrationMode(): OmrRegistrationMode;
+
+    /** Explicit production QR policy; diagnostic calibration QR is separate. */
+    public function qrMode(): OmrQrMode;
+
+    /** Ordered immutable compiled/native page authority. @return list<array{page_no:int}> */
+    public function compiledPages(): array;
+
+    /** Page physical dimensions in millimetres. @return array{width_mm:float,height_mm:float} */
+    public function paperDimensionsMm(int $pageNo): array;
+
+    /** Visual components intersecting the page, in physical paper coordinates. @return list<array<string,mixed>> */
+    public function visualComponents(int $pageNo): array;
 
     /**
      * The worker-ready native page template (marker-frame geometry).

@@ -4,29 +4,28 @@ namespace App\Assessment\Actions\Omr;
 
 use App\Assessment\Omr\NativeBundle;
 use App\Assessment\Omr\NativeManifestDeriver;
+use App\Assessment\Omr\OmrQrMode;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Support\MaterialOwnerAccess;
+use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
-use function array_filter;
-use function array_keys;
 use function array_map;
-use function array_values;
 use function count;
-use function file_put_contents;
 use function hash;
-use function is_dir;
 use function json_encode;
-use function mkdir;
-use function preg_match;
+use function sprintf;
 use function str_starts_with;
 
 /**
- * Registers an uploaded native bundle into the canonical store and creates a
- * draft template version. The unchanged NativeBundle::load() path verifies
+ * Registers a native bundle in the institution-owned private store and creates
+ * a draft template version. NativeBundle::loadFromDirectory verifies its
  * hashes and shape; engine identity must match the pinned OMRChecker pin.
  */
 final class RegisterNativeBundle
@@ -34,8 +33,8 @@ final class RegisterNativeBundle
     public function __construct(
         private readonly NativeManifestDeriver $manifestDeriver,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+        private readonly MaterialOwnerAccess $institutionAccess,
+    ) {}
 
     /**
      * @param  array<string, string>  $files  name => raw bytes (template.json, config.json, manifest.json, reference*.svg)
@@ -66,42 +65,68 @@ final class RegisterNativeBundle
         if (($manifest['template_code'] ?? null) !== $templateCode) {
             throw new RuntimeException('The bundle manifest template_code must match the selected code.');
         }
+        if (($manifest['synthetic'] ?? false) !== false) {
+            throw new RuntimeException('A native registration cannot change synthetic bundle provenance.');
+        }
 
-        return DB::transaction(function () use ($templateCode, $files, $actor, $manifest, $engine): OmrAnswerSheetTemplateVersion {
+        $manifest['synthetic'] = false;
+        $institutionId = $this->institutionAccess->institutionId($actor, CapabilityCatalog::GUIDANCE_SCORING_OMR);
+
+        return DB::transaction(function () use ($templateCode, $files, $actor, $manifest, $engine, $institutionId): OmrAnswerSheetTemplateVersion {
             $template = OmrAnswerSheetTemplate::query()->firstOrCreate(
-                ['code' => $templateCode],
+                ['institution_id' => $institutionId, 'code' => $templateCode],
                 ['name' => $templateCode, 'is_synthetic' => false],
             );
+            if (! $template->wasRecentlyCreated && (bool) $template->is_synthetic) {
+                throw new RuntimeException('Native bundle provenance must match the existing template.');
+            }
 
             $nextVersion = ((int) $template->versions()->max('version')) + 1;
-
-            // Normalize identity for the new store slot: the intake IS version
-            // $nextVersion of $templateCode regardless of the source manifest.
+            $relativeDir = sprintf('omr-bundles/institutions/%d/templates/%d/v%d', $institutionId, $template->id, $nextVersion);
+            $disk = Storage::disk('local');
             $manifest['template_code'] = $templateCode;
             $manifest['template_version'] = $nextVersion;
+            $manifest['synthetic'] = false;
             $files['manifest.json'] = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-            $directory = dirname(__DIR__, 2).'/Omr/NativeBundles/'.$templateCode.'/v'.$nextVersion;
-            if (is_dir($directory)) {
-                throw new RuntimeException("Version v{$nextVersion} already exists for {$templateCode}.");
+            $templatePayload = json_decode($files['template.json'], true, 512, JSON_THROW_ON_ERROR);
+            $markerAsset = null;
+            if (is_array($templatePayload) && is_array($templatePayload['pages'] ?? null)) {
+                foreach ($templatePayload['pages'] as $page) {
+                    if (is_array($page['markers'] ?? null) && is_string($page['markers']['asset_name'] ?? null)) {
+                        $markerAsset = $page['markers']['asset_name'];
+                        break;
+                    }
+                }
+            } elseif (is_array($templatePayload) && is_array($templatePayload['markers'] ?? null) && is_string($templatePayload['markers']['asset_name'] ?? null)) {
+                $markerAsset = $templatePayload['markers']['asset_name'];
             }
-            if (! mkdir($directory, 0775, true) && ! is_dir($directory)) {
-                throw new RuntimeException('Unable to create the native bundle directory.');
+            if ($markerAsset !== null && preg_match('/^[a-z0-9][a-z0-9._-]{0,63}$/', $markerAsset) !== 1) {
+                throw new RuntimeException('The native bundle declares an unsafe marker asset name.');
             }
 
             foreach ($files as $name => $bytes) {
-                if (! str_starts_with($name, 'reference') || ! str_ends_with($name, '.svg')) {
-                    if (! in_array($name, ['template.json', 'config.json', 'manifest.json'], true)) {
-                        throw new RuntimeException("Unexpected bundle file: {$name}.");
-                    }
+                $isReference = preg_match('/^reference[^\/\\\\]*\.svg$/', $name) === 1;
+                if (! $isReference && ! in_array($name, ['template.json', 'config.json', 'manifest.json', $markerAsset], true)) {
+                    throw new RuntimeException("Unexpected bundle file: {$name}.");
                 }
-                file_put_contents($directory.'/'.$name, $bytes);
+                $disk->put($relativeDir.'/'.$name, $bytes);
             }
 
-            $bundle = NativeBundle::load($templateCode, $nextVersion);
+            $bundle = NativeBundle::loadFromDirectory($disk->path($relativeDir), $templateCode, $nextVersion);
+            $registrationMode = isset($bundle->manifest['registration_mode'])
+                ? OmrRegistrationMode::tryFrom((string) $bundle->manifest['registration_mode'])
+                : OmrRegistrationMode::FiducialAnchored;
+            $qrMode = isset($bundle->manifest['qr_mode'])
+                ? OmrQrMode::tryFrom((string) $bundle->manifest['qr_mode'])
+                : OmrQrMode::Signed;
+            if ($registrationMode === null || $qrMode === null) {
+                throw new RuntimeException('The native bundle has an unsupported paper policy.');
+            }
 
-            $templateHash = hash('sha256', (string) file_get_contents($directory.'/template.json'));
+            $templateHash = hash('sha256', (string) $disk->get($relativeDir.'/template.json'));
             $existing = OmrAnswerSheetTemplateVersion::query()
-                ->where('config_hash', hash('sha256', json_encode($bundle->config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)))
+                ->whereHas('template', static fn ($query) => $query->where('institution_id', $institutionId))
+                ->where('config_hash', (string) $bundle->fileHashes['config.json'])
                 ->where('template_json_hash', $templateHash)
                 ->exists();
             if ($existing) {
@@ -116,14 +141,24 @@ final class RegisterNativeBundle
                 'template_id' => $template->id,
                 'version' => $nextVersion,
                 'status' => OmrAnswerSheetTemplateVersion::STATUS_DRAFT,
+                'registration_mode' => $registrationMode,
+                'qr_mode' => $qrMode,
+                'page_count' => $bundle->pageCount(),
                 'page_width' => $width,
                 'page_height' => $height,
                 'identity_regions_json' => $identityRegions,
                 'provider_config_json' => ['driver' => (string) config('omr.provider.driver')],
-                'config_hash' => hash('sha256', json_encode($bundle->config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)),
+                'config_hash' => (string) $bundle->fileHashes['config.json'],
                 'template_json_hash' => $templateHash,
                 'native_bundle_version' => (string) ($bundle->manifest['bundle_version'] ?? 'nexiam.omr.native-bundle.v1'),
                 'native_bundle_hash' => $bundle->bundleHash,
+                'native_bundle_json' => [
+                    'relative_dir' => $relativeDir,
+                    'template' => $bundle->template,
+                    'config' => $bundle->config,
+                    'manifest' => $bundle->manifest,
+                    'files' => $bundle->fileHashes,
+                ],
                 'review_manifest_json' => $derived['manifest'],
                 'review_manifest_hash' => $derived['hash'],
                 'engine_name' => (string) $engine['name'],
@@ -135,6 +170,8 @@ final class RegisterNativeBundle
                 'template_code' => $templateCode,
                 'template_version_id' => $version->id,
                 'bundle_hash' => $bundle->bundleHash,
+                'registration_mode' => $registrationMode->value,
+                'qr_mode' => $qrMode->value,
                 'file_count' => count($files),
             ], (string) $actor->id);
 

@@ -18,12 +18,14 @@ class RecordThreadRead extends Model
     protected $fillable = [
         'record_thread_id',
         'user_id',
+        'last_read_sequence',
         'last_read_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'last_read_sequence' => 'integer',
             'last_read_at' => 'datetime',
         ];
     }

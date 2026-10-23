@@ -6,15 +6,15 @@ namespace App\Admission\Data;
  * Validated public intake shape — mirrors legacy Apply fields with greenfield REWRITE notes.
  *
  * Disposition vs legacy:
- * - PRESERVE: identity, contact, school, strand, address, three program prefs, terms + Privacy Policy dialog
- * - ADD (D-086): catalog-driven digital grades (`grades` keyed by intake_grade_fields.code)
- * - REWRITE: program prefs use Program.code; access key hashed only (D-085)
- * - REJECT: accept_immediately on public path; hard-coded subject columns
+- PRESERVE: identity, contact, school, strand, address, three program prefs, terms + Privacy Policy dialog
+- RETIRE: catalog-driven digital grades; hard-copy Form 138/TOR evidence remains separate
+- REWRITE: program prefs use Program.code; access key hashed only (D-085)
+- REJECT: accept_immediately on public path; hard-coded subject columns
  */
 final class AdmissionIntakeData
 {
     /**
-     * @param  list<string>  $programPreferenceCodes  1–3 distinct active program codes; index 0 required
+     * @param  list<string>  $programPreferenceCodes  1–3 distinct active, admission-offered program codes; index 0 required
      * @param  array<string, string>  $grades  field code => numeric string value
      */
     public function __construct(
@@ -36,7 +36,11 @@ final class AdmissionIntakeData
         public readonly ?string $province = null,
         public readonly ?string $zipCode = null,
         public readonly bool $termsAccepted = false,
-        public readonly ?int $privacyPolicyId = null,
+        public readonly ?int $publicPolicyId = null,
+        public readonly ?int $publicPolicyRevisionId = null,
+        public readonly ?string $publicPolicyRevisionDigest = null,
+        public readonly ?float $gwa = null,
+        public readonly ?string $gwaScale = null,
     ) {}
 
     public function primaryProgramCode(): string
@@ -46,6 +50,6 @@ final class AdmissionIntakeData
 
     public function gwa(): ?string
     {
-        return $this->grades['GWA'] ?? null;
+        return $this->gwa === null ? null : (string) $this->gwa;
     }
 }

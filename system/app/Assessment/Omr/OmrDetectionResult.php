@@ -14,8 +14,9 @@ final readonly class OmrDetectionResult
         public ?string $safeDiagnosticCode = null,
         public ?string $safeDiagnosticMessage = null,
         public ?OmrDetectionTimings $timings = null,
-    ) {
-    }
+        /** @var array<string, mixed>|null */
+        public ?array $rectification = null,
+    ) {}
 
     public static function succeeded(
         OmrDetectionSuccess $success,
@@ -29,7 +30,8 @@ final readonly class OmrDetectionResult
         string $safeDiagnosticCode,
         ?string $safeDiagnosticMessage = null,
         ?OmrDetectionTimings $timings = null,
+        ?array $rectification = null,
     ): self {
-        return new self($outcome, safeDiagnosticCode: $safeDiagnosticCode, safeDiagnosticMessage: $safeDiagnosticMessage, timings: $timings);
+        return new self($outcome, safeDiagnosticCode: $safeDiagnosticCode, safeDiagnosticMessage: $safeDiagnosticMessage, timings: $timings, rectification: $rectification);
     }
 }

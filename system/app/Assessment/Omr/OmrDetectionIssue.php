@@ -10,16 +10,25 @@ namespace App\Assessment\Omr;
 final readonly class OmrDetectionIssue
 {
     public const SEVERITY_WARNING = 'warning';
+
     public const SEVERITY_REQUIRED = 'required';
+
     public const SEVERITY_TERMINAL = 'terminal';
 
     public const CODE_AMBIGUOUS_MARK = 'ambiguous_mark';
+
     public const CODE_UNREADABLE = 'unreadable';
+
     public const CODE_BLANK_MARK = 'blank_mark';
+
     public const CODE_LOW_CONFIDENCE = 'low_confidence';
+
     public const CODE_IDENTITY_UNRESOLVED = 'identity_unresolved';
+
     public const CODE_IDENTITY_CONFLICT = 'identity_conflict';
+
     public const CODE_NO_GEOMETRY = 'no_geometry';
+
     public const CODE_SHEET_MISALIGNED = 'sheet_misaligned';
 
     public const KNOWN_CODES = [
@@ -38,8 +47,7 @@ final readonly class OmrDetectionIssue
         public string $severity,
         public ?string $areaCode = null,
         public ?int $questionNo = null,
-    ) {
-    }
+    ) {}
 
     public static function isKnownCode(string $code): bool
     {

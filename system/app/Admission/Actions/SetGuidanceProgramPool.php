@@ -12,6 +12,7 @@ use App\Models\Admission\ProgramPoolOption;
 use App\Models\Admission\ProgramSelection;
 use App\Models\Foundation\Program;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -26,6 +27,7 @@ class SetGuidanceProgramPool
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     /**
@@ -54,7 +56,7 @@ class SetGuidanceProgramPool
             return $replayed;
         }
 
-        return DB::transaction(function () use ($attempt, $counselor, $defaultProgramCode, $options, $reason, $idempotencyKey): ProgramPool {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): ProgramPool => DB::transaction(function () use ($attempt, $counselor, $defaultProgramCode, $options, $reason, $idempotencyKey): ProgramPool {
             // Lock the attempt root first; serialize pool-version allocation on the attempt row.
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
@@ -62,8 +64,8 @@ class SetGuidanceProgramPool
                 throw new RuntimeException('Application must be accepted before a program pool can be set.');
             }
 
-            if (! AttemptProgramFacts::isResultReleased($locked)) {
-                throw new RuntimeException('The result must be released before the program pool can be set.');
+            if (! AttemptProgramFacts::isResultReady($locked)) {
+                throw new RuntimeException('Consultation decision requires finalized grading and a prepared result document.');
             }
 
             if (! AttemptProgramFacts::isAdvised($locked)) {
@@ -80,18 +82,20 @@ class SetGuidanceProgramPool
                 ->lockForUpdate()
                 ->first();
 
+            $optionCodes = collect($options)->pluck('program_code')->unique();
             $programs = Program::query()
-                ->whereIn('code', collect($options)->pluck('program_code')->push($defaultProgramCode)->unique())
+                ->where('institution_id', $locked->institution_id)
+                ->whereIn('code', $optionCodes)
                 ->get()
                 ->keyBy('code');
 
-            foreach ($options as $option) {
-                if (! $programs->has($option['program_code'])) {
-                    throw new RuntimeException('Unknown program code: '.$option['program_code']);
+            foreach ($optionCodes as $programCode) {
+                if (! $programs->has($programCode)) {
+                    throw new RuntimeException('Unknown program code: '.$programCode);
                 }
             }
 
-            if (! $programs->has($defaultProgramCode)) {
+            if (! $optionCodes->contains($defaultProgramCode) || ! $programs->has($defaultProgramCode)) {
                 throw new RuntimeException('The advised default program is not in the option list.');
             }
 
@@ -162,6 +166,6 @@ class SetGuidanceProgramPool
             ], (string) $counselor->id);
 
             return $pool;
-        });
+        }));
     }
 }

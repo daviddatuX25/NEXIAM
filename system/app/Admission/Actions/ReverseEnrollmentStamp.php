@@ -8,6 +8,7 @@ use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\EnrollmentStamp;
 use App\Models\Admission\ProgramSelection;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -22,6 +23,7 @@ class ReverseEnrollmentStamp
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -34,7 +36,7 @@ class ReverseEnrollmentStamp
             'reason' => $reason,
         ], $idempotencyKey);
 
-        return DB::transaction(function () use ($attempt, $registrar, $reason, $idempotencyKey): EnrollmentStamp {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): EnrollmentStamp => DB::transaction(function () use ($attempt, $registrar, $reason, $idempotencyKey): EnrollmentStamp {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
             $active = EnrollmentStamp::query()
@@ -85,6 +87,6 @@ class ReverseEnrollmentStamp
             ], (string) $registrar->id);
 
             return $reversal;
-        });
+        }));
     }
 }

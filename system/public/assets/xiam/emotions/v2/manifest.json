@@ -1,0 +1,235 @@
+{
+  "version": "v2",
+  "target_size": 512,
+  "emotions": {
+    "hi": {
+      "label": "Hi",
+      "animated_webp": "/assets/xiam/emotions/v2/hi.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/hi-1.png",
+        "/assets/xiam/emotions/v2/frames/hi-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/hi-1.png",
+        "/assets/xiam/emotions/v2/frames/hi-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "thumbs-up": {
+      "label": "Thumbs Up",
+      "animated_webp": "/assets/xiam/emotions/v2/thumbs-up.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/thumbs-up-1.png",
+        "/assets/xiam/emotions/v2/frames/thumbs-up-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/thumbs-up-1.png",
+        "/assets/xiam/emotions/v2/frames/thumbs-up-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "celebrating": {
+      "label": "Celebrating",
+      "animated_webp": "/assets/xiam/emotions/v2/celebrating.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/celebrating-1.png",
+        "/assets/xiam/emotions/v2/frames/celebrating-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/celebrating-1.png",
+        "/assets/xiam/emotions/v2/frames/celebrating-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "star-eyes": {
+      "label": "Star Eyes",
+      "animated_webp": "/assets/xiam/emotions/v2/star-eyes.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/star-eyes-1.png",
+        "/assets/xiam/emotions/v2/frames/star-eyes-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/star-eyes-1.png",
+        "/assets/xiam/emotions/v2/frames/star-eyes-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "laughing": {
+      "label": "Laughing",
+      "animated_webp": "/assets/xiam/emotions/v2/laughing.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/laughing-1.png",
+        "/assets/xiam/emotions/v2/frames/laughing-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/laughing-1.png",
+        "/assets/xiam/emotions/v2/frames/laughing-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "shock": {
+      "label": "Shock",
+      "animated_webp": "/assets/xiam/emotions/v2/shock.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/shock-1.png",
+        "/assets/xiam/emotions/v2/frames/shock-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/shock-1.png",
+        "/assets/xiam/emotions/v2/frames/shock-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "sad": {
+      "label": "Sad",
+      "animated_webp": "/assets/xiam/emotions/v2/sad.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/sad-1.png",
+        "/assets/xiam/emotions/v2/frames/sad-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/sad-1.png",
+        "/assets/xiam/emotions/v2/frames/sad-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "angry": {
+      "label": "Angry",
+      "animated_webp": "/assets/xiam/emotions/v2/angry.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/angry-1.png",
+        "/assets/xiam/emotions/v2/frames/angry-2.png"
+      ],
+      "interpolated_frames": [
+        "/assets/xiam/emotions/v2/frames/angry-1.png",
+        "/assets/xiam/emotions/v2/frames/angry-2.png"
+      ],
+      "durations_ms": [
+        450,
+        450
+      ]
+    },
+    "idle": {
+      "label": "Idle (Master Life Cycle)",
+      "animated_webp": "/assets/xiam/emotions/v2/idle.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/idle-open.png",
+        "/assets/xiam/emotions/v2/frames/idle-blink.png",
+        "/assets/xiam/emotions/v2/frames/idle-open.png",
+        "/assets/xiam/emotions/v2/frames/idle-blink.png",
+        "/assets/xiam/emotions/v2/frames/idle-open.png",
+        "/assets/xiam/emotions/v2/frames/idle-blink.png",
+        "/assets/xiam/emotions/v2/frames/idle-open.png",
+        "/assets/xiam/emotions/v2/frames/idle-glance.png",
+        "/assets/xiam/emotions/v2/frames/idle-blink.png"
+      ],
+      "durations_ms": [
+        2400, 140,
+        2200, 130,
+        120, 130,
+        2600, 1100, 140
+      ]
+    },
+    "thinking": {
+      "label": "Thinking \u2022 Pondering (Authentic 2-Frame)",
+      "animated_webp": "/assets/xiam/emotions/v2/thinking.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/thinking-1.png",
+        "/assets/xiam/emotions/v2/frames/thinking-2.png"
+      ],
+      "durations_ms": [
+        600,
+        600
+      ]
+    },
+    "searching-paper": {
+      "label": "Thinking \u2022 Researching Papers (Authentic 2-Frame)",
+      "animated_webp": "/assets/xiam/emotions/v2/searching-paper.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/searching-paper-1.png",
+        "/assets/xiam/emotions/v2/frames/searching-paper-2.png"
+      ],
+      "durations_ms": [
+        550,
+        550
+      ]
+    },
+    "searching-phone": {
+      "label": "Thinking \u2022 Checking Device (Authentic 2-Frame)",
+      "animated_webp": "/assets/xiam/emotions/v2/searching-phone.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/searching-phone-1.png",
+        "/assets/xiam/emotions/v2/frames/searching-phone-2.png"
+      ],
+      "durations_ms": [
+        550,
+        550
+      ]
+    },
+    "talking-calm": {
+      "label": "Talking • Conversational Flow (Multi-Pose)",
+      "animated_webp": "/assets/xiam/emotions/v2/talking-calm.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/talking-6.png",
+        "/assets/xiam/emotions/v2/frames/talking-4.png",
+        "/assets/xiam/emotions/v2/frames/talking-6.png",
+        "/assets/xiam/emotions/v2/frames/talking-4.png",
+        "/assets/xiam/emotions/v2/frames/talking-3.png",
+        "/assets/xiam/emotions/v2/frames/talking-2.png",
+        "/assets/xiam/emotions/v2/frames/talking-3.png",
+        "/assets/xiam/emotions/v2/frames/talking-6.png",
+        "/assets/xiam/emotions/v2/frames/talking-4.png",
+        "/assets/xiam/emotions/v2/frames/talking-5.png",
+        "/assets/xiam/emotions/v2/frames/talking-1.png",
+        "/assets/xiam/emotions/v2/frames/talking-5.png",
+        "/assets/xiam/emotions/v2/frames/talking-6.png"
+      ],
+      "durations_ms": [
+        280, 340,
+        260, 320,
+        280, 360, 260,
+        280, 340,
+        280, 360, 260, 320
+      ]
+    },
+    "talking-presenting": {
+      "label": "Talking • Presenting (2-Frame 1-Hand)",
+      "animated_webp": "/assets/xiam/emotions/v2/talking-presenting.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/talking-2.png",
+        "/assets/xiam/emotions/v2/frames/talking-3.png"
+      ],
+      "durations_ms": [180, 200]
+    },
+    "talking-expressive": {
+      "label": "Talking • Expressive (2-Frame Both Hands)",
+      "animated_webp": "/assets/xiam/emotions/v2/talking-expressive.webp",
+      "keyframes": [
+        "/assets/xiam/emotions/v2/frames/talking-1.png",
+        "/assets/xiam/emotions/v2/frames/talking-5.png"
+      ],
+      "durations_ms": [200, 200]
+    }
+  }
+}

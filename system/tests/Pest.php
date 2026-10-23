@@ -10,3 +10,7 @@ uses(RefreshDatabase::class)->in('Feature');
 require_once __DIR__.'/Support/E2Helpers.php';
 require_once __DIR__.'/Support/GradingHelpers.php';
 require_once __DIR__.'/Support/AdmissionSupportHelpers.php';
+require_once __DIR__.'/Support/PhysicalChallengeHelpers.php';
+require_once __DIR__.'/Support/StaffAuthenticationFixtures.php';
+require_once __DIR__.'/Support/BenchmarkFixtureHelpers.php';
+require_once __DIR__.'/Support/ExternalFinalFixtures.php';

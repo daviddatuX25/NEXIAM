@@ -2,7 +2,7 @@
 
 namespace App\Admission\Actions;
 
-use App\Admission\Support\SyncAdmissionAttemptGrades;
+use App\Admission\Support\SyncApplicantIdentity;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\User;
@@ -17,7 +17,7 @@ class AmendPendingAdmissionAttempt
 {
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
-        private readonly SyncAdmissionAttemptGrades $syncGrades,
+        private readonly SyncApplicantIdentity $syncIdentity,
     ) {}
 
     /**
@@ -37,6 +37,14 @@ class AmendPendingAdmissionAttempt
                     'Only pending applications can be quietly amended. After acceptance, changes need registrar authority.',
                 );
             }
+
+            if ($attempt->examAssignments()->exists()) {
+                throw new RuntimeException(
+                    'An examination session has already been assigned. Changes now require registrar authority.',
+                );
+            }
+
+            $identityResult = $this->syncIdentity->handle($attempt, $changes, allowBirthdate: false);
 
             $fillable = [
                 'contact_email',
@@ -62,44 +70,43 @@ class AmendPendingAdmissionAttempt
                 }
             }
 
+            foreach ($identityResult['synced_attempt_contact'] as $contactField => $contactValue) {
+                if (! array_key_exists($contactField, $payload) || (string) ($payload[$contactField] ?? '') === (string) ($attempt->{$contactField} ?? '')) {
+                    $payload[$contactField] = $contactValue;
+                    if (! in_array($contactField, $changed, true)) {
+                        $changed[] = $contactField;
+                    }
+                }
+            }
+
             if (isset($payload['program_preference_1_code'])) {
                 $payload['preferred_program_code'] = $payload['program_preference_1_code'];
             }
 
-            $grades = is_array($changes['grades'] ?? null) ? $changes['grades'] : [];
-            $grades = array_filter(
-                $grades,
-                fn ($value, $code) => is_string($code) && $value !== null && $value !== '',
-                ARRAY_FILTER_USE_BOTH,
-            );
-
-            if (isset($grades['GWA'])) {
-                $payload['gwa'] = $grades['GWA'];
-                $changed[] = 'gwa';
-            }
-
-            if ($changed === [] && $grades === []) {
+            if ($identityResult['changed'] === [] && $changed === []) {
                 throw new RuntimeException('No fields to update.');
             }
 
             $attempt->fill($payload);
             $attempt->save();
 
-            $gradeCodes = $this->syncGrades->handle($attempt, $grades);
-            if ($gradeCodes !== []) {
-                $changed[] = 'grades';
-            }
-
             // Audited, but not a loud queue flag — pending self-fix is quiet by product rule.
-            $this->recordAuditEvent->handle('admission.applicant_amended_pending', [
+            $auditPayload = [
                 'attempt_id' => $attempt->id,
                 'reference_code' => $attempt->reference_code,
                 'fields' => $changed,
-                'grade_codes' => $gradeCodes,
+                'identity_fields' => array_keys($identityResult['changed']),
                 'visibility' => 'quiet_pending',
-            ], (string) $actor->id);
+            ];
 
-            return $attempt->fresh(['gradeValues']);
+            if ($identityResult['changed'] !== []) {
+                $auditPayload['before_identity'] = $identityResult['before'];
+                $auditPayload['after_identity'] = $identityResult['after'];
+            }
+
+            $this->recordAuditEvent->handle('admission.applicant_amended_pending', $auditPayload, (string) $actor->id);
+
+            return $attempt->fresh(['identity', 'gradeValues']);
         });
     }
 }

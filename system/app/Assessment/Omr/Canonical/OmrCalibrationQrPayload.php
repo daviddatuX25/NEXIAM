@@ -28,15 +28,16 @@ use function sprintf;
 final class OmrCalibrationQrPayload
 {
     public const PREFIX = 'nexiam:calibration';
+
     public const VERSION = 'v1';
+
     public const SIGNATURE_VERSION = 1;
 
     /** @param array<string, string> $keys */
     public function __construct(
         private readonly array $keys = [],
         private readonly ?string $currentKeyId = null,
-    ) {
-    }
+    ) {}
 
     public function sign(string $challengeCode, int $pageNo, int $pageCount, ?string $keyId = null): string
     {

@@ -5,12 +5,12 @@ namespace App\Assessment\Actions\Omr\Canonical;
 use App\Assessment\Omr\Canonical\OmrBlankInstanceException;
 use App\Assessment\Omr\Canonical\OmrBlankInstanceService;
 use App\Assessment\Omr\Canonical\OmrQrPayload;
+use App\Assessment\Omr\OmrQrMode;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrBlankInstance;
 use App\Models\Assessment\OmrCaptureSheetPage;
 use App\Models\User;
-use RuntimeException;
 
 final class RegisterOmrBlankInstanceCapture
 {
@@ -18,14 +18,43 @@ final class RegisterOmrBlankInstanceCapture
         private readonly OmrQrPayload $qr,
         private readonly OmrBlankInstanceService $instances,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     public function handle(User $actor, ?string $payload, OmrAnswerSheetTemplateVersion $templateVersion, int $pageNo, OmrCaptureSheetPage $capturePage): OmrBlankInstance
     {
         if ($payload === null || trim($payload) === '') {
             throw new OmrBlankInstanceException('qr_undecodable', 'QR payload is absent or unreadable; use audited manual recovery.');
         }
+
+        $instance = $this->verifyPayload($payload, $templateVersion, $pageNo);
+        $capturePage->loadMissing('sheet.batch.gradingSession');
+        $examSessionId = $capturePage->sheet?->batch?->gradingSession?->exam_session_id;
+        $saved = $this->instances->registerCapture(
+            $instance,
+            $pageNo,
+            $capturePage,
+            $actor,
+            $examSessionId === null ? null : (int) $examSessionId,
+        );
+        $this->recordAuditEvent->handle('omr.blank_instance_capture_registered', [
+            'instance_id' => $saved->id,
+            'page_no' => $pageNo,
+            'template_version_id' => $templateVersion->id,
+            'qr_payload_hash' => $this->qr->payloadHash($payload),
+        ], (string) $actor->id);
+
+        return $saved;
+    }
+
+    public function verifyPayload(string $payload, OmrAnswerSheetTemplateVersion $templateVersion, int $pageNo): OmrBlankInstance
+    {
+        if ($templateVersion->qr_mode !== OmrQrMode::Signed) {
+            throw new OmrBlankInstanceException('qr_mode_disabled', 'QR-disabled template versions do not accept signed blank-instance claims.');
+        }
+        if ($pageNo < 1 || $pageNo > $templateVersion->pageCount()) {
+            throw new OmrBlankInstanceException('page_missing_from_set', 'The signed page is not part of the immutable template version.');
+        }
+
         $verified = $this->qr->verify($payload);
         $instance = OmrBlankInstance::query()->where('instance_code', $verified['instance_code'])->first();
         if ($instance === null) {
@@ -34,17 +63,13 @@ final class RegisterOmrBlankInstanceCapture
         if ((int) $instance->template_version_id !== (int) $templateVersion->id) {
             throw new OmrBlankInstanceException('template_mismatch', 'Blank instance belongs to another template version.');
         }
-        if ((int) $verified['page_no'] !== $pageNo || (int) $verified['page_count'] !== (int) $instance->page_count) {
-            throw new OmrBlankInstanceException('page_missing_from_set', 'Signed page metadata does not match the instance set.');
+        $versionPageCount = $templateVersion->pageCount();
+        if ((int) $instance->page_count !== $versionPageCount
+            || (int) $verified['page_no'] !== $pageNo
+            || (int) $verified['page_count'] !== $versionPageCount) {
+            throw new OmrBlankInstanceException('page_missing_from_set', 'Signed page metadata does not match the immutable template-version page set.');
         }
-        $saved = $this->instances->registerCapture($instance, $pageNo, $capturePage);
-        $this->recordAuditEvent->handle('omr.blank_instance_capture_registered', [
-            'instance_id' => $saved->id,
-            'page_no' => $pageNo,
-            'template_version_id' => $templateVersion->id,
-            'qr_payload_hash' => $verified['payload_hash'],
-        ], (string) $actor->id);
 
-        return $saved;
+        return $instance;
     }
 }

@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Admission Decision-Support Benchmark Studio (Range-Based)</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111827;
+      --panel-alt: #1f2937;
+      --card: #162032;
+      --border: #374151;
+      --border-focus: #38bdf8;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --ok: #10b981;
+      --ok-glow: rgba(16, 185, 129, 0.15);
+      --warn: #f59e0b;
+      --warn-glow: rgba(245, 158, 11, 0.15);
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 10% 0%, #1e3a8a22 0, transparent 40rem), var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding: 1.5rem;
+      line-height: 1.5;
+    }
+    .wrapper { max-width: 1200px; margin: 0 auto; }
+    
+    header.studio-header {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .brand-group h1 { font-size: 1.25rem; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
+    .brand-group p { font-size: 0.8rem; color: var(--muted); }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-accent { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+    .badge-ok { background: var(--ok-glow); color: var(--ok); border: 1px solid var(--ok); }
+
+    .header-actions { display: flex; gap: 0.6rem; align-items: center; }
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel-alt);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.primary { background: var(--accent); color: #020617; border-color: var(--accent); }
+    .btn.ok { background: var(--ok); color: #020617; border-color: var(--ok); }
+
+    .studio-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .studio-tab {
+      padding: 0.65rem 1.2rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s;
+    }
+    .studio-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .layout-grid { grid-template-columns: 1fr; }
+    }
+
+    .program-rail {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .rail-header {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .prog-btn {
+      width: 100%;
+      text-align: left;
+      padding: 0.85rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #1f293788;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .prog-btn:hover { background: var(--panel-alt); }
+    .prog-btn.active {
+      background: #1e3a8a33;
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .prog-btn .meta { font-size: 0.72rem; color: var(--muted); display: block; margin-top: 0.15rem; }
+
+    .workspace-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .workspace-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .workspace-header h2 { font-size: 1.25rem; font-weight: 800; }
+    .workspace-header p { font-size: 0.82rem; color: var(--muted); }
+
+    .section-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.3rem;
+    }
+    .section-desc { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.6rem; }
+    .checkbox-deck { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .check-label {
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      background: var(--panel-alt);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+    }
+    .check-label:hover { border-color: var(--accent); }
+    .check-label input { accent-color: var(--accent); }
+
+    /* RANGE BANDS */
+    .band-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem;
+      margin-bottom: 1.2rem;
+      background: var(--card);
+    }
+    .band-card.b-honors { border-left: 4px solid var(--ok); }
+    .band-card.b-regular { border-left: 4px solid var(--accent); }
+    .band-card.b-cutoff { border-left: 4px solid var(--warn); }
+
+    .band-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.75rem;
+    }
+    .band-title { font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+    .band-desc { font-size: 0.78rem; color: var(--muted); }
+
+    .range-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+    }
+    .range-cell {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+    }
+    .range-cell label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+    .range-inputs {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .range-inputs input {
+      width: 100%;
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.25rem 0.35rem;
+      text-align: center;
+    }
+    .range-inputs span { color: var(--muted); font-size: 0.75rem; }
+    .range-inputs input:focus { outline: none; border-color: var(--accent); }
+
+    /* SIMULATOR */
+    .simulator-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 900px) {
+      .sim-grid { grid-template-columns: 1fr; }
+    }
+    .student-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .sim-input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .result-row {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .meter-wrap { flex: 1; max-width: 220px; }
+    .meter-bar { height: 8px; border-radius: 4px; background: #090d16; overflow: hidden; border: 1px solid var(--border); }
+    .meter-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+    .score-badge { font-family: monospace; font-size: 1.1rem; font-weight: 800; min-width: 55px; text-align: right; }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  
+  <header class="studio-header">
+    <div class="brand-group">
+      <h1>NEXIAM Benchmark Studio <span class="badge badge-accent">Range-Based Psychometric Edition</span></h1>
+      <p>Configure Score Ranges & Interests · Auto-Synthesizes In-Context Samples for TabPFN</p>
+    </div>
+    <div class="header-actions">
+      <span class="badge badge-ok" id="save-status">✓ Auto-saved locally</span>
+      <button class="btn ok" onclick="exportData('json')">⬇ Export JSON</button>
+      <button class="btn ok" onclick="exportData('csv')">⬇ Export CSV</button>
+      <button class="btn" onclick="window.print()">🖨 Print</button>
+    </div>
+  </header>
+
+  <div class="studio-tabs">
+    <button class="studio-tab active" id="tab-btn-calibrate" onclick="setMode('calibrate')">
+      <span>⚙️</span> Step 1: Program Ranges & Modalities Calibration
+    </button>
+    <button class="studio-tab" id="tab-btn-simulate" onclick="setMode('simulate')">
+      <span>🎯</span> Step 2: Live Match Simulator
+    </button>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- TAB 1: RANGE-BASED CALIBRATION VIEW                                  -->
+  <!-- ==================================================================== -->
+  <div id="view-calibrate">
+    <div class="layout-grid">
+      
+      <!-- PROGRAM RAIL -->
+      <aside class="program-rail">
+        <div class="rail-header">Degree Programs (10)</div>
+        <div id="program-nav"></div>
+      </aside>
+
+      <!-- ACTIVE WORKSPACE -->
+      <main class="workspace-card">
+        <div class="workspace-header">
+          <div>
+            <h2 id="active-prog-title">BS Information Technology (BSIT)</h2>
+            <p id="active-prog-desc">Define score ranges for Honors, Regular, and Passing Cutoff bands.</p>
+          </div>
+          <button class="btn primary" onclick="nextProgram()">Save & Next Program →</button>
+        </div>
+
+        <!-- 1. SHS STRAND PRIORITIES -->
+        <div class="section-box">
+          <div class="section-title">1. Senior High School Strand Alignment</div>
+          <div class="section-desc">Select which strands are prioritized or preferred for this curriculum.</div>
+          <div class="checkbox-deck" id="strand-checks">
+            <label class="check-label"><input type="checkbox" value="STEM" checked> STEM</label>
+            <label class="check-label"><input type="checkbox" value="TVL-ICT" checked> TVL-ICT</label>
+            <label class="check-label"><input type="checkbox" value="HUMSS"> HUMSS</label>
+            <label class="check-label"><input type="checkbox" value="ABM"> ABM</label>
+            <label class="check-label"><input type="checkbox" value="GAS"> GAS</label>
+            <label class="check-label"><input type="checkbox" value="TVL-HE"> TVL-HE</label>
+            <label class="check-label"><input type="checkbox" value="TVL-Agri"> TVL-Agri</label>
+          </div>
+        </div>
+
+        <!-- 2. CAREER INTEREST THEMES (RIASEC) -->
+        <div class="section-box">
+          <div class="section-title">2. Aligned Career Interest Themes (Holland RIASEC)</div>
+          <div class="section-desc">Select the primary vocational themes that align with this profession (bridges aptitude to student passion).</div>
+          <div class="checkbox-deck" id="riasec-checks">
+            <label class="check-label"><input type="checkbox" value="R"> <strong>Realistic</strong> (Hands-on, Machines, Tech Hardware)</label>
+            <label class="check-label"><input type="checkbox" value="I" checked> <strong>Investigative</strong> (Logic, Research, Software, Analytics)</label>
+            <label class="check-label"><input type="checkbox" value="A"> <strong>Artistic</strong> (Creative Media, Design, Language)</label>
+            <label class="check-label"><input type="checkbox" value="S"> <strong>Social</strong> (Teaching, Healthcare, Public Service)</label>
+            <label class="check-label"><input type="checkbox" value="E"> <strong>Enterprising</strong> (Leadership, Business, Hospitality)</label>
+            <label class="check-label"><input type="checkbox" value="C"> <strong>Conventional</strong> (Data Organization, Records, Clerical)</label>
+          </div>
+        </div>
+
+        <!-- 3. OPTIONAL FORM 138 SUBJECT CUTOFFS -->
+        <div class="section-box">
+          <div class="section-title">3. Optional High School Subject Grades (Form 138 / Advising Baseline)</div>
+          <div class="section-desc">If department evaluates specific high school grades, enter the expected range. Leave blank if not prioritized.</div>
+          <div class="range-grid">
+            <div class="range-cell">
+              <label>SHS Core Math Grade</label>
+              <div class="range-inputs">
+                <input type="number" id="sub-math-min" placeholder="Min" value="85">
+                <span>–</span>
+                <input type="number" id="sub-math-max" placeholder="Max" value="95">
+              </div>
+            </div>
+            <div class="range-cell">
+              <label>SHS Core Science Grade</label>
+              <div class="range-inputs">
+                <input type="number" id="sub-sci-min" placeholder="Min" value="80">
+                <span>–</span>
+                <input type="number" id="sub-sci-max" placeholder="Max" value="95">
+              </div>
+            </div>
+            <div class="range-cell">
+              <label>SHS Core English Grade</label>
+              <div class="range-inputs">
+                <input type="number" id="sub-eng-min" placeholder="Min" value="75">
+                <span>–</span>
+                <input type="number" id="sub-eng-max" placeholder="Max" value="90">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. THREE PSYCHOMETRIC SCORE BANDS (HONORS, REGULAR, CUTOFF) -->
+        
+        <!-- BAND 1: HONORS (90–95% MATCH) -->
+        <div class="band-card b-honors">
+          <div class="band-header">
+            <div class="band-title"><span style="color:var(--ok)">●</span> Performance Band 1: Honors Range (90–95% Match)</div>
+            <div class="band-desc">Range of scores for exemplary candidates who will effortlessly excel</div>
+          </div>
+          <div class="range-grid" id="grid-honors-ranges"></div>
+        </div>
+
+        <!-- BAND 2: SOLID REGULAR (80–85% MATCH) -->
+        <div class="band-card b-regular">
+          <div class="band-header">
+            <div class="band-title"><span style="color:var(--accent)">●</span> Performance Band 2: Typical Regular Range (80–85% Match)</div>
+            <div class="band-desc">Range of scores for standard, solid passing applicants</div>
+          </div>
+          <div class="range-grid" id="grid-regular-ranges"></div>
+        </div>
+
+        <!-- BAND 3: MINIMUM CUTOFF (65–70% PASSING LINE) -->
+        <div class="band-card b-cutoff">
+          <div class="band-header">
+            <div class="band-title"><span style="color:var(--warn)">●</span> Performance Band 3: Minimum Cutoff Range (Passing Threshold)</div>
+            <div class="band-desc">Lowest tolerable range. (Scores falling below this band automatically drop to 0–40% match)</div>
+          </div>
+          <div class="range-grid" id="grid-cutoff-ranges"></div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:1.5rem;">
+          <button class="btn" onclick="prevProgram()" id="btn-prev-bottom">← Previous Program</button>
+          <button class="btn primary" onclick="nextProgram()" id="btn-next-bottom">Save & Next Program →</button>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- TAB 2: LIVE SIMULATOR                                                -->
+  <!-- ==================================================================== -->
+  <div id="view-simulate" style="display:none;">
+    <div class="simulator-panel">
+      <div style="margin-bottom:1.5rem;">
+        <h2>Live Student Match Simulator</h2>
+        <p style="color:var(--muted); font-size:0.85rem;">Test how an applicant's complete profile—GWA, Strand, 6 ICAT Sub-tests, Optional Subject Grades, and Interests—matches your active ranges.</p>
+      </div>
+
+      <div class="sim-grid">
+        <!-- TEST STUDENT FORM -->
+        <div class="student-card">
+          <h3 style="font-size:0.95rem; margin-bottom:0.8rem; color:var(--accent)">Student Test Profile</h3>
+          
+          <div style="display:flex; flex-direction:column; gap:0.6rem;">
+            <div class="range-cell"><label>Applicant Name</label><input type="text" id="sim-name" value="Juan Dela Cruz (Mock)" style="width:100%; background:transparent; border:none; color:var(--text); font-weight:700;"></div>
+            <div class="range-cell"><label>Senior High Strand</label>
+              <select id="sim-strand" style="width:100%; background:transparent; border:none; color:var(--text); font-weight:700;">
+                <option value="STEM">STEM</option>
+                <option value="TVL-ICT">TVL-ICT</option>
+                <option value="HUMSS">HUMSS</option>
+                <option value="ABM">ABM</option>
+                <option value="GAS">GAS</option>
+                <option value="TVL-HE">TVL-HE</option>
+              </select>
+            </div>
+            
+            <div class="sim-input-grid">
+              <div class="range-cell"><label>GWA</label><input type="number" step="0.5" id="sim-gwa" value="88.5"></div>
+              <div class="range-cell"><label>Gen Abil (LOGIC)</label><input type="number" id="sim-gen" value="82"></div>
+              <div class="range-cell"><label>Verbal (VERBAL)</label><input type="number" id="sim-verb" value="79"></div>
+              <div class="range-cell"><label>Numeric (QUANT)</label><input type="number" id="sim-num" value="86"></div>
+              <div class="range-cell"><label>Spatial (SPATIAL)</label><input type="number" id="sim-spat" value="81"></div>
+              <div class="range-cell"><label>Perceptual (MEM)</label><input type="number" id="sim-perc" value="76"></div>
+              <div class="range-cell"><label>Manual (LANG)</label><input type="number" id="sim-man" value="74"></div>
+              <div class="range-cell"><label>SHS Math Grade</label><input type="number" id="sim-sub-math" value="89" placeholder="Optional"></div>
+              <div class="range-cell"><label>SHS Sci Grade</label><input type="number" id="sim-sub-sci" value="87" placeholder="Optional"></div>
+              <div class="range-cell"><label>SHS Eng Grade</label><input type="number" id="sim-sub-eng" value="84" placeholder="Optional"></div>
+            </div>
+
+            <div class="range-cell">
+              <label>Student Dominant Interest (RIASEC)</label>
+              <select id="sim-riasec" style="width:100%; background:transparent; border:none; color:var(--text); font-weight:700;">
+                <option value="I">Investigative (Tech / Logic / Science)</option>
+                <option value="R">Realistic (Hands-on / Engineering)</option>
+                <option value="S">Social (Healthcare / Teaching / Public)</option>
+                <option value="A">Artistic (Design / Media / Writing)</option>
+                <option value="E">Enterprising (Business / Leadership)</option>
+                <option value="C">Conventional (Records / Clerical)</option>
+              </select>
+            </div>
+
+            <button class="btn primary" onclick="runSimulation()" style="width:100%; margin-top:0.5rem;">⚡ Calculate Compatibility</button>
+          </div>
+        </div>
+
+        <!-- SIMULATOR OUTPUT -->
+        <div>
+          <h3 style="font-size:0.95rem; margin-bottom:0.8rem;">Ranked Course Compatibility Matches</h3>
+          <div class="results-deck" id="sim-results">
+            <p style="color:var(--muted); font-size:0.85rem;">Click "Calculate Compatibility" to see simulated rankings based on active ranges.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const programs = [
+    { code: 'BSIT', name: 'BS Information Technology', desc: 'Software engineering, networking, systems' },
+    { code: 'BSCS', name: 'BS Computer Science', desc: 'Algorithms, data structures, intelligent systems' },
+    { code: 'BSCE', name: 'BS Civil Engineering', desc: 'Structures, surveying, construction engineering' },
+    { code: 'BSN', name: 'BS Nursing', desc: 'Clinical care, public health, nursing pharmacology' },
+    { code: 'BSPSY', name: 'BS Psychology', desc: 'Behavioral science, psychometrics, mental health' },
+    { code: 'BSEd-Eng', 'name': 'BSEd Major in English', desc: 'Linguistics, language teaching, world literature' },
+    { code: 'BSEd-Math', 'name': 'BSEd Major in Mathematics', desc: 'Calculus, geometry, pedagogical mathematics' },
+    { code: 'BSBA', name: 'BS Business Administration', desc: 'Marketing, financial management, operations' },
+    { code: 'BSHM', name: 'BS Hospitality Management', desc: 'Hotel operations, culinary arts, tourism' },
+    { code: 'BAT', name: 'Bachelor in Agricultural Technology', desc: 'Crop science, animal systems, agricultural machinery' }
+  ];
+
+  const fieldDefs = [
+    { id: 'gwa', label: 'GWA' },
+    { id: 'gen', label: 'Gen Abil' },
+    { id: 'verb', label: 'Verbal' },
+    { id: 'num', label: 'Numeric' },
+    { id: 'spat', label: 'Spatial' },
+    { id: 'perc', label: 'Percept' },
+    { id: 'man', label: 'Manual' },
+  ];
+
+  let currentProgramIndex = 0;
+  let benchmarkStore = {};
+
+  function initStore() {
+    const saved = localStorage.getItem('nexiam_range_benchmarks');
+    if (saved) {
+      try {
+        benchmarkStore = JSON.parse(saved);
+        return;
+      } catch (e) {}
+    }
+
+    // Default range calibrations (Min & Max for each of the 3 bands)
+    programs.forEach(p => {
+      let isTech = ['BSIT', 'BSCS', 'BSCE'].includes(p.code);
+      let isHealth = ['BSN', 'BSPSY'].includes(p.code);
+      let isEdu = p.code.startsWith('BSEd');
+
+      benchmarkStore[p.code] = {
+        code: p.code,
+        name: p.name,
+        strands: isTech ? ['STEM', 'TVL-ICT'] : (isHealth ? ['STEM', 'GAS'] : (isEdu ? ['HUMSS', 'GAS'] : ['ABM', 'GAS'])),
+        riasec: isTech ? ['I', 'R'] : (isHealth ? ['S', 'I'] : (isEdu ? ['A', 'S'] : ['E', 'C'])),
+        subjects: {
+          math: { min: isTech ? 85 : 75, max: 95 },
+          sci: { min: isHealth ? 85 : 75, max: 95 },
+          eng: { min: isEdu ? 85 : 75, max: 95 }
+        },
+        honors: {
+          gwa: [90.0, 96.0], gen: [82, 95], verb: [isEdu ? 90 : 75, 96],
+          num: [isTech ? 86 : 75, 98], spat: [isTech ? 82 : 72, 95], perc: [80, 92], man: [75, 90]
+        },
+        regular: {
+          gwa: [85.0, 89.9], gen: [75, 81], verb: [isEdu ? 82 : 70, 89],
+          num: [isTech ? 78 : 68, 85], spat: [isTech ? 75 : 68, 81], perc: [72, 79], man: [70, 78]
+        },
+        cutoff: {
+          gwa: [82.0, 84.9], gen: [70, 74], verb: [isEdu ? 75 : 65, 81],
+          num: [isTech ? 72 : 62, 77], spat: [isTech ? 68 : 62, 74], perc: [68, 71], man: [65, 69]
+        }
+      };
+    });
+  }
+
+  function renderProgramRail() {
+    const rail = document.getElementById('program-nav');
+    rail.innerHTML = programs.map((p, idx) => `
+      <button class="prog-btn ${idx === currentProgramIndex ? 'active' : ''}" onclick="selectProgram(${idx})">
+        <div>
+          <div>${p.code}</div>
+          <span class="meta">${p.name}</span>
+        </div>
+        <span>→</span>
+      </button>
+    `).join('');
+  }
+
+  function renderRangeCells(bandKey, containerId) {
+    const container = document.getElementById(containerId);
+    const bandData = benchmarkStore[programs[currentProgramIndex].code][bandKey];
+    container.innerHTML = fieldDefs.map(f => `
+      <div class="range-cell">
+        <label>${f.label}</label>
+        <div class="range-inputs">
+          <input type="number" step="${f.id === 'gwa' ? '0.5' : '1'}" value="${bandData[f.id][0]}" 
+                 oninput="updateRange('${bandKey}', '${f.id}', 0, this.value)">
+          <span>–</span>
+          <input type="number" step="${f.id === 'gwa' ? '0.5' : '1'}" value="${bandData[f.id][1]}" 
+                 oninput="updateRange('${bandKey}', '${f.id}', 1, this.value)">
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function loadActiveProgram() {
+    const prog = programs[currentProgramIndex];
+    const data = benchmarkStore[prog.code];
+    document.getElementById('active-prog-title').textContent = `${prog.name} (${prog.code})`;
+    document.getElementById('active-prog-desc').textContent = prog.desc;
+    document.getElementById('btn-prev-bottom').disabled = currentProgramIndex === 0;
+    document.getElementById('btn-next-bottom').textContent = currentProgramIndex === programs.length - 1 ? 'Finish & Run Simulation' : 'Save & Next Program →';
+
+    // Strands
+    document.querySelectorAll('#strand-checks input').forEach(i => i.checked = data.strands.includes(i.value));
+    // RIASEC
+    document.querySelectorAll('#riasec-checks input').forEach(i => i.checked = data.riasec.includes(i.value));
+    // Subject Grades
+    document.getElementById('sub-math-min').value = data.subjects.math.min;
+    document.getElementById('sub-math-max').value = data.subjects.math.max;
+    document.getElementById('sub-sci-min').value = data.subjects.sci.min;
+    document.getElementById('sub-sci-max').value = data.subjects.sci.max;
+    document.getElementById('sub-eng-min').value = data.subjects.eng.min;
+    document.getElementById('sub-eng-max').value = data.subjects.eng.max;
+
+    renderRangeCells('honors', 'grid-honors-ranges');
+    renderRangeCells('regular', 'grid-regular-ranges');
+    renderRangeCells('cutoff', 'grid-cutoff-ranges');
+    renderProgramRail();
+  }
+
+  function updateRange(bandKey, fieldId, minOrMax, value) {
+    const progCode = programs[currentProgramIndex].code;
+    benchmarkStore[progCode][bandKey][fieldId][minOrMax] = parseFloat(value) || 0;
+    saveToStorage();
+  }
+
+  function updateStrandsAndRiasec() {
+    const progCode = programs[currentProgramIndex].code;
+    benchmarkStore[progCode].strands = Array.from(document.querySelectorAll('#strand-checks input:checked')).map(i => i.value);
+    benchmarkStore[progCode].riasec = Array.from(document.querySelectorAll('#riasec-checks input:checked')).map(i => i.value);
+    benchmarkStore[progCode].subjects.math = { min: parseFloat(document.getElementById('sub-math-min').value)||0, max: parseFloat(document.getElementById('sub-math-max').value)||100 };
+    benchmarkStore[progCode].subjects.sci = { min: parseFloat(document.getElementById('sub-sci-min').value)||0, max: parseFloat(document.getElementById('sub-sci-max').value)||100 };
+    benchmarkStore[progCode].subjects.eng = { min: parseFloat(document.getElementById('sub-eng-min').value)||0, max: parseFloat(document.getElementById('sub-eng-max').value)||100 };
+    saveToStorage();
+  }
+
+  document.querySelectorAll('#strand-checks input, #riasec-checks input').forEach(input => input.addEventListener('change', updateStrandsAndRiasec));
+  ['sub-math-min','sub-math-max','sub-sci-min','sub-sci-max','sub-eng-min','sub-eng-max'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateStrandsAndRiasec);
+  });
+
+  function saveToStorage() {
+    localStorage.setItem('nexiam_range_benchmarks', JSON.stringify(benchmarkStore));
+    document.getElementById('save-status').textContent = '✓ Saved locally';
+  }
+
+  function selectProgram(idx) {
+    currentProgramIndex = idx;
+    loadActiveProgram();
+  }
+
+  function nextProgram() {
+    if (currentProgramIndex < programs.length - 1) {
+      currentProgramIndex++;
+      loadActiveProgram();
+    } else {
+      setMode('simulate');
+      runSimulation();
+    }
+  }
+
+  function prevProgram() {
+    if (currentProgramIndex > 0) {
+      currentProgramIndex--;
+      loadActiveProgram();
+    }
+  }
+
+  function setMode(mode) {
+    document.getElementById('tab-btn-calibrate').classList.toggle('active', mode === 'calibrate');
+    document.getElementById('tab-btn-simulate').classList.toggle('active', mode === 'simulate');
+    document.getElementById('view-calibrate').style.display = mode === 'calibrate' ? 'block' : 'none';
+    document.getElementById('view-simulate').style.display = mode === 'simulate' ? 'block' : 'none';
+  }
+
+  // RANGE-BASED COMPATIBILITY SIMULATION
+  function runSimulation() {
+    const student = {
+      name: document.getElementById('sim-name').value,
+      strand: document.getElementById('sim-strand').value,
+      riasec: document.getElementById('sim-riasec').value,
+      gwa: parseFloat(document.getElementById('sim-gwa').value) || 85,
+      gen: parseInt(document.getElementById('sim-gen').value) || 75,
+      verb: parseInt(document.getElementById('sim-verb').value) || 75,
+      num: parseInt(document.getElementById('sim-num').value) || 75,
+      spat: parseInt(document.getElementById('sim-spat').value) || 75,
+      perc: parseInt(document.getElementById('sim-perc').value) || 75,
+      man: parseInt(document.getElementById('sim-man').value) || 75,
+      subMath: parseFloat(document.getElementById('sim-sub-math').value) || null,
+      subSci: parseFloat(document.getElementById('sim-sub-sci').value) || null,
+      subEng: parseFloat(document.getElementById('sim-sub-eng').value) || null,
+    };
+
+    const results = programs.map(p => {
+      const b = benchmarkStore[p.code];
+      
+      // Strand & RIASEC modifiers
+      let strandScore = b.strands.includes(student.strand) ? 5 : -4;
+      let riasecScore = b.riasec.includes(student.riasec) ? 4 : -2;
+
+      // Evaluate GWA & 6 ICAT features against Cutoff Min and Honors Midpoint
+      let totalFit = 0;
+      let drivers = [];
+
+      // Check against cutoff threshold
+      let passedCutoff = student.gwa >= b.cutoff.gwa[0] &&
+                         student.num >= b.cutoff.num[0] &&
+                         student.gen >= b.cutoff.gen[0];
+
+      if (passedCutoff) {
+        // Position within cutoff to honors
+        let numMid = (b.honors.num[0] + b.honors.num[1]) / 2;
+        let gwaMid = (b.honors.gwa[0] + b.honors.gwa[1]) / 2;
+        
+        let numProg = (student.num - b.cutoff.num[0]) / Math.max(1, (numMid - b.cutoff.num[0]));
+        let gwaProg = (student.gwa - b.cutoff.gwa[0]) / Math.max(1, (gwaMid - b.cutoff.gwa[0]));
+        
+        let base = 70 + (numProg * 12) + (gwaProg * 10) + strandScore + riasecScore;
+        totalFit = Math.min(96, Math.max(68, Math.round(base)));
+      } else {
+        // Below cutoff penalty
+        let gap = (b.cutoff.num[0] - student.num) + (b.cutoff.gwa[0] - student.gwa) * 2;
+        totalFit = Math.max(25, Math.min(64, Math.round(62 - gap + strandScore)));
+      }
+
+      if (b.strands.includes(student.strand)) drivers.push(`${student.strand} Strand Match`);
+      if (b.riasec.includes(student.riasec)) drivers.push(`Career Interest Match (${student.riasec})`);
+      if (student.num >= b.honors.num[0]) drivers.push(`High Numerical Aptitude (${student.num})`);
+      if (student.gwa >= b.honors.gwa[0]) drivers.push(`Honor GWA (${student.gwa})`);
+      if (!passedCutoff) drivers.push(`Score gap relative to minimum cutoff`);
+
+      return {
+        code: p.code,
+        name: p.name,
+        score: totalFit,
+        drivers: drivers.join(' · ')
+      };
+    });
+
+    results.sort((a, b) => b.score - a.score);
+
+    const deck = document.getElementById('sim-results');
+    deck.innerHTML = results.map(r => {
+      let color = r.score >= 80 ? 'var(--ok)' : (r.score >= 68 ? 'var(--accent)' : 'var(--danger)');
+      return `
+        <div class="result-row">
+          <div>
+            <h4 style="font-size:0.95rem; font-weight:700;">${r.name} (${r.code})</h4>
+            <p style="font-size:0.75rem; color:var(--muted);">${r.drivers}</p>
+          </div>
+          <div class="meter-wrap">
+            <div class="meter-bar"><div class="meter-fill" style="width: ${r.score}%; background: ${color}"></div></div>
+          </div>
+          <div class="score-badge" style="color: ${color}">${r.score}%</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // AUTOMATIC SAMPLE SYNTHESIZER:
+  // Converts the 3 Range Bands into well-spaced discrete exemplars for TabPFN!
+  // Uses multi-hot binary RIASEC columns and leak-free negative anchors (Reviewer Approved).
+  function generateSynthesizedExemplars() {
+    const samples = [];
+    
+    function toRiasecFlags(selectedList) {
+      return {
+        riasec_r: selectedList.includes('R') ? 1 : 0,
+        riasec_i: selectedList.includes('I') ? 1 : 0,
+        riasec_a: selectedList.includes('A') ? 1 : 0,
+        riasec_s: selectedList.includes('S') ? 1 : 0,
+        riasec_e: selectedList.includes('E') ? 1 : 0,
+        riasec_c: selectedList.includes('C') ? 1 : 0,
+      };
+    }
+
+    programs.forEach(p => {
+      const b = benchmarkStore[p.code];
+      const priStrand = b.strands[0] || 'STEM';
+      const secStrand = b.strands[1] || 'GAS';
+      const primaryFlags = toRiasecFlags(b.riasec);
+      
+      // Contrast/non-aligned interest flags for negative anchor to prevent target-proxy leakage
+      const invertedInterest = ['A', 'S', 'C'].filter(code => !b.riasec.includes(code));
+      const negativeFlags = toRiasecFlags(invertedInterest.length ? invertedInterest : b.riasec);
+
+      // 1. Honors High Exemplar (target = 1)
+      samples.push({
+        program_code: p.code,
+        program_name: p.name,
+        tier_label: 'Honors Upper Bound',
+        shs_strand: priStrand,
+        candidate_program: p.code,
+        gwa: b.honors.gwa[1],
+        gen_ability: b.honors.gen[1],
+        verbal_apt: b.honors.verb[1],
+        num_apt: b.honors.num[1],
+        spatial_apt: b.honors.spat[1],
+        percept_apt: b.honors.perc[1],
+        manual_dext: b.honors.man[1],
+        shs_math: b.subjects.math.max,
+        shs_sci: b.subjects.sci.max,
+        shs_eng: b.subjects.eng.max,
+        ...primaryFlags,
+        target: 1
+      });
+
+      // 2. Honors Low Exemplar (target = 1)
+      samples.push({
+        program_code: p.code,
+        program_name: p.name,
+        tier_label: 'Honors Lower Bound',
+        shs_strand: priStrand,
+        candidate_program: p.code,
+        gwa: b.honors.gwa[0],
+        gen_ability: b.honors.gen[0],
+        verbal_apt: b.honors.verb[0],
+        num_apt: b.honors.num[0],
+        spatial_apt: b.honors.spat[0],
+        percept_apt: b.honors.perc[0],
+        manual_dext: b.honors.man[0],
+        shs_math: b.subjects.math.min,
+        shs_sci: b.subjects.sci.min,
+        shs_eng: b.subjects.eng.min,
+        ...primaryFlags,
+        target: 1
+      });
+
+      // 3. Regular Typical Exemplar (target = 1)
+      samples.push({
+        program_code: p.code,
+        program_name: p.name,
+        tier_label: 'Regular Typical Midpoint',
+        shs_strand: secStrand,
+        candidate_program: p.code,
+        gwa: Math.round(((b.regular.gwa[0] + b.regular.gwa[1]) / 2) * 10) / 10,
+        gen_ability: Math.round((b.regular.gen[0] + b.regular.gen[1]) / 2),
+        verbal_apt: Math.round((b.regular.verb[0] + b.regular.verb[1]) / 2),
+        num_apt: Math.round((b.regular.num[0] + b.regular.num[1]) / 2),
+        spatial_apt: Math.round((b.regular.spat[0] + b.regular.spat[1]) / 2),
+        percept_apt: Math.round((b.regular.perc[0] + b.regular.perc[1]) / 2),
+        manual_dext: Math.round((b.regular.man[0] + b.regular.man[1]) / 2),
+        shs_math: b.subjects.math.min,
+        shs_sci: b.subjects.sci.min,
+        shs_eng: b.subjects.eng.min,
+        ...primaryFlags,
+        target: 1
+      });
+
+      // 4. Minimum Passing Threshold Exemplar (target = 1)
+      samples.push({
+        program_code: p.code,
+        program_name: p.name,
+        tier_label: 'Passing Cutoff Threshold',
+        shs_strand: 'GAS',
+        candidate_program: p.code,
+        gwa: b.cutoff.gwa[0],
+        gen_ability: b.cutoff.gen[0],
+        verbal_apt: b.cutoff.verb[0],
+        num_apt: b.cutoff.num[0],
+        spatial_apt: b.cutoff.spat[0],
+        percept_apt: b.cutoff.perc[0],
+        manual_dext: b.cutoff.man[0],
+        shs_math: b.subjects.math.min,
+        shs_sci: b.subjects.sci.min,
+        shs_eng: b.subjects.eng.min,
+        ...primaryFlags,
+        target: 1
+      });
+
+      // 5. Below Cutoff Exclusion Anchor (target = 0)
+      // Realistically retains interest to prevent target-proxy leakage on blank fields
+      samples.push({
+        program_code: p.code,
+        program_name: p.name,
+        tier_label: 'Sub-Threshold Excluded Anchor',
+        shs_strand: 'GAS',
+        candidate_program: p.code,
+        gwa: Math.round((b.cutoff.gwa[0] - 5.0) * 10) / 10,
+        gen_ability: b.cutoff.gen[0] - 12,
+        verbal_apt: b.cutoff.verb[0] - 10,
+        num_apt: b.cutoff.num[0] - 12,
+        spatial_apt: b.cutoff.spat[0] - 10,
+        percept_apt: b.cutoff.perc[0] - 10,
+        manual_dext: b.cutoff.man[0] - 10,
+        shs_math: 75,
+        shs_sci: 75,
+        shs_eng: 75,
+        ...negativeFlags,
+        target: 0
+      });
+    });
+
+    return samples;
+  }
+
+  function exportData(type) {
+    const samples = generateSynthesizedExemplars();
+    if (type === 'json') {
+      const output = {
+        meta: {
+          exported_at: new Date().toISOString(),
+          format: 'nexiam.pairwise_benchmarks.v1',
+          total_programs: programs.length,
+          total_exemplars: samples.length,
+          feature_columns: [
+            'shs_strand', 'candidate_program', 'gwa',
+            'gen_ability', 'verbal_apt', 'num_apt', 'spatial_apt', 'percept_apt', 'manual_dext',
+            'shs_math', 'shs_sci', 'shs_eng',
+            'riasec_r', 'riasec_i', 'riasec_a', 'riasec_s', 'riasec_e', 'riasec_c'
+          ],
+          target_column: 'target'
+        },
+        raw_ranges: benchmarkStore,
+        synthesized_exemplars: samples
+      };
+      download(new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' }), 'NEXIAM_Pairwise_Benchmarks.json');
+    } else {
+      const headers = Object.keys(samples[0]).join(',');
+      const rows = samples.map(r => Object.values(r).map(v => typeof v === 'string' ? `"${v}"` : v).join(',')).join('\n');
+      download(new Blob([headers + '\n' + rows], { type: 'text/csv;charset=utf-8;' }), 'NEXIAM_Pairwise_Benchmarks.csv');
+    }
+  }
+  function download(blob, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+
+  window.onload = function() {
+    initStore();
+    renderProgramRail();
+    loadActiveProgram();
+  };
+</script>
+
+</body>
+</html>

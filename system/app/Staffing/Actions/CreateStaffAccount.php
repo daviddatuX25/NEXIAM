@@ -5,10 +5,12 @@ namespace App\Staffing\Actions;
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
+use App\Models\Auth\StaffAuthenticationState;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Staffing\Support\StaffRoleCeiling;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class CreateStaffAccount
@@ -17,8 +19,7 @@ class CreateStaffAccount
         private readonly StaffRoleCeiling $ceiling,
         private readonly CapabilityAuthorizer $authorizer,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  list<string>  $roles
@@ -27,8 +28,7 @@ class CreateStaffAccount
     public function handle(
         User $actor,
         string $name,
-        string $email,
-        string $password,
+        ?string $email,
         array $roles,
         string $office,
         int $institutionId,
@@ -65,21 +65,36 @@ class CreateStaffAccount
             }
         }
 
-        return DB::transaction(function () use ($actor, $name, $email, $password, $roles, $office, $institutionId, $programCodes, $activeCycleCode): User {
+        $programCodes = $office === 'program' ? ($programCodes ?? []) : [];
+        $departmentId = null;
+
+        return DB::transaction(function () use ($actor, $name, $email, $roles, $office, $institutionId, $programCodes, $departmentId, $activeCycleCode): User {
+            $canonicalEmail = is_string($email) ? mb_strtolower(trim($email)) : null;
+            if ($canonicalEmail !== null && User::query()->whereRaw('LOWER(email) = ?', [$canonicalEmail])->lockForUpdate()->exists()) {
+                throw new RuntimeException('That email address is already in use.');
+            }
             $user = User::query()->create([
                 'name' => $name,
-                'email' => $email,
-                'password' => $password,
+                'email' => $canonicalEmail,
+                'password' => Str::random(64),
             ]);
 
             StaffProfile::query()->create([
                 'user_id' => $user->id,
                 'institution_id' => $institutionId,
+                'department_id' => $departmentId,
                 'office' => $office,
-                'program_codes' => $programCodes ?? [],
+                'program_codes' => $programCodes,
                 'active_cycle_code' => $activeCycleCode ?? $actor->actorScope()->activeCycleCode,
                 'status' => StaffProfile::STATUS_ACTIVE,
                 'deactivated_at' => null,
+            ]);
+
+            StaffAuthenticationState::query()->create([
+                'user_id' => $user->id,
+                'activation_completed_at' => null,
+                'session_version' => 1,
+                'two_factor_generation' => (string) Str::uuid(),
             ]);
 
             $user->syncRoles($roles);

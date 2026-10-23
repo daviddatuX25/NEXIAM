@@ -20,8 +20,7 @@ final class RetireOmrConfiguration
 {
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     public function handle(string $kind, int $id, User $actor): void
     {

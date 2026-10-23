@@ -9,10 +9,10 @@ use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrCaptureSheetPage;
 use App\Models\Assessment\OmrTemplateBookletPair;
-use App\Models\Foundation\AptitudeArea;
-use App\Support\SensitiveAssetStore;
 use App\Models\Examination\ExamAssignment;
+use App\Models\Foundation\AptitudeArea;
 use App\Models\User;
+use App\Support\SensitiveAssetStore;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -20,7 +20,6 @@ use RuntimeException;
 use function array_map;
 use function base64_decode;
 use function count;
-use function hash;
 use function range;
 use function sprintf;
 use function strlen;
@@ -60,39 +59,29 @@ class OmrDemoBatchSeeder extends Seeder
      */
     protected function context(): ?array
     {
-        $session = GradingSession::query()->orderByDesc('id')->first();
-        if ($session === null) {
-            $this->command?->warn('No grading session found; skipping OMR demo batch.');
+        $session = GradingSession::query()
+            ->with('examSession.currentMaterialSnapshot.templateVersion.template')
+            ->where('status', '!=', GradingSession::STATUS_FINALIZED)
+            ->orderByDesc('id')
+            ->first();
+        $snapshot = $session?->examSession?->currentMaterialSnapshot;
+        if ($session === null || $snapshot === null) {
+            $this->command?->warn('No grading session with published material found; skipping OMR demo batch.');
 
             return null;
         }
 
         $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         $pair = OmrTemplateBookletPair::query()
-            ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
-            ->whereHas('templateVersion.template', fn ($query) => $query->where('code', 'SYN-OMR-PROFILE-150'))
+            ->where('template_version_id', $snapshot->template_version_id)
+            ->where('booklet_version_id', $snapshot->booklet_version_id)
             ->first();
-        $profilePair = $pair !== null;
-
         if ($pair === null) {
-            $pair = OmrTemplateBookletPair::query()
-                ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
-                ->whereHas('templateVersion', fn ($query) => $query->where('version', 5))
-                ->first();
-        }
-
-        if ($pair === null) {
-            $pair = OmrTemplateBookletPair::query()
-                ->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)
-                ->whereHas('templateVersion', fn ($query) => $query->where('version', 4))
-                ->first();
-        }
-
-        if ($pair === null) {
-            $this->command?->warn('No active OMR pair found; skipping OMR demo batch.');
+            $this->command?->warn('The grading session material has no matching OMR reference pair; skipping OMR demo batch.');
 
             return null;
         }
+        $profilePair = $snapshot->templateVersion?->template?->code === 'SYN-OMR-PROFILE-150';
 
         $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
         $assetStore = app(SensitiveAssetStore::class);
@@ -169,13 +158,7 @@ class OmrDemoBatchSeeder extends Seeder
         /** @var OmrTemplateBookletPair $pair */
         $pair = $ctx['pair'];
 
-        return app(CreateOmrCaptureBatch::class)->handle(
-            $session,
-            $actor,
-            (int) $pair->template_version_id,
-            (int) $pair->booklet_version_id,
-            'omr-demo-batch',
-        );
+        return app(CreateOmrCaptureBatch::class)->handle($session, $actor, 'omr-demo-batch');
     }
 
     /**

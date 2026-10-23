@@ -2,15 +2,16 @@
 
 namespace Database\Seeders;
 
+use App\DocumentTemplate\Packaging\DirectoryBundleReader;
 use App\Models\ResultSheet\ResultSheetTemplate;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * Seeds the result-sheet template authority: one active HTML template shaped
- * like the institutional ICAT result sheet (legacy placeholders) plus an
- * inactive DOCX template imported from the real SecureCAT seed asset. The
- * active template drives every result-sheet render; re-seeding never
- * duplicates or swaps the active row.
+ * Seeds the result-sheet template authority: the verified institutional ICAT
+ * Word template is the active default when its seed asset is available. The
+ * HTML template remains available as an inactive comparison/fallback option.
+ * Re-seeding never duplicates rows and always leaves exactly one active row.
  */
 class ResultSheetTemplateSeeder extends Seeder
 {
@@ -19,6 +20,7 @@ class ResultSheetTemplateSeeder extends Seeder
         $html = ResultSheetTemplate::query()->updateOrCreate(
             ['name' => 'ICAT Results (HTML)'],
             [
+                'source_kind' => ResultSheetTemplate::SOURCE_LEGACY_HTML,
                 'mode' => ResultSheetTemplate::MODE_HTML,
                 'paper_size' => 'a4',
                 'orientation' => 'portrait',
@@ -45,40 +47,74 @@ class ResultSheetTemplateSeeder extends Seeder
                   <p><strong>Counselor:</strong> {{counselor_name}}</p>
                 </div>
                 HTML,
-                'is_active' => true,
+                'is_active' => false,
                 'created_by_user_id' => null,
             ],
         );
 
-        // Ensure exactly one active template (the HTML one).
-        ResultSheetTemplate::query()
-            ->where('id', '!=', $html->id)
-            ->update(['is_active' => false]);
+        $catalogDir = database_path('seed-assets/templates/result_sheet/template_main_icat_test1');
+        $official = null;
 
-        // Real institutional Word template as an inactive DOCX option.
-        $asset = database_path('seed-assets/result-sheets/template_main_icat_test1.docx');
+        if (is_dir($catalogDir)) {
+            $bundle = (new DirectoryBundleReader)->read($catalogDir);
+            $templateData = $bundle['manifest']['template'];
+            $fileMeta = $bundle['manifest']['files']['template.docx'];
+            $docxBytes = $bundle['files']['template.docx'];
 
-        if (is_file($asset)) {
-            ResultSheetTemplate::query()->updateOrCreate(
-                ['name' => 'ICAT Results (Word)'],
+            $official = ResultSheetTemplate::query()->updateOrCreate(
+                ['name' => $templateData['name'] ?? 'ICAT Results (Word)'],
                 [
+                    'source_kind' => ResultSheetTemplate::SOURCE_DOCX,
                     'mode' => ResultSheetTemplate::MODE_DOCX,
-                    'paper_size' => 'legal',
-                    'orientation' => ResultSheetTemplate::ORIENTATION_PORTRAIT,
-                    'logical_unit' => ResultSheetTemplate::LOGICAL_FULL,
+                    'paper_size' => $templateData['paper_size'] ?? 'legal',
+                    'orientation' => $templateData['orientation'] ?? ResultSheetTemplate::ORIENTATION_PORTRAIT,
+                    'logical_unit' => $templateData['logical_unit'] ?? ResultSheetTemplate::LOGICAL_FULL,
                     'document_path' => 'result-sheet-templates/icat-seed.docx',
-                    'document_checksum' => hash_file('sha256', $asset),
+                    'document_checksum' => $fileMeta['sha256'],
                     'document_extension' => 'docx',
-                    'is_active' => false,
+                    'is_active' => true,
                 ],
             );
 
-            $target = storage_path('app/private/result-sheet-templates/icat-seed.docx');
-
-            if (! is_file($target) || hash_file('sha256', $target) !== hash_file('sha256', $asset)) {
+            $target = Storage::disk('local')->path('result-sheet-templates/icat-seed.docx');
+            if (! is_file($target) || hash_file('sha256', $target) !== $fileMeta['sha256']) {
                 @mkdir(dirname($target), 0755, true);
-                copy($asset, $target);
+                file_put_contents($target, $docxBytes);
+            }
+        } else {
+            $asset = database_path('seed-assets/result-sheets/template_main_icat_test1.docx');
+            if (is_file($asset)) {
+                $official = ResultSheetTemplate::query()->updateOrCreate(
+                    ['name' => 'ICAT Results (Word)'],
+                    [
+                        'source_kind' => ResultSheetTemplate::SOURCE_DOCX,
+                        'mode' => ResultSheetTemplate::MODE_DOCX,
+                        'paper_size' => 'legal',
+                        'orientation' => ResultSheetTemplate::ORIENTATION_PORTRAIT,
+                        'logical_unit' => ResultSheetTemplate::LOGICAL_FULL,
+                        'document_path' => 'result-sheet-templates/icat-seed.docx',
+                        'document_checksum' => hash_file('sha256', $asset),
+                        'document_extension' => 'docx',
+                        'is_active' => true,
+                    ],
+                );
+
+                $target = Storage::disk('local')->path('result-sheet-templates/icat-seed.docx');
+                if (! is_file($target) || hash_file('sha256', $target) !== hash_file('sha256', $asset)) {
+                    @mkdir(dirname($target), 0755, true);
+                    copy($asset, $target);
+                }
             }
         }
+
+        $activeId = $official?->id ?? $html->id;
+
+        ResultSheetTemplate::query()
+            ->where('id', '!=', $activeId)
+            ->update(['is_active' => false]);
+
+        ResultSheetTemplate::query()
+            ->whereKey($activeId)
+            ->update(['is_active' => true]);
     }
 }

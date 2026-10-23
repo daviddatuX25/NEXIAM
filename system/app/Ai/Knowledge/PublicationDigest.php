@@ -13,9 +13,16 @@ final class PublicationDigest
     {
         $version->loadMissing('fixtures', 'source');
         $payload = [
+            'source_id' => $version->knowledge_source_id,
             'source_key' => $version->source?->key,
+            'institution_id' => $version->source?->institution_id,
+            'owning_office' => $version->source?->owning_office,
+            'source_class' => $version->source?->source_class,
+            'version_id' => $version->getKey(),
             'version' => $version->version,
             'title' => $version->title,
+            'question' => $version->question,
+            'answer' => $version->answer,
             'content_checksum' => $version->content_checksum,
             'extraction_digest' => $version->extraction_digest,
             'classification' => $version->source?->classification,

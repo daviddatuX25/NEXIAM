@@ -3,12 +3,17 @@
 namespace App\Models\Consultation;
 
 use App\Models\Admission\AdmissionAttempt;
+use Database\Factories\Consultation\ConsultationAssignmentFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ConsultationAssignment extends Model
 {
+    /** @use HasFactory<ConsultationAssignmentFactory> */
+    use HasFactory;
+
     public const STATUS_ASSIGNED = 'assigned';
 
     public const STATUS_CONSULTED = 'consulted';
@@ -18,6 +23,14 @@ class ConsultationAssignment extends Model
     public const SOURCE_STAFF_ASSIGNED = 'staff_assigned';
 
     public const SOURCE_APPLICANT_RESERVED = 'applicant_reserved';
+
+    public const ORIGIN_MANUAL = 'manual';
+
+    public const ORIGIN_BATCH = 'batch';
+
+    public const ORIGIN_CONTINUOUS = 'continuous';
+
+    public const ORIGIN_RESERVATION = 'reservation';
 
     /**
      * Active seat holds that participate in uniqueness and capacity.
@@ -36,11 +49,26 @@ class ConsultationAssignment extends Model
         self::SOURCE_APPLICANT_RESERVED,
     ];
 
+    /**
+     * @var list<string>
+     */
+    public const ORIGINS = [
+        self::ORIGIN_MANUAL,
+        self::ORIGIN_BATCH,
+        self::ORIGIN_CONTINUOUS,
+        self::ORIGIN_RESERVATION,
+    ];
+
+    protected $attributes = [
+        'origin' => self::ORIGIN_MANUAL,
+    ];
+
     protected $fillable = [
         'consultation_session_id',
         'admission_attempt_id',
         'status',
         'source',
+        'origin',
         'assigned_by_user_id',
         'reserved_by_user_id',
         'consulted_at',

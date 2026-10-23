@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" role="img" aria-labelledby="title desc">
+  <title id="title">IT Building Computer Lab A entrance</title>
+  <desc id="desc">Illustrated computer laboratory entrance with a Lab A plaque, monitor silhouettes, and yellow floor caution line.</desc>
+  <defs>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#e8edf0"/><stop offset="1" stop-color="#c5d0d6"/></linearGradient>
+    <linearGradient id="door" x2="1" y2="1"><stop stop-color="#465d70"/><stop offset="1" stop-color="#263a4b"/></linearGradient>
+    <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#d7edf0"/><stop offset="1" stop-color="#82b4c0"/></linearGradient>
+  </defs>
+  <path fill="#172a38" d="M0 0h300v400H0z"/>
+  <path fill="url(#wall)" d="M18 18h264v342H18z"/>
+  <path fill="#b6c3ca" d="M18 342h264v18H18z"/>
+  <path fill="#2a4253" d="M52 73h196v269H52z"/>
+  <path fill="#d9e1e4" d="M60 81h180v253H60z"/>
+  <path fill="url(#door)" d="M72 91h156v243H72z"/>
+  <path fill="url(#glass)" stroke="#d5e8ec" stroke-width="5" d="M89 111h121v125H89z"/>
+  <path fill="#f1f7f7" d="M100 127h99v83h-99z" opacity=".88"/>
+  <path fill="#355363" d="M106 137h35v27h-35zM155 137h35v27h-35z"/>
+  <path fill="#91c6cf" d="M110 141h27v17h-27zM159 141h27v17h-27z"/>
+  <path fill="#526c78" d="M118 164h11v5h-11zM167 164h11v5h-11z"/>
+  <path fill="#38566a" d="M106 175h84v5h-84zM106 187h84v5h-84z" opacity=".7"/>
+  <path fill="#29495a" d="M149 111v125h5V111z" opacity=".55"/>
+  <rect x="198" y="251" width="7" height="34" rx="3.5" fill="#d6b96e"/>
+  <circle cx="201.5" cy="267" r="2" fill="#fff0bd"/>
+  <path fill="#273f50" d="M78 45h144v32H78z"/>
+  <path fill="#f4f6f4" d="M83 49h134v24H83z"/>
+  <text x="150" y="60" fill="#243c4a" font-family="Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle">COMPUTER LAB A</text>
+  <text x="150" y="69" fill="#607681" font-family="Arial,sans-serif" font-size="5.5" letter-spacing="1.2" text-anchor="middle">IT BUILDING</text>
+  <path fill="#384c57" d="M28 360h244v24H28z"/>
+  <path fill="#f6c845" d="M35 364h230v7H35z"/>
+  <path stroke="#263d4a" stroke-width="4" d="m39 371 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7m9 7 12-7"/>
+  <path fill="#132632" d="M0 384h300v16H0z"/>
+</svg>

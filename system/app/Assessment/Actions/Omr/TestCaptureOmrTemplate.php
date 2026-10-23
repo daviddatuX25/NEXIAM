@@ -2,16 +2,21 @@
 
 namespace App\Assessment\Actions\Omr;
 
-use App\Assessment\Omr\OmrCheckerDetection;
+use App\Assessment\Omr\Diagnostics\CompiledVersionDiagnosticTarget;
+use App\Assessment\Omr\OmrCaptureAnalysisPort;
+use App\Assessment\Omr\OmrCaptureAnalysisRequest;
+use App\Assessment\Omr\OmrCaptureInput;
+use App\Assessment\Omr\OmrCapturePreflight;
 use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
+use App\Assessment\Omr\OmrLayoutVerificationPort;
 use App\Assessment\Omr\OmrLayoutVerificationResult;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\User;
 use RuntimeException;
 
 use function count;
-use function is_array;
 use function in_array;
+use function is_array;
 
 /**
  * Read-only builder Test capture (OpenSpec tasks 10.5/10.6 backend seam).
@@ -29,10 +34,11 @@ use function in_array;
 final class TestCaptureOmrTemplate
 {
     public function __construct(
-        private readonly OmrCheckerDetection $detection,
+        private readonly OmrLayoutVerificationPort $detection,
         private readonly OmrDiagnosticRequestBuilder $builder,
-    ) {
-    }
+        private readonly OmrCapturePreflight $preflight,
+        private readonly ?OmrCaptureAnalysisPort $analysis = null,
+    ) {}
 
     public function handle(
         OmrAnswerSheetTemplateVersion $version,
@@ -40,21 +46,63 @@ final class TestCaptureOmrTemplate
         string $imageMime,
         User $actor,
     ): OmrLayoutVerificationResult {
+        $preflight = $this->preflight->validate(new OmrCaptureInput(
+            bytes: $imageBytes,
+            mime: $imageMime,
+        ));
+        if (! $preflight->succeeded()) {
+            return OmrLayoutVerificationResult::failed(
+                $preflight->code ?? 'upload_invalid',
+                $preflight->detail ?? 'The test capture upload is invalid.',
+            );
+        }
+
         if (! in_array($imageMime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
             throw new RuntimeException('Test capture accepts JPEG, PNG, or WebP uploads.');
         }
+        if ($this->analysis !== null) {
+            $prepared = $this->analysis->analyze(new OmrCaptureAnalysisRequest(
+                capture: new OmrCaptureInput(
+                    bytes: $imageBytes,
+                    mime: $imageMime,
+                    pageNo: 1,
+                    pageCount: 1,
+                ),
+                target: new CompiledVersionDiagnosticTarget($version),
+                pageNo: 1,
+            ));
 
+            if ($prepared->layout !== null) {
+                $pageTemplate = $this->builder->build($version, $imageBytes, $imageMime)->nativeTemplate;
+
+                return $this->withGates(
+                    $prepared->layout,
+                    $pageTemplate,
+                );
+            }
+        }
         $request = $this->builder->build($version, $imageBytes, $imageMime);
         $result = $this->detection->verifyLayout($request);
         if (! $result->succeeded()) {
             return $result;
         }
 
-        $pageTemplate = $request->nativeTemplate;
+        return $this->withGates($result, $request->nativeTemplate);
+    }
+
+    /**
+     * @param  array<string, mixed>  $pageTemplate
+     */
+    private function withGates(
+        OmrLayoutVerificationResult $result,
+        array $pageTemplate,
+    ): OmrLayoutVerificationResult {
         $unsafe = $this->builder->unsafeBlocks($pageTemplate, $result->fieldBlockShifts ?? []);
 
         return new OmrLayoutVerificationResult(
             outcome: $result->outcome,
+            code: $result->code,
+            detail: $result->detail,
             alignedBytes: $result->alignedBytes,
             alignedImage: $result->alignedImage,
             overlayBytes: $result->overlayBytes,
@@ -66,6 +114,7 @@ final class TestCaptureOmrTemplate
             preprocessMs: $result->preprocessMs,
             verificationMs: $result->verificationMs,
             gates: $this->gates($pageTemplate, $result, $unsafe),
+            rectification: $result->rectification,
         );
     }
 

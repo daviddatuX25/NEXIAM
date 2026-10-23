@@ -1,19 +1,25 @@
 <script>
-    import { Link } from '@inertiajs/svelte';
+    import { Link, usePage } from '@inertiajs/svelte';
+    import { onMount } from 'svelte';
+    import { isApplicantSubmitted } from '@/lib/applicant-status.js';
     import {
         ArrowDownRight,
         ArrowRight,
+        HelpCircle,
         MapPin,
-        Sparkles,
     } from 'lucide-svelte';
     import AdmissionsGateway from '@/Components/public/AdmissionsGateway.svelte';
-    import AnnouncementRail from '@/Components/public/AnnouncementRail.svelte';
+    import PublicPolicyLinks from '@/Components/public/PublicPolicyLinks.svelte';
     import MediaFrame from '@/Components/public/MediaFrame.svelte';
     import ProgramExplorer from '@/Components/public/ProgramExplorer.svelte';
     import StorySection from '@/Components/public/StorySection.svelte';
     import HomeLayout from '@/Layouts/HomeLayout.svelte';
+    import {
+        isPublicIntakeOpen,
+        publicApplyCtaLabel,
+    } from '@/lib/public-application-cta';
     import { reveal } from '@/lib/motion.js';
-
+ 
     let {
         institution = {
             name: 'Ilocos Sur Polytechnic State College',
@@ -30,12 +36,39 @@
         activeSeason = null,
         programs = [],
         stories = [],
-        announcements = [],
+        alerts = [],
+        publicPolicies = [],
         preview = {},
+        homeHref = '/',
+        navigation = null,
     } = $props();
-
+ 
     const previewEnabled = $derived(Boolean(preview?.enabled));
-</script>
+    const page = usePage();
+    let clientSubmitted = $state(false);
+    const hasSubmittedApplication = $derived(
+        Boolean(page.props.has_submitted_application || clientSubmitted),
+    );
+
+    onMount(() => {
+        clientSubmitted = isApplicantSubmitted(page.props);
+    });
+
+    const publicIntakeOpen = $derived(
+        isPublicIntakeOpen(activeSeason, page.props.public_intake_open),
+    );
+    const openingAlertsAvailable = $derived(
+        page.props.opening_alerts_available === true,
+    );
+    const publicApplyLabel = $derived(
+        publicApplyCtaLabel(publicIntakeOpen, openingAlertsAvailable),
+    );
+    const secondaryApplyLabel = $derived(
+        publicIntakeOpen
+            ? 'Start an application'
+            : publicApplyCtaLabel(false, openingAlertsAvailable, true),
+    );
+ </script>
 
 <svelte:head>
     <title>{institution.name} — Welcome</title>
@@ -45,7 +78,7 @@
     />
 </svelte:head>
 
-<HomeLayout {institution}>
+<HomeLayout {institution} {alerts} {homeHref} {navigation} {activeSeason}>
     <div class="overflow-hidden">
         <section class="border-border/60 relative isolate border-b">
             <div
@@ -58,14 +91,6 @@
                     class="max-w-2xl min-w-0"
                     use:reveal={{ y: 18, duration: 0.7 }}
                 >
-                    {#if previewEnabled}
-                        <div
-                            class="border-primary/20 bg-primary/8 text-primary mb-7 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
-                        >
-                            <Sparkles class="size-3.5" />
-                            <span>{preview.label ?? 'Preview content'}</span>
-                        </div>
-                    {/if}
 
                     <p
                         class="text-primary max-w-full text-xs leading-5 font-bold tracking-[0.22em] break-words uppercase"
@@ -84,59 +109,65 @@
                         {hero.lede ?? institution.welcome}
                     </p>
 
-                    {#if activeSeason}
-                        <div
-                            class="border-primary/20 bg-background/70 text-primary mt-7 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium shadow-sm"
-                        >
-                            <span
-                                class="bg-primary size-2 shrink-0 rounded-full"
-                                aria-hidden="true"
-                            ></span>
-                            <span class="whitespace-normal"
-                                >{activeSeason.name}{#if activeSeason.window}
-                                    · {activeSeason.window}{/if}</span
-                            >
-                        </div>
+                    {#if publicIntakeOpen}
+                        <p class="text-primary mt-7 text-sm font-medium">
+                            Applications {activeSeason?.academic_year ? `for A.Y. ${activeSeason.academic_year} ` : ''}are now open.
+                        </p>
+                    {:else if activeSeason}
+                        <p class="text-muted-foreground mt-7 text-sm">
+                            {activeSeason?.academic_year ? `A.Y. ${activeSeason.academic_year}` : 'Applications are currently closed.'}
+                        </p>
                     {/if}
 
                     <div
                         class="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
                     >
-                        <a
-                            href="#programs"
-                            class="group bg-primary text-primary-foreground shadow-primary/20 hover:bg-primary/90 focus-visible:ring-ring inline-flex min-h-14 items-center justify-between gap-8 rounded-full px-6 py-3 text-sm font-bold tracking-[0.1em] uppercase shadow-lg transition hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:outline-none"
-                        >
-                            Explore programs
-                            <ArrowDownRight
-                                class="size-5 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5"
-                            />
-                        </a>
-                        <Link
-                            href="/apply"
-                            class="text-foreground hover:border-primary/45 hover:text-primary border-border bg-background/65 focus-visible:ring-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-full border px-6 py-3 text-sm font-bold tracking-[0.08em] uppercase transition focus-visible:ring-2 focus-visible:outline-none"
-                        >
-                            Start your application
-                            <ArrowRight class="size-4" />
-                        </Link>
+                        {#if hasSubmittedApplication}
+                            <Link
+                                href="/applicant/login"
+                                class="group bg-primary text-primary-foreground shadow-primary/20 hover:bg-primary/90 focus-visible:ring-ring inline-flex min-h-14 items-center justify-center gap-4 rounded-full px-6 py-3 text-sm font-bold tracking-[0.08em] uppercase shadow-lg transition focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                Proceed to Portal
+                                <ArrowRight class="size-5" />
+                            </Link>
+                            <a
+                                href="#programs"
+                                class="text-foreground hover:text-primary focus-visible:ring-ring inline-flex min-h-14 items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                Explore programs
+                                <ArrowDownRight class="size-4" />
+                            </a>
+                        {:else}
+                            <Link
+                                href="/apply"
+                                class="group bg-primary text-primary-foreground shadow-primary/20 hover:bg-primary/90 focus-visible:ring-ring inline-flex min-h-14 items-center justify-center gap-4 rounded-full px-6 py-3 text-sm font-bold tracking-[0.08em] uppercase shadow-lg transition focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                {publicApplyLabel}
+                                <ArrowRight class="size-5" />
+                            </Link>
+                            <a
+                                href="#programs"
+                                class="text-foreground hover:text-primary focus-visible:ring-ring inline-flex min-h-14 items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                Explore programs
+                                <ArrowDownRight class="size-4" />
+                            </a>
+                        {/if}
                     </div>
 
-                    <div
-                        class="text-muted-foreground mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"
-                    >
-                        <Link
-                            href="/applicant/login"
-                            class="hover:text-primary decoration-primary/30 font-medium underline underline-offset-4 transition"
-                            >Applicant Portal</Link
+                    {#if hasSubmittedApplication}
+                        <div
+                            class="text-muted-foreground mt-6 flex flex-wrap items-center gap-x-2 text-sm"
                         >
-                        <span aria-hidden="true">·</span>
-                        <Link
-                            href="/login"
-                            class="hover:text-primary decoration-primary/30 font-medium underline underline-offset-4 transition"
-                            >Staff sign in</Link
-                        >
-                        <span aria-hidden="true">·</span>
-                        <span>Access key + birthdate</span>
-                    </div>
+                            <span>Need to submit another application?</span>
+                            <Link
+                                href="/apply"
+                                class="hover:text-primary text-foreground font-semibold underline underline-offset-4 decoration-primary/40 transition inline-flex items-center gap-1"
+                            >
+                                <span>{secondaryApplyLabel}</span>
+                            </Link>
+                        </div>
+                    {/if}
                 </div>
 
                 <div
@@ -146,7 +177,7 @@
                     <div
                         class="border-primary/25 bg-background/85 text-primary pointer-events-none absolute -top-5 right-8 z-10 hidden rounded-full border px-4 py-2 text-xs font-semibold shadow-sm backdrop-blur sm:block"
                     >
-                        {institution.kicker}
+                        {hero.badge_text ?? institution.kicker}
                     </div>
                     <MediaFrame
                         image={hero.image}
@@ -279,7 +310,7 @@
                     </h2>
                 </div>
                 {#if stories.length > 0}
-                    {#each stories as story (story.title)}
+                    {#each stories as story (story.id ?? story.title)}
                         <StorySection {story} preview={previewEnabled} />
                     {/each}
                 {:else}
@@ -297,25 +328,51 @@
                 {/if}
             </section>
 
-            <AdmissionsGateway {activeSeason} />
+            <AdmissionsGateway {activeSeason} {hasSubmittedApplication} {openingAlertsAvailable} intakeOpen={publicIntakeOpen} />
 
-            <AnnouncementRail {announcements} />
-        </div>
-
-        {#if previewEnabled}
-            <aside class="border-primary/15 bg-primary/5 border-y">
-                <div
-                    class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"
-                >
-                    <p class="text-foreground font-medium">
-                        {preview.label ?? 'Preview content'}
-                    </p>
-                    <p class="text-muted-foreground max-w-2xl leading-6">
-                        {preview.notice ??
-                            'Replace simulated content with approved institutional copy and media before public launch.'}
-                    </p>
+            <section id="faqs" class="scroll-mt-24" use:reveal={{ y: 18, duration: 0.65 }}>
+                <div class="border-border/70 bg-card/60 relative overflow-hidden rounded-[1.75rem] border p-8 shadow-xs sm:p-10">
+                    <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                        <div class="max-w-2xl space-y-3">
+                            <div class="inline-flex items-center gap-2 text-xs font-bold tracking-[0.22em] text-primary uppercase">
+                                <HelpCircle class="size-4" />
+                                <span>Guidance & Questions</span>
+                            </div>
+                            <h2 class="text-2xl font-semibold tracking-[-0.03em] text-foreground sm:text-3xl">
+                                Answers for admissions, exams, and campus life.
+                            </h2>
+                            <p class="text-sm leading-6 text-muted-foreground sm:text-base">
+                                Explore official guidelines, entrance examination instructions, and policies verified by institutional offices.
+                            </p>
+                        </div>
+                        <div class="flex shrink-0 flex-wrap items-center gap-3">
+                            <button
+                                type="button"
+                                data-home-open-faq-modal
+                                onclick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('nexiam:open-faq-inquiry-modal', {
+                                            detail: { view: 'faqs' },
+                                        }),
+                                    )}
+                                class="border-border bg-background text-foreground hover:bg-muted focus-visible:ring-ring inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold shadow-2xs transition focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                <HelpCircle class="text-primary size-4" />
+                                <span>Ask an Office</span>
+                            </button>
+                            <Link
+                                href="/faqs"
+                                class="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                                <span>Browse FAQs</span>
+                                <ArrowRight class="size-4" />
+                            </Link>
+                        </div>
+                    </div>
                 </div>
-            </aside>
-        {/if}
+            </section>
+
+            <PublicPolicyLinks {publicPolicies} />
+        </div>
     </div>
 </HomeLayout>

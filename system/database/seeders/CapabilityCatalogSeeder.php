@@ -22,5 +22,10 @@ class CapabilityCatalogSeeder extends Seeder
             $role = Role::findOrCreate($roleName, 'web');
             $role->syncPermissions($capabilities);
         }
+        $legacySetupPermission = Permission::where('name', CapabilityCatalog::REGISTRAR_SETUP_MANAGE)->first();
+        $legacySetupPermission?->users()->detach();
+        $legacySetupPermission?->roles()->detach();
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
     }
 }

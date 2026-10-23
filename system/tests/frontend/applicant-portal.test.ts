@@ -1,135 +1,148 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
 
-/**
- * Applicant portal interface contract (2026-08-15-applicant-portal-interface).
- * Server-projection shape tests: stage order, release-mode serialization,
- * slot states, and navigation. These mirror the invariants enforced by
- * ApplicantPortalProjection and consumed by Portal/Schedule/Consultation.
- */
+import { cleanup, render, screen } from '@testing-library/svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const CANONICAL_STAGE_ORDER = [
-    'submitted',
-    'review',
-    'exam',
-    'results',
-    'consultation',
-    'program_choice',
-    'enrolling',
-    'enrolled',
+vi.mock('@/Pages/Applicant/ApplicantLayout.svelte', () => ({
+    default: (_anchor: unknown, { children }: { children?: (anchor: unknown) => void }) => children?.(_anchor),
+}));
+vi.mock('@/Components/kit/Walkthrough/TourTriggerGlyph.svelte', () => ({ default: () => null }));
+vi.mock('@/Components/kit/Walkthrough/XiamNpcDialog.svelte', () => ({ default: () => null }));
+
+import Portal from '../../resources/js/Pages/Applicant/Portal.svelte';
+
+afterEach(() => cleanup());
+
+const steps = [
+    { id: 'application', label: 'My Application', href: '/applicant/application/41', status: 'done' },
+    { id: 'exam_scheduling', label: 'Exam Scheduling', href: '/applicant/schedule', status: 'current' },
+    { id: 'exam_monitoring', label: 'Exam Day', href: '/applicant/exam-day', status: 'upcoming' },
+    { id: 'scoring', label: 'Exam Scoring', href: '/applicant/exam-scoring', status: 'done' },
+    { id: 'release_scheduling', label: 'Release Scheduling', href: '/applicant/release-schedule', status: 'current' },
+    {
+        id: 'release_encounter',
+        label: 'Release Day',
+        href: '/applicant/release-day',
+        status: 'action',
+        context: {
+            result_release: { profile: { series: [{ score: 98.5 }] } },
+            program_choice: { actions: [{ label: 'Choose a program' }] },
+        },
+    },
+    { id: 'admission_clearance', label: 'Admission Clearance', href: '/applicant/admission-clearance', status: 'auto' },
 ];
 
-const SPINE_STATUSES = ['done', 'current', 'upcoming', 'action', 'auto'];
+function renderPortal(encounterStatus = 'action', schedulingStatus = 'current', myResults = false, clearanceStatus = 'auto') {
+    return render(Portal, {
+        props: {
+            page_state: 'ready',
+            identity: { name: 'Applicant' },
+            stages: [
+                { id: 'results', status: 'done', profile: { series: [{ score: 98.5 }] } },
+            ],
+            pipeline: [
+                { id: 'application', label: 'Application', steps: [steps[0]] },
+                { id: 'examination', label: 'Examination', steps: steps.slice(1, 4) },
+                {
+                    id: 'release_of_results',
+                    label: 'Release of Results',
+                    steps: [
+                        { ...steps[4], status: schedulingStatus },
+                        {
+                            ...steps[5],
+                            status: encounterStatus,
+                            ...(myResults ? { href: '/applicant/results', detail_label: 'View My Results' } : {}),
+                        },
+                    ],
+                },
+                { id: 'admission_clearance', label: 'Admission Clearance', steps: [{ ...steps[6], status: clearanceStatus }] },
+            ],
+        },
+    });
+}
 
-describe('status-spine hub contract', () => {
-    it('emits stages in canonical order', () => {
-        const stages = [
-            { id: 'submitted' },
-            { id: 'review' },
-            { id: 'exam' },
-            { id: 'results' },
-            { id: 'consultation' },
-            { id: 'program_choice' },
-            { id: 'enrolling' },
-            { id: 'enrolled' },
-        ];
+describe('applicant portal merged release milestone', () => {
+    it('keeps canonical detail destinations while merging release scheduling into the encounter', () => {
+        renderPortal();
 
-        expect(stages.map((s) => s.id)).toEqual(CANONICAL_STAGE_ORDER);
+        const links = screen.getAllByRole('link', { name: /^View details:/ });
+        expect(links).toHaveLength(6);
+        expect(
+            links.map((link) => [
+                link.getAttribute('aria-label'),
+                new URL(link.getAttribute('href') ?? '', window.location.href).pathname,
+            ]),
+        ).toEqual(
+            steps.filter((step) => step.id !== 'release_scheduling').map((step) => [
+                `View details: ${step.id === 'release_encounter' ? 'Release of Results' : step.label}`,
+                step.href,
+            ]),
+        );
     });
 
-    it('accepts only the five spine statuses', () => {
-        const statuses = ['done', 'current', 'upcoming', 'action', 'auto'];
+    it('keeps each left-rail status visible without rendering nested result or program actions', () => {
+        const view = renderPortal();
 
-        for (const status of statuses) {
-            expect(SPINE_STATUSES).toContain(status);
-        }
-
-        expect(SPINE_STATUSES).toHaveLength(5);
+        expect(screen.getAllByText('Completed')).toHaveLength(2);
+        expect(screen.getAllByText('Current step')).toHaveLength(1);
+        expect(screen.getByText('Upcoming')).toBeTruthy();
+        expect(screen.getByText('Action needed')).toBeTruthy();
+        expect(screen.getByText('In progress automatically')).toBeTruthy();
+        expect(view.queryByText('98.5')).toBeNull();
+        expect(screen.queryByRole('link', { name: 'Choose a program' })).toBeNull();
+        expect(screen.getAllByRole('link', { name: /^View details:/ })).toHaveLength(6);
     });
 
-    it('f2f releases never serialize scores; online releases always do', () => {
-        const onlineResults = {
-            status: 'done',
-            release: { mode: 'online' },
-            profile: { series: [{ area_name: 'Math', score: 90 }] },
-        };
-        const f2fResults = {
-            status: 'action',
-            release: { mode: 'f2f' },
-            profile: null,
-            actions: [{ key: 'book_consultation' }],
-        };
-
-        expect(onlineResults.release.mode).toBe('online');
-        expect(onlineResults.profile).not.toBeNull();
-        expect(onlineResults.profile.series.length).toBeGreaterThan(0);
-
-        expect(f2fResults.release.mode).toBe('f2f');
-        expect(f2fResults.profile).toBeNull();
-        expect(f2fResults.actions[0].key).toBe('book_consultation');
+    it('checks the merged release milestone after the confirmed decision without a pending scheduling node', () => {
+        renderPortal('done', 'upcoming');
+        const release = screen.getByRole('link', { name: 'View details: Release of Results' }).closest('li')!;
+        expect(release.textContent).toContain('Released');
+        expect(release.textContent).toContain('Completed');
+        expect(release.textContent).not.toContain('Upcoming');
+        expect(screen.queryByRole('link', { name: 'View details: Release Scheduling' })).toBeNull();
     });
 
-    it('guidance default renders auto status with optional ack action', () => {
-        const programStage = {
-            status: 'auto',
-            summary: 'BSN — set by Guidance · projection active',
-            actions: [{ key: 'ack_default', label: 'This is my choice' }],
-        };
-
-        expect(programStage.status).toBe('auto');
-        expect(programStage.summary).toContain('projection active');
-        expect(programStage.actions.map((a) => a.key)).toContain('ack_default');
-    });
-});
-
-describe('shared reservation UX contract', () => {
-    it('derives slot state from remaining/capacity without inventing counters', () => {
-        const slots = [
-            { id: 1, remaining: 4, capacity: 12, full: false },
-            { id: 2, remaining: 0, capacity: 12, full: true },
-        ];
-
-        const stateOf = (slot) => (slot.full ? 'full' : `${slot.remaining} of ${slot.capacity} seats left`);
-
-        expect(stateOf(slots[0])).toBe('4 of 12 seats left');
-        expect(stateOf(slots[1])).toBe('full');
+    it('keeps booking reachable before the encounter without marking an assigned appointment released', () => {
+        renderPortal('upcoming', 'current');
+        expect(new URL(screen.getByRole('link', { name: 'View details: Release of Results' }).getAttribute('href')!, window.location.href).pathname).toBe('/applicant/release-schedule');
+        expect(screen.queryByText('Released')).toBeNull();
     });
 
-    it('full slots disable selection', () => {
-        const disabled = (slot) => slot.full;
-
-        expect(disabled({ full: true })).toBe(true);
-        expect(disabled({ full: false })).toBe(false);
+    it('does not complete release merely because scheduling is complete', () => {
+        renderPortal('current', 'done');
+        const release = screen.getByRole('link', { name: 'View details: Release of Results' }).closest('li')!;
+        expect(release.textContent).toContain('Current step');
+        expect(release.textContent).not.toContain('Completed');
+        expect(screen.queryByText('Released')).toBeNull();
     });
-});
+    it('labels the completed Home destination as My Results when the server resolves a safe or pending copy', () => {
+        renderPortal('done', 'upcoming', true);
 
-describe('applicant shell navigation contract', () => {
-    it('server emits the canonical applicant nav set for linked accounts', () => {
-        const nav = [
-            { key: 'portal' },
-            { key: 'application' },
-            { key: 'schedule' },
-            { key: 'consultation' },
-            { key: 'program_choice' },
-            { key: 'notifications' },
-            { key: 'qr' },
-            { key: 'admission_support' },
-        ];
-
-        expect(nav.map((n) => n.key)).toEqual([
-            'portal',
-            'application',
-            'schedule',
-            'consultation',
-            'program_choice',
-            'notifications',
-            'qr',
-            'admission_support',
-        ]);
+        const link = screen.getByRole('link', { name: 'View My Results' });
+        expect(new URL(link.getAttribute('href') ?? '', window.location.href).pathname).toBe('/applicant/results');
     });
+    it('thanks applicants only when clearance confirmation marks the final step done', async () => {
+        const view = renderPortal('done', 'upcoming', false, 'done');
 
-    it('never serializes nav for non-applicant principals', () => {
-        const navFor = (isApplicant) => (isApplicant ? ['portal'] : []);
-
-        expect(navFor(false)).toEqual([]);
+        expect(screen.getByText('Thank you. Your NEXIAM admission clearance is complete.')).toBeTruthy();
+        await view.rerender({
+            page_state: 'ready',
+            identity: { name: 'Applicant' },
+            stages: [{ id: 'results', status: 'done', profile: { series: [{ score: 98.5 }] } }],
+            pipeline: [
+                { id: 'application', label: 'Application', steps: [steps[0]] },
+                { id: 'examination', label: 'Examination', steps: steps.slice(1, 4) },
+                {
+                    id: 'release_of_results',
+                    label: 'Release of Results',
+                    steps: [
+                        { ...steps[4], status: 'upcoming' },
+                        { ...steps[5], status: 'done' },
+                    ],
+                },
+                { id: 'admission_clearance', label: 'Admission Clearance', steps: [{ ...steps[6], status: 'action' }] },
+            ],
+        });
+        expect(screen.queryByText('Thank you. Your NEXIAM admission clearance is complete.')).toBeNull();
     });
 });

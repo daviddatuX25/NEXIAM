@@ -51,9 +51,9 @@ test('native manifest contains finite in-bounds non-overlapping bubbles', functi
 
             $otherRegion = $other['region'];
             $overlap = $region['x'] < $otherRegion['x'] + $otherRegion['w']
-                && $region['x'] + $region['w'] > $otherRegion['x']
+                && $otherRegion['x'] < $region['x'] + $region['w']
                 && $region['y'] < $otherRegion['y'] + $otherRegion['h']
-                && $region['y'] + $region['h'] > $otherRegion['y'];
+                && $otherRegion['y'] < $region['y'] + $region['h'];
 
             expect($overlap)->toBeFalse();
         }

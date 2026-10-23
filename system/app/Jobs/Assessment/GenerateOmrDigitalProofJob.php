@@ -15,14 +15,14 @@ final class GenerateOmrDigitalProofJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 300;
 
     /** @param array<string, mixed> $planPayload canonical OmrProofPlan payload (35.18) */
     public function __construct(
         public readonly int $draftId,
         public readonly array $planPayload,
-    ) {
-    }
+    ) {}
 
     public function handle(OmrDigitalProofGenerator $generator): void
     {

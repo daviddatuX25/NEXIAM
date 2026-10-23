@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXIAM — Targeted UI Restoration & Persona Review</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: 'hsl(var(--border))',
+            input: 'hsl(var(--input))',
+            ring: 'hsl(var(--ring))',
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            primary: {
+              DEFAULT: 'hsl(var(--primary))',
+              foreground: 'hsl(var(--primary-foreground))',
+            },
+            muted: {
+              DEFAULT: 'hsl(var(--muted))',
+              foreground: 'hsl(var(--muted-foreground))',
+            },
+            card: {
+              DEFAULT: 'hsl(var(--card))',
+              foreground: 'hsl(var(--card-foreground))',
+            },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --background: 224 71% 4%;
+      --foreground: 213 31% 91%;
+      --card: 224 71% 6%;
+      --card-foreground: 213 31% 91%;
+      --muted: 223 47% 11%;
+      --muted-foreground: 215.4 16.3% 56.9%;
+      --border: 216 34% 17%;
+      --primary: 217.2 91.2% 59.8%;
+      --primary-foreground: 222.2 47.4% 11.2%;
+    }
+    .light {
+      --background: 0 0% 100%;
+      --foreground: 222.2 84% 4.9%;
+      --card: 0 0% 100%;
+      --card-foreground: 222.2 84% 4.9%;
+      --muted: 210 40% 96.1%;
+      --muted-foreground: 215.4 16.3% 46.9%;
+      --border: 214.3 31.8% 91.4%;
+      --primary: 221.2 83.2% 53.3%;
+      --primary-foreground: 210 40% 98%;
+    }
+  </style>
+</head>
+<body class="bg-background text-foreground antialiased min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-50 border-b border-border bg-card/85 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center font-bold text-primary text-lg shadow-sm">N</div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-base tracking-tight text-foreground">NEXIAM — Targeted UI Restoration Catalog</h1>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Clean Scope · Persona-Driven</span>
+        </div>
+        <p class="text-xs text-muted-foreground">Laser-focused on the 4 genuine gaps. Strictly excludes all already-built greenfield workflows.</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2.5">
+      <button onclick="toggleTheme()" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors">
+        <span id="theme-icon">☀️</span> <span id="theme-text">Light Mode</span>
+      </button>
+      <button onclick="exportDecisions()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Export Decisions JSON
+      </button>
+      <button onclick="window.print()" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground transition-colors">
+        Print / PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- BOUNDARY & SCOPE NOTIFICATION BANNER -->
+  <section class="border-b border-border bg-muted/20 px-6 py-3 text-xs">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-muted-foreground">
+        <span class="font-bold text-foreground">Non-Interference Guard:</span>
+        <span>Admissions Registry, Exam Scheduling, Scoring/Grading, System Setup, Personnel & OMR are <strong>kept as-is</strong>. We only touch the 4 missing pieces below.</span>
+      </div>
+      <div class="flex items-center gap-2 font-mono text-[11px] text-emerald-400">
+        <span>✓ 4 Targets</span> &bull; <span>✓ Role-Separated</span> &bull; <span>✓ Zero Regressions</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN DUAL-PANE LAYOUT -->
+  <div class="flex-1 flex max-w-7xl w-full mx-auto p-6 gap-6">
+
+    <!-- LEFT NAVIGATION -->
+    <aside class="w-80 shrink-0 space-y-2 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+      <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">Restoration Targets</div>
+
+      <a href="#target-1" class="target-nav-item block p-3.5 rounded-xl border border-primary/40 bg-primary/10 text-primary transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-bold text-foreground">Target 1: Persona Dashboards</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">PRIORITY 1</span>
+        </div>
+        <div class="text-[11px] text-muted-foreground mt-1">/staff &bull; Replaces empty debug card with Registrar, Guidance & Program Head views.</div>
+      </a>
+
+      <a href="#target-2" class="target-nav-item block p-3.5 rounded-xl border border-border bg-card/50 hover:bg-card text-foreground transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-bold text-foreground">Target 2: Reports & Analytics Hub</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">PRIORITY 1</span>
+        </div>
+        <div class="text-[11px] text-muted-foreground mt-1">/reports &bull; Pure new hub with Registrar & Guidance export catalogs.</div>
+      </a>
+
+      <a href="#target-3" class="target-nav-item block p-3.5 rounded-xl border border-border bg-card/50 hover:bg-card text-foreground transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-bold text-foreground">Target 3: Exam Live Telemetry</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">WIDGET ADD-ON</span>
+        </div>
+        <div class="text-[11px] text-muted-foreground mt-1">/exams/monitoring &bull; Non-intrusive live status & telemetry strip for exam day.</div>
+      </a>
+
+      <a href="#target-4" class="target-nav-item block p-3.5 rounded-xl border border-border bg-card/50 hover:bg-card text-foreground transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-bold text-foreground">Target 4: Audit Log Explorer</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary border border-primary/30">NEW VIEW</span>
+        </div>
+        <div class="text-[11px] text-muted-foreground mt-1">/staff/logs &bull; Staff security viewer for existing database audit_events.</div>
+      </a>
+
+      <!-- Scope Exclusions Box -->
+      <div class="mt-6 p-4 rounded-xl border border-border bg-muted/20 space-y-2 text-xs">
+        <div class="font-bold text-foreground flex items-center gap-1.5">
+          <span class="text-emerald-400">🛡️</span> Intentionally Excluded
+        </div>
+        <ul class="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
+          <li><strong>Scoring & Grading:</strong> Kept as-is in <code class="text-primary font-mono">Assessment/Grading</code></li>
+          <li><strong>Admissions Registry:</strong> Kept as-is in <code class="text-primary font-mono">Admission/Index</code></li>
+          <li><strong>Exam Scheduling:</strong> Kept as-is in <code class="text-primary font-mono">Examination/Index</code></li>
+          <li><strong>Setup Hub:</strong> Kept as-is in <code class="text-primary font-mono">Setup/Index</code></li>
+          <li><strong>Personnel Directory:</strong> Kept as-is in <code class="text-primary font-mono">Staff/Personnel</code></li>
+          <li><strong>Result Sheet Printing:</strong> Excluded per prompt</li>
+          <li><strong>Consultation Support:</strong> Excluded per prompt</li>
+          <li><strong>OMR Scanner Suite:</strong> Excluded per prompt</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT: TARGET SPECIFICATIONS -->
+    <main class="flex-1 min-w-0 space-y-12">
+
+      <!-- ========================================================================= -->
+      <!-- TARGET 1: PERSONA-TAILORED STAFF DASHBOARD -->
+      <!-- ========================================================================= -->
+      <section id="target-1" class="scroll-mt-24 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-bold tracking-tight text-foreground">Target 1: Persona-Tailored Staff Dashboard</h2>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">Empty on Greenfield</span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              File: <code class="text-primary font-mono">system/resources/js/Pages/Staff/Home.svelte</code> (/staff) &bull; Replaces raw JSON debug card
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5 bg-muted/60 p-1 rounded-lg text-xs">
+            <span class="text-muted-foreground px-2">Preview Role:</span>
+            <button onclick="switchDashboardPersona('registrar')" id="tab-btn-reg" class="px-2.5 py-1 rounded-md bg-primary text-white font-medium">Registrar</button>
+            <button onclick="switchDashboardPersona('guidance')" id="tab-btn-gui" class="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground">Guidance (TA)</button>
+            <button onclick="switchDashboardPersona('program_head')" id="tab-btn-ph" class="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground">Program Head</button>
+          </div>
+        </div>
+
+        <!-- Role Architecture Explanation -->
+        <div class="p-4 rounded-xl border border-border bg-card/40 text-xs space-y-2">
+          <div class="font-bold text-foreground flex items-center gap-2">
+            <span>👤</span> The "Breadth of Who is Viewing" Solution:
+          </div>
+          <p class="text-muted-foreground leading-relaxed">
+            Instead of legacy's broken pattern of showing a generic dashboard with client-side hidden cards, greenfield uses <strong>Server-Side Projection Shaping</strong> via <code class="text-primary font-mono">StaffDashboardProjection</code>:
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 font-mono text-[11px]">
+            <div class="p-2.5 rounded-lg border border-border bg-card space-y-1">
+              <strong class="text-blue-400">1. Registrar Actor</strong>
+              <div class="text-muted-foreground">Gets: Admissions KPIs, 6-Mo Growth Line, 11-Stage Pipeline Donut, Top Course Preferences.</div>
+            </div>
+            <div class="p-2.5 rounded-lg border border-border bg-card space-y-1">
+              <strong class="text-purple-400">2. Guidance / TA Actor</strong>
+              <div class="text-muted-foreground">Gets: Exam Session KPIs, Weekly Scheduled vs Completed Line, Room Attendance, Score Turnaround.</div>
+            </div>
+            <div class="p-2.5 rounded-lg border border-border bg-card space-y-1">
+              <strong class="text-emerald-400">3. Program Head Actor</strong>
+              <div class="text-muted-foreground">Gets: Own program quota progress, candidates in advising pool, pending follow-ups.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE INTERACTIVE MOCK CONTAINER -->
+        <div class="rounded-2xl border border-border/80 bg-card p-6 shadow-xl space-y-6">
+
+          <!-- ================= PERSONA VIEW A: REGISTRAR ================= -->
+          <div id="persona-registrar" class="space-y-6">
+            <div class="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-blue-400 font-mono">Registrar Persona View</span>
+                <h3 class="text-xl font-bold text-foreground">Welcome back, Atty. Maria Santos</h3>
+                <p class="text-xs text-muted-foreground">Registrar Administrator &bull; AY 2026–2027 Admissions (Active)</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">Registrar Scope</span>
+            </div>
+
+            <!-- Registrar 4 KPI Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="p-4 rounded-xl border-l-4 border-l-primary bg-primary/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium flex justify-between">
+                  <span>Total Applications</span>
+                  <span class="text-emerald-400 text-[10px] font-bold">+18% MoM</span>
+                </div>
+                <div class="text-3xl font-extrabold text-foreground">1,482</div>
+                <div class="text-[11px] text-muted-foreground">AY 2026–2027 intake</div>
+              </div>
+
+              <div class="p-4 rounded-xl border-l-4 border-l-amber-500 bg-amber-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium flex justify-between">
+                  <span>In Active Pipeline</span>
+                  <span class="text-amber-400 text-[10px] font-bold">In Review</span>
+                </div>
+                <div class="text-3xl font-extrabold text-foreground">842</div>
+                <div class="text-[11px] text-muted-foreground">Pending exam or scoring</div>
+              </div>
+
+              <div class="p-4 rounded-xl border-l-4 border-l-emerald-500 bg-emerald-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium flex justify-between">
+                  <span>Completed / Finalized</span>
+                  <span class="text-emerald-400 text-[10px] font-bold">39.8%</span>
+                </div>
+                <div class="text-3xl font-extrabold text-foreground">590</div>
+                <div class="text-[11px] text-muted-foreground">Scored and ready to release</div>
+              </div>
+
+              <div class="p-4 rounded-xl border-l-4 border-l-rose-500 bg-rose-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium flex justify-between">
+                  <span>Dismissed / Ineligible</span>
+                  <span class="text-rose-400 text-[10px] font-bold">3.4%</span>
+                </div>
+                <div class="text-3xl font-extrabold text-foreground">50</div>
+                <div class="text-[11px] text-muted-foreground">Disqualified or withdrawn</div>
+              </div>
+            </div>
+
+            <!-- Registrar Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div class="lg:col-span-2 p-5 rounded-xl border border-border bg-card/60 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 class="font-bold text-sm text-foreground">Application Growth Trend</h4>
+                    <p class="text-xs text-muted-foreground">Submissions per month over last 6 months</p>
+                  </div>
+                  <span class="text-xs text-primary font-medium font-mono">AY 2026–2027</span>
+                </div>
+                <div class="h-60">
+                  <canvas id="chart-reg-growth"></canvas>
+                </div>
+              </div>
+
+              <div class="p-5 rounded-xl border border-border bg-card/60 space-y-3">
+                <div>
+                  <h4 class="font-bold text-sm text-foreground">Pipeline Breakdown</h4>
+                  <p class="text-xs text-muted-foreground">11 Stage distribution</p>
+                </div>
+                <div class="h-60 flex items-center justify-center">
+                  <canvas id="chart-reg-pipeline"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Course Preferences & Registrar Activity -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="p-5 rounded-xl border border-border bg-card/60 space-y-3">
+                <h4 class="font-bold text-sm text-foreground">Top Course Preferences (First Choice)</h4>
+                <div class="h-52 flex items-center justify-center">
+                  <canvas id="chart-reg-courses"></canvas>
+                </div>
+              </div>
+
+              <div class="p-5 rounded-xl border border-border bg-card/60 space-y-3 flex flex-col">
+                <h4 class="font-bold text-sm text-foreground">Recent Admissions Activity</h4>
+                <div class="flex-1 overflow-y-auto space-y-2.5 max-h-52 pr-1 text-xs">
+                  <div class="flex items-start gap-2.5">
+                    <div class="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-foreground">Accepted 14 Applications in batch #89</p>
+                      <p class="text-[10px] text-muted-foreground">Admissions &bull; 1 hr ago</p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-2.5">
+                    <div class="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-foreground">Corrected Senior High Strand for APP-2026-0412</p>
+                      <p class="text-[10px] text-muted-foreground">Corrections &bull; 2 hrs ago</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= PERSONA VIEW B: GUIDANCE / TEST ADMIN ================= -->
+          <div id="persona-guidance" class="space-y-6 hidden">
+            <div class="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-purple-400 font-mono">Guidance Counselor &bull; Test Administrator Persona View</span>
+                <h3 class="text-xl font-bold text-foreground">Welcome back, Dr. Elena Ramos</h3>
+                <p class="text-xs text-muted-foreground">Guidance Counselor (Inherent Test Administrator) &bull; Testing Center</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium">Guidance Scope</span>
+            </div>
+
+            <!-- Guidance 4 KPI Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="p-4 rounded-xl border-l-4 border-l-purple-500 bg-purple-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium">Scheduled Sessions</div>
+                <div class="text-3xl font-extrabold text-foreground">16</div>
+                <div class="text-[11px] text-muted-foreground">800 total candidate slots</div>
+              </div>
+
+              <div class="p-4 rounded-xl border-l-4 border-l-emerald-500 bg-emerald-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium">Candidates Tested</div>
+                <div class="text-3xl font-extrabold text-foreground">580</div>
+                <div class="text-[11px] text-emerald-400 font-semibold">92.4% Attendance rate</div>
+              </div>
+
+              <div class="p-4 rounded-xl border-l-4 border-l-amber-500 bg-amber-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium">Pending Scoring</div>
+                <div class="text-3xl font-extrabold text-foreground">2 Sessions</div>
+                <div class="text-[11px] text-amber-400 font-semibold">95 examinees to score</div>
+              </div>
+
+              <div class="p-4 rounded-xl border-l-4 border-l-blue-500 bg-blue-500/5 border border-border space-y-1.5">
+                <div class="text-xs text-muted-foreground font-medium">Scoring Turnaround</div>
+                <div class="text-3xl font-extrabold text-foreground">1.8 Days</div>
+                <div class="text-[11px] text-muted-foreground">From test to finalized scores</div>
+              </div>
+            </div>
+
+            <!-- Guidance Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="p-5 rounded-xl border border-border bg-card/60 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-bold text-sm text-foreground">Exam Session Conduct (Weekly)</h4>
+                  <span class="text-xs text-muted-foreground font-mono">Scheduled vs Completed</span>
+                </div>
+                <div class="h-60">
+                  <canvas id="chart-gui-sessions"></canvas>
+                </div>
+              </div>
+
+              <div class="p-5 rounded-xl border border-border bg-card/60 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-bold text-sm text-foreground">Testing Attendance Rate</h4>
+                  <span class="text-xs text-emerald-400 font-semibold">Present vs Absent</span>
+                </div>
+                <div class="h-60 flex items-center justify-center">
+                  <canvas id="chart-gui-attendance"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= PERSONA VIEW C: PROGRAM HEAD ================= -->
+          <div id="persona-program_head" class="space-y-6 hidden">
+            <div class="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400 font-mono">Program Head Persona View</span>
+                <h3 class="text-xl font-bold text-foreground">Welcome back, Prof. Robert Lim</h3>
+                <p class="text-xs text-muted-foreground">Program Head &bull; Bachelor of Science in Nursing (BSN)</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">BSN Scope Only</span>
+            </div>
+
+            <!-- Program Head Quota Fill Card -->
+            <div class="p-5 rounded-xl border border-border bg-card/60 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="font-bold text-sm text-foreground">BS Nursing Intake Quota Allocation</h4>
+                  <p class="text-xs text-muted-foreground">AY 2026–2027 Admissions Target</p>
+                </div>
+                <div class="text-right">
+                  <div class="text-2xl font-black text-foreground">82 / 90</div>
+                  <div class="text-[11px] text-emerald-400 font-semibold">91.1% Target Reached</div>
+                </div>
+              </div>
+              <div class="w-full bg-muted rounded-full h-3">
+                <div class="bg-emerald-500 h-3 rounded-full" style="width: 91.1%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] text-muted-foreground pt-1">
+                <span>8 Seats Remaining</span>
+                <a href="/staff/programs" class="text-primary hover:underline font-semibold">Open Program Workspace &rarr;</a>
+              </div>
+            </div>
+
+            <!-- Candidate Pool Status -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div class="p-4 rounded-xl border border-border bg-card space-y-1">
+                <div class="text-muted-foreground">Potential / Upcoming Candidates</div>
+                <div class="text-2xl font-bold text-foreground">142</div>
+                <p class="text-[10px] text-muted-foreground">1st choice applicants awaiting exam</p>
+              </div>
+              <div class="p-4 rounded-xl border border-border bg-card space-y-1">
+                <div class="text-muted-foreground">Advising Pool (Cleared Scores)</div>
+                <div class="text-2xl font-bold text-emerald-400">82</div>
+                <p class="text-[10px] text-muted-foreground">Met Stanine & subtest thresholds</p>
+              </div>
+              <div class="p-4 rounded-xl border border-border bg-card space-y-1">
+                <div class="text-muted-foreground">Pending Edge Follow-ups</div>
+                <div class="text-2xl font-bold text-amber-400">3</div>
+                <p class="text-[10px] text-muted-foreground">Requires interview resolution (D-089)</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Stakeholder Decision Box -->
+        <div class="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+          <div class="space-y-1">
+            <span class="font-bold text-foreground">Stakeholder Decision for Target 1 (Staff Persona Dashboards):</span>
+            <p class="text-muted-foreground">Implement server-projected dashboard matching user role (Registrar vs Guidance vs Program Head).</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-emerald-500">
+              <input type="radio" name="dec-t1" value="approved" checked class="text-emerald-500">
+              <span class="text-emerald-400 font-semibold">✓ Approve Implementation</span>
+            </label>
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-amber-500">
+              <input type="radio" name="dec-t1" value="revise" class="text-amber-500">
+              <span class="text-amber-400 font-semibold">💬 Needs Revision</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TARGET 2: REPORTS & ANALYTICS HUB -->
+      <!-- ========================================================================= -->
+      <section id="target-2" class="scroll-mt-24 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-bold tracking-tight text-foreground">Target 2: Reports & Analytics Hub</h2>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">Brand New View</span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              File: <code class="text-primary font-mono">system/resources/js/Pages/Reports/Index.svelte</code> (/reports) &bull; Clean new analytical export hub
+            </p>
+          </div>
+          <span class="text-[11px] font-mono bg-muted/60 px-2 py-1 rounded text-muted-foreground">Capability: REGISTRAR_REPORTS_VIEW + GUIDANCE_REPORTS_VIEW</span>
+        </div>
+
+        <!-- MOCKUP OF REPORTS HUB -->
+        <div class="rounded-2xl border border-border/80 bg-card p-6 shadow-xl space-y-6 text-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-border/60">
+            <span class="font-semibold text-foreground text-sm">Reports & Official Exports Hub</span>
+            <div class="flex items-center gap-2">
+              <span class="text-muted-foreground">Cycle:</span>
+              <select class="text-xs rounded-lg border border-border bg-card px-3 py-1 text-foreground">
+                <option selected>AY 2026–2027 First Semester (Active)</option>
+                <option>AY 2025–2026 Second Semester</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 2 Clean Tabs: Registrar Reports vs Guidance Reports -->
+          <div class="space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2">
+              <button class="px-3 py-1.5 rounded-lg bg-primary text-white font-medium text-xs">Registrar Reports (3)</button>
+              <button class="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground text-xs">Guidance Testing Reports (3)</button>
+            </div>
+
+            <!-- Registrar Tab Content -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="p-4 rounded-xl border border-border bg-card/50 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div class="font-bold text-foreground text-sm">Applications Census Summary</div>
+                  <p class="text-muted-foreground text-[11px] mt-1">Complete applicant roster with demographic attributes, strand, and final admission status.</p>
+                </div>
+                <div class="flex items-center gap-2 pt-2 border-t border-border/60">
+                  <button class="flex-1 py-1 rounded bg-card border border-border hover:bg-muted font-semibold">Download XLSX</button>
+                  <button class="flex-1 py-1 rounded bg-card border border-border hover:bg-muted font-semibold">PDF Census</button>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-xl border border-border bg-card/50 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div class="font-bold text-foreground text-sm">Program Demand & Preferences</div>
+                  <p class="text-muted-foreground text-[11px] mt-1">First and second choice applicant volume compared directly to approved department quotas.</p>
+                </div>
+                <div class="flex items-center gap-2 pt-2 border-t border-border/60">
+                  <button class="flex-1 py-1 rounded bg-card border border-border hover:bg-muted font-semibold">Download XLSX</button>
+                  <button class="flex-1 py-1 rounded bg-card border border-border hover:bg-muted font-semibold">PDF Report</button>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-xl border border-border bg-card/50 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div class="font-bold text-foreground text-sm">Geographic Origin Distribution</div>
+                  <p class="text-muted-foreground text-[11px] mt-1">Feeder school distribution, municipality census, and regional applicant concentration.</p>
+                </div>
+                <div class="flex items-center gap-2 pt-2 border-t border-border/60">
+                  <button class="flex-1 py-1 rounded bg-card border border-border hover:bg-muted font-semibold">Download XLSX</button>
+                  <button class="flex-1 py-1 rounded bg-card border border-border hover:bg-muted font-semibold">PDF Report</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stakeholder Decision Box -->
+        <div class="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+          <div class="space-y-1">
+            <span class="font-bold text-foreground">Stakeholder Decision for Target 2 (Reports Hub):</span>
+            <p class="text-muted-foreground">Add dedicated /reports page with tabbed Registrar and Guidance export catalogs.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-emerald-500">
+              <input type="radio" name="dec-t2" value="approved" checked class="text-emerald-500">
+              <span class="text-emerald-400 font-semibold">✓ Approve Implementation</span>
+            </label>
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-rose-500">
+              <input type="radio" name="dec-t2" value="exclude" class="text-rose-500">
+              <span class="text-rose-400 font-semibold">✕ Exclude</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TARGET 3: EXAM MONITORING LIVE TELEMETRY WIDGET -->
+      <!-- ========================================================================= -->
+      <section id="target-3" class="scroll-mt-24 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-bold tracking-tight text-foreground">Target 3: Exam Live-Ops Telemetry Strip</h2>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Non-Intrusive Widget</span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              File: <code class="text-primary font-mono">system/resources/js/Pages/Examination/MonitoringIndex.svelte</code> (/exams/monitoring) &bull; Only adds top telemetry ticker
+            </p>
+          </div>
+          <span class="text-[11px] font-mono bg-muted/60 px-2 py-1 rounded text-muted-foreground">Safe: Does not touch session roster or scoring code</span>
+        </div>
+
+        <!-- MOCKUP OF TELEMETRY STRIP -->
+        <div class="rounded-2xl border border-border/80 bg-card p-6 shadow-xl space-y-4 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-muted-foreground font-mono">Proposed Header Addition to Existing /exams/monitoring:</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold animate-pulse">&bull; LIVE RADAR PULSE</span>
+          </div>
+
+          <!-- Real-Time Telemetry Bar -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-3 rounded-xl border border-border bg-card/60 text-center">
+              <div class="text-2xl font-bold text-foreground">3 / 4</div>
+              <div class="text-[10px] text-muted-foreground mt-0.5">Active Rooms</div>
+            </div>
+            <div class="p-3 rounded-xl border border-border bg-card/60 text-center">
+              <div class="text-2xl font-bold text-emerald-400">138 / 150</div>
+              <div class="text-[10px] text-muted-foreground mt-0.5">Present (92%)</div>
+            </div>
+            <div class="p-3 rounded-xl border border-border bg-card/60 text-center">
+              <div class="text-2xl font-bold text-rose-400">12</div>
+              <div class="text-[10px] text-muted-foreground mt-0.5">Absent No-Shows</div>
+            </div>
+            <div class="p-3 rounded-xl border border-border bg-card/60 text-center">
+              <div class="text-2xl font-bold text-primary">85</div>
+              <div class="text-[10px] text-muted-foreground mt-0.5">Submitted Papers</div>
+            </div>
+          </div>
+          <p class="text-[11px] text-muted-foreground">Existing session cards and rosters remain completely unchanged below this strip.</p>
+        </div>
+
+        <!-- Stakeholder Decision Box -->
+        <div class="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+          <div class="space-y-1">
+            <span class="font-bold text-foreground">Stakeholder Decision for Target 3 (Live Telemetry Widget):</span>
+            <p class="text-muted-foreground">Add non-intrusive live telemetry strip to existing Exam Monitoring.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-emerald-500">
+              <input type="radio" name="dec-t3" value="approved" checked class="text-emerald-500">
+              <span class="text-emerald-400 font-semibold">✓ Approve Widget</span>
+            </label>
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-amber-500">
+              <input type="radio" name="dec-t3" value="defer" class="text-amber-500">
+              <span class="text-amber-400 font-semibold">⏱ Defer</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TARGET 4: AUDIT LOG EXPLORER -->
+      <!-- ========================================================================= -->
+      <section id="target-4" class="scroll-mt-24 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-bold tracking-tight text-foreground">Target 4: Audit Log Explorer</h2>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded bg-primary/10 text-primary border border-primary/20">Pure Security View</span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              File: <code class="text-primary font-mono">system/resources/js/Pages/Staff/Logs/Index.svelte</code> (/staff/logs) &bull; Surfaces existing database audit records
+            </p>
+          </div>
+          <span class="text-[11px] font-mono bg-muted/60 px-2 py-1 rounded text-muted-foreground">Capability: AUDIT_LOGS_VIEW (GF-04 CAP-033)</span>
+        </div>
+
+        <!-- MOCKUP OF AUDIT LOG EXPLORER -->
+        <div class="rounded-2xl border border-border/80 bg-card p-6 shadow-xl space-y-4 text-xs">
+          <div class="flex items-center justify-between pb-2 border-b border-border/60">
+            <span class="font-semibold text-foreground text-sm">System Security & Audit Trail</span>
+            <button class="px-2.5 py-1 rounded bg-card border border-border hover:bg-muted text-foreground">Export CSV</button>
+          </div>
+          <div class="rounded-xl border border-border overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-muted/50 text-muted-foreground font-semibold border-b border-border">
+                <tr>
+                  <th class="p-3">Timestamp</th>
+                  <th class="p-3">Actor</th>
+                  <th class="p-3">Event</th>
+                  <th class="p-3">Summary</th>
+                  <th class="p-3 text-center">Payload</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                <tr class="hover:bg-muted/30">
+                  <td class="p-3 font-mono text-muted-foreground">2026-09-16 10:24</td>
+                  <td class="p-3 font-medium text-foreground">Maria Santos</td>
+                  <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono text-[10px]">admissions.accepted</span></td>
+                  <td class="p-3 text-foreground">Accepted applicant APP-2026-0192</td>
+                  <td class="p-3 text-center"><span class="text-primary cursor-pointer hover:underline">{ JSON }</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stakeholder Decision Box -->
+        <div class="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+          <div class="space-y-1">
+            <span class="font-bold text-foreground">Stakeholder Decision for Target 4 (Audit Log Explorer):</span>
+            <p class="text-muted-foreground">Add security audit log explorer for administrators.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-emerald-500">
+              <input type="radio" name="dec-t4" value="approved" checked class="text-emerald-500">
+              <span class="text-emerald-400 font-semibold">✓ Approve View</span>
+            </label>
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer hover:border-amber-500">
+              <input type="radio" name="dec-t4" value="defer" class="text-amber-500">
+              <span class="text-amber-400 font-semibold">⏱ Defer</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- SCRIPT FOR CHARTS & INTERACTIVITY -->
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      html.classList.toggle('light', !isDark);
+      document.getElementById('theme-icon').textContent = isDark ? '☀️' : '🌙';
+      document.getElementById('theme-text').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    function switchDashboardPersona(persona) {
+      document.getElementById('persona-registrar').classList.add('hidden');
+      document.getElementById('persona-guidance').classList.add('hidden');
+      document.getElementById('persona-program_head').classList.add('hidden');
+
+      document.getElementById('tab-btn-reg').classList.remove('bg-primary', 'text-white');
+      document.getElementById('tab-btn-gui').classList.remove('bg-primary', 'text-white');
+      document.getElementById('tab-btn-ph').classList.remove('bg-primary', 'text-white');
+
+      document.getElementById('tab-btn-reg').classList.add('text-muted-foreground');
+      document.getElementById('tab-btn-gui').classList.add('text-muted-foreground');
+      document.getElementById('tab-btn-ph').classList.add('text-muted-foreground');
+
+      if (persona === 'registrar') {
+        document.getElementById('persona-registrar').classList.remove('hidden');
+        document.getElementById('tab-btn-reg').classList.add('bg-primary', 'text-white');
+      } else if (persona === 'guidance') {
+        document.getElementById('persona-guidance').classList.remove('hidden');
+        document.getElementById('tab-btn-gui').classList.add('bg-primary', 'text-white');
+      } else if (persona === 'program_head') {
+        document.getElementById('persona-program_head').classList.remove('hidden');
+        document.getElementById('tab-btn-ph').classList.add('bg-primary', 'text-white');
+      }
+    }
+
+    function exportDecisions() {
+      const payload = {
+        catalog_version: '2.0-clean-scope',
+        timestamp: new Date().toISOString(),
+        decisions: {
+          target1_staff_dashboard: document.querySelector('input[name="dec-t1"]:checked')?.value ?? 'approved',
+          target2_reports_hub: document.querySelector('input[name="dec-t2"]:checked')?.value ?? 'approved',
+          target3_exam_telemetry: document.querySelector('input[name="dec-t3"]:checked')?.value ?? 'approved',
+          target4_audit_explorer: document.querySelector('input[name="dec-t4"]:checked')?.value ?? 'approved',
+        },
+        reviewed_by: 'Committee'
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nexiam-ui-restoration-decisions-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Initialize Charts
+    document.addEventListener('DOMContentLoaded', () => {
+      const textColor = '#94a3b8';
+      const gridColor = 'rgba(255, 255, 255, 0.06)';
+
+      // Registrar Growth
+      const ctxRegGrowth = document.getElementById('chart-reg-growth');
+      if (ctxRegGrowth) {
+        new Chart(ctxRegGrowth, {
+          type: 'line',
+          data: {
+            labels: ['Apr 2026', 'May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026', 'Sep 2026'],
+            datasets: [{
+              label: 'New Applications',
+              data: [85, 140, 290, 420, 310, 237],
+              borderColor: '#14b8a6',
+              backgroundColor: 'rgba(20, 184, 166, 0.15)',
+              fill: true,
+              tension: 0.35,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: gridColor }, ticks: { color: textColor } },
+              y: { grid: { color: gridColor }, ticks: { color: textColor } }
+            }
+          }
+        });
+      }
+
+      // Registrar Pipeline
+      const ctxRegPipe = document.getElementById('chart-reg-pipeline');
+      if (ctxRegPipe) {
+        new Chart(ctxRegPipe, {
+          type: 'doughnut',
+          data: {
+            labels: ['Pending', 'Accepted', 'Scheduled', 'Attended', 'Scored', 'Graded', 'Released'],
+            datasets: [{
+              data: [210, 420, 212, 145, 95, 220, 180],
+              backgroundColor: ['#94a3b8', '#3b82f6', '#6366f1', '#a78bfa', '#c084fc', '#a855f7', '#22c55e'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, color: textColor, font: { size: 10 } } } }
+          }
+        });
+      }
+
+      // Registrar Courses
+      const ctxRegCourses = document.getElementById('chart-reg-courses');
+      if (ctxRegCourses) {
+        new Chart(ctxRegCourses, {
+          type: 'doughnut',
+          data: {
+            labels: ['BS Nursing', 'BS Computer Science', 'BS Criminology', 'BS Education', 'Others'],
+            datasets: [{
+              data: [540, 380, 240, 190, 132],
+              backgroundColor: ['#3b82f6', '#14b8a6', '#f59e0b', '#ec4899', '#64748b'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, color: textColor, font: { size: 10 } } } }
+          }
+        });
+      }
+
+      // Guidance Sessions
+      const ctxGuiSessions = document.getElementById('chart-gui-sessions');
+      if (ctxGuiSessions) {
+        new Chart(ctxGuiSessions, {
+          type: 'line',
+          data: {
+            labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'],
+            datasets: [
+              { label: 'Scheduled', data: [4, 8, 12, 16, 14, 10], borderColor: '#8b5cf6', borderWidth: 2, tension: 0.3 },
+              { label: 'Completed', data: [4, 7, 11, 15, 12, 8], borderColor: '#22c55e', borderWidth: 2, tension: 0.3 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+            scales: {
+              x: { grid: { color: gridColor }, ticks: { color: textColor } },
+              y: { grid: { color: gridColor }, ticks: { color: textColor } }
+            }
+          }
+        });
+      }
+
+      // Guidance Attendance
+      const ctxGuiAtt = document.getElementById('chart-gui-attendance');
+      if (ctxGuiAtt) {
+        new Chart(ctxGuiAtt, {
+          type: 'doughnut',
+          data: {
+            labels: ['Present (580)', 'Absent (48)'],
+            datasets: [{
+              data: [580, 48],
+              backgroundColor: ['#22c55e', '#ef4444'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

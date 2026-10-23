@@ -21,7 +21,7 @@ class ReissueApplicantAccessKey
     ) {}
 
     /**
-     * @return array{attempt: AdmissionAttempt, access_token: string}
+     * @return array{attempt: AdmissionAttempt, access_token: string, credential_handoff: array<string, mixed>}
      */
     public function handle(AdmissionAttempt $attempt, User $actor, int $expectedVersion, string $reason = ''): array
     {
@@ -55,6 +55,13 @@ class ReissueApplicantAccessKey
                 'access_key',
                 'reissue-'.$attempt->id.'-'.now()->timestamp,
             );
+            $handoff = $this->issueChallenge->issueHandoffBundle(
+                $identity,
+                $attempt,
+                $token,
+                'reissued',
+                'reissue',
+            );
 
             $attempt->update([
                 'version' => $attempt->version + 1,
@@ -70,6 +77,7 @@ class ReissueApplicantAccessKey
             return [
                 'attempt' => $attempt->fresh(),
                 'access_token' => $token,
+                'credential_handoff' => $handoff,
             ];
         });
     }

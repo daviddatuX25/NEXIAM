@@ -2,9 +2,9 @@
 
 use App\Assessment\Actions\Omr\ConfirmOmrCaptureBatch;
 use App\Assessment\Actions\Omr\CreateOmrCaptureBatch;
+use App\Assessment\Actions\Omr\ResolveOmrCaptureSheetIssue;
 use App\Assessment\Actions\Omr\RetryOmrCaptureSheet;
 use App\Assessment\Actions\Omr\ReviewOmrCaptureSheet;
-use App\Assessment\Actions\Omr\ResolveOmrCaptureSheetIssue;
 use App\Assessment\Actions\Omr\RunOmrSheetAnalysis;
 use App\Assessment\Omr\OmrDetectionRequest;
 use App\Models\Assessment\OmrCaptureBatch;
@@ -33,13 +33,7 @@ function hardeningOmrFixture(TestCase $test, ?array $fixture = null): array
     $grading = $fixture['grading'];
     $pair = OmrTemplateBookletPair::query()->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)->firstOrFail();
 
-    $batch = app(CreateOmrCaptureBatch::class)->handle(
-        $grading,
-        $guidance,
-        (int) $pair->template_version_id,
-        (int) $pair->booklet_version_id,
-        'hardening-'.uniqid(),
-    );
+    $batch = app(CreateOmrCaptureBatch::class)->handle($grading, $guidance, 'hardening-'.uniqid());
 
     $assetStore = app(SensitiveAssetStore::class);
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
@@ -94,7 +88,7 @@ test('confirm blocks when a sheet is still needs-review', function (): void {
         ->toThrow(RuntimeException::class, 'reviewed');
 });
 
-test('review rejects binding an examinee already bound to another sheet', function (): void {
+test('review ignores a client-supplied examinee binding and requires machine evidence', function (): void {
     $fixture = buildGradingFixture($this);
     $guidance = $fixture['guidance'];
     $attemptId = (int) $fixture['attempts'][0]->id;
@@ -103,10 +97,10 @@ test('review rejects binding an examinee already bound to another sheet', functi
     app(RunOmrSheetAnalysis::class)->handle($firstRun->id);
     $first->refresh();
 
-    app(ReviewOmrCaptureSheet::class)->handle($first, $guidance, null, [], $attemptId);
+    app(ReviewOmrCaptureSheet::class)->handle($first, $guidance, null, $attemptId);
     expect($first->fresh()->status)->toBe(OmrCaptureSheet::STATUS_REVIEWED);
 
-    // A second sheet for the same batch must not bind the same examinee.
+    // A client-supplied attempt cannot bind a second sheet without authoritative machine evidence.
     $second = OmrCaptureSheet::query()->create([
         'batch_id' => $batch->id,
         'status' => OmrCaptureSheet::STATUS_NEEDS_REVIEW,
@@ -124,8 +118,9 @@ test('review rejects binding an examinee already bound to another sheet', functi
     ]);
     $second->issues()->create(['issue_code' => 'identity_unresolved', 'severity' => 'required', 'state' => 'open', 'version' => 1]);
 
-    expect(fn () => app(ReviewOmrCaptureSheet::class)->handle($second, $guidance, null, [], $attemptId))
-        ->toThrow(RuntimeException::class, 'already bound');
+    expect(fn () => app(ReviewOmrCaptureSheet::class)->handle($second, $guidance, null, $attemptId))
+        ->toThrow(RuntimeException::class, 'machine evidence is missing');
+    expect($second->fresh()->admission_attempt_id)->toBeNull();
 });
 
 test('database refuses a second binding to the same examinee', function (): void {
@@ -136,7 +131,7 @@ test('database refuses a second binding to the same examinee', function (): void
     [$batch, $first, $firstRun] = hardeningOmrFixture($this, $fixture);
     app(RunOmrSheetAnalysis::class)->handle($firstRun->id);
     $first->refresh();
-    app(ReviewOmrCaptureSheet::class)->handle($first, $guidance, null, [], $attemptId);
+    app(ReviewOmrCaptureSheet::class)->handle($first, $guidance, null, $attemptId);
 
     // A forged second reviewed sheet bound to the same attempt must be refused
     // by the database itself (partial unique index), before any action runs.
@@ -252,10 +247,33 @@ test('aligned derivative is encrypted, persisted, and served when the provider e
     expect(hash('sha256', $bytes))->toBe($sheet->aligned_hash);
 
     $response = $this->actingAs($guidance)
-        ->get(route('grading.sessions.omr.sheets.image', [$batch->gradingSession, $sheet]));
+        ->get(route('scoring.sessions.omr.sheets.image', [$batch->gradingSession->examSession, $sheet]));
     $response->assertOk()
         ->assertHeader('Content-Type', 'image/png')
         ->assertHeader('Cache-Control', 'no-store, private');
+    $this->actingAs($guidance)
+        ->get(route('scoring.sessions.omr.sheets.image', [
+            'examSession' => (int) $batch->gradingSession->examSession->id + 99999,
+            'sheet' => $sheet,
+        ]))
+        ->assertNotFound();
+
+    $this->actingAs($guidance)
+        ->get(route('scoring.sessions.omr.sheets.image', [
+            'examSession' => $batch->gradingSession->examSession,
+            'sheet' => $sheet,
+            'sha256' => str_repeat('0', 64),
+        ]))
+        ->assertNotFound();
+
+    Storage::disk('sensitive')->put((string) $sheet->aligned_asset_path, 'tampered-asset');
+    $this->actingAs($guidance)
+        ->get(route('scoring.sessions.omr.sheets.image', [
+            'examSession' => $batch->gradingSession->examSession,
+            'sheet' => $sheet,
+        ]))
+        ->assertNotFound();
+
 });
 
 test('required detection issues must be resolved before confirmation', function (): void {
@@ -275,7 +293,7 @@ test('required detection issues must be resolved before confirmation', function 
         'question_no' => 1,
     ]);
 
-    app(ReviewOmrCaptureSheet::class)->handle($sheet, $guidance, null, [], $attemptId);
+    app(ReviewOmrCaptureSheet::class)->handle($sheet, $guidance, null, $attemptId);
 
     expect(fn () => app(ConfirmOmrCaptureBatch::class)->handle($batch, $guidance))
         ->toThrow(RuntimeException::class, 'Resolve required OMR issues');
@@ -285,4 +303,67 @@ test('required detection issues must be resolved before confirmation', function 
     $issue->refresh();
     expect($issue->state)->toBe('resolved')
         ->and($issue->resolution_code)->toBe('manual_review');
+});
+test('gallery thumbnails are bounded private WebP derivatives without changing source or review URLs', function (): void {
+    $fixture = buildGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    [$batch, $sheet] = hardeningOmrFixture($this, $fixture);
+    $bytes = imagecreatetruecolor(800, 600);
+    ob_start();
+    imagepng($bytes);
+    $sourceBytes = (string) ob_get_clean();
+    imagedestroy($bytes);
+
+    $assetStore = app(SensitiveAssetStore::class);
+    $assetPath = $assetStore->store($sourceBytes, 'omr/test/'.uniqid().'.img');
+    $sheet->forceFill([
+        'asset_path' => $assetPath,
+        'asset_hmac' => $assetStore->hmac($sourceBytes),
+        'original_mime' => 'image/png',
+        'original_bytes' => strlen($sourceBytes),
+    ])->save();
+    $status = $sheet->status;
+    $fullUrl = route('scoring.sessions.omr.sheets.image', [
+        'examSession' => $batch->gradingSession->examSession,
+        'sheet' => $sheet,
+    ]);
+
+    $this->actingAs($guidance)
+        ->get(route('scoring.sessions.omr', $batch->gradingSession->examSession))
+        ->assertInertia(fn ($page) => $page
+            ->where('batch.sheets.0.image_url', $fullUrl)
+            ->where('batch.sheets.0.thumbnail_url', $fullUrl.'?variant=thumbnail'));
+
+    $thumbnailResponse = $this->actingAs($guidance)->get($fullUrl.'?variant=thumbnail');
+    $thumbnailResponse->assertOk()->assertHeader('Content-Type', 'image/webp')
+        ->assertHeader('Cache-Control', 'no-store, private');
+    expect(strlen($thumbnailResponse->getContent()))->toBeLessThanOrEqual(1_048_576)
+        ->and(substr($thumbnailResponse->getContent(), 0, 4))->toBe('RIFF')
+        ->and($fullUrl)->not->toContain('variant=');
+
+    $this->actingAs($guidance)->get($fullUrl.'?variant=original')->assertNotFound();
+    $this->actingAs($guidance)->get(route('scoring.sessions.omr.sheets.image', [
+        'examSession' => (int) $batch->gradingSession->examSession->id + 99999,
+        'sheet' => $sheet,
+    ]).'?variant=thumbnail')->assertNotFound();
+
+    $shaUrl = route('scoring.sessions.omr.sheets.image', [
+        'examSession' => $batch->gradingSession->examSession,
+        'sheet' => $sheet,
+        'sha256' => hash('sha256', $sourceBytes),
+    ]);
+    $this->actingAs($guidance)->get($shaUrl.'?variant=thumbnail')->assertNotFound();
+
+    $this->actingAs($guidance)->get($fullUrl)->assertOk()->assertHeader('Content-Type', 'image/png')
+        ->assertHeader('Cache-Control', 'no-store, private')->assertContent($sourceBytes);
+    expect($sheet->fresh()->status)->toBe($status);
+
+    Storage::disk('sensitive')->put($assetPath, 'corrupt');
+    $this->actingAs($guidance)->get($fullUrl.'?variant=thumbnail')
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/webp')
+        ->assertContent($thumbnailResponse->getContent());
+    $this->actingAs($guidance)->get($fullUrl)->assertNotFound();
+    expect($sheet->fresh()->status)->toBe($status)
+        ->and($sheet->fresh()->asset_path)->toBe($assetPath);
 });

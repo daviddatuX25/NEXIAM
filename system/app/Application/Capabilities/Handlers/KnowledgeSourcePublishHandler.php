@@ -2,7 +2,8 @@
 
 namespace App\Application\Capabilities\Handlers;
 
-use App\Ai\Knowledge\KnowledgeLifecycle;
+use App\Ai\Knowledge\Actions\PublishKnowledgeSourceVersion;
+use App\Models\Ai\KnowledgeSource;
 use App\Models\Ai\KnowledgeSourceVersion;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -10,26 +11,30 @@ use RuntimeException;
 
 final class KnowledgeSourcePublishHandler
 {
-    public function __construct(private readonly KnowledgeLifecycle $lifecycle) {}
+    public function __construct(private readonly PublishKnowledgeSourceVersion $publish) {}
 
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public function handle(array $input = []): array
+    public function handle(array $input = [], ?User $actor = null): array
     {
         $versionId = (string) ($input['version_id'] ?? '');
         $version = KnowledgeSourceVersion::query()->find($versionId);
         if ($version === null) {
             throw new RuntimeException('version_not_found');
         }
+        $source = $version->source;
+        if (! $source instanceof KnowledgeSource) {
+            throw new RuntimeException('source_not_found');
+        }
 
-        $actor = Auth::user();
-        if (! $actor instanceof User) {
+        $resolvedActor = $actor ?? Auth::user();
+        if (! $resolvedActor instanceof User) {
             throw new RuntimeException('unauthenticated');
         }
 
-        $this->lifecycle->publish($actor, $version);
+        $this->publish->handle($resolvedActor, $source, $version);
 
         return [
             'version_id' => $version->id,

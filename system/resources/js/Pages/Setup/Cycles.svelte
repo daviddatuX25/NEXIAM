@@ -3,33 +3,35 @@
    * Academic years list — legacy Admin/AcademicYears/Index feel:
    * show what exists and what is active; Create/Edit are separate pages.
    */
+  import AcademicCycleCalendar from '@/Components/Setup/AcademicCycleCalendar.svelte';
   import StaffLayout from '@/Pages/Staff/StaffLayout.svelte';
   import PageHeaderBar from '@/Components/kit/PageHeaderBar.svelte';
   import SwitchableListView from '@/Components/kit/SwitchableListView.svelte';
+  import EntityRowActions from '@/Components/kit/EntityRowActions.svelte';
   import { Badge } from '@/Components/ui/badge';
   import { Button } from '@/Components/ui/button';
   import * as Table from '@/Components/ui/table';
   import { Link, router } from '@inertiajs/svelte';
   import { Plus, Pencil, Pause, Play } from 'lucide-svelte';
 
-  let { cycles = [] } = $props();
+  let { cycles = [], application_calendar = null, opening_alerts_visible = false } = $props();
 
   let viewMode = $state('responsive');
   const hasActive = $derived((cycles ?? []).some((ay) => ay.is_active));
 
   const breadcrumbs = [
     { label: 'Setup', href: '/setup' },
-    { label: 'Academic years' },
+    { label: 'Academic Years' },
   ];
 </script>
 
-<svelte:head><title>Academic years · Setup</title></svelte:head>
+<svelte:head><title>Academic Years · Setup</title></svelte:head>
 
 <StaffLayout {breadcrumbs}>
   <div class="min-w-0 space-y-6 p-4 sm:p-6">
     <PageHeaderBar
-      title="Academic years"
-      description="View and manage school years and semesters. Activate one so applications can open."
+      title="Academic Years"
+      description="Manage institutional academic years and semesters, configure application windows, and set the active admissions cycle."
     >
       {#snippet actions()}
         <Link href="/setup/cycles/create">
@@ -52,17 +54,17 @@
     <SwitchableListView bind:viewMode overflow="auto">
       {#snippet table()}
         <Table.Root class="w-full min-w-[640px] text-sm">
-          <Table.Header class="bg-muted/50">
-            <Table.Row>
+          <Table.Header class="bg-muted/40 border-b border-border">
+            <Table.Row class="border-b border-border/40 hover:bg-muted/30 transition-colors">
               <Table.Head>Academic year</Table.Head>
               <Table.Head>Application window</Table.Head>
               <Table.Head>Status</Table.Head>
-              <Table.Head class="text-center">Actions</Table.Head>
+              <Table.Head class="pr-6 text-right">Actions</Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body>
             {#each cycles as ay (ay.id)}
-              <Table.Row class={ay.is_active ? '' : 'text-muted-foreground/70'}>
+              <Table.Row class="border-b border-border/40 hover:bg-muted/30 transition-colors {ay.is_active ? '' : 'text-muted-foreground/70'}">
                 <Table.Cell class="font-semibold tracking-tight">{ay.label}</Table.Cell>
                 <Table.Cell class="text-muted-foreground">{ay.application_window}</Table.Cell>
                 <Table.Cell>
@@ -70,34 +72,26 @@
                     {ay.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </Table.Cell>
-                <Table.Cell class="text-center">
-                  <div class="inline-flex flex-wrap justify-center gap-1">
-                    <Link href={`/setup/cycles/${ay.id}/edit`}>
-                      <Button variant="ghost" size="sm" class="h-8 px-2 text-xs font-semibold">
-                        <Pencil class="mr-1.5 size-3.5" />
-                        Edit
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      class="h-8 px-2 text-xs font-semibold {ay.is_active
-                        ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-400'
-                        : 'text-primary hover:bg-primary/5'}"
-                      onclick={() =>
-                        ay.is_active
-                          ? router.post(`/setup/cycles/${ay.id}/deactivate`)
-                          : router.post(`/setup/cycles/${ay.id}/activate`)}
-                    >
-                      {#if ay.is_active}
-                        <Pause class="mr-1.5 size-3.5" />
-                        Deactivate
-                      {:else}
-                        <Play class="mr-1.5 size-3.5" />
-                        Activate
-                      {/if}
-                    </Button>
-                  </div>
+                <Table.Cell class="pr-6 text-right" data-action-cell>
+                  <EntityRowActions
+                    primaryAction={{
+                      label: 'Edit',
+                      href: `/setup/cycles/${ay.id}/edit`,
+                      icon: Pencil,
+                      variant: 'outline',
+                    }}
+                    overflowItems={[
+                      {
+                        label: ay.is_active ? 'Deactivate' : 'Activate',
+                        icon: ay.is_active ? Pause : Play,
+                        onclick: () =>
+                          ay.is_active
+                            ? router.post(`/setup/cycles/${ay.id}/deactivate`)
+                            : router.post(`/setup/cycles/${ay.id}/activate`),
+                      },
+                    ]}
+                    dense={true}
+                  />
                 </Table.Cell>
               </Table.Row>
             {:else}
@@ -113,10 +107,10 @@
 
       {#snippet cards()}
         {#if cycles.length > 0}
-          <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
+          <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
             {#each cycles as ay (ay.id)}
               <li
-                class="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 {ay.is_active
+                class="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4 {ay.is_active
                   ? 'shadow-sm'
                   : 'opacity-70'}"
               >
@@ -162,5 +156,6 @@
         {/if}
       {/snippet}
     </SwitchableListView>
+    <AcademicCycleCalendar calendar={application_calendar} {opening_alerts_visible} />
   </div>
 </StaffLayout>

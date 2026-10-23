@@ -32,8 +32,29 @@ export function newIdempotencyKey() {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+function xsrfCookieValue() {
+    if (typeof document === 'undefined') {
+        return '';
+    }
+
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    if (!match || !match[1]) {
+        return '';
+    }
+
+    try {
+        return decodeURIComponent(match[1]);
+    } catch {
+        // Keep the raw value; Laravel will reject malformed ciphertext.
+        return match[1];
+    }
+}
+
 /**
  * Returns the CSRF token from meta tags, cookies, or window properties.
+ *
+ * Fetch requests should use csrfHeaders(), which prefers Laravel's
+ * encrypted XSRF-TOKEN cookie and avoids stale page metadata.
  */
 export function csrfToken() {
     if (typeof document === 'undefined') {
@@ -43,16 +64,52 @@ export function csrfToken() {
     if (meta && meta instanceof HTMLMetaElement && meta.content) {
         return meta.content;
     }
-    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-    if (match && match[1]) {
-        try {
-            return decodeURIComponent(match[1]);
-        } catch {
-            return match[1];
-        }
+    const cookieValue = xsrfCookieValue();
+    if (cookieValue) {
+        return cookieValue;
     }
     if (typeof window !== 'undefined' && window._token) {
         return window._token;
     }
     return '';
+}
+
+/**
+ * Returns the Laravel CSRF header for a same-origin request.
+ *
+ * Laravel 13 decrypts X-XSRF-TOKEN (the encrypted cookie value) before
+ * comparing it to the session token. Prefer that cookie over the page meta
+ * token so a session rotation cannot leave an Inertia page with a stale
+ * X-CSRF-TOKEN header. Fall back to X-CSRF-TOKEN when the cookie is absent.
+ * @returns {Record<string, string>}
+ */
+export function csrfHeaders(fallbackToken = '') {
+    const cookieValue = xsrfCookieValue();
+    if (cookieValue) {
+        return { 'X-XSRF-TOKEN': cookieValue };
+    }
+
+    const token = fallbackToken || csrfToken();
+    return token ? { 'X-CSRF-TOKEN': token } : {};
+}
+
+/**
+ * Cleanly formats a score or decimal value to remove trailing zeros or runaway decimals.
+ * e.g., 75.000000 -> "75", 82.500000 -> "82.5", 91.25 -> "91.25"
+ *
+ * @param {number|string|null|undefined} value
+ * @param {number|null} maxPrecision
+ * @returns {string}
+ */
+export function formatDecimalValue(value, maxPrecision = null) {
+    if (value === null || value === undefined || value === '') return '';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return String(value);
+    if (maxPrecision !== null && maxPrecision >= 0) {
+        const rounded = Number(num.toFixed(maxPrecision));
+        return String(rounded);
+    }
+    // Default to clean float representation up to 2 decimal places if no precision is specified
+    const rounded = Number(num.toFixed(4));
+    return String(rounded);
 }

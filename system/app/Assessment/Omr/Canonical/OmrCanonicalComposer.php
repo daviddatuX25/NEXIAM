@@ -2,13 +2,13 @@
 
 namespace App\Assessment\Omr\Canonical;
 
+use App\Assessment\Omr\OmrRegistrationMode;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use Illuminate\Support\Facades\Storage;
-use setasign\Fpdi\Fpdi;
 use RuntimeException;
+use setasign\Fpdi\Fpdi;
 
 use function array_map;
-use function config;
 use function file_put_contents;
 use function hash;
 use function imagealphablending;
@@ -21,7 +21,6 @@ use function imagepng;
 use function imagesavealpha;
 use function imagesx;
 use function imagesy;
-use function is_array;
 use function is_string;
 use function json_encode;
 use function tempnam;
@@ -39,7 +38,7 @@ final class OmrCanonicalCompositionException extends RuntimeException
 final class OmrCanonicalComposer
 {
     /**
-     * @param array<string, mixed> $settings
+     * @param  array<string, mixed>  $settings
      */
     public function compose(OmrTemplateAuthoringDraft $draft, array $settings): OmrCanonicalCompositionResult
     {
@@ -51,7 +50,12 @@ final class OmrCanonicalComposer
             || (($settings['parametric'] ?? false) === true);
 
         if (! $isParametric) {
-            if ($draft->stage !== OmrTemplateAuthoringDraft::STAGE_SOURCE_CONFIRMED) {
+            if (! in_array($draft->stage, [
+                OmrTemplateAuthoringDraft::STAGE_SOURCE_CONFIRMED,
+                OmrTemplateAuthoringDraft::STAGE_PAGE_PREPARED,
+                OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE,
+                OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED,
+            ], true)) {
                 throw new OmrCanonicalCompositionException('page_not_confirmed', 'All source pages must be confirmed before composition.');
             }
             if ($pages === []) {
@@ -63,6 +67,15 @@ final class OmrCanonicalComposer
                 }
             }
         }
+        if (! $isParametric && count($pages) !== (int) $draft->requested_page_count) {
+            throw new OmrCanonicalCompositionException(
+                'uploaded_page_count_mismatch',
+                'The uploaded document contains '.count($pages)." pages; this draft expects {$draft->requested_page_count}.",
+            );
+        }
+        if ($isParametric && isset($settings['page_count']) && (int) $settings['page_count'] !== (int) $draft->requested_page_count) {
+            throw new OmrCanonicalCompositionException('page_count_mismatch', 'Parametric composition page count must match the draft.');
+        }
 
         $paperWidthMm = (float) ($settings['paper_width_mm'] ?? 216);
         $paperHeightMm = (float) ($settings['paper_height_mm'] ?? 330);
@@ -70,7 +83,7 @@ final class OmrCanonicalComposer
         $canvasWidth = OmrPageDimensionMath::pixelsFromMillimetres($paperWidthMm);
         $canvasHeight = OmrPageDimensionMath::pixelsFromMillimetres($paperHeightMm);
         OmrPageDimensionMath::assertPixelBudget($canvasWidth, $canvasHeight);
-        $normalizedSettings = $this->normalizeSettings($settings);
+        $normalizedSettings = $this->normalizeSettings($settings, $draft->registration_mode === OmrRegistrationMode::FiducialAnchored);
         if (! $isParametric) {
             $this->assertUniformPhysicalPages($pages, $paperWidthMm, $paperHeightMm);
         }
@@ -79,7 +92,7 @@ final class OmrCanonicalComposer
         $temporaryPngs = [];
         try {
             if ($isParametric) {
-                $pageCount = max(1, min(20, (int) ($settings['page_count'] ?? 1)));
+                $pageCount = (int) $draft->requested_page_count;
                 for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
                     $canvas = imagecreatetruecolor($canvasWidth, $canvasHeight);
                     $white = imagecolorallocate($canvas, 255, 255, 255);
@@ -92,7 +105,7 @@ final class OmrCanonicalComposer
                     $pngBytes = (string) ob_get_clean();
                     $pngPath = tempnam(sys_get_temp_dir(), 'nexiam-canonical-page-');
                     if ($pngPath === false || file_put_contents($pngPath, $pngBytes) === false) {
-                        throw new OmrCanonicalCompositionException('raster_write_failed', 'Canonical page raster could not be written.');
+                        throw new OmrCanonicalCompositionException('raster_write_failed', 'The answer-sheet page could not be prepared.');
                     }
                     $temporaryPngs[] = $pngPath;
                     $rasterPages[] = [
@@ -156,7 +169,7 @@ final class OmrCanonicalComposer
                     $pngBytes = (string) ob_get_clean();
                     $pngPath = tempnam(sys_get_temp_dir(), 'nexiam-canonical-page-');
                     if ($pngPath === false || file_put_contents($pngPath, $pngBytes) === false) {
-                        throw new OmrCanonicalCompositionException('raster_write_failed', 'Canonical page raster could not be written.');
+                        throw new OmrCanonicalCompositionException('raster_write_failed', 'The answer-sheet page could not be prepared.');
                     }
                     $temporaryPngs[] = $pngPath;
                     $rasterPages[] = [
@@ -240,7 +253,7 @@ final class OmrCanonicalComposer
     }
 
     /** @param array<string, mixed> $settings @return array<string, mixed> */
-    private function normalizeSettings(array $settings): array
+    private function normalizeSettings(array $settings, bool $usesFiducials): array
     {
         $margin = $settings['content_margin_mm'] ?? ['top' => 18, 'right' => 15, 'bottom' => 18, 'left' => 15];
         $marginPx = [];
@@ -252,7 +265,7 @@ final class OmrCanonicalComposer
             'paper_width_mm' => (float) ($settings['paper_width_mm'] ?? 216),
             'paper_height_mm' => (float) ($settings['paper_height_mm'] ?? 330),
             'printer_safe_margin_mm' => $settings['printer_safe_margin_mm'] ?? ['top' => 5, 'right' => 5, 'bottom' => 5, 'left' => 5],
-            'marker_inset_mm' => $settings['marker_inset_mm'] ?? ['top' => 12, 'right' => 12, 'bottom' => 14, 'left' => 12],
+            ...($usesFiducials ? ['marker_inset_mm' => $settings['marker_inset_mm'] ?? ['top' => 12, 'right' => 12, 'bottom' => 14, 'left' => 12]] : []),
             'content_margin_mm' => $margin,
             'content_margin_px' => $marginPx,
             'alignment' => (string) ($settings['alignment'] ?? OmrPageDimensionMath::ALIGN_CENTER),

@@ -17,7 +17,7 @@ use function sprintf;
 final class OmrMarkerCalibrationArtifactGenerator
 {
     /**
-     * @param array{renderer_version?:string,printer:string,device:string,paper:string} $evidence
+     * @param  array{renderer_version?:string,printer:string,device:string,paper:string}  $evidence
      * @return array{disk:string,path:string,mime:string,bytes:int,sha256:string,asset_sha256:string,renderer_version:string,evidence_hash:string,false_positive_cases:list<string>}
      */
     public function generate(OmrMarkerProfile $profile, array $evidence): array

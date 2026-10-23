@@ -10,6 +10,5 @@ final readonly class OmrDetectionTimings
     public function __construct(
         public float $detectionMs,
         public ?float $preprocessMs = null,
-    ) {
-    }
+    ) {}
 }

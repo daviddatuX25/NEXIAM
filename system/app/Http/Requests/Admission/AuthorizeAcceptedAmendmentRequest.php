@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Admission;
 
-use App\Models\Admission\AdmissionAttempt;
-use App\Models\Foundation\IntakeGradeField;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,8 +17,6 @@ class AuthorizeAcceptedAmendmentRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var AdmissionAttempt|null $attempt */
-        $attempt = $this->route('attempt');
 
         $rules = [
             'expected_version' => ['required', 'integer', 'min:1'],
@@ -64,19 +60,7 @@ class AuthorizeAcceptedAmendmentRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:120'],
             'province' => ['nullable', 'string', 'max:120'],
             'zip_code' => ['nullable', 'string', 'max:32'],
-            'grades' => ['nullable', 'array'],
         ];
-
-        if ($attempt instanceof AdmissionAttempt) {
-            foreach (IntakeGradeField::activeForInstitution((int) $attempt->institution_id) as $field) {
-                $rules['grades.'.$field->code] = [
-                    'nullable',
-                    'numeric',
-                    'min:'.(float) $field->min_value,
-                    'max:'.(float) $field->max_value,
-                ];
-            }
-        }
 
         return $rules;
     }
@@ -87,17 +71,6 @@ class AuthorizeAcceptedAmendmentRequest extends FormRequest
     public function amendmentPayload(): array
     {
         $validated = $this->validated();
-        $gradesInput = $validated['grades'] ?? [];
-        $grades = [];
-        if (is_array($gradesInput)) {
-            foreach ($gradesInput as $code => $value) {
-                if (! is_string($code) || $value === null || $value === '') {
-                    continue;
-                }
-                $grades[$code] = (string) $value;
-            }
-        }
-        $validated['grades'] = $grades;
 
         if (isset($validated['identity_birthdate'])) {
             $validated['identity_birthdate'] = $this->date('identity_birthdate')?->format('Y-m-d');

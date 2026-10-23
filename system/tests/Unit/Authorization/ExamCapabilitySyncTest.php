@@ -3,7 +3,7 @@
 use App\Application\Capabilities\CapabilityDefinitions;
 use App\Authorization\CapabilityCatalog;
 
-test('exam session pages and nexi kernel share one exam-management capability gate', function (): void {
+test('exam session pages and xiam kernel share one exam-management capability gate', function (): void {
     $expected = CapabilityCatalog::examSessionManagementCapabilities();
 
     expect($expected)->toBe([CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE])

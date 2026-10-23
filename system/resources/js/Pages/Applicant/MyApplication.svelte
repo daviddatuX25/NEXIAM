@@ -4,44 +4,56 @@
    * No edit affordance except the needs_correction-gated fix prompt.
    */
   import ApplicantLayout from '@/Pages/Applicant/ApplicantLayout.svelte';
-  import { Badge } from '@/Components/ui/badge';
+  import DocumentRequirementsPanel from '@/Components/Admission/DocumentRequirementsPanel.svelte';
+
   import { Button } from '@/Components/ui/button';
   import * as Card from '@/Components/ui/card';
   import { Link } from '@inertiajs/svelte';
-  import { AlertTriangle, CalendarClock, FileText } from 'lucide-svelte';
+  import { AlertTriangle, CalendarClock, FileText, Lock, Pencil } from 'lucide-svelte';
+  import TourTriggerGlyph from '@/Components/kit/Walkthrough/TourTriggerGlyph.svelte';
+  import XiamNpcDialog from '@/Components/kit/Walkthrough/XiamNpcDialog.svelte';
+  import { formatBirthdateDisplay } from '@/lib/date-utils.js';
+  let { application = null, document_checklist = null } = $props();
+  let tourOpen = $state(false);
 
-  let { application = null } = $props();
+  const applicationContext = $derived.by(() => {
+    const status = application?.status ?? 'pending';
+    const needsCorr = Boolean(application?.needs_correction);
+    const hasP = Boolean(application?.program_preferences?.length > 0);
+    const safetyKey = `${status}:${needsCorr ? 'corr' : 'ok'}:${hasP ? 'p' : 'nop'}`;
 
-  const statusLabel = (status) => {
-    const labels = {
-      pending: 'Pending review',
-      needs_correction: 'Needs your correction',
-      accepted: 'Accepted',
-      dismissed: 'Dismissed',
-      archived: 'Archived',
+    return {
+      entityKey: application?.reference_code ?? 'my-application',
+      safetyKey,
+      freshness: 'current',
+      applicationStatus: status,
+      needsCorrection: needsCorr,
+      correctionNotes: application?.correction_notes ?? null,
+      hasPreferences: hasP,
+      canAmend: status === 'pending' || needsCorr,
     };
-    return labels[status] ?? status;
-  };
-
-  const statusVariant = (status) => {
-    if (status === 'needs_correction') return 'destructive';
-    if (status === 'accepted') return 'default';
-    if (status === 'dismissed') return 'destructive';
-    return 'secondary';
-  };
+  });
 
   const rows = $derived(
     application
       ? [
           { label: 'Full name', value: application.personal?.name },
-          { label: 'Birthdate', value: application.personal?.birthdate },
+          { label: 'Birthdate', value: formatBirthdateDisplay(application.personal?.birthdate) },
+          {
+            label: 'Sex',
+            value: application.personal?.sex
+              ? application.personal.sex === 'female'
+                ? 'Female'
+                : application.personal.sex === 'male'
+                  ? 'Male'
+                  : application.personal.sex
+              : null,
+          },
           { label: 'Contact phone', value: application.personal?.contact_phone },
           { label: 'Contact email', value: application.personal?.contact_email },
           { label: 'Address', value: application.personal?.address },
-          { label: 'Applicant type', value: application.personal?.applicant_type },
           { label: 'Last school', value: application.personal?.last_school },
           { label: 'Strand', value: application.personal?.strand },
-          { label: 'GWA', value: application.personal?.gwa },
         ].filter((row) => row.value)
       : [],
   );
@@ -58,16 +70,44 @@
         </Card.Content>
       </Card.Root>
     {:else}
-      <div class="space-y-1">
-        <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-2xl font-semibold tracking-tight">My application</h1>
-          <Badge variant={statusVariant(application.status)}>{statusLabel(application.status)}</Badge>
+      <div class="sticky top-16 z-20 -mt-2 bg-background/95 pb-3 pt-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 border-b border-border/40">
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center justify-between gap-3" data-tour="my-application-status">
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-semibold tracking-tight">My application</h1>
+              <TourTriggerGlyph tourKey="applicant-my-application" label="Need help understanding your application? Ask Kuya Xiam!" onclick={() => (tourOpen = true)} />
+            </div>
+            {#if application.needs_correction && application.correction_href}
+              <Link href={application.correction_href}>
+                <Button class="min-h-10 gap-1.5 bg-amber-600 text-white hover:bg-amber-500">
+                  <Pencil class="size-4" />
+                  Fix Application
+                </Button>
+              </Link>
+            {:else if application.can_amend && application.correction_href}
+              <Link href={application.correction_href}>
+                <Button variant="outline" class="min-h-10 gap-1.5 font-medium">
+                  <Pencil class="size-4" />
+                  Edit Application
+                </Button>
+              </Link>
+            {:else}
+              <div title={application.amend_disabled_reason ?? 'Application details are locked'}>
+                <Button variant="outline" disabled class="min-h-10 gap-1.5 opacity-60 cursor-not-allowed">
+                  <Lock class="size-3.5" />
+                  Edit Application
+                </Button>
+              </div>
+            {/if}
+          </div>
+          {#if application.reference_code}
+            <p class="font-mono text-xs text-muted-foreground">Applicant No. {application.reference_code}</p>
+          {/if}
         </div>
-        <p class="font-mono text-sm text-muted-foreground">Ref {application.reference_code}</p>
       </div>
 
       {#if application.needs_correction}
-        <Card.Root class="border-amber-500/40 bg-amber-500/10">
+        <Card.Root class="border-amber-500/40 bg-amber-500/10" data-tour="my-application-correction">
           <Card.Content class="space-y-3 p-4">
             <p class="flex items-center gap-2 font-medium text-amber-800 dark:text-amber-300">
               <AlertTriangle class="size-4" aria-hidden="true" />
@@ -78,14 +118,58 @@
             {/if}
             {#if application.correction_href}
               <Link href={application.correction_href}>
-                <Button class="min-h-11 w-full">Fix application</Button>
+                <Button class="min-h-11 w-full gap-2">
+                  <Pencil class="size-4" />
+                  Fix application
+                </Button>
               </Link>
             {/if}
           </Card.Content>
         </Card.Root>
+      {:else if application.can_amend && application.correction_href}
+        <Card.Root class="border-primary/20 bg-primary/5">
+          <Card.Content class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="space-y-0.5">
+              <p class="text-sm font-medium text-foreground">Application pending review</p>
+              <p class="text-xs text-muted-foreground">
+                You can update your personal contact details or preferences before it is accepted.
+              </p>
+            </div>
+            <Link href={application.correction_href} class="shrink-0">
+              <Button variant="outline" class="min-h-11 gap-1.5 w-full sm:w-auto">
+                <Pencil class="size-4" />
+                Update application
+              </Button>
+            </Link>
+          </Card.Content>
+        </Card.Root>
+      {:else}
+        <Card.Root class="border-muted bg-muted/20">
+          <Card.Content class="flex flex-col gap-2 p-3.5 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
+            <span class="flex items-center gap-2">
+              <Lock class="size-3.5 shrink-0 text-muted-foreground" />
+              <span>
+                {application.amend_disabled_reason ?? 'Application details are locked. Once an exam session is assigned or accepted, changes require Registrar assistance.'}
+              </span>
+            </span>
+            <Button variant="ghost" size="sm" disabled class="h-8 gap-1 opacity-50 cursor-not-allowed shrink-0">
+              <Pencil class="size-3" /> Locked
+            </Button>
+          </Card.Content>
+        </Card.Root>
+      {/if}
+      {#if document_checklist}
+        <div data-tour="my-application-documents">
+          <DocumentRequirementsPanel
+            checklist={document_checklist}
+            requestHistory={document_checklist.request_history?.requests ?? document_checklist.request_history ?? []}
+            readOnly={true}
+            columns={2}
+          />
+        </div>
       {/if}
 
-      <Card.Root>
+      <Card.Root data-tour="my-application-details">
         <Card.Header class="border-b pb-3">
           <Card.Title class="text-lg">Personal information</Card.Title>
         </Card.Header>
@@ -101,7 +185,7 @@
         </Card.Content>
       </Card.Root>
 
-      <Card.Root>
+      <Card.Root data-tour="my-application-preferences">
         <Card.Header class="border-b pb-3">
           <Card.Title class="text-lg">Program preferences</Card.Title>
         </Card.Header>
@@ -125,24 +209,6 @@
         </Card.Content>
       </Card.Root>
 
-      {#if application.grades?.length}
-        <Card.Root>
-          <Card.Header class="border-b pb-3">
-            <Card.Title class="text-lg">Intake grades</Card.Title>
-            <Card.Description>Digital grades from your application (D-086).</Card.Description>
-          </Card.Header>
-          <Card.Content class="pt-4">
-            <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-              {#each application.grades as grade (grade.label)}
-                <div>
-                  <dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{grade.label}</dt>
-                  <dd class="mt-0.5 font-mono text-sm tabular-nums">{grade.value}</dd>
-                </div>
-              {/each}
-            </dl>
-          </Card.Content>
-        </Card.Root>
-      {/if}
 
       {#if application.submitted_at}
         <Card.Root>
@@ -166,9 +232,10 @@
 
       <p class="flex gap-2 text-xs leading-relaxed text-muted-foreground">
         <FileText class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        This is a read-only copy of your submitted application. Changes are only possible when the
-        Registrar requests a correction.
+        You can update your application while it is pending review or when the Registrar requests a
+        correction. Once accepted, changes require Registrar authorization.
       </p>
     {/if}
   </div>
+  <XiamNpcDialog tourKey="applicant-my-application" context={applicationContext} bind:open={tourOpen} />
 </ApplicantLayout>

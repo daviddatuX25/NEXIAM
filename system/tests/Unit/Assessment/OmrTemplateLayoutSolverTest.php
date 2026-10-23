@@ -64,7 +64,6 @@ test('identity grids repeat on every page and sit outside the flow', function ()
     expect($result->pages[1]['fieldBlocks']['ApplicantNumber']['origin'])->toBe([200, 260]);
 });
 
-
 test('final column overflow starts the next page and rows are atomic', function () use ($solver): void {
     $result = $solver->solve(blueprint(sections: [section('VERBAL', 1, 101)]));
 

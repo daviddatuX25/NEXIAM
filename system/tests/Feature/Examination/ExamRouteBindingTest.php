@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\Examination\ExamMonitoringAttendanceController;
 use App\Http\Controllers\Examination\ExamMonitoringController;
 use App\Http\Controllers\Examination\ExamSessionController;
-use App\Http\Controllers\Examination\ProctorDutyController;
 use Illuminate\Support\Facades\Route;
 
 test('each exam surface routes to its single-responsibility controller', function (): void {
@@ -27,11 +27,9 @@ test('each exam surface routes to its single-responsibility controller', functio
         // Monitoring (conduct) surface
         'exams.monitoring' => ExamMonitoringController::class,
         'exams.sessions.monitoring' => ExamMonitoringController::class,
-        // Duty-scoped conduct
-        'proctor-duty.assign' => ProctorDutyController::class,
-        'proctor-duty.revoke' => ProctorDutyController::class,
-        'exams.sessions.monitoring.attendance' => ProctorDutyController::class,
-        'exams.sessions.monitoring.submission' => ProctorDutyController::class,
+        // Monitoring conduct and attendance
+        'exams.sessions.monitoring.attendance' => ExamMonitoringAttendanceController::class,
+        'exams.sessions.monitoring.submission' => ExamMonitoringAttendanceController::class,
     ];
 
     foreach ($expectations as $name => $controller) {

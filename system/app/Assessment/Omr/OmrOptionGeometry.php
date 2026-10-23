@@ -12,6 +12,5 @@ final readonly class OmrOptionGeometry
         public string $code,
         public OmrRegion $region,
         public int $displayOrder,
-    ) {
-    }
+    ) {}
 }

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "correct",
+      "coverage": ["correct"],
+      "pages": [{"page_no": 1, "responses": [
+        {"native_label": "LOGIC_Q_2", "token": "token::cobalt"},
+        {"native_label": "LOGIC_Q_1", "token": "token::amber"}
+      ]}],
+      "expected_metrics": [{"metric_code": "RAW_COUNT", "value": "2"}],
+      "recorded_measures": []
+    },
+    {
+      "case_id": "incorrect",
+      "coverage": ["incorrect"],
+      "pages": [{"page_no": 1, "responses": [
+        {"native_label": "LOGIC_Q_2", "token": "token::amber"},
+        {"native_label": "LOGIC_Q_1", "token": "token::cobalt"}
+      ]}],
+      "expected_metrics": [{"metric_code": "RAW_COUNT", "value": "0"}],
+      "recorded_measures": []
+    },
+    {
+      "case_id": "blank",
+      "coverage": ["blank"],
+      "pages": [{"page_no": 1, "responses": [
+        {"native_label": "LOGIC_Q_2", "token": null},
+        {"native_label": "LOGIC_Q_1", "token": null}
+      ]}],
+      "expected_metrics": [{"metric_code": "RAW_COUNT", "value": "0"}],
+      "recorded_measures": []
+    },
+    {
+      "case_id": "mixed",
+      "coverage": ["correct", "incorrect"],
+      "pages": [{"page_no": 1, "responses": [
+        {"native_label": "LOGIC_Q_2", "token": "token::cobalt"},
+        {"native_label": "LOGIC_Q_1", "token": "token::cobalt"}
+      ]}],
+      "expected_metrics": [{"metric_code": "RAW_COUNT", "value": "1"}],
+      "recorded_measures": []
+    }
+  ]
+}

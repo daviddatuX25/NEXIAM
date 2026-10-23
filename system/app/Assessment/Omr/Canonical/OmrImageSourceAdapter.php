@@ -5,8 +5,6 @@ namespace App\Assessment\Omr\Canonical;
 use RuntimeException;
 
 use function file_get_contents;
-use function file_put_contents;
-use function getimagesize;
 use function imagealphablending;
 use function imagecolorallocate;
 use function imagecopy;
@@ -18,8 +16,6 @@ use function imagerotate;
 use function imagesavealpha;
 use function imagesx;
 use function imagesy;
-use function is_resource;
-use function max;
 use function sys_get_temp_dir;
 use function tempnam;
 

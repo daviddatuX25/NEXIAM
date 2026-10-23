@@ -1,0 +1,70 @@
+name: nexiam-opening-alerts-smoke
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nexiam_opening_alerts_smoke
+      POSTGRES_USER: nexiam_smoke
+      POSTGRES_PASSWORD: local-opening-alerts-only
+    volumes:
+      - opening_alerts_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nexiam_smoke -d nexiam_opening_alerts_smoke']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '127.0.0.1:18362:8025'
+  app:
+    image: nexiam-system-app
+    working_dir: /var/www/html
+    command: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000', '--no-reload']
+    environment:
+      APP_ENV: local
+      APP_DEBUG: 'true'
+      APP_KEY: 'base64:Z2hwMGZrdkVsa3RQTkVYSUFNT3BlbmluZ0FsZXJ0c1E='
+      APP_URL: http://127.0.0.1:18361
+      APP_CONFIG_CACHE: /tmp/opening-alerts-config.php
+      APP_ROUTES_CACHE: /tmp/opening-alerts-routes.php
+      APP_SERVICES_CACHE: /tmp/opening-alerts-services.php
+      APP_PACKAGES_CACHE: /tmp/opening-alerts-packages.php
+      VITE_HOT_FILE: /tmp/opening-alerts-no-hot
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: nexiam_opening_alerts_smoke
+      DB_USERNAME: nexiam_smoke
+      DB_PASSWORD: local-opening-alerts-only
+      DB_URL: ''
+      SESSION_DRIVER: database
+      SESSION_COOKIE: nexiam_opening_alerts_smoke
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: foundation@nexiam.test
+      MAIL_FROM_NAME: NEXIAM
+      BROADCAST_CONNECTION: 'null'
+      APPLICATION_OPENING_ALERTS_ENABLED: 'true'
+      OMR_PROVIDER: fake
+      OMR_ALLOW_FAKE_PROVIDER: 'true'
+      XIAM_AI_GATEWAY: fake
+      INERTIA_DEVTOOLS_ENABLED: 'false'
+    ports:
+      - '127.0.0.1:18361:8000'
+    volumes:
+      - .:/var/www/html
+      - opening_alerts_storage:/var/www/html/storage
+      - opening_alerts_public:/var/www/html/public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+volumes:
+  opening_alerts_db:
+  opening_alerts_storage:
+  opening_alerts_public:

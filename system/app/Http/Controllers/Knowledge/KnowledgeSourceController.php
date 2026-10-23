@@ -2,37 +2,52 @@
 
 namespace App\Http\Controllers\Knowledge;
 
-use App\Ai\Knowledge\KnowledgeLifecycle;
-use App\Application\Capabilities\CapabilityInvocationRequest;
-use App\Application\Capabilities\CapabilityKernel;
-use App\Authorization\CapabilityAuthorizer;
-use App\Authorization\CapabilityCatalog;
+use App\Ai\Knowledge\Actions\ApproveKnowledgeSourceVersion;
+use App\Ai\Knowledge\Actions\CreateKnowledgeDraft;
+use App\Ai\Knowledge\Actions\EstablishCrossOfficeKnowledgeScope;
+use App\Ai\Knowledge\Actions\PublishKnowledgeSourceVersion;
+use App\Ai\Knowledge\Actions\RecertifyFaqPolicyDependency;
+use App\Ai\Knowledge\Actions\RevokeKnowledgeSourceVersion;
+use App\Ai\Knowledge\Actions\SignKnowledgeSourceConsensus;
+use App\Ai\Knowledge\Actions\StartKnowledgeExtraction;
+use App\Ai\Knowledge\KnowledgeCatalogQuery;
+use App\Ai\Knowledge\KnowledgeSourceAccess;
+use App\Ai\Knowledge\KnowledgeSourceDetailQuery;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Knowledge\KnowledgeVersionRequest;
+use App\Http\Requests\Knowledge\RevokeKnowledgeSourceRequest;
+use App\Http\Requests\Knowledge\StoreKnowledgeSourceRequest;
 use App\Models\Ai\KnowledgeSource;
 use App\Models\Ai\KnowledgeSourceVersion;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-/**
- * Staff knowledge admin — legacy list→create→show feel; GF-21 + AD-25 lifecycle authority.
- */
+/** Staff knowledge admin — legacy list→create→show flow with scoped Action writes. */
 class KnowledgeSourceController extends Controller
 {
     public function index(
         Request $request,
-        CapabilityAuthorizer $authorizer,
-        CapabilityKernel $capabilities,
+        KnowledgeCatalogQuery $catalog,
+        KnowledgeSourceAccess $access,
     ): Response {
-        if (! $this->canManage($authorizer, $request) && ! $this->canApprove($authorizer, $request)) {
+        $actor = $this->actor($request);
+        $capabilities = $this->catalogCapabilities($access, $actor);
+        if (! $access->canViewCatalog($actor)) {
             return Inertia::render('Knowledge/Index', [
                 'page_state' => 'denied',
                 'sources' => [],
                 'filters' => [],
-                'capabilities' => $this->caps($authorizer, $request),
+                'capabilities' => $capabilities,
+                'statuses' => $this->statusOptions(),
+                'audiences' => $this->creatableAudiences(),
+                'source_types' => $this->sourceTypes(),
+                'current_office' => $actor->actorScope()->office,
             ]);
         }
 
@@ -40,245 +55,226 @@ class KnowledgeSourceController extends Controller
             'search' => $request->string('search')->toString() ?: null,
             'status' => $request->string('status')->toString() ?: null,
         ];
-
-        $result = $capabilities->invoke(new CapabilityInvocationRequest(
-            key: 'knowledge.sources.list',
-            version: 1,
-            input: array_filter([
-                'search' => $filters['search'],
-                'status' => $filters['status'],
-            ], fn ($v) => $v !== null && $v !== ''),
-            actor: $request->user(),
-            channel: 'http_page',
-            surfaceKey: 'staff',
-            pagePackKey: 'staff.knowledge.sources@1',
-            correlationId: $request->headers->get('X-Correlation-Id'),
-        ));
-
-        abort_unless($result->ok && is_array($result->data), 403, $result->reason ?? 'capability_denied');
+        $projection = $catalog->handle($actor, $filters);
 
         return Inertia::render('Knowledge/Index', [
-            'page_state' => $result->data['page_state'] ?? 'ready',
-            'sources' => $result->data['sources'] ?? [],
+            'page_state' => $projection['page_state'],
+            'sources' => $projection['sources'],
             'filters' => $filters,
-            'capabilities' => $this->caps($authorizer, $request),
+            'capabilities' => $capabilities,
             'statuses' => $this->statusOptions(),
+            'audiences' => $this->creatableAudiences(),
+            'source_types' => $this->sourceTypes(),
+            'current_office' => $actor->actorScope()->office,
         ]);
     }
 
-    public function create(Request $request, CapabilityAuthorizer $authorizer): Response
+    public function create(Request $request, KnowledgeSourceAccess $access): Response
     {
-        $this->requireManage($authorizer, $request);
+        $actor = $this->actor($request);
+        $access->requireManageCatalog($actor);
 
         return Inertia::render('Knowledge/Create', [
             'page_state' => 'ready',
+            'audiences' => $this->creatableAudiences(),
+            'source_types' => $this->sourceTypes(),
+            'current_office' => $actor->actorScope()->office,
+            'capabilities' => $this->catalogCapabilities($access, $actor),
         ]);
     }
 
     public function store(
-        Request $request,
-        CapabilityAuthorizer $authorizer,
-        KnowledgeLifecycle $lifecycle,
+        StoreKnowledgeSourceRequest $request,
+        CreateKnowledgeDraft $createDraft,
+        StartKnowledgeExtraction $startExtraction,
     ): RedirectResponse {
-        $this->requireManage($authorizer, $request);
+        $actor = $this->actor($request);
+        $version = $createDraft->handle($actor, $request->validated());
+        $source = $version->source;
+        abort_unless($source instanceof KnowledgeSource, 404);
 
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'body_text' => ['required', 'string', 'min:20', 'max:50000'],
-        ]);
+        try {
+            $startExtraction->handle($actor, $source, $version);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
 
-        /** @var User $actor */
-        $actor = $request->user();
-        $version = $lifecycle->createDraft($actor, $data);
-        $lifecycle->startExtraction($version);
-        $version->refresh();
-
-        // Approvers (registrar admin / guidance counselor): one-step create → active.
-        // Clerks/support (manage only) stay in review_required until an approver acts.
-        if ($this->canApprove($authorizer, $request)
-            && $version->status === KnowledgeSourceVersion::STATUS_REVIEW_REQUIRED) {
-            $lifecycle->approve($actor, $version);
-            $lifecycle->publish($actor, $version->fresh());
-
-            return redirect()
-                ->route('knowledge.show', $version->knowledge_source_id)
-                ->with('status', 'Created and published to active corpus.');
+            return back()->with('status', 'Draft saved; extraction could not start: '.$exception->getMessage());
         }
+
+        $version->refresh();
 
         return redirect()
             ->route('knowledge.show', $version->knowledge_source_id)
-            ->with('status', 'Draft created and extraction started. An approver must review before publish.');
+            ->with('status', 'Draft created and extraction started. A separate approver must review before publish.');
     }
 
     public function show(
         Request $request,
         KnowledgeSource $source,
-        CapabilityAuthorizer $authorizer,
+        KnowledgeSourceDetailQuery $detail,
     ): Response {
-        if (! $this->canManage($authorizer, $request) && ! $this->canApprove($authorizer, $request)) {
-            abort(403);
-        }
-
-        $source->load([
-            'versions' => fn ($q) => $q->orderByDesc('version')->with('fixtures'),
-        ]);
-        /** @var KnowledgeSourceVersion|null $latest */
-        $latest = $source->versions->first();
-
-        return Inertia::render('Knowledge/Show', [
-            'page_state' => 'ready',
-            'source' => [
-                'id' => $source->id,
-                'key' => $source->key,
-                'title' => $source->title,
-                'classification' => $source->classification,
-                'audience' => $source->audience,
-                'purpose' => $source->purpose,
-            ],
-            'version' => $latest === null ? null : $this->versionPayload($latest),
-            'capabilities' => $this->caps($authorizer, $request),
-        ]);
+        return Inertia::render('Knowledge/Show', $detail->handle($this->actor($request), $source));
     }
 
     public function extract(
-        Request $request,
+        KnowledgeVersionRequest $request,
         KnowledgeSource $source,
-        CapabilityAuthorizer $authorizer,
-        KnowledgeLifecycle $lifecycle,
+        StartKnowledgeExtraction $startExtraction,
     ): RedirectResponse {
-        $this->requireManage($authorizer, $request);
-        $version = $this->latestVersion($source);
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
+
         try {
-            $lifecycle->startExtraction($version);
-        } catch (RuntimeException $e) {
-            return back()->with('status', 'Cannot extract: '.$e->getMessage());
+            $startExtraction->handle($actor, $source, $version);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Cannot extract: '.$exception->getMessage());
         }
 
         return back()->with('status', 'Extraction started.');
     }
 
-    public function approve(
-        Request $request,
+    public function establishCrossOffice(
+        KnowledgeVersionRequest $request,
         KnowledgeSource $source,
-        CapabilityAuthorizer $authorizer,
-        KnowledgeLifecycle $lifecycle,
+        EstablishCrossOfficeKnowledgeScope $establishScope,
     ): RedirectResponse {
-        $this->requireApprove($authorizer, $request);
-        $version = $this->latestVersion($source);
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
+
         try {
-            /** @var User $actor */
-            $actor = $request->user();
-            $lifecycle->approve($actor, $version);
-        } catch (RuntimeException $e) {
-            return back()->with('status', 'Approve denied: '.$e->getMessage());
+            $establishScope->handle($actor, $source, $version);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Cross-office scope denied: '.$exception->getMessage());
         }
 
-        return back()->with('status', 'Version approved (digest sealed).');
+        return back()->with('status', 'Cross-office scope established; awaiting independent Registrar and Guidance signatures.');
+    }
+
+    public function approve(
+        KnowledgeVersionRequest $request,
+        KnowledgeSource $source,
+        ApproveKnowledgeSourceVersion $approveVersion,
+    ): RedirectResponse {
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
+
+        try {
+            $complete = $approveVersion->handle($actor, $source, $version);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Approve denied: '.$exception->getMessage());
+        }
+
+        return back()->with('status', $complete
+            ? 'Version approved (digest sealed).'
+            : 'Office approval recorded; awaiting the other office head.');
     }
 
     public function publish(
-        Request $request,
+        KnowledgeVersionRequest $request,
         KnowledgeSource $source,
-        CapabilityAuthorizer $authorizer,
-        CapabilityKernel $capabilities,
+        PublishKnowledgeSourceVersion $publishVersion,
     ): RedirectResponse {
-        $this->requireApprove($authorizer, $request);
-        $version = $this->latestVersion($source);
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
 
         try {
-            $result = $capabilities->invoke(new CapabilityInvocationRequest(
-                key: 'knowledge.source.publish',
-                version: 1,
-                input: ['version_id' => $version->id],
-                actor: $request->user(),
-                channel: 'http_page',
-                surfaceKey: 'staff',
-                pagePackKey: 'staff.knowledge.sources@1',
-            ));
-            abort_unless($result->ok, 403, $result->reason ?? 'publish_denied');
-        } catch (RuntimeException $e) {
-            return back()->with('status', 'Publish denied: '.$e->getMessage());
+            $publishVersion->handle($actor, $source, $version);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Publish denied: '.$exception->getMessage());
         }
 
-        return back()->with('status', 'Published to active corpus.');
+        return back()->with('status', 'Published to active corpus. Applicant Xiam visibility remains subject to central inquiry and privacy gates.');
     }
 
     public function revoke(
-        Request $request,
+        RevokeKnowledgeSourceRequest $request,
         KnowledgeSource $source,
-        CapabilityAuthorizer $authorizer,
-        CapabilityKernel $capabilities,
+        RevokeKnowledgeSourceVersion $revokeVersion,
     ): RedirectResponse {
-        $this->requireApprove($authorizer, $request);
-        $version = $this->latestVersion($source);
-        $data = $request->validate([
-            'reason' => ['nullable', 'string', 'max:255'],
-        ]);
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
+        $data = $request->validated();
 
         try {
-            $result = $capabilities->invoke(new CapabilityInvocationRequest(
-                key: 'knowledge.source.revoke',
-                version: 1,
-                input: [
-                    'version_id' => $version->id,
-                    'reason' => $data['reason'] ?? 'revoked',
-                ],
-                actor: $request->user(),
-                channel: 'http_page',
-                surfaceKey: 'staff',
-                pagePackKey: 'staff.knowledge.sources@1',
-            ));
-            abort_unless($result->ok, 403, $result->reason ?? 'revoke_denied');
-        } catch (RuntimeException $e) {
-            return back()->with('status', 'Revoke denied: '.$e->getMessage());
+            $revokeVersion->handle($actor, $source, $version, $data['reason'] ?? 'revoked');
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Revoke denied: '.$exception->getMessage());
         }
 
         return back()->with('status', 'Revoked — retrieval denied immediately.');
     }
 
-    private function latestVersion(KnowledgeSource $source): KnowledgeSourceVersion
+    public function recertify(
+        KnowledgeVersionRequest $request,
+        KnowledgeSource $source,
+        RecertifyFaqPolicyDependency $recertifyAction,
+    ): RedirectResponse {
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
+        $dep = $version->policyDependencies()->first();
+        if ($dep === null || $dep->policy === null) {
+            return back()->with('status', 'No governing policy dependency to recertify.');
+        }
+
+        $policy = $dep->policy;
+        $currentRevision = $policy->publishedRevision;
+        if ($currentRevision === null) {
+            return back()->with('status', 'Governing policy has no published revision.');
+        }
+
+        try {
+            $recertifyAction->handle($actor, $source, $version, $currentRevision);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Recertification failed: '.$exception->getMessage());
+        }
+
+        return back()->with('status', 'Policy dependency recertified successfully.');
+    }
+
+    public function consensusSign(
+        KnowledgeVersionRequest $request,
+        KnowledgeSource $source,
+        SignKnowledgeSourceConsensus $signAction,
+    ): RedirectResponse {
+        $actor = $this->actor($request);
+        $version = $this->exactLatestVersion($source, $request->validated('version_id'));
+        $offices = $request->input('participating_offices', [$actor->actorScope()->office]);
+
+        try {
+            $signAction->handle($actor, $source, $version, is_array($offices) ? $offices : [$offices]);
+        } catch (RuntimeException $exception) {
+            $this->rethrowAccessDenial($exception);
+
+            return back()->with('status', 'Consensus signature failed: '.$exception->getMessage());
+        }
+
+        return back()->with('status', 'Consensus signature recorded successfully.');
+    }
+
+    private function exactLatestVersion(KnowledgeSource $source, string $versionId): KnowledgeSourceVersion
     {
-        $version = $source->versions()->orderByDesc('version')->first();
+        $version = $source->versions()->whereKey($versionId)->first();
         abort_unless($version instanceof KnowledgeSourceVersion, 404);
+
+        $latestId = $source->versions()->orderByDesc('version')->value('id');
+        abort_unless($latestId === $version->getKey(), 404);
 
         return $version;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function versionPayload(KnowledgeSourceVersion $version): array
-    {
-        return [
-            'id' => $version->id,
-            'version' => $version->version,
-            'status' => $version->status,
-            'title' => $version->title,
-            'body_text' => $version->body_text,
-            'extraction_text' => $version->extraction_text,
-            'content_checksum' => $version->content_checksum,
-            'extraction_digest' => $version->extraction_digest,
-            'publication_digest' => $version->publication_digest,
-            'created_by' => $version->created_by,
-            'approved_by' => $version->approved_by,
-            'approved_at' => optional($version->approved_at)?->toIso8601String(),
-            'published_at' => optional($version->published_at)?->toIso8601String(),
-            'revoked_at' => optional($version->revoked_at)?->toIso8601String(),
-            'revoke_reason' => $version->revoke_reason,
-            'failure_reason' => $version->failure_reason,
-            'fixtures' => $version->fixtures->map(fn ($f) => [
-                'id' => $f->id,
-                'kind' => $f->kind,
-                'query_text' => $f->query_text,
-                'expected_excerpt' => $f->expected_excerpt,
-                'expected_outcome' => $f->expected_outcome,
-            ])->values()->all(),
-        ];
-    }
-
-    /**
-     * @return list<array{value: string, label: string}>
-     */
+    /** @return list<array{value: string, label: string}> */
     private function statusOptions(): array
     {
         return [
@@ -293,34 +289,49 @@ class KnowledgeSourceController extends Controller
         ];
     }
 
-    /**
-     * @return array{manage: bool, approve: bool}
-     */
-    private function caps(CapabilityAuthorizer $authorizer, Request $request): array
+    /** @return list<string> */
+    private function creatableAudiences(): array
     {
         return [
-            'manage' => $this->canManage($authorizer, $request),
-            'approve' => $this->canApprove($authorizer, $request),
+            KnowledgeSource::AUDIENCE_STAFF_ONLY,
+            KnowledgeSource::AUDIENCE_STAFF_AND_APPLICANT_INQUIRY,
         ];
     }
 
-    private function canManage(CapabilityAuthorizer $authorizer, Request $request): bool
+    /** @return list<string> */
+    private function sourceTypes(): array
     {
-        return $authorizer->allows($request->user(), CapabilityCatalog::KNOWLEDGE_SOURCES_MANAGE);
+        return [
+            KnowledgeSource::SOURCE_CLASS_POLICY,
+            KnowledgeSource::SOURCE_CLASS_PUBLIC_FAQ,
+        ];
     }
 
-    private function canApprove(CapabilityAuthorizer $authorizer, Request $request): bool
+    /** @return array{manage: bool, approve: bool, cross_office_approve: bool} */
+    private function catalogCapabilities(KnowledgeSourceAccess $access, User $actor): array
     {
-        return $authorizer->allows($request->user(), CapabilityCatalog::KNOWLEDGE_SOURCES_APPROVE);
+        $office = $actor->actorScope()->office;
+
+        return [
+            'manage' => $access->canManageCatalog($actor),
+            'approve' => $access->canApproveCatalog($actor),
+            'cross_office_approve' => $office !== null && $access->isOfficeHead($actor, $office)
+                && $access->canApproveCatalog($actor),
+        ];
     }
 
-    private function requireManage(CapabilityAuthorizer $authorizer, Request $request): void
+    private function rethrowAccessDenial(RuntimeException $exception): void
     {
-        abort_unless($this->canManage($authorizer, $request), 403);
+        if ($exception instanceof HttpExceptionInterface || $exception instanceof AuthorizationException) {
+            throw $exception;
+        }
     }
 
-    private function requireApprove(CapabilityAuthorizer $authorizer, Request $request): void
+    private function actor(Request $request): User
     {
-        abort_unless($this->canApprove($authorizer, $request), 403);
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
+
+        return $actor;
     }
 }

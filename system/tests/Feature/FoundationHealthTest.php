@@ -1,5 +1,18 @@
 <?php
 
+use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\ApplicationWindow;
+use App\Models\Foundation\Institution;
+use Carbon\Carbon;
+
+beforeEach(function (): void {
+    $this->travelTo(Carbon::parse('2026-09-25 12:00:00'));
+});
+
+afterEach(function (): void {
+    $this->travelBack();
+});
+
 test('home page renders the institution-first public landing contract', function (): void {
     $this->get('/')
         ->assertSuccessful()
@@ -18,19 +31,89 @@ test('home page renders the institution-first public landing contract', function
         ->assertDontSee('E1b flips');
 });
 
-test('home landing exposes the active season badge payload when a cycle is active', function (): void {
+test('home landing exposes the active academic year and effective intake status', function (): void {
     seedE2Foundation();
 
     $this->get('/')
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Home')
-            ->has('activeSeason.name')
-            ->has('activeSeason.window')
+            ->where('activeSeason', [
+                'academic_year' => '2025-2026',
+                'is_open' => true,
+            ])
             ->where('programs.0.isSimulated', false)
-            ->where('programs.0.code', 'BSN')
-            ->has('programs', 2)
         );
+});
+
+test('home landing reports closed windows and out-of-date cycles as unavailable', function (): void {
+    seedE2Foundation();
+    $window = ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
+    $window->update(['status' => 'closed']);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('activeSeason', [
+            'academic_year' => '2025-2026',
+            'is_open' => false,
+        ]));
+
+    $window->update([
+        'status' => 'published',
+        'closes_at' => '2026-09-24 23:59:59',
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('activeSeason', [
+            'academic_year' => '2025-2026',
+            'is_open' => false,
+        ]));
+
+    $window->update(['closes_at' => '2026-09-30 23:59:59']);
+    AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->update(['closes_on' => '2026-09-24']);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('activeSeason', [
+            'academic_year' => '2025-2026',
+            'is_open' => false,
+        ]));
+});
+
+test('home landing ignores foreign active cycles and windows', function (): void {
+    seedE2Foundation();
+    $foreignInstitution = Institution::query()->create([
+        'code' => 'FOREIGN-INST',
+        'name' => 'Foreign Institution',
+    ]);
+    AcademicCycle::query()->create([
+        'institution_id' => $foreignInstitution->id,
+        'code' => 'FOREIGN-CYCLE',
+        'name' => '2099-2100',
+        'school_year' => '2099-2100',
+        'opens_on' => '2026-01-01',
+        'closes_on' => '2026-12-31',
+        'is_active' => true,
+    ]);
+    ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')
+        ->update(['academic_cycle_id' => AcademicCycle::query()->where('code', 'FOREIGN-CYCLE')->value('id')]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('activeSeason', [
+            'academic_year' => '2025-2026',
+            'is_open' => false,
+        ]));
+});
+
+test('home landing returns no active season when no cycle is active', function (): void {
+    seedE2Foundation();
+    AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->update(['is_active' => false]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('activeSeason', null));
 });
 
 test('health endpoint reports database readiness', function (): void {
@@ -57,7 +140,6 @@ test('apply page exposes programs and open window without slice meta labels', fu
         ->assertInertia(fn ($page) => $page
             ->component('Admission/Apply')
             ->where('page_state', 'ready')
-            ->has('programs', 2)
             ->has('window.id')
             ->has('cycle.id')
         )

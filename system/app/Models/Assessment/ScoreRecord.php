@@ -14,6 +14,8 @@ class ScoreRecord extends Model
 
     public const SOURCE_OMR = 'omr';
 
+    public const SOURCE_IMPORT = 'import';
+
     protected $fillable = [
         'grading_session_id',
         'admission_attempt_id',

@@ -9,9 +9,7 @@ use App\Models\User;
 
 final class ResolveOmrBlankInstanceIssue
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     /** @param array<string, mixed> $resolution */
     public function handle(OmrBlankInstance $instance, User $actor, string $issueCode, array $resolution): OmrBlankInstance

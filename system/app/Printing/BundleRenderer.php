@@ -2,6 +2,7 @@
 
 namespace App\Printing;
 
+use App\Assessment\Omr\Fiducial\OmrFiducial;
 use App\Assessment\Omr\NativeBundle;
 use RuntimeException;
 
@@ -364,7 +365,7 @@ final class BundleRenderer
             // OMRChecker's OWN pinned asset (alignment fiducial, not a
             // template ID), inside the normal printable band.
             if ($markers !== null) {
-                $markerBytes = \App\Assessment\Omr\Fiducial\OmrFiducial::assetBytes();
+                $markerBytes = OmrFiducial::assetBytes();
                 $markerUri = 'data:image/jpeg;base64,'.base64_encode($markerBytes);
                 $markerSize = (int) ($markers['size'] ?? 121);
                 $markerMm = round($markerSize / self::PPI * 25.4, 2);
@@ -414,6 +415,7 @@ final class BundleRenderer
                             }
                         }
                     }
+
                     continue;
                 }
 

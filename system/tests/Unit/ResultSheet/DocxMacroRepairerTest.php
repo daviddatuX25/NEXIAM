@@ -69,3 +69,14 @@ test('repair preserves text-box structure inside paragraphs', function (): void 
         ->and(substr_count($repaired, '<w:r>'))->toBe(3)
         ->and(substr_count($repaired, '</w:r>'))->toBe(3);
 });
+
+test('repair merges dotted report macros fragmented across adjacent runs', function (): void {
+    $xml = runXml('Hello {{qualifiers.', 'applicant_name}}!');
+
+    $repaired = app(DocxMacroRepairer::class)->repairXml($xml);
+
+    preg_match_all('/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/', $repaired, $matches);
+
+    expect($matches[1] ?? [])->toContain('qualifiers.applicant_name')
+        ->and($repaired)->not->toContain('{{qualifiers.</w:t>');
+});

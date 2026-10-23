@@ -1,10 +1,12 @@
 <?php
 
+use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
 use App\Assessment\Omr\NativeBundle;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Jobs\Printing\RenderPrintJob;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Printing\PrintJob;
+use App\Models\User;
 use App\Printing\Actions\RenderBlankOmrSheets;
 use App\Printing\BundleRenderer;
 use App\Printing\DomPdfPrintRenderer;
@@ -13,25 +15,115 @@ use App\Support\SensitiveAssetStore;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
+function printPipelineOwnedTemplateVersion(User $actor): OmrAnswerSheetTemplateVersion
+{
+    $version = app(SaveAuthoredTemplateDraft::class)->handle(
+        'PRINT-PIPELINE-OWNED',
+        'Print pipeline owned fixture',
+        [
+            'pages' => [[
+                'pageDimensions' => [2551, 3898],
+                'fieldBlocks' => [
+                    'ApplicantNumber' => [
+                        'fieldType' => 'QTYPE_INT',
+                        'fieldLabels' => ['APPLICANT_NUMBER_1..10'],
+                        'origin' => [200, 260],
+                        'bubblesGap' => 60,
+                        'labelsGap' => 66,
+                    ],
+                    'Questions' => [
+                        'fieldType' => 'QTYPE_MCQ4',
+                        'direction' => 'horizontal',
+                        'fieldLabels' => ['GENERAL_Q_001'],
+                        'origin' => [180, 900],
+                        'bubblesGap' => 66,
+                        'labelsGap' => 80,
+                    ],
+                ],
+            ]],
+            'bubbleDimensions' => [51, 51],
+        ],
+        $actor,
+        ['title' => 'PRINT PIPELINE'],
+        true,
+    );
+    $version->update(['status' => OmrAnswerSheetTemplateVersion::STATUS_ACTIVE]);
+
+    return $version->fresh(['template']);
+}
+
 test('blank sheet action queues a job with pinned inputs and dedupes duplicates', function (): void {
+    Storage::fake('local');
     Queue::fake();
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
-    $templateVersion = OmrAnswerSheetTemplateVersion::query()
-        ->where('version', 4)
-        ->firstOrFail();
-
+    $templateVersion = printPipelineOwnedTemplateVersion($guidance);
     $first = app(RenderBlankOmrSheets::class)->handle($templateVersion, $guidance);
     $second = app(RenderBlankOmrSheets::class)->handle($templateVersion, $guidance);
 
     expect($first->id)->toBe($second->id)
         ->and($first->artifact_type)->toBe(PrintJob::ARTIFACT_BLANK_SHEET)
         ->and($first->pinned_input_json['template_version_id'])->toBe($templateVersion->id)
-        ->and($first->pinned_input_json['bundle_version'])->toBe(4)
+        ->and($first->pinned_input_json['institution_id'])->toBe($templateVersion->template->institution_id)
+        ->and($first->pinned_input_json['template_id'])->toBe($templateVersion->template_id)
+        ->and($first->pinned_input_json['bundle_version'])->toBe($templateVersion->version)
         ->and($first->pinned_input_json['bundle_hash'])->toBe($templateVersion->native_bundle_hash);
 
     Queue::assertPushed(RenderPrintJob::class, 1);
+});
+test('render job rejects a queued hash that no longer identifies its owned artifact', function (): void {
+    Storage::fake('local');
+    Queue::fake();
+    $fixture = buildOmrGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    $templateVersion = printPipelineOwnedTemplateVersion($guidance);
+    $job = app(RenderBlankOmrSheets::class)->handle($templateVersion, $guidance);
+    $pinned = $job->pinned_input_json;
+    $pinned['bundle_hash'] = hash('sha256', 'tampered-queue-pin');
+    $job->update(['pinned_input_json' => $pinned]);
+    $renderer = new class implements PrintRenderer
+    {
+        public function render(string $html, array $options = []): string
+        {
+            return '%PDF-1.7 should-not-render';
+        }
+    };
+
+    expect(fn () => (new RenderPrintJob($job->id))->handle(
+        $renderer,
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
+    ))->toThrow(RuntimeException::class, 'OMR native bundle version pin');
+    expect($job->fresh()->status)->toBe(PrintJob::STATUS_FAILED)
+        ->and($job->fresh()->safe_error)->toBe('bundle_invalid');
+});
+
+test('render job refuses bytes changed beneath the exact version owner', function (): void {
+    Storage::fake('local');
+    Queue::fake();
+    $fixture = buildOmrGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    $templateVersion = printPipelineOwnedTemplateVersion($guidance);
+    $job = app(RenderBlankOmrSheets::class)->handle($templateVersion, $guidance);
+    $relativeDir = $templateVersion->native_bundle_json['relative_dir'];
+    Storage::disk('local')->put($relativeDir.'/template.json', '{}');
+    $renderer = new class implements PrintRenderer
+    {
+        public function render(string $html, array $options = []): string
+        {
+            return '%PDF-1.7 should-not-render';
+        }
+    };
+
+    expect(fn () => (new RenderPrintJob($job->id))->handle(
+        $renderer,
+        app(SensitiveAssetStore::class),
+        app(RecordAuditEvent::class),
+    ))->toThrow(RuntimeException::class);
+
+    expect($job->fresh()->status)->toBe(PrintJob::STATUS_FAILED)
+        ->and($job->fresh()->safe_error)->toBe('bundle_invalid');
 });
 
 test('render job produces a ready pdf for the long-bond bundle', function (): void {
@@ -39,7 +131,7 @@ test('render job produces a ready pdf for the long-bond bundle', function (): vo
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
-    $templateVersion = OmrAnswerSheetTemplateVersion::query()->where('version', 4)->firstOrFail();
+    $templateVersion = printPipelineOwnedTemplateVersion($guidance);
     $job = app(RenderBlankOmrSheets::class)->handle($templateVersion, $guidance);
 
     (new RenderPrintJob($job->id))->handle(
@@ -74,7 +166,7 @@ test('render job uses the selected DB snapshot and print overlay', function (): 
     $fixture = buildOmrGradingFixture($this);
     $guidance = $fixture['guidance'];
 
-    $templateVersion = OmrAnswerSheetTemplateVersion::query()->where('version', 4)->firstOrFail();
+    $templateVersion = printPipelineOwnedTemplateVersion($guidance);
     $templateVersion->update(['print_overlay_json' => ['title' => 'DOWNLOAD PROOF']]);
     $job = app(RenderBlankOmrSheets::class)->handle($templateVersion, $guidance);
 

@@ -16,6 +16,7 @@ class MaterializeOmrCanonicalDraftRequest extends FormRequest
     {
         return [
             'lock_version' => ['required', 'integer', 'min:0'],
+            'page_no' => ['nullable', 'integer', 'min:1', 'max:4'],
         ];
     }
 }

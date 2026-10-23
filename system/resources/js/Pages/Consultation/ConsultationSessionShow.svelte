@@ -5,6 +5,8 @@
      */
     import StaffLayout from '@/Pages/Staff/StaffLayout.svelte';
     import PageHeaderBar from '@/Components/kit/PageHeaderBar.svelte';
+    import PrintDocumentsSlot from '@/Components/DocumentTemplate/PrintDocumentsSlot.svelte';
+    import { Checkbox } from '@/Components/ui/checkbox';
     import { Badge } from '@/Components/ui/badge';
     import { Button } from '@/Components/ui/button';
     import * as Dialog from '@/Components/ui/dialog';
@@ -17,6 +19,7 @@
         Ban,
         CalendarCheck,
         CheckCircle,
+        ExternalLink,
         Lock,
         LockOpen,
         Pencil,
@@ -26,7 +29,9 @@
         UserMinus,
         UserPlus,
     } from 'lucide-svelte';
-
+    import { applySearchFocus } from '@/lib/search-focus';
+    import ApplicantActionsMenu from '@/Components/Admission/ApplicantActionsMenu.svelte';
+    import { tick } from 'svelte';
     let {
         session,
         assigned_applicants = [],
@@ -37,8 +42,11 @@
         is_publishable = false,
         is_completable = false,
         can_decide = false,
+        can_plan = false,
         errors = {},
+        focus_assignment_id = null,
     } = $props();
+    const focusedApplicant = $derived(assigned_applicants.find((row) => String(row.id) === String(focus_assignment_id)) ?? null);
 
     let selectedReady = $state([]);
     let searchReady = $state('');
@@ -52,6 +60,43 @@
     let reassignReason = $state('');
     let reassigning = $state(false);
 
+    let assignedPage = $state(1);
+    const assignedPerPage = 10;
+    const totalAssignedPages = $derived(
+        Math.max(1, Math.ceil(filteredAssigned.length / assignedPerPage)),
+    );
+    const paginatedAssigned = $derived(
+        filteredAssigned.slice(
+            (assignedPage - 1) * assignedPerPage,
+            assignedPage * assignedPerPage,
+        ),
+    );
+
+    let readyPage = $state(1);
+    const readyPerPage = 10;
+    const totalReadyPages = $derived(
+        Math.max(1, Math.ceil(filteredReady.length / readyPerPage)),
+    );
+    const paginatedReady = $derived(
+        filteredReady.slice(
+            (readyPage - 1) * readyPerPage,
+            readyPage * readyPerPage,
+        ),
+    );
+
+    $effect(() => {
+        if (focus_assignment_id) {
+            const index = filteredAssigned.findIndex(
+                (r) => String(r.id) === String(focus_assignment_id),
+            );
+            if (index >= 0) {
+                assignedPage = Math.floor(index / assignedPerPage) + 1;
+            }
+            void tick().then(() => {
+                applySearchFocus(`consultation-assignment-${focus_assignment_id}`);
+            });
+        }
+    });
     const readyList = $derived(
         ready_pool.length > 0 ? ready_pool : available_applicants,
     );
@@ -79,6 +124,51 @@
         }),
     );
 
+    const isAllAssignedSelected = $derived(
+        filteredAssigned.length > 0 &&
+            filteredAssigned.every((r) => selectedAssigned.includes(r.id)),
+    );
+    const isSomeAssignedSelected = $derived(
+        filteredAssigned.some((r) => selectedAssigned.includes(r.id)) &&
+            !isAllAssignedSelected,
+    );
+    const isAllReadySelected = $derived(
+        filteredReady.length > 0 &&
+            filteredReady.every((app) => selectedReady.includes(app.id)),
+    );
+    const isSomeReadySelected = $derived(
+        filteredReady.some((app) => selectedReady.includes(app.id)) &&
+            !isAllReadySelected,
+    );
+
+    function toggleAllAssigned(checked) {
+        if (checked) {
+            const newIds = filteredAssigned
+                .map((r) => r.id)
+                .filter((id) => !selectedAssigned.includes(id));
+            selectedAssigned = [...selectedAssigned, ...newIds];
+        } else {
+            const visibleIds = filteredAssigned.map((r) => r.id);
+            selectedAssigned = selectedAssigned.filter(
+                (id) => !visibleIds.includes(id),
+            );
+        }
+    }
+
+    function toggleAllReady(checked) {
+        if (checked) {
+            const newIds = filteredReady
+                .map((a) => a.id)
+                .filter((id) => !selectedReady.includes(id));
+            selectedReady = [...selectedReady, ...newIds];
+        } else {
+            const visibleIds = filteredReady.map((a) => a.id);
+            selectedReady = selectedReady.filter(
+                (id) => !visibleIds.includes(id),
+            );
+        }
+    }
+
     function toggleReady(id) {
         selectedReady = selectedReady.includes(id)
             ? selectedReady.filter((x) => x !== id)
@@ -96,24 +186,16 @@
     function assignSelected() {
         if (selectedReady.length === 0) return;
         const ids = [...selectedReady];
-        selectedReady = [];
-
-        const postNext = (index) => {
-            if (index >= ids.length) {
-                router.reload();
-                return;
-            }
-            router.post(
-                `/consultation/sessions/${session.id}/assign`,
-                { admission_attempt_id: ids[index] },
-                {
-                    preserveScroll: true,
-                    onFinish: () => postNext(index + 1),
+        router.post(
+            `/consultation/sessions/${session.id}/bulk-assign`,
+            { admission_attempt_ids: ids },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedReady = [];
                 },
-            );
-        };
-
-        postNext(0);
+            },
+        );
     }
 
     function cancelAssignment(assignmentId) {
@@ -280,6 +362,8 @@
 
     const actionError = $derived(
         errors?.assign ||
+            errors?.admission_attempt_id ||
+            errors?.consultation_session_id ||
             errors?.reassign ||
             errors?.cancel_assignment ||
             errors?.remove ||
@@ -293,29 +377,30 @@
     );
 
     const breadcrumbs = [
-        { label: 'Consultation', href: '/consultation' },
-        { label: 'Session Scheduling', href: '/consultation/sessions' },
-        { label: session?.code ?? 'Session' },
+        { label: 'Release Day', href: '/consultation' },
+        { label: session?.code ?? 'Release Day session' },
     ];
 </script>
 
-<svelte:head
-    ><title>{session?.code ?? 'Consultation session'}</title></svelte:head
->
-
+<svelte:head><title>{session?.code ?? 'Release Day session'}</title></svelte:head>
 <StaffLayout {breadcrumbs}>
     <div class="min-w-0 space-y-6 p-4 sm:p-6">
-        <PageHeaderBar
-            title={session.code}
-            description="View session details, assign applicants, manage booking, and publish the schedule."
-        >
+            <PageHeaderBar
+                title={session?.code ?? 'Release Day session'}
+                description="View Release Day session details, assign applicants, and publish the schedule."
+            >
             {#snippet actions()}
                 <div class="flex flex-wrap gap-2">
+                    {#if focusedApplicant?.admission_attempt_id}
+                        <ApplicantActionsMenu attemptId={focusedApplicant.admission_attempt_id} context={{ consultation_session_id: session.id }} />
+                    {/if}
+                    <PrintDocumentsSlot slotKey="consultation_session_show" sessionId={session?.id ?? null} sessionKind="consultation" label="Session roster" />
+                    <PrintDocumentsSlot slotKey="guidance_applicant_support" attemptIds={(assigned_applicants ?? []).map((row) => row.admission_attempt_id ?? row.id).filter(Boolean)} label="Applicant documents" />
                     {#if can_decide}
                         <Link href="/consultation">
                             <Button variant="outline" class="min-h-10 gap-2">
                                 <CalendarCheck class="size-4" />
-                                Consultation decisions
+                                Academic Advising
                             </Button>
                         </Link>
                     {/if}
@@ -376,7 +461,7 @@
                         </Button>
                     {/if}
 
-                    {#if session.status !== 'completed' && session.status !== 'cancelled'}
+                    {#if can_plan && session.status !== 'completed' && session.status !== 'cancelled'}
                         {#if session.booking_mode === 'open_for_reservation'}
                             <Button
                                 variant="outline"
@@ -386,7 +471,7 @@
                                 <Lock class="size-4" />
                                 Close reservation
                             </Button>
-                        {:else}
+                        {:else if session.status === 'draft'}
                             <Button
                                 variant="outline"
                                 class="min-h-10 gap-2"
@@ -399,7 +484,8 @@
                     {/if}
                 </div>
             {/snippet}
-        </PageHeaderBar>
+            </PageHeaderBar>
+
 
         {#if publish_block_reason && session.status === 'draft'}
             <div
@@ -449,19 +535,21 @@
                         >
                     </dd>
                 </div>
-                <div>
-                    <dt class="text-muted-foreground text-sm">Booking mode</dt>
-                    <dd>
-                        <Badge
-                            variant={session.booking_mode ===
-                            'open_for_reservation'
-                                ? 'default'
-                                : 'outline'}
-                        >
-                            {bookingModeLabel(session.booking_mode)}
-                        </Badge>
-                    </dd>
-                </div>
+                {#if can_plan || session.booking_mode === 'open_for_reservation'}
+                    <div>
+                        <dt class="text-muted-foreground text-sm">Booking mode</dt>
+                        <dd>
+                            <Badge
+                                variant={session.booking_mode ===
+                                'open_for_reservation'
+                                    ? 'default'
+                                    : 'outline'}
+                            >
+                                {bookingModeLabel(session.booking_mode)}
+                            </Badge>
+                        </dd>
+                    </div>
+                {/if}
                 <div>
                     <dt class="text-muted-foreground text-sm">
                         Capacity usage
@@ -498,19 +586,32 @@
                     </p>
                 </div>
                 {#if session.status !== 'completed' && session.status !== 'cancelled'}
-                    <Button
-                        variant="outline"
-                        class="min-h-10 gap-2"
-                        disabled={selectedAssigned.length === 0 ||
-                            openReassignTargets.length === 0}
-                        onclick={() => openReassign(selectedAssigned)}
-                        title={openReassignTargets.length === 0
-                            ? 'No other sessions with capacity'
-                            : 'Reassign selected'}
-                    >
-                        <ArrowRightLeft class="size-4" />
-                        Reassign selected ({selectedAssigned.length})
-                    </Button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        {#if selectedAssigned.length > 0}
+                            <span class="text-xs text-muted-foreground">Selected {selectedAssigned.length} applicant(s)</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 px-2 text-xs text-destructive hover:bg-destructive/10"
+                                onclick={() => (selectedAssigned = [])}
+                            >
+                                Clear selection
+                            </Button>
+                        {/if}
+                        <Button
+                            variant="outline"
+                            class="min-h-10 gap-2 font-mono text-xs"
+                            disabled={selectedAssigned.length === 0 ||
+                                openReassignTargets.length === 0}
+                            onclick={() => openReassign(selectedAssigned)}
+                            title={openReassignTargets.length === 0
+                                ? 'No other sessions with capacity'
+                                : 'Reassign selected'}
+                        >
+                            <ArrowRightLeft class="size-4" />
+                            Reassign selected ({selectedAssigned.length})
+                        </Button>
+                    </div>
                 {/if}
             </div>
 
@@ -524,13 +625,24 @@
                         placeholder="Search assigned..."
                         class="h-9 pl-8"
                         bind:value={searchAssigned}
+                        oninput={() => (assignedPage = 1)}
                     />
                 </div>
                 <div class="mt-4 overflow-x-auto">
                     <Table.Root>
                         <Table.Header class="bg-muted/50">
                             <Table.Row>
-                                <Table.Head class="w-12"></Table.Head>
+                                <Table.Head class="w-12">
+                                    {#if session.status !== 'completed' && session.status !== 'cancelled' && filteredAssigned.length > 0}
+                                        <Checkbox
+                                            checked={isAllAssignedSelected}
+                                            indeterminate={isSomeAssignedSelected}
+                                            onCheckedChange={(checked) =>
+                                                toggleAllAssigned(Boolean(checked))}
+                                            aria-label="Select all assigned applicants in this view"
+                                        />
+                                    {/if}
+                                </Table.Head>
                                 <Table.Head>Reference</Table.Head>
                                 <Table.Head>Name</Table.Head>
                                 <Table.Head>Source</Table.Head>
@@ -541,8 +653,8 @@
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {#each filteredAssigned as row (row.id)}
-                                <Table.Row>
+                            {#each paginatedAssigned as row (row.id)}
+                                <Table.Row id={`consultation-assignment-${row.id}`}>
                                     <Table.Cell>
                                         {#if session.status !== 'completed' && session.status !== 'cancelled'}
                                             <input
@@ -553,6 +665,8 @@
                                                 )}
                                                 onchange={() =>
                                                     toggleAssigned(row.id)}
+                                                onclick={(e) =>
+                                                    e.stopPropagation()}
                                                 aria-label={`Select ${row.name}`}
                                             />
                                         {/if}
@@ -571,50 +685,82 @@
                                             {sourceLabel(row.source)}
                                         </Badge>
                                     </Table.Cell>
-                                    <Table.Cell class="text-muted-foreground"
-                                        >{row.status ?? 'assigned'}</Table.Cell
-                                    >
+                                    <Table.Cell class="text-muted-foreground">
+                                        <div>{row.status ?? 'assigned'}</div>
+                                        {#if row.scoring_blocker}
+                                            <p role="status" class="mt-1 max-w-xs text-xs text-amber-700 dark:text-amber-300">
+                                                Scoring incomplete: {row.scoring_blocker}
+                                            </p>
+                                        {/if}
+                                    </Table.Cell>
                                     <Table.Cell class="text-center">
-                                        {#if session.status !== 'completed' && session.status !== 'cancelled'}
-                                            <div
-                                                class="flex flex-wrap items-center justify-center gap-1"
-                                            >
+                                        <div class="flex flex-wrap items-center justify-center gap-1">
+                                            {#if row.admission_attempt_id || row.attempt_id || row.attempt?.id}
+                                                <Link href={`/consultation/applicants/${row.admission_attempt_id || row.attempt_id || row.attempt?.id}?session_id=${session.id}`}>
+                                                    <Button variant="ghost" size="sm" class="h-8 px-2 text-xs">
+                                                        <ExternalLink class="mr-1.5 size-3.5" />
+                                                        Advisory Workspace
+                                                    </Button>
+                                                </Link>
+                                            {/if}
+                                            {#if session.status !== 'completed' && session.status !== 'cancelled'}
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     class="h-8 px-2 text-xs"
-                                                    disabled={openReassignTargets.length ===
-                                                        0}
-                                                    onclick={() =>
-                                                        openReassign([row.id])}
+                                                    disabled={openReassignTargets.length === 0}
+                                                    onclick={() => openReassign([row.id])}
                                                 >
-                                                    <ArrowRightLeft
-                                                        class="mr-1.5 size-3.5"
-                                                    />
+                                                    <ArrowRightLeft class="mr-1.5 size-3.5" />
                                                     Reassign
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     class="text-destructive h-8 px-2 text-xs"
-                                                    onclick={() =>
-                                                        cancelAssignment(
-                                                            row.id,
-                                                        )}
+                                                    onclick={() => cancelAssignment(row.id)}
                                                 >
-                                                    <UserMinus
-                                                        class="mr-1.5 size-3.5"
-                                                    />
+                                                    <UserMinus class="mr-1.5 size-3.5" />
                                                     Cancel
                                                 </Button>
-                                            </div>
-                                        {/if}
+                                            {/if}
+                                        </div>
                                     </Table.Cell>
                                 </Table.Row>
                             {/each}
                         </Table.Body>
                     </Table.Root>
                 </div>
+                {#if totalAssignedPages > 1}
+                    <div class="mt-4 flex items-center justify-between border-t border-border/40 pt-3">
+                        <span class="text-xs text-muted-foreground">
+                            Showing {(assignedPage - 1) * assignedPerPage + 1} to {Math.min(assignedPage * assignedPerPage, filteredAssigned.length)} of {filteredAssigned.length}
+                        </span>
+                        <div class="flex items-center gap-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="h-8 px-2.5 text-xs"
+                                disabled={assignedPage <= 1}
+                                onclick={() => (assignedPage = Math.max(1, assignedPage - 1))}
+                            >
+                                Previous
+                            </Button>
+                            <span class="px-2 font-mono text-xs text-muted-foreground">
+                                {assignedPage} / {totalAssignedPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="h-8 px-2.5 text-xs"
+                                disabled={assignedPage >= totalAssignedPages}
+                                onclick={() => (assignedPage = Math.min(totalAssignedPages, assignedPage + 1))}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                {/if}
             {:else}
                 <p class="text-muted-foreground mt-4 text-sm">
                     No applicants assigned yet.
@@ -633,18 +779,31 @@
                         </h2>
                         <p class="text-muted-foreground mt-1 text-sm">
                             Accepted applicants with finalized results and
-                            prepared documents, without an active consultation
-                            assignment.
+                            prepared documents, without an active Release Day
+                            appointment assignment.
                         </p>
                     </div>
-                    <Button
-                        class="min-h-10 gap-2"
-                        disabled={selectedReady.length === 0}
-                        onclick={assignSelected}
-                    >
-                        <UserPlus class="size-4" />
-                        Assign selected ({selectedReady.length})
-                    </Button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        {#if selectedReady.length > 0}
+                            <span class="text-xs text-muted-foreground">Selected {selectedReady.length} applicant(s)</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 px-2 text-xs text-destructive hover:bg-destructive/10"
+                                onclick={() => (selectedReady = [])}
+                            >
+                                Clear selection
+                            </Button>
+                        {/if}
+                        <Button
+                            class="min-h-10 gap-2 font-mono text-xs"
+                            disabled={selectedReady.length === 0}
+                            onclick={assignSelected}
+                        >
+                            <UserPlus class="size-4" />
+                            Assign selected ({selectedReady.length})
+                        </Button>
+                    </div>
                 </div>
 
                 {#if readyList.length > 0}
@@ -657,13 +816,24 @@
                             placeholder="Search ready pool..."
                             class="h-9 pl-8"
                             bind:value={searchReady}
+                            oninput={() => (readyPage = 1)}
                         />
                     </div>
                     <div class="mt-4 overflow-x-auto">
                         <Table.Root>
                             <Table.Header class="bg-muted/50">
                                 <Table.Row>
-                                    <Table.Head class="w-12"></Table.Head>
+                                    <Table.Head class="w-12">
+                                        {#if filteredReady.length > 0}
+                                            <Checkbox
+                                                checked={isAllReadySelected}
+                                                indeterminate={isSomeReadySelected}
+                                                onCheckedChange={(checked) =>
+                                                    toggleAllReady(Boolean(checked))}
+                                                aria-label="Select all ready applicants in this view"
+                                            />
+                                        {/if}
+                                    </Table.Head>
                                     <Table.Head>Reference</Table.Head>
                                     <Table.Head>Name</Table.Head>
                                     <Table.Head>Email</Table.Head>
@@ -673,8 +843,8 @@
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
-                                {#each filteredReady as app (app.id)}
-                                    <Table.Row>
+                                {#each paginatedReady as app (app.id)}
+                                    <Table.Row id={`ready-applicant-${app.id}`}>
                                         <Table.Cell>
                                             <input
                                                 type="checkbox"
@@ -684,6 +854,8 @@
                                                 )}
                                                 onchange={() =>
                                                     toggleReady(app.id)}
+                                                onclick={(e) =>
+                                                    e.stopPropagation()}
                                                 aria-label={`Select ${app.name}`}
                                             />
                                         </Table.Cell>
@@ -714,6 +886,36 @@
                             </Table.Body>
                         </Table.Root>
                     </div>
+                    {#if totalReadyPages > 1}
+                        <div class="mt-4 flex items-center justify-between border-t border-border/40 pt-3">
+                            <span class="text-xs text-muted-foreground">
+                                Showing {(readyPage - 1) * readyPerPage + 1} to {Math.min(readyPage * readyPerPage, filteredReady.length)} of {filteredReady.length}
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-8 px-2.5 text-xs"
+                                    disabled={readyPage <= 1}
+                                    onclick={() => (readyPage = Math.max(1, readyPage - 1))}
+                                >
+                                    Previous
+                                </Button>
+                                <span class="px-2 font-mono text-xs text-muted-foreground">
+                                    {readyPage} / {totalReadyPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-8 px-2.5 text-xs"
+                                    disabled={readyPage >= totalReadyPages}
+                                    onclick={() => (readyPage = Math.min(totalReadyPages, readyPage + 1))}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    {/if}
                 {:else}
                     <p class="text-muted-foreground mt-4 text-sm">
                         No eligible applicants in ready pool.
@@ -728,13 +930,13 @@
             <Dialog.Header>
                 <Dialog.Title>
                     {reasonMode === 'unpublish'
-                        ? 'Unpublish consultation session'
-                        : 'Cancel consultation session'}
+                        ? 'Unpublish Release Day session'
+                        : 'Cancel Release Day session'}
                 </Dialog.Title>
                 <Dialog.Description>
                     {reasonMode === 'unpublish'
                         ? 'Returns the session to draft. Assignments stay; applicants may need a new publish notice later.'
-                        : 'Terminal cancel. Frees active assignments and open reservations. Requires a reason.'}
+                        : 'Terminal cancel. Frees active assignments. Requires a reason.'}
                 </Dialog.Description>
             </Dialog.Header>
             <Textarea bind:value={reason} rows={3} placeholder="Reason…" />
@@ -770,7 +972,7 @@
                     Move {selectedAssigned.length} seat{selectedAssigned.length ===
                     1
                         ? ''
-                        : 's'} to another consultation session in this academic year.
+                        : 's'} to another Release Day session in this academic year.
                 </Dialog.Description>
             </Dialog.Header>
             <div class="space-y-3">

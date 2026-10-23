@@ -5,6 +5,7 @@ namespace App\Assessment\Actions\Omr\Canonical;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftException;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
 use App\Assessment\Omr\Canonical\OmrMarkerProfileService;
+use App\Assessment\Omr\OmrRegistrationMode;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrMarkerProfile;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
@@ -17,13 +18,15 @@ final class SelectOmrMarkerProfile
         private readonly OmrMarkerProfileService $profiles,
         private readonly OmrAuthoringDraftService $drafts,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, int|float>|null $insets */
     public function handle(OmrTemplateAuthoringDraft $draft, User $actor, OmrMarkerProfile $profile, ?array $insets, int $expectedLockVersion): OmrTemplateAuthoringDraft
     {
         $this->drafts->assertOwner($draft, $actor);
+        if ($draft->registration_mode !== OmrRegistrationMode::FiducialAnchored) {
+            throw new OmrAuthoringDraftException('registration_mode_incompatible', 'Document-bound drafts cannot select a marker profile.');
+        }
         if ($draft->isCompiled()) {
             throw new OmrAuthoringDraftException('draft_read_only', 'Compiled drafts are immutable.');
         }

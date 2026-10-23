@@ -5,6 +5,7 @@ namespace App\Applicant\Support;
 use App\Admission\Support\ApplicantScope;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Server-authored applicant navigation (REQ-VS-027). Rows exist only for
@@ -14,7 +15,7 @@ use App\Models\User;
 final class ApplicantNavigationBuilder
 {
     /**
-     * @return list<array{key: string, label: string, href: string}>
+     * @return list<array{key: string, label: string, href: string, badge_key?: string}>
      */
     public function for(?User $user): array
     {
@@ -24,13 +25,24 @@ final class ApplicantNavigationBuilder
 
         $items = [
             ['key' => 'portal', 'label' => 'Home', 'href' => route('applicant.portal')],
-            ['key' => 'schedule', 'label' => 'Exam schedule', 'href' => route('applicant.schedule')],
-            ['key' => 'consultation', 'label' => 'Consultation', 'href' => route('applicant.consultation')],
-            ['key' => 'program_choice', 'label' => 'Program choice', 'href' => route('applicant.program-choice')],
-            ['key' => 'notifications', 'label' => 'Notifications', 'href' => route('notifications.index')],
-            ['key' => 'qr', 'label' => 'My QR', 'href' => route('applicant.qr')],
-            ['key' => 'admission_support', 'label' => 'Admission support', 'href' => route('applicant.admission-support')],
+            ['key' => 'schedule', 'label' => 'Exam Schedule', 'href' => route('applicant.schedule')],
+            ['key' => 'exam_day', 'label' => 'Exam Day', 'href' => route('applicant.exam-day')],
+            ['key' => 'exam_scoring', 'label' => 'Exam Scoring', 'href' => route('applicant.exam-scoring')],
+            ['key' => 'release_schedule', 'label' => 'Release Day Scheduling', 'href' => route('applicant.consultation')],
+            ['key' => 'release_day', 'label' => 'Release Day', 'href' => route('applicant.release-day')],
+            ['key' => 'results', 'label' => 'My Results', 'href' => route('applicant.results.show')],
+            ['key' => 'program_choice', 'label' => 'Program Choice', 'href' => route('applicant.program-choice')],
+            ['key' => 'clearance', 'label' => 'Admission Clearance', 'href' => route('applicant.admission-clearance')],
+            ['key' => 'admission_support', 'label' => 'Messages', 'href' => route('applicant.admission-support'), 'badge_key' => 'messaging'],
+            ['key' => 'access_history', 'label' => 'Privacy & access history', 'href' => route('applicant.access-history')],
         ];
+
+        if (Route::has('notifications.index')) {
+            $items[] = ['key' => 'notifications', 'label' => 'Notifications', 'href' => route('notifications.index')];
+        }
+        if (Route::has('applicant.qr')) {
+            $items[] = ['key' => 'qr', 'label' => 'My QR', 'href' => route('applicant.qr')];
+        }
 
         $identityId = ApplicantScope::identityIdForUser($user);
 
@@ -43,7 +55,7 @@ final class ApplicantNavigationBuilder
             if ($attemptId !== null) {
                 array_splice($items, 1, 0, [[
                     'key' => 'application',
-                    'label' => 'My application',
+                    'label' => 'My Application',
                     'href' => route('applicant.application', ['attempt' => $attemptId]),
                 ]]);
             }

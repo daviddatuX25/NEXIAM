@@ -19,11 +19,11 @@ class ReviewOmrSheetRequest extends FormRequest
     {
         return [
             'action' => ['required', Rule::in(['confirm', 'abstain'])],
-            'admission_attempt_id' => ['nullable', 'integer', 'exists:admission_attempts,id'],
+            'admission_attempt_id' => ['prohibited'],
             'abstain_reason' => ['required_if:action,abstain', 'string', 'max:255'],
-            'adjusted_scores' => ['sometimes', 'array'],
-            'adjusted_scores.*.aptitude_area_id' => ['required', 'integer', 'distinct', 'exists:aptitude_areas,id'],
-            'adjusted_scores.*.score' => ['required', 'numeric', 'min:0', 'max:1000'],
+            'adjusted_scores' => ['prohibited'],
+            'per_area_scores' => ['prohibited'],
+            'scores' => ['prohibited'],
         ];
     }
 }

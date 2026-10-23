@@ -118,16 +118,14 @@ test('all source adapters emit the same canonical page boundary contract', funct
     $fixtures['docx'] = $docxPath;
     app()->instance(DocxToPdfConverter::class, new class($pdfBytes) implements DocxToPdfConverter
     {
-        public function __construct(private readonly string $pdfBytes)
-        {
-        }
+        public function __construct(private readonly string $pdfBytes) {}
 
         public function isAvailable(): bool
         {
             return true;
         }
 
-        public function convert(string $documentPath): string
+        public function convert(string $documentPath, ?float $timeoutSeconds = null): string
         {
             return $this->pdfBytes;
         }

@@ -147,3 +147,158 @@ diff --git a/src/core.py b/src/core.py
          except Exception as e:
              raise e
 *** End Patch
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NEXIAM <engineering@nexiam.test>
+Date: Sun, 27 Sep 2026 00:00:00 +0000
+Subject: [PATCH] recognize explicit bubble positions in pinned templates
+
+Allow an optional field-label by bubble-value matrix of absolute pixel
+coordinates. Validate its structure and page bounds before constructing
+ordered Bubble objects; leave the regular-grid path unchanged.
+
+---
+ src/template.py | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 67 insertions(+), 20 deletions(-)
+
+diff --git a/src/template.py b/src/template.py
+--- a/src/template.py
++++ b/src/template.py
+@@ -142,6 +142,6 @@ class Template:
+     def parse_and_add_field_block(self, block_name, field_block_object):
+         field_block_object = self.pre_fill_field_block(field_block_object)
+-        block_instance = FieldBlock(block_name, field_block_object)
++        block_instance = FieldBlock(block_name, field_block_object, self.page_dimensions)
+         self.field_blocks.append(block_instance)
+         self.validate_parsed_labels(field_block_object["fieldLabels"], block_instance)
+ 
+@@ -199,9 +199,9 @@ class FieldBlock:
+-    def __init__(self, block_name, field_block_object):
++    def __init__(self, block_name, field_block_object, page_dimensions):
+         self.name = block_name
+         self.shift = 0
+-        self.setup_field_block(field_block_object)
++        self.setup_field_block(field_block_object, page_dimensions)
+ 
+-    def setup_field_block(self, field_block_object):
++    def setup_field_block(self, field_block_object, page_dimensions):
+         # case mapping
+         (
+             bubble_dimensions,
+@@ -211,6 +211,7 @@ class FieldBlock:
+             field_type,
+             labels_gap,
+             origin,
++            bubble_positions,
+             self.empty_val,
+         ) = map(
+             field_block_object.get,
+@@ -222,6 +223,7 @@ class FieldBlock:
+                 "fieldType",
+                 "labelsGap",
+                 "origin",
++                "bubblePositions",
+                 "emptyValue",
+             ],
+         )
+@@ -230,20 +232,87 @@ class FieldBlock:
+         )
++        has_explicit_bubble_positions = "bubblePositions" in field_block_object
+         self.origin = origin
+         self.bubble_dimensions = bubble_dimensions
+-        self.calculate_block_dimensions(
+-            bubble_dimensions,
+-            bubble_values,
+-            bubbles_gap,
+-            direction,
+-            labels_gap,
+-        )
+-        self.generate_bubble_grid(
+-            bubble_values,
+-            bubbles_gap,
+-            direction,
+-            field_type,
+-            labels_gap,
+-        )
++        if not has_explicit_bubble_positions:
++            self.calculate_block_dimensions(
++                bubble_dimensions,
++                bubble_values,
++                bubbles_gap,
++                direction,
++                labels_gap,
++            )
++            self.generate_bubble_grid(
++                bubble_values,
++                bubbles_gap,
++                direction,
++                field_type,
++                labels_gap,
++            )
++        else:
++            self.generate_explicit_bubbles(
++                bubble_positions,
++                bubble_values,
++                field_type,
++                page_dimensions,
++            )
++
++    def generate_explicit_bubbles(
++        self, bubble_positions, bubble_values, field_type, page_dimensions
++    ):
++        if (
++            not isinstance(bubble_positions, list)
++            or len(bubble_positions) != len(self.parsed_field_labels)
++            or not isinstance(bubble_values, list)
++            or not bubble_values
++        ):
++            raise ValueError(f"Invalid bubblePositions dimensions in field block '{self.name}'")
++
++        bubble_width, bubble_height = self.bubble_dimensions
++        page_width, page_height = page_dimensions
++        if (
++            type(bubble_width) is not int
++            or type(bubble_height) is not int
++            or bubble_width <= 0
++            or bubble_height <= 0
++            or type(page_width) is not int
++            or type(page_height) is not int
++            or page_width <= 0
++            or page_height <= 0
++        ):
++            raise ValueError(f"Invalid bubble or page dimensions in field block '{self.name}'")
++
++        positions = []
++        for label_positions in bubble_positions:
++            if not isinstance(label_positions, list) or len(label_positions) != len(bubble_values):
++                raise ValueError(f"Invalid bubblePositions dimensions in field block '{self.name}'")
++            row = []
++            for point in label_positions:
++                if (
++                    not isinstance(point, list)
++                    or len(point) != 2
++                    or type(point[0]) is not int
++                    or type(point[1]) is not int
++                ):
++                    raise ValueError(f"Invalid bubblePositions coordinate in field block '{self.name}'")
++                x, y = point
++                if x < 0 or y < 0 or x + bubble_width >= page_width or y + bubble_height >= page_height:
++                    raise ValueError(f"bubblePositions outside page in field block '{self.name}'")
++                row.append((x, y))
++            positions.append(row)
++
++        min_x = min(x for row in positions for x, _y in row)
++        min_y = min(y for row in positions for _x, y in row)
++        max_x = max(x for row in positions for x, _y in row)
++        max_y = max(y for row in positions for _x, y in row)
++        self.origin = [min_x, min_y]
++        self.dimensions = [max_x - min_x + bubble_width, max_y - min_y + bubble_height]
++        self.traverse_bubbles = [
++            [
++                Bubble([x, y], field_label, field_type, bubble_value)
++                for (x, y), bubble_value in zip(row, bubble_values)
++            ]
++            for field_label, row in zip(self.parsed_field_labels, positions)
++        ]
+ 
+     def calculate_block_dimensions(
+         self,

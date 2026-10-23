@@ -3,39 +3,47 @@
 namespace Database\Seeders;
 
 use App\Admission\Actions\AcceptAdmissionAttempt;
+use App\Admission\Actions\SetGuidanceProgramPool;
 use App\Admission\Actions\SubmitAdmissionAttempt;
 use App\Admission\Data\AdmissionIntakeData;
+use App\Admission\Support\QuotaReservation;
 use App\Consultation\Actions\AssignApplicantToConsultationSession;
 use App\Consultation\Actions\CreateConsultationSession;
-use App\Consultation\Actions\OpenConsultationSessionReservation;
 use App\Consultation\Actions\PublishConsultationSession;
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\Admission\ProgramPool;
 use App\Models\Assessment\GradingSession;
+use App\Models\Assessment\ScoreRecord;
+use App\Models\Communications\PublicPolicy;
 use App\Models\Consultation\ConsultationSession;
 use App\Models\Examination\ExamAssignment;
+use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
-use App\Models\Examination\ExamSession;
+use App\Models\Foundation\AptitudeArea;
 use App\Models\Foundation\Institution;
+use App\Models\Foundation\Program;
+use App\Models\Foundation\ProgramQuota;
 use App\Models\Foundation\Room;
 use App\Models\Release\ResultDocument;
+use App\Models\ResultSheet\ResultDocumentPrintReceipt;
 use App\Models\User;
 use App\Release\Actions\PrepareResultDocument;
+use App\Release\Actions\RecordConsultationDecision;
 use Illuminate\Database\Seeder;
 
 /**
- * Developer-ready consultation demo (consultation-plan-aggregate HANDOFF).
+ * Developer-ready consultation demo seeder.
  *
- * Creates two consultation sessions:
- *   - CONS-DEMO-1  staff_only, published, one assigned applicant
- *   - CONS-DEMO-2  open_for_reservation, published, booking open
- * Both demo applicants are result-ready (grading finalized + document
- * prepared), so assign/reserve flows work end-to-end.
+ * Populates all key consultation scenarios across Stage 6:
+ *   1. Today's Scheduled (Pending Advise):   Juan Dela Cruz (cons.pending@nexiam.test)
+ *   2. Today's Scheduled (Already Advised):  Maria Santos (cons.advised@nexiam.test)
+ *   3. Unscheduled / Direct Walk-in Ready:   Pedro Penduko (cons.walkin@nexiam.test)
+ *   4. Re-Advising Queue (Deferred):         Clara Reyes (cons.readvise@nexiam.test)
+ *   5. Direct Lookup Edge Case (Needs Print): Ana Bautista (cons.noprint@nexiam.test)
+ *   6. Future Session (Open for Reservation): CONS-OPEN-RESERVATIONS
  *
- * Run AFTER `foundation:reset --force`:
- *   php artisan db:seed --class=Database\\Seeders\\ConsultationDemoSeeder
- *
- * Idempotent: re-running when CONS-DEMO-1 exists is a no-op.
+ * Idempotent: re-running when CONS-TODAY-01 exists is a no-op.
  */
 class ConsultationDemoSeeder extends Seeder
 {
@@ -43,177 +51,412 @@ class ConsultationDemoSeeder extends Seeder
     {
         $institution = Institution::query()->where('code', 'SYN-INST-001')->firstOrFail();
         $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
+        $this->backfillGwas($cycle);
         $window = ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
-        $room = Room::query()->where('code', 'RM-101')->firstOrFail();
+        $room = Room::query()->whereIn('code', ['CC-01', 'ITBR-105', 'RM-101'])->firstOrFail();
         $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
 
-        if (ConsultationSession::query()->where('code', 'CONS-DEMO-1')->exists()) {
-            $this->command?->info('Consultation demo already seeded (CONS-DEMO-1).');
+        if (ConsultationSession::query()->where('code', 'CONS-TODAY-01')->exists()) {
+            $this->ensureOverQuotaDemo($institution, $cycle, $guidance);
+            $this->command?->info('Consultation demo already seeded (CONS-TODAY-01); over-quota BSIT fixture ensured.');
 
             return;
         }
 
-        $applicantA = AdmissionAttempt::query()
-            ->whereHas('identity', fn ($q) => $q->where('email', (string) config('seed.applicants.accepted.email')))
-            ->where('academic_cycle_id', $cycle->id)
-            ->orderByDesc('id')
-            ->firstOrFail();
+        // 1. Candidate: Juan Dela Cruz (Today's queue, Pending consultation)
+        $juan = $this->createAttempt($institution, $cycle, $window, $registrar, [
+            'email' => 'cons.pending@nexiam.test',
+            'firstName' => 'Juan',
+            'lastName' => 'Dela Cruz',
+            'phone' => '09171110001',
+            'program' => 'BSIT',
+            'gwa' => 91.20,
+        ]);
+        $this->ensureScoredAndResultReady($cycle, $room, $juan, $guidance, 88, printed: true);
 
-        $applicantB = $this->ensureAcceptedApplicant($institution, $cycle, $window, $registrar);
+        // 2. Candidate: Maria Santos (Today's queue, Already Advised)
+        $maria = $this->createAttempt($institution, $cycle, $window, $registrar, [
+            'email' => 'cons.advised@nexiam.test',
+            'firstName' => 'Maria',
+            'lastName' => 'Santos',
+            'phone' => '09171110002',
+            'program' => 'BSIT',
+            'gwa' => 86.40,
+        ]);
+        $this->ensureScoredAndResultReady($cycle, $room, $maria, $guidance, 92, printed: true);
 
-        $this->makeResultReady($applicantA, $guidance);
-        $this->makeResultReady($applicantB, $guidance);
+        // 3. Candidate: Pedro Penduko (Unscheduled, Ready for Direct Consultation)
+        $pedro = $this->createAttempt($institution, $cycle, $window, $registrar, [
+            'email' => 'cons.walkin@nexiam.test',
+            'firstName' => 'Pedro',
+            'lastName' => 'Penduko',
+            'phone' => '09171110003',
+            'program' => 'BA-Psych',
+            'gwa' => 84.00,
+        ]);
+        $this->ensureScoredAndResultReady($cycle, $room, $pedro, $guidance, 85, printed: true);
 
-        $staffOnly = app(CreateConsultationSession::class)->handle(
+        // 4. Candidate: Clara Reyes (Re-Advising Queue: Deferred)
+        $clara = $this->createAttempt($institution, $cycle, $window, $registrar, [
+            'email' => 'cons.readvise@nexiam.test',
+            'firstName' => 'Clara',
+            'lastName' => 'Reyes',
+            'phone' => '09171110004',
+            'program' => 'BSIT',
+            'gwa' => 88.50,
+        ]);
+        $this->ensureScoredAndResultReady($cycle, $room, $clara, $guidance, 78, printed: true);
+        app(RecordConsultationDecision::class)->handle(
+            $clara,
+            $guidance,
+            'defer',
+            'Borderline score for BSIT; deferred to discuss alternate programs with family.',
+            'cons-decision-clara',
+        );
+
+        // 5. Candidate: Ana Bautista (Direct Lookup Edge Case: Needs Result Sheet Print)
+        $ana = $this->createAttempt($institution, $cycle, $window, $registrar, [
+            'email' => 'cons.noprint@nexiam.test',
+            'firstName' => 'Ana',
+            'lastName' => 'Bautista',
+            'phone' => '09171110005',
+            'program' => 'BSIT',
+            'gwa' => 89.75,
+        ]);
+        $this->ensureScoredAndResultReady($cycle, $room, $ana, $guidance, 82, printed: false);
+
+        // Session 1: Today's Published Session with Juan and Maria assigned
+        $todaySession = app(CreateConsultationSession::class)->handle(
             $cycle,
             $room,
-            'CONS-DEMO-1',
-            now()->addDays(7)->setTime(9, 0)->toDateTimeString(),
+            'CONS-TODAY-01',
+            now()->startOfDay()->setTime(9, 0)->toDateTimeString(),
             ConsultationSession::BOOKING_STAFF_ONLY,
             $guidance,
         );
-        app(AssignApplicantToConsultationSession::class)->handle($staffOnly, $applicantA, $guidance);
-        $staffOnly = $staffOnly->fresh();
-        app(PublishConsultationSession::class)->handle($staffOnly, $guidance, (int) $staffOnly->version);
+        app(AssignApplicantToConsultationSession::class)->handle($todaySession, $juan, $guidance);
+        app(AssignApplicantToConsultationSession::class)->handle($todaySession, $maria, $guidance);
+        $todaySession = $todaySession->fresh();
+        app(PublishConsultationSession::class)->handle($todaySession, $guidance, (int) $todaySession->version);
 
-        // A is fully advised + released: the Registrar card must show ELIGIBLE.
-        $documentA = \App\Models\Release\ResultDocument::query()
-            ->where('admission_attempt_id', $applicantA->id)
-            ->where('status', \App\Models\Release\ResultDocument::STATUS_READY)
-            ->latest()
-            ->firstOrFail();
-        app(\App\Release\Actions\ReleaseResult::class)->handle(
-            $applicantA,
-            $documentA,
-            $guidance,
-            'consultation-demo-release-'.$applicantA->id,
-            \App\Release\Actions\ReleaseResult::MODE_F2F,
-        );
-        app(\App\Release\Actions\RecordConsultationDecision::class)->handle(
-            $applicantA,
+        app(RecordConsultationDecision::class)->handle(
+            $maria,
             $guidance,
             'approve',
-            null,
-            'consultation-demo-decision-'.$applicantA->id,
+            'Qualified for BSIT first preference.',
+            'cons-decision-maria',
+            defaultProgramCode: 'BSIT',
         );
 
-        $openBooking = app(CreateConsultationSession::class)->handle(
+        $this->ensureOverQuotaDemo($institution, $cycle, $guidance);
+
+        // Session 2: Future Session Open for Reservation (Published with 1 reservation)
+        $openSession = app(CreateConsultationSession::class)->handle(
             $cycle,
             $room,
-            'CONS-DEMO-2',
-            now()->addDays(8)->setTime(13, 0)->toDateTimeString(),
+            'CONS-FUTURE-01',
+            now()->addDays(5)->setTime(13, 0)->toDateTimeString(),
             ConsultationSession::BOOKING_OPEN_FOR_RESERVATION,
             $guidance,
         );
+        $enrique = $this->createAttempt($institution, $cycle, $window, $registrar, [
+            'email' => 'cons.reserved@nexiam.test',
+            'firstName' => 'Enrique',
+            'lastName' => 'Gil',
+            'phone' => '09171110006',
+            'program' => 'BSIT',
+            'gwa' => 87.30,
+        ]);
+        $this->ensureScoredAndResultReady($cycle, $room, $enrique, $guidance, 89, printed: true);
+        app(AssignApplicantToConsultationSession::class)->handle($openSession, $enrique, $guidance);
+        $openSession = $openSession->fresh();
+        app(PublishConsultationSession::class)->handle($openSession, $guidance, (int) $openSession->version);
 
+        // Session 3: Draft Session (for testing draft publishing / session setup)
+        app(CreateConsultationSession::class)->handle(
+            $cycle,
+            $room,
+            'CONS-DRAFT-01',
+            now()->addDays(6)->setTime(10, 0)->toDateTimeString(),
+            ConsultationSession::BOOKING_STAFF_ONLY,
+            $guidance,
+        );
 
-        app(AssignApplicantToConsultationSession::class)->handle($openBooking, $applicantB, $guidance);
-        $openBooking = $openBooking->fresh();
-        $published = app(PublishConsultationSession::class)->handle($openBooking, $guidance, (int) $openBooking->version);
+        $this->command?->info('ConsultationDemoSeeder: Seeded today session (CONS-TODAY-01), published future session (CONS-FUTURE-01), draft session (CONS-DRAFT-01), and 6 test personas.');
     }
 
-    private function makeResultReady(AdmissionAttempt $attempt, User $guidance): void
-    {
-        $existing = ExamSession::query()
-            ->whereHas('assignments', fn ($q) => $q->where('admission_attempt_id', $attempt->id))
-            ->where('status', ExamSession::STATUS_COMPLETED)
-            ->exists();
+    /**
+     * Ensure Maria Santos holds an active BSIT commitment and BSIT's ProgramQuota
+     * is set to the already-committed count (1 standalone, or N when combined with
+     * AdmissionSupportDemoSeeder) so advising Juan Dela Cruz or Pedro Penduko into
+     * BSIT immediately demonstrates the non-blocking Over-Quota (+1) flow.
+     */
+    private function ensureOverQuotaDemo(
+        Institution $institution,
+        AcademicCycle $cycle,
+        User $guidance,
+    ): void {
+        $bsit = Program::query()
+            ->where('institution_id', $institution->id)
+            ->where('code', 'BSIT')
+            ->first();
 
-        if (! $existing) {
-            $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
-            $room = Room::query()->where('code', 'RM-101')->firstOrFail();
+        if ($bsit === null) {
+            return;
+        }
 
-            $examSession = ExamSession::query()->create([
+        $maria = AdmissionAttempt::query()
+            ->whereHas('identity', fn ($q) => $q->where('email', 'cons.advised@nexiam.test'))
+            ->where('academic_cycle_id', $cycle->id)
+            ->first();
+
+        if ($maria !== null && ProgramPool::currentFor($maria->id) === null) {
+            app(SetGuidanceProgramPool::class)->handle(
+                $maria,
+                $guidance,
+                'BSIT',
+                [['program_code' => 'BSIT', 'display_order' => 1, 'basis' => 'preference']],
+                'Qualified for BSIT first preference.',
+                'cons-decision-maria-pool',
+            );
+        }
+
+        $juan = AdmissionAttempt::query()
+            ->whereHas('identity', fn ($q) => $q->where('email', 'cons.pending@nexiam.test'))
+            ->where('academic_cycle_id', $cycle->id)
+            ->first();
+
+        $pedro = AdmissionAttempt::query()
+            ->whereHas('identity', fn ($q) => $q->where('email', 'cons.walkin@nexiam.test'))
+            ->where('academic_cycle_id', $cycle->id)
+            ->first();
+
+        $totalCommitted = QuotaReservation::committedForCycle($cycle->id, $bsit->id);
+        $juanCommitted = $juan !== null
+            ? ($totalCommitted - QuotaReservation::committedForCycle($cycle->id, $bsit->id, $juan->id))
+            : 0;
+        $pedroCommitted = $pedro !== null
+            ? ($totalCommitted - QuotaReservation::committedForCycle($cycle->id, $bsit->id, $pedro->id))
+            : 0;
+        $baselineSlots = max(1, $totalCommitted - $juanCommitted - $pedroCommitted);
+
+        ProgramQuota::query()->updateOrCreate(
+            [
+                'program_id' => $bsit->id,
                 'academic_cycle_id' => $cycle->id,
-                'room_id' => $room->id,
-                'code' => 'EX-CONS-RDY-'.$attempt->id,
-                'status' => ExamSession::STATUS_COMPLETED,
-                'starts_at' => now()->subDays(5),
-                'effective_end_at' => now()->subDays(5)->addHours(2),
-                'closed_at' => now()->subDays(5),
-            ]);
+            ],
+            [
+                'slots' => $baselineSlots,
+                'last_notice' => 'Consultation demo at-capacity quota for non-blocking Over-Quota (+1) advising verification.',
+                'last_mutated_by_user_id' => $guidance->id,
+            ],
+        );
+    }
 
-            ExamAssignment::query()->create([
-                'exam_session_id' => $examSession->id,
-                'admission_attempt_id' => $attempt->id,
-                'status' => ExamAssignment::STATUS_ASSIGNED,
-                'source' => ExamAssignment::SOURCE_STAFF_ASSIGNED,
-            ]);
+    /**
+     * Backfill only missing grades on consultation demo attempts so existing
+     * sessions and applicant records become immediately usable on reruns.
+     */
+    private function backfillGwas(AcademicCycle $cycle): void
+    {
+        $gradesByEmail = [
+            'cons.pending@nexiam.test' => 91.20,
+            'cons.advised@nexiam.test' => 86.40,
+            'cons.walkin@nexiam.test' => 84.00,
+            'cons.readvise@nexiam.test' => 88.50,
+            'cons.noprint@nexiam.test' => 89.75,
+            'cons.reserved@nexiam.test' => 87.30,
+        ];
 
-            GradingSession::query()->create([
-                'exam_session_id' => $examSession->id,
-                'status' => GradingSession::STATUS_FINALIZED,
-                'opened_at' => now()->subDays(4),
-                'finalized_at' => now()->subDays(3),
-            ]);
-        }
+        foreach ($gradesByEmail as $email => $gwa) {
+            $attempt = AdmissionAttempt::query()
+                ->where('academic_cycle_id', $cycle->id)
+                ->whereHas('identity', fn ($query) => $query->where('email', $email))
+                ->first();
 
-        $document = ResultDocument::query()
-            ->where('admission_attempt_id', $attempt->id)
-            ->where('status', ResultDocument::STATUS_READY)
-            ->exists();
-
-        if (! $document) {
-            app(PrepareResultDocument::class)->handle($attempt, $guidance);
+            if ($attempt !== null && $attempt->gwa === null) {
+                $attempt->forceFill(['gwa' => $gwa])->save();
+            }
         }
     }
 
-    private function ensureAcceptedApplicant(
+    /**
+     * @param  array{email: string, firstName: string, lastName: string, phone: string, program: string, gwa: float}  $data
+     */
+    private function createAttempt(
         Institution $institution,
         AcademicCycle $cycle,
         ApplicationWindow $window,
         User $registrar,
+        array $data,
     ): AdmissionAttempt {
-        $email = 'consultation.demo.two@nexiam.test';
-
-        $attempt = AdmissionAttempt::query()
-            ->whereHas('identity', fn ($q) => $q->where('email', $email))
+        $existing = AdmissionAttempt::query()
+            ->whereHas('identity', fn ($q) => $q->where('email', $data['email']))
             ->where('academic_cycle_id', $cycle->id)
-            ->orderByDesc('id')
             ->first();
+        if ($existing !== null) {
+            if ($existing->gwa === null && isset($data['gwa'])) {
+                $existing->forceFill(['gwa' => $data['gwa']])->save();
+            }
 
-        if ($attempt === null) {
-            $result = app(SubmitAdmissionAttempt::class)->handle(
-                $institution,
-                $cycle,
-                $window,
-                new AdmissionIntakeData(
-                    firstName: 'Consultation',
-                    lastName: 'Demo Two',
-                    birthdate: '2002-03-03',
-                    sex: 'male',
-                    contactEmail: $email,
-                    applicantType: 'new',
-                    programPreferenceCodes: ['BSN'],
-                    grades: [
-                        'GWA' => '1.85',
-                        'ENG' => '88.00',
-                        'FIL' => '89.00',
-                        'MATH' => '87.00',
-                        'SCI' => '86.00',
-                    ],
-                    middleName: null,
-                    suffix: null,
-                    contactPhone: '09171234569',
-                    lastSchoolEnrolled: 'Tagudin National High School',
-                    strand: 'STEM',
-                    addressLine: '125 Demo St',
-                    city: 'Tagudin',
-                    province: 'Ilocos Sur',
-                    zipCode: '2714',
-                    termsAccepted: true,
-                ),
-                'consultation-demo-seeder',
-            );
-
-            $attempt = $result['attempt'];
+            return $existing;
         }
 
+        $policy = PublicPolicy::designatedIntake((int) $institution->getKey())
+            ?? throw new \RuntimeException('A designated published PublicPolicy revision is required for seeded intake.');
+        $revision = $policy->publishedRevision
+            ?? throw new \RuntimeException('The designated intake policy has no published revision.');
+
+        $result = app(SubmitAdmissionAttempt::class)->handle(
+            $institution,
+            $cycle,
+            $window,
+            new AdmissionIntakeData(
+                firstName: $data['firstName'],
+                lastName: $data['lastName'],
+                birthdate: '2004-05-15',
+                sex: 'female',
+                contactEmail: $data['email'],
+                applicantType: 'new',
+                programPreferenceCodes: [$data['program']],
+                middleName: null,
+                suffix: null,
+                contactPhone: $data['phone'],
+                lastSchoolEnrolled: 'Tagudin National High School',
+                strand: 'STEM',
+                addressLine: '100 University Ave',
+                city: 'Tagudin',
+                province: 'Ilocos Sur',
+                zipCode: '2714',
+                termsAccepted: true,
+                publicPolicyId: (int) $policy->getKey(),
+                publicPolicyRevisionId: (int) $revision->getKey(),
+                publicPolicyRevisionDigest: $revision->contentDigest(),
+            ),
+            'consultation-demo-seeder',
+        );
+
+        $attempt = $result['attempt'];
+
         if ($attempt->status !== AdmissionAttempt::STATUS_ACCEPTED) {
-            app(AcceptAdmissionAttempt::class)->handle($attempt, $registrar, (int) $attempt->version);
+            app(AcceptAdmissionAttempt::class)->handle($attempt, $registrar, (int) ($attempt->version ?? 1));
+            $attempt->refresh();
+        }
+        if ($attempt->gwa === null && isset($data['gwa'])) {
+            $attempt->forceFill(['gwa' => $data['gwa']])->save();
         }
 
         return $attempt;
+    }
+
+    private function ensureScoredAndResultReady(
+        AcademicCycle $cycle,
+        Room $room,
+        AdmissionAttempt $attempt,
+        User $guidance,
+        int $scoreVal,
+        bool $printed,
+    ): void {
+        // Ensure dedicated completed ExamSession with finalized GradingSession
+        $assignment = ExamAssignment::query()
+            ->where('admission_attempt_id', $attempt->id)
+            ->where('status', '!=', ExamAssignment::STATUS_CANCELLED)
+            ->first();
+
+        if ($assignment === null) {
+            $examSession = ExamSession::query()->firstOrCreate(
+                [
+                    'academic_cycle_id' => $cycle->id,
+                    'code' => 'EX-CONS-'.$attempt->id,
+                ],
+                [
+                    'room_id' => $room->id,
+                    'status' => ExamSession::STATUS_COMPLETED,
+                    'starts_at' => now()->subDays(3),
+                    'effective_end_at' => now()->subDays(3)->addHours(2),
+                    'closed_at' => now()->subDays(3),
+                ],
+            );
+
+            $assignment = ExamAssignment::query()->firstOrCreate(
+                [
+                    'exam_session_id' => $examSession->id,
+                    'admission_attempt_id' => $attempt->id,
+                ],
+                [
+                    'status' => ExamAssignment::STATUS_ASSIGNED,
+                    'source' => ExamAssignment::SOURCE_STAFF_ASSIGNED,
+                ],
+            );
+
+            $grading = GradingSession::query()->firstOrCreate(
+                ['exam_session_id' => $examSession->id],
+                [
+                    'status' => GradingSession::STATUS_FINALIZED,
+                    'opened_at' => now()->subDays(2),
+                    'finalized_at' => now()->subDays(1),
+                ],
+            );
+            $aptitudes = AptitudeArea::query()->where('is_active', true)->get();
+            foreach ($aptitudes as $area) {
+                ScoreRecord::query()->updateOrCreate(
+                    [
+                        'grading_session_id' => $grading->id,
+                        'admission_attempt_id' => $attempt->id,
+                        'aptitude_area_id' => $area->id,
+                    ],
+                    [
+                        'score' => $scoreVal,
+                        'converted_score' => $scoreVal,
+                        'recorded_by_user_id' => $guidance->id,
+                        'idempotency_key' => 'cons-score-'.$attempt->id.'-'.$area->id,
+                        'source' => ScoreRecord::SOURCE_MANUAL,
+                        'version' => 1,
+                    ],
+                );
+            }
+        }
+
+        // Ensure ResultDocument is prepared
+        $document = ResultDocument::query()
+            ->where('admission_attempt_id', $attempt->id)
+            ->where('status', ResultDocument::STATUS_READY)
+            ->latest('id')
+            ->first();
+
+        if ($document === null) {
+            $document = app(PrepareResultDocument::class)->handle($attempt, $guidance);
+        }
+        $attempt->forceFill(['current_result_document_id' => $document->id])->save();
+
+        if ($printed) {
+            $currentReceipt = ResultDocumentPrintReceipt::query()
+                ->where('result_document_id', $document->id)
+                ->where('operation', 'confirmed')
+                ->where('is_current', true)
+                ->first();
+
+            if ($currentReceipt === null) {
+                ResultDocumentPrintReceipt::query()
+                    ->where('admission_attempt_id', $attempt->id)
+                    ->where('is_current', true)
+                    ->update(['is_current' => false]);
+
+                ResultDocumentPrintReceipt::query()->create([
+                    'institution_id' => $attempt->institution_id,
+                    'admission_attempt_id' => $attempt->id,
+                    'result_document_id' => $document->id,
+                    'confirmed_by_user_id' => $guidance->id,
+                    'confirmed_at' => now(),
+                    'operation' => 'confirmed',
+                    'evidence_revision' => (int) ResultDocumentPrintReceipt::query()
+                        ->where('result_document_id', $document->id)
+                        ->max('evidence_revision') + 1,
+                    'is_current' => true,
+                    'idempotency_key' => 'cons-print-'.$attempt->id.'-'.$document->id,
+                ]);
+            }
+        }
     }
 }

@@ -2,6 +2,11 @@
 
 use App\Assessment\Actions\Omr\SaveAuthoredTemplateDraft;
 use App\Assessment\Actions\Omr\TestCaptureOmrTemplate;
+use App\Assessment\Omr\OmrCheckerDetection;
+use App\Assessment\Omr\OmrDetectionPort;
+use App\Assessment\Omr\OmrDetectionRequest;
+use App\Assessment\Omr\OmrDiagnosticRequestBuilder;
+use App\Assessment\Omr\OmrLayoutVerificationPort;
 use App\Assessment\Omr\OmrLayoutVerificationResult;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use App\Models\Assessment\OmrTemplateBookletPair;
@@ -46,21 +51,60 @@ function omrTestCaptureBlueprint(bool $markers = true): array
     ];
 }
 
-/** Builds an authenticated three-part layout-verification worker response. */
-function omrTestCaptureWorkerResponse(string $runId, array $overrides = []): array
+/** Extract the request manifest from a signed multipart worker call. */
+function omrTestCaptureManifestFromBody(string $body): array
 {
+    if (! str_contains($body, 'name="manifest"')) {
+        return [];
+    }
+
+    $parts = preg_split("/\r\n--[A-Za-z0-9._-]+/", $body);
+    foreach ($parts as $part) {
+        if (! str_contains($part, 'name="manifest"')) {
+            continue;
+        }
+        [, $json] = explode("\r\n\r\n", $part, 2);
+        $decoded = json_decode(trim($json), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    return [];
+}
+
+/** Builds an authenticated three-part layout-verification worker response. */
+function omrTestCaptureWorkerResponse(string $runId, string $requestBody, array $overrides = []): array
+{
+    $manifest = omrTestCaptureManifestFromBody($requestBody);
+    $targetIdentity = array_key_exists('template_version_id', $manifest)
+        ? ['template_version_id' => $manifest['template_version_id']]
+        : ['candidate_target_id' => $manifest['candidate_target_id']];
     $payload = array_merge([
-        'contract_version' => 'nexiam.omr.detection.v2',
+        'contract_version' => OmrDetectionRequest::ENVELOPE_VERSION,
+        'registration_mode' => $manifest['registration_mode'],
+        ...$targetIdentity,
+        'expected_page_no' => $manifest['expected_page_no'],
+        'source_image' => $manifest['source_image'],
         'run_id' => $runId,
-        'correlation_id' => 'omr:test-capture:1',
+        'correlation_id' => $manifest['correlation_id'],
         'outcome' => 'succeeded',
-        'engine' => ['name' => 'OMRChecker', 'version' => 'de3f69828228', 'commit' => str_repeat('c', 40), 'patch_identity' => 'nexiam-headless-overlay-v1'],
-        'input_hash' => str_repeat('i', 64),
-        'native_bundle_hash' => str_repeat('n', 64),
-        'manifest_hash' => str_repeat('m', 64),
-        'config_hash' => str_repeat('g', 64),
+        'engine' => [
+            'name' => $manifest['engine']['name'],
+            'version' => 'de3f69828228',
+            'commit' => $manifest['engine']['commit'],
+            'patch_identity' => $manifest['engine']['patch_identity'],
+        ],
+        'input_hash' => $manifest['input_hash'],
+        'native_bundle_hash' => $manifest['native_bundle_hash'],
+        'manifest_hash' => $manifest['manifest_hash'],
+        'config_hash' => $manifest['config_hash'],
+        'booklet_hash' => $manifest['booklet_hash'],
         'calibration_status' => 'unqualified',
-        'image' => ['mime' => 'image/png', 'width' => 3000, 'height' => 4000],
+        'image' => [
+            'mime' => $manifest['image_mime'],
+            'width' => $manifest['image_width'],
+            'height' => $manifest['image_height'],
+        ],
         'marker_matches' => ['quarter_1' => 0.61, 'quarter_2' => 0.62, 'quarter_3' => 0.60, 'quarter_4' => 0.63],
         'aligned_image' => ['mime' => 'image/png', 'width' => 1638, 'height' => 2722],
         'layout_overlay' => ['mime' => 'image/png', 'width' => 1638, 'height' => 2722],
@@ -88,7 +132,7 @@ function omrTestCaptureWorkerResponse(string $runId, array $overrides = []): arr
 
     return [$body, [
         'Content-Type' => 'multipart/form-data; boundary='.$boundary,
-        'X-Nexiam-Contract' => 'nexiam.omr.detection.v2',
+        'X-Nexiam-Contract' => OmrDetectionRequest::ENVELOPE_VERSION,
         'X-Nexiam-Run-Id' => $runId,
         'X-Nexiam-Timestamp' => $timestamp,
         'X-Nexiam-Result-SHA256' => $resultHash,
@@ -102,6 +146,26 @@ function omrTestCaptureImageBytes(): string
 {
     return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
 }
+
+beforeEach(function (): void {
+    config([
+        'omr.provider.driver' => 'omrchecker',
+        'omr.omrchecker.enabled' => true,
+        'omr.omrchecker.contract_version' => OmrDetectionRequest::ENVELOPE_VERSION,
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+        'omr.omrchecker.engine_name' => 'OMRChecker',
+        'omr.omrchecker.engine_commit' => str_repeat('e', 40),
+        'omr.omrchecker.patch_identity' => 'nexiam-headless-overlay-v1',
+    ]);
+});
+test('configured auxiliary v3 worker can serve the v4 detection adapter without accepting unknown contracts', function (): void {
+    config(['omr.omrchecker.contract_version' => 'nexiam.omr.detection.v3']);
+    expect(app(OmrDetectionPort::class))->toBeInstanceOf(OmrCheckerDetection::class);
+
+    app()->forgetInstance(OmrDetectionPort::class);
+    config(['omr.omrchecker.contract_version' => 'nexiam.omr.detection.v2']);
+    expect(fn () => app(OmrDetectionPort::class))->toThrow(RuntimeException::class, 'incomplete or disabled');
+});
 
 test('test capture runs the worker diagnostic and computes gates', function (): void {
     seedE2Foundation();
@@ -121,7 +185,7 @@ test('test capture runs the worker diagnostic and computes gates', function (): 
     Http::fake(['*/layout-verification' => function ($request) {
         // The envelope carries the run id in a header; echo it back like the
         // real worker does.
-        [$body, $headers] = omrTestCaptureWorkerResponse((string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''));
+        [$body, $headers] = omrTestCaptureWorkerResponse((string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''), $request->body());
 
         return Http::response($body, 200, $headers);
     }]);
@@ -139,6 +203,84 @@ test('test capture runs the worker diagnostic and computes gates', function (): 
         ->and($result->gates['unsafe_blocks'])->toBe([]);
 });
 
+test('test capture resolves the canonical layout adapter through its port', function (): void {
+    seedE2Foundation();
+    $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+    $version = app(SaveAuthoredTemplateDraft::class)->handle(
+        'SYN-OMR-TEST-CAP-PORT',
+        'Test capture port template',
+        [],
+        $actor,
+        null,
+        true,
+        omrTestCaptureBlueprint(),
+    );
+    $layout = new class implements OmrLayoutVerificationPort
+    {
+        public function verifyLayout(OmrDetectionRequest $request): OmrLayoutVerificationResult
+        {
+            $frame = (array) ($request->nativeTemplate['pageDimensions'] ?? [1, 1]);
+
+            return new OmrLayoutVerificationResult(
+                outcome: OmrLayoutVerificationResult::OUTCOME_SUCCEEDED,
+                alignedImage: ['mime' => 'image/png', 'width' => (int) ($frame[0] ?? 1), 'height' => (int) ($frame[1] ?? 1)],
+                markerMatches: ['quarter_1' => 0.9, 'quarter_2' => 0.9, 'quarter_3' => 0.9, 'quarter_4' => 0.9],
+                fieldBlockShifts: [],
+            );
+        }
+    };
+    app()->instance(OmrLayoutVerificationPort::class, $layout);
+
+    $result = app(TestCaptureOmrTemplate::class)->handle($version->fresh(), omrTestCaptureImageBytes(), 'image/png', $actor);
+
+    expect($result->succeeded())->toBeTrue()
+        ->and($result->gates)->toMatchArray([
+            'marker_count' => 'pass',
+            'registration' => 'pass',
+            'dimensions' => 'pass',
+            'shifts' => 'pass',
+        ]);
+});
+
+test('test capture fails its shift gate when layout evidence crosses an option pitch', function (): void {
+    seedE2Foundation();
+    config(['omr.omrchecker.signing_secret' => str_repeat('s', 40)]);
+    $actor = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
+    $version = app(SaveAuthoredTemplateDraft::class)->handle(
+        'SYN-OMR-TEST-CAP-SHIFT',
+        'Test capture shift template',
+        [],
+        $actor,
+        null,
+        true,
+        omrTestCaptureBlueprint(),
+    );
+    $request = app(OmrDiagnosticRequestBuilder::class)
+        ->build($version->fresh(), omrTestCaptureImageBytes(), 'image/png');
+    expect($request->nativeBundleMetadata['rectification_marker_insets_px'] ?? null)
+        ->toBeArray()
+        ->toHaveKeys(['top', 'right', 'bottom', 'left']);
+    $blocks = (array) ($request->nativeTemplate['fieldBlocks'] ?? []);
+    $mcqBlocks = array_filter($blocks, static fn (mixed $candidate): bool => is_array($candidate) && ($candidate['fieldType'] ?? null) === 'QTYPE_MCQ4');
+    $block = (string) array_key_first($mcqBlocks);
+
+    Http::fake(['*/layout-verification' => function ($sent) use ($block) {
+        [$body, $headers] = omrTestCaptureWorkerResponse(
+            (string) ($sent->header('X-Nexiam-Run-Id')[0] ?? ''),
+            $sent->body(),
+            ['field_block_shifts' => [['block' => $block, 'x' => 10000, 'y' => 0]]],
+        );
+
+        return Http::response($body, 200, $headers);
+    }]);
+
+    $result = app(TestCaptureOmrTemplate::class)->handle($version->fresh(), omrTestCaptureImageBytes(), 'image/png', $actor);
+
+    expect($result->succeeded())->toBeTrue()
+        ->and($result->gates['shifts'])->toBe('fail')
+        ->and($result->gates['unsafe_blocks'])->toBe([$block]);
+});
+
 test('test capture rejects marker-less versions with a typed error', function (): void {
     seedE2Foundation();
 
@@ -154,7 +296,7 @@ test('test capture rejects marker-less versions with a typed error', function ()
     );
 
     expect(fn () => app(TestCaptureOmrTemplate::class)->handle($version->fresh(), omrTestCaptureImageBytes(), 'image/png', $actor))
-        ->toThrow(RuntimeException::class, 'marker-bearing');
+        ->toThrow(RuntimeException::class, 'compiled_version_marker_contract_missing');
 });
 
 test('test capture maps worker typed failures without mutating state', function (): void {
@@ -186,7 +328,7 @@ test('test capture maps worker typed failures without mutating state', function 
         ->and($result->detail)->toContain('No corner markers')
         ->and(OmrTemplateBookletPair::query()->count())->toBe($before['pairs'])
         ->and(OmrTemplateBookletPair::query()->where('status', OmrTemplateBookletPair::STATUS_ACTIVE)->count())->toBe($before['active'])
-        ->and($version->fresh()->status)->toBe(\App\Models\Assessment\OmrAnswerSheetTemplateVersion::STATUS_DRAFT);
+        ->and($version->fresh()->status)->toBe(OmrAnswerSheetTemplateVersion::STATUS_DRAFT);
 });
 
 test('test capture route serves the diagnostic JSON and streams stored rasters', function (): void {
@@ -210,7 +352,7 @@ test('test capture route serves the diagnostic JSON and streams stored rasters',
     Http::fake(['*/layout-verification' => function ($request) {
         // The envelope carries the run id in a header; echo it back like the
         // real worker does.
-        [$body, $headers] = omrTestCaptureWorkerResponse((string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''));
+        [$body, $headers] = omrTestCaptureWorkerResponse((string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''), $request->body());
 
         return Http::response($body, 200, $headers);
     }]);
@@ -257,5 +399,6 @@ test('test capture route rejects marker-less versions before any worker call', f
     $this->actingAs($guidance)
         ->postJson(route('setup.omr.templates.test_capture', $version), ['image' => $upload])
         ->assertStatus(422)
-        ->assertJsonPath('error', fn (string $error): bool => str_contains($error, 'marker-bearing'));
+        ->assertJsonPath('error', fn (string $error): bool => str_contains($error, 'compiled_version_marker_contract_missing'));
+    Http::assertNothingSent();
 });

@@ -13,6 +13,7 @@ use App\Models\Admission\ProgramPool;
 use App\Models\Admission\ProgramSelection;
 use App\Models\Foundation\Program;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -26,6 +27,7 @@ class DeclineApplicantProgramSelection
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -49,7 +51,7 @@ class DeclineApplicantProgramSelection
             return $replayed;
         }
 
-        return DB::transaction(function () use ($attempt, $ph, $programCode, $reason, $idempotencyKey): ProgramDecline {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): ProgramDecline => DB::transaction(function () use ($attempt, $ph, $programCode, $reason, $idempotencyKey): ProgramDecline {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
             if (AttemptProgramFacts::isEnrolling($locked) || AttemptProgramFacts::isEnrolled($locked)) {
@@ -99,6 +101,6 @@ class DeclineApplicantProgramSelection
             ], (string) $ph->id);
 
             return $decline;
-        });
+        }));
     }
 }

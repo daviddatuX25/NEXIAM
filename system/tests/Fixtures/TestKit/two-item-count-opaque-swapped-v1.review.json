@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "source_sha256": "2044aaa7aa3d63b832f2f51a51d6e376099d38f01265fdf64f825d839653ffdb",
+  "acceptance_protocol_schema_version": "test-kit-acceptance-protocol-v1",
+  "acceptance_protocol_sha256": "e2be57fa029e14e3b3660cd7197d3159072abbc325de139ecb1e2d43cb2127c5",
+  "reviewer_reference": "tests/Fixtures/TestKit/two-item-count-opaque-swapped-v1.review.md",
+  "reviewer_name": "OpaqueTruthIndependentReview (AI software reviewer; model identity not exposed in review context)",
+  "decision": "accepted"
+}

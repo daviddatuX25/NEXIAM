@@ -2,25 +2,29 @@
 
 namespace App\Application\Capabilities\Handlers\Exams;
 
+use App\Examination\Queries\ExamSessionListQuery;
+use Illuminate\Contracts\Auth\Authenticatable;
+
 final class ExamSessionsListHandler
 {
-    public function __construct(private readonly ExamSessionProjection $projection) {}
+    public function __construct(private readonly ExamSessionListQuery $listQuery) {}
 
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public function handle(array $input = []): array
+    public function handle(array $input = [], ?Authenticatable $actor = null): array
     {
-        $sessions = $this->projection->list(
-            status: isset($input['status']) && is_string($input['status']) ? $input['status'] : null,
-            academicCycleId: isset($input['academic_cycle_id']) ? (int) $input['academic_cycle_id'] : null,
-            search: isset($input['search']) && is_string($input['search']) ? $input['search'] : null,
-        );
+        $institutionId = ($actor !== null && method_exists($actor, 'actorScope'))
+            ? (int) $actor->actorScope()->institutionId
+            : 0;
 
-        return [
-            'sessions' => $sessions,
-            'page_state' => $sessions === [] ? 'empty' : 'ready',
-        ];
+        if ($institutionId < 1) {
+            abort(403, 'Institutional context required.');
+        }
+
+        $result = $this->listQuery->query($input, $institutionId);
+
+        return $result->forXiamSafe();
     }
 }

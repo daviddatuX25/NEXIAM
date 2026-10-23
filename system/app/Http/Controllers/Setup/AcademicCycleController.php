@@ -2,15 +2,23 @@
 
 namespace App\Http\Controllers\Setup;
 
+use App\Admission\Queries\ListApplicationOpeningSubscribersQuery;
 use App\Authorization\CapabilityAuthorizer;
-use App\Foundation\Actions\RecordAuditEvent;
+use App\Authorization\CapabilityCatalog;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Setup\Concerns\HasSetupCapabilities;
+use App\Http\Requests\Setup\ExtendApplicationWindowRequest;
 use App\Http\Requests\Setup\StoreAcademicCycleRequest;
 use App\Http\Requests\Setup\UpdateAcademicCycleRequest;
 use App\Models\Foundation\AcademicCycle;
-use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\Institution;
+use App\Models\User;
+use App\Setup\Actions\ActivateAcademicCycle;
+use App\Setup\Actions\CreateAcademicCycle;
+use App\Setup\Actions\DeactivateAcademicCycle;
+use App\Setup\Actions\ExtendApplicationWindow;
+use App\Setup\Actions\UpdateAcademicCycle;
+use App\Setup\Queries\AcademicCycleCalendarQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,11 +32,21 @@ class AcademicCycleController extends Controller
 {
     use HasSetupCapabilities;
 
-    public function cycles(Request $request, CapabilityAuthorizer $authorizer): Response
-    {
-        $this->requireSetup($authorizer, $request);
+    public function cycles(
+        Request $request,
+        CapabilityAuthorizer $authorizer,
+        AcademicCycleCalendarQuery $calendar,
+        ListApplicationOpeningSubscribersQuery $openingSubscribers,
+    ): Response {
+        $this->requireCycleSetup($authorizer, $request);
 
+        $institution = Institution::current();
+        $actor = $request->user();
+        $openingAlertsVisible = $actor instanceof User
+            && $openingSubscribers->allowed($actor, $institution);
+        $institutionId = $institution->id;
         $cycles = AcademicCycle::query()
+            ->where('institution_id', $institutionId)
             ->with(['applicationWindows' => fn ($q) => $q->orderByDesc('id')])
             ->orderByDesc('school_year')
             ->orderBy('semester')
@@ -46,13 +64,15 @@ class AcademicCycleController extends Controller
         return Inertia::render('Setup/Cycles', [
             'page_state' => 'ready',
             'cycles' => $cycles,
+            'application_calendar' => $calendar->forInstitution($institution),
+            'opening_alerts_visible' => $openingAlertsVisible,
             'capabilities' => $this->capabilities($authorizer, $request),
         ]);
     }
 
     public function createCycle(Request $request, CapabilityAuthorizer $authorizer): Response
     {
-        $this->requireSetup($authorizer, $request);
+        $this->requireCycleSetup($authorizer, $request);
 
         return Inertia::render('Setup/Cycles/Create', [
             'page_state' => 'ready',
@@ -60,67 +80,22 @@ class AcademicCycleController extends Controller
         ]);
     }
 
-    public function storeCycle(StoreAcademicCycleRequest $request, CapabilityAuthorizer $authorizer, RecordAuditEvent $audit): RedirectResponse
-    {
-        $this->requireSetup($authorizer, $request);
+    public function storeCycle(
+        StoreAcademicCycleRequest $request,
+        CapabilityAuthorizer $authorizer,
+        CreateAcademicCycle $createCycle,
+    ): RedirectResponse {
+        $this->requireCycleSetup($authorizer, $request);
 
-        $institution = Institution::current();
-        $schoolYear = trim($request->validated('school_year'));
-        $semester = $request->validated('semester');
-        $semesterLabel = $semester === '1' ? '1st Semester' : '2nd Semester';
-        $staffName = "{$schoolYear} {$semesterLabel}";
-        $code = 'AY-'.strtoupper(str_replace(' ', '', $schoolYear)).'-S'.$semester;
-
-        $exists = AcademicCycle::query()
-            ->where('institution_id', $institution->id)
-            ->where('school_year', $schoolYear)
-            ->where('semester', $semester)
-            ->exists();
-
-        if ($exists) {
-            return back()->withErrors([
-                'school_year' => 'That school year and semester already exist.',
-            ]);
-        }
-
-        $start = $request->validated('application_start_date');
-        $end = $request->validated('application_end_date');
-
-        $cycle = AcademicCycle::query()->create([
-            'institution_id' => $institution->id,
-            'code' => $code,
-            'name' => $staffName,
-            'school_year' => $schoolYear,
-            'semester' => $semester,
-            'opens_on' => $start ?? now()->toDateString(),
-            'closes_on' => $end ?? now()->addMonths(6)->toDateString(),
-            'is_active' => false,
-        ]);
-
-        if ($start || $end) {
-            ApplicationWindow::query()->create([
-                'academic_cycle_id' => $cycle->id,
-                'code' => $code.'-WIN',
-                'name' => $staffName.' application window',
-                'opens_at' => ($start ?? now()->toDateString()).' 00:00:00',
-                'closes_at' => ($end ?? now()->addMonths(6)->toDateString()).' 23:59:59',
-                'status' => 'draft',
-            ]);
-        }
-
-        $audit->handle('setup.cycle_upserted', [
-            'cycle_id' => $cycle->id,
-            'code' => $cycle->code,
-            'school_year' => $cycle->school_year,
-            'semester' => $cycle->semester,
-        ], (string) $request->user()->id);
+        $createCycle->handle($request->validated(), $request->user());
 
         return redirect()->route('setup.cycles')->with('status', 'Academic year created.');
     }
 
     public function editCycle(Request $request, AcademicCycle $cycle, CapabilityAuthorizer $authorizer): Response
     {
-        $this->requireSetup($authorizer, $request);
+        $this->requireCycleSetup($authorizer, $request);
+        $this->requireCurrentInstitution($cycle);
 
         $window = $cycle->primaryWindow();
 
@@ -142,65 +117,12 @@ class AcademicCycleController extends Controller
         UpdateAcademicCycleRequest $request,
         AcademicCycle $cycle,
         CapabilityAuthorizer $authorizer,
-        RecordAuditEvent $audit,
+        UpdateAcademicCycle $updateCycle,
     ): RedirectResponse {
-        $this->requireSetup($authorizer, $request);
+        $this->requireCycleSetup($authorizer, $request);
+        $this->requireCurrentInstitution($cycle);
 
-        $schoolYear = trim($request->validated('school_year'));
-        $semester = $request->validated('semester');
-
-        $duplicate = AcademicCycle::query()
-            ->where('institution_id', $cycle->institution_id)
-            ->where('school_year', $schoolYear)
-            ->where('semester', $semester)
-            ->where('id', '!=', $cycle->id)
-            ->exists();
-
-        if ($duplicate) {
-            return back()->withErrors([
-                'school_year' => 'That school year and semester already exist.',
-            ]);
-        }
-
-        $semesterLabel = $semester === '1' ? '1st Semester' : '2nd Semester';
-        $staffName = "{$schoolYear} {$semesterLabel}";
-        $start = $request->validated('application_start_date');
-        $end = $request->validated('application_end_date');
-
-        $cycle->update([
-            'school_year' => $schoolYear,
-            'semester' => $semester,
-            'name' => $staffName,
-            'opens_on' => $start ?? $cycle->opens_on,
-            'closes_on' => $end ?? $cycle->closes_on,
-        ]);
-
-        if ($start || $end) {
-            $window = $cycle->primaryWindow();
-            $payload = [
-                'name' => $staffName.' application window',
-                'opens_at' => ($start ?? $cycle->opens_on?->toDateString()).' 00:00:00',
-                'closes_at' => ($end ?? $cycle->closes_on?->toDateString()).' 23:59:59',
-            ];
-
-            if ($window !== null) {
-                $window->update($payload);
-            } else {
-                ApplicationWindow::query()->create([
-                    'academic_cycle_id' => $cycle->id,
-                    'code' => $cycle->code.'-WIN',
-                    ...$payload,
-                    'status' => $cycle->is_active ? 'published' : 'draft',
-                ]);
-            }
-        }
-
-        $audit->handle('setup.cycle_upserted', [
-            'cycle_id' => $cycle->id,
-            'code' => $cycle->code,
-            'school_year' => $cycle->school_year,
-            'semester' => $cycle->semester,
-        ], (string) $request->user()->id);
+        $updateCycle->handle($cycle, $request->validated(), $request->user());
 
         return redirect()->route('setup.cycles')->with('status', 'Academic year updated.');
     }
@@ -209,16 +131,12 @@ class AcademicCycleController extends Controller
         Request $request,
         AcademicCycle $cycle,
         CapabilityAuthorizer $authorizer,
-        RecordAuditEvent $audit,
+        ActivateAcademicCycle $activateCycle,
     ): RedirectResponse {
-        $this->requireSetup($authorizer, $request);
+        $this->requireCycleSetup($authorizer, $request);
+        $this->requireCurrentInstitution($cycle);
 
-        $cycle->activate();
-
-        $audit->handle('setup.cycle_activated', [
-            'cycle_id' => $cycle->id,
-            'code' => $cycle->code,
-        ], (string) $request->user()->id);
+        $activateCycle->handle($cycle, $request->user());
 
         return redirect()->route('setup.cycles')->with('status', 'Academic year set as active.');
     }
@@ -227,17 +145,52 @@ class AcademicCycleController extends Controller
         Request $request,
         AcademicCycle $cycle,
         CapabilityAuthorizer $authorizer,
-        RecordAuditEvent $audit,
+        DeactivateAcademicCycle $deactivateCycle,
     ): RedirectResponse {
-        $this->requireSetup($authorizer, $request);
+        $this->requireCycleSetup($authorizer, $request);
+        $this->requireCurrentInstitution($cycle);
 
-        $cycle->deactivate();
-
-        $audit->handle('setup.cycle_deactivated', [
-            'cycle_id' => $cycle->id,
-            'code' => $cycle->code,
-        ], (string) $request->user()->id);
+        $deactivateCycle->handle($cycle, $request->user());
 
         return redirect()->route('setup.cycles')->with('status', 'Academic year deactivated. Applications are closed until one is activated.');
+    }
+
+    public function extendApplicationWindow(
+        ExtendApplicationWindowRequest $request,
+        AcademicCycle $cycle,
+        CapabilityAuthorizer $authorizer,
+        ExtendApplicationWindow $extend,
+    ): RedirectResponse {
+        $this->requireCycleSetup($authorizer, $request);
+        $this->requireCurrentInstitution($cycle);
+
+        $data = $request->validated();
+        $extend->handle(
+            $request->user(),
+            $cycle,
+            (int) $data['window_id'],
+            (int) $data['days'],
+            $data['baseline'],
+            $data['idempotency_key'],
+            $data['reason'],
+        );
+
+        return redirect()->route('setup.cycles')->with('status', 'Application window extended.');
+    }
+
+    private function requireCurrentInstitution(AcademicCycle $cycle): void
+    {
+        abort_unless((int) $cycle->institution_id === (int) Institution::current()->id, 404);
+    }
+
+    private function requireCycleSetup(CapabilityAuthorizer $authorizer, Request $request): void
+    {
+        $scope = ['institution_id' => (int) Institution::current()->id];
+
+        abort_unless(
+            $authorizer->allows($request->user(), CapabilityCatalog::SETUP_CYCLES_MANAGE, $scope)
+                || $authorizer->allows($request->user(), CapabilityCatalog::SETUP_INSTITUTION_MANAGE, $scope),
+            403,
+        );
     }
 }

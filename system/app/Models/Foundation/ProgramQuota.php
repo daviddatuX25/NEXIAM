@@ -15,6 +15,7 @@ class ProgramQuota extends Model
         'slots',
         'last_notice',
         'last_mutated_by_user_id',
+        'version',
     ];
 
     /**
@@ -24,6 +25,7 @@ class ProgramQuota extends Model
     {
         return [
             'slots' => 'integer',
+            'version' => 'integer',
         ];
     }
 

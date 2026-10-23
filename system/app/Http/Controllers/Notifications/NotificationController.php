@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Notifications;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admission\ApplicantIdentity;
 use App\Models\User;
 use App\Notifications\NotificationDelivery;
 use App\Notifications\NotificationProjection;
@@ -57,6 +58,7 @@ class NotificationController extends Controller
         $user = $this->userOrAbort($request);
 
         NotificationDelivery::forUser($user)
+            ->where('channel', NotificationDelivery::CHANNEL_IN_APP)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
@@ -76,7 +78,19 @@ class NotificationController extends Controller
 
     private function belongsToUser(NotificationDelivery $delivery, User $user): bool
     {
-        return $delivery->recipient_type === User::class && (int) $delivery->recipient_id === $user->id;
+        if ($delivery->channel !== NotificationDelivery::CHANNEL_IN_APP) {
+            return false;
+        }
+
+        if ($delivery->recipient_type === User::class) {
+            return (int) $delivery->recipient_id === $user->id;
+        }
+
+        $applicantIdentityId = $user->applicantAccount()->value('applicant_identity_id');
+
+        return $delivery->recipient_type === ApplicantIdentity::class
+            && $applicantIdentityId !== null
+            && (int) $delivery->recipient_id === (int) $applicantIdentityId;
     }
 
     private function userOrAbort(Request $request): User

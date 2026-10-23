@@ -10,11 +10,11 @@ test('staff can view the login page', function (): void {
         ->assertInertia(fn ($page) => $page->component('Auth/Login'));
 });
 
-test('staff can authenticate and reach the staff home', function (): void {
+test('staff with exempt role can authenticate and reach the staff home', function (): void {
     seedE2Foundation();
 
     $response = $this->post('/login', [
-        'email' => 'registrar.clerk@nexiam.test',
+        'email' => 'program.head.bsit@nexiam.test',
         'password' => 'password',
     ]);
 
@@ -25,11 +25,22 @@ test('staff can authenticate and reach the staff home', function (): void {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Staff/Home')
-            ->where('staff.email', 'registrar.clerk@nexiam.test')
-            ->has('staff.capabilities')
-            ->where('staff.scope.office', 'registrar'));
+            ->where('staff.email', 'program.head.bsit@nexiam.test')
+            ->has('staff.capabilities'));
 
     expect(AuditEvent::query()->where('event_type', 'auth.staff_login')->exists())->toBeTrue();
+});
+
+test('staff with enforced role and no TOTP is redirected to account setup to complete MFA', function (): void {
+    seedE2Foundation();
+
+    $response = $this->post('/login', [
+        'email' => 'registrar.clerk@nexiam.test',
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect('/staff/account-setup')
+        ->assertSessionHas('staff.pending_attempt_id');
 });
 
 test('invalid credentials are rejected', function (): void {

@@ -6,6 +6,7 @@ use App\Jobs\Assessment\AnalyzeOmrCaptureSheetJob;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrProcessingRun;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -71,7 +72,7 @@ class RecoverStaleOmrRunsCommand extends Command
                             'status' => OmrCaptureSheet::STATUS_FAILED_TERMINAL,
                             'version' => (int) $sheet->version + 1,
                             'proposal_json' => [
-                                'envelope' => (string) ($locked->request_version ?: 'nexiam.omr.detection.v2'),
+                                'envelope' => (string) ($locked->request_version ?: 'nexiam.omr.detection.v3'),
                                 'abstained' => true,
                                 'reason' => 'provider_failed',
                                 'safe_error' => 'retry_exhausted',
@@ -116,7 +117,7 @@ class RecoverStaleOmrRunsCommand extends Command
         return self::SUCCESS;
     }
 
-    private function isStillStale(OmrProcessingRun $run, \Illuminate\Support\Carbon $now): bool
+    private function isStillStale(OmrProcessingRun $run, Carbon $now): bool
     {
         return match ($run->status) {
             OmrProcessingRun::STATUS_CLAIMED => $run->claim_expires_at !== null && $run->claim_expires_at->lt($now),

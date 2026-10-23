@@ -1,5 +1,11 @@
 name: nexiam-system
 
+x-logging: &default-logging
+    driver: 'json-file'
+    options:
+        max-size: '20m'
+        max-file: '5'
+
 services:
     app:
         build:
@@ -7,6 +13,10 @@ services:
             dockerfile: docker/php/Dockerfile
             args:
                 APP_KEY: ${APP_KEY}
+        command: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000', '--no-reload']
+        restart: unless-stopped
+        stop_grace_period: 30s
+        logging: *default-logging
         env_file:
             - .env
         environment:
@@ -14,6 +24,7 @@ services:
             APP_ENV: local
             APP_DEBUG: 'true'
             APP_URL: http://localhost:18000
+            PHP_CLI_SERVER_WORKERS: '4'
             DB_CONNECTION: pgsql
             DB_HOST: postgres
             DB_PORT: 5432
@@ -24,17 +35,22 @@ services:
             CACHE_STORE: database
             QUEUE_CONNECTION: database
             FILESYSTEM_DISK: local
-            MAIL_MAILER: smtp
-            MAIL_HOST: mailpit
-            MAIL_PORT: 1025
-            MAIL_FROM_ADDRESS: foundation@nexiam.test
-            MAIL_FROM_NAME: NEXIAM
+            MAIL_MAILER: ${MAIL_MAILER:-smtp}
+            MAIL_HOST: ${MAIL_HOST:-mailpit}
+            MAIL_PORT: ${MAIL_PORT:-1025}
+            MAIL_USERNAME: ${MAIL_USERNAME:-}
+            MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+            MAIL_SCHEME: ${MAIL_SCHEME:-}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-foundation@nexiam.test}
+            MAIL_FROM_NAME: ${MAIL_FROM_NAME:-NEXIAM}
+            TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
             OMR_WORKER_ENABLED: ${OMR_WORKER_ENABLED:-true}
             OMR_WORKER_ENDPOINT: ${OMR_WORKER_ENDPOINT:-http://inference:8100}
             OMR_WORKER_SIGNING_SECRET: ${OMR_WORKER_SIGNING_SECRET:-nexiam-local-omr-worker-signing-secret-change-me}
             OMR_WORKER_ENGINE_NAME: OMRChecker
             OMR_WORKER_ENGINE_COMMIT: de3f6982822895491be760325fd43e65e90fa293
-            OMR_WORKER_PATCH_IDENTITY: nexiam-headless-overlay-v1
+            OMR_WORKER_PATCH_IDENTITY: nexiam-explicit-bubble-positions-v1
+            CIAM_MFA_ENABLED: ${CIAM_MFA_ENABLED:-false}
         depends_on:
             postgres:
                 condition: service_healthy
@@ -66,9 +82,74 @@ services:
                 'queue:work',
                 '--sleep=1',
                 '--tries=1',
+                '--timeout=120',
+            ]
+        restart: unless-stopped
+        stop_grace_period: 120s
+        logging: *default-logging
+        env_file:
+            - .env
+        environment:
+            APP_NAME: NEXIAM System
+            APP_ENV: local
+            APP_DEBUG: 'true'
+            APP_URL: http://localhost:18000
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_DATABASE: nexiam
+            DB_USERNAME: nexiam
+            DB_PASSWORD: nexiam-local-only
+            SESSION_DRIVER: database
+            CACHE_STORE: database
+            QUEUE_CONNECTION: database
+            MAIL_MAILER: ${MAIL_MAILER:-smtp}
+            MAIL_HOST: ${MAIL_HOST:-mailpit}
+            MAIL_PORT: ${MAIL_PORT:-1025}
+            MAIL_USERNAME: ${MAIL_USERNAME:-}
+            MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+            MAIL_SCHEME: ${MAIL_SCHEME:-}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-foundation@nexiam.test}
+            MAIL_FROM_NAME: ${MAIL_FROM_NAME:-NEXIAM}
+            OMR_WORKER_ENABLED: ${OMR_WORKER_ENABLED:-true}
+            OMR_WORKER_ENDPOINT: ${OMR_WORKER_ENDPOINT:-http://inference:8100}
+            OMR_WORKER_SIGNING_SECRET: ${OMR_WORKER_SIGNING_SECRET:-nexiam-local-omr-worker-signing-secret-change-me}
+            OMR_WORKER_ENGINE_NAME: OMRChecker
+            OMR_WORKER_ENGINE_COMMIT: de3f6982822895491be760325fd43e65e90fa293
+            OMR_WORKER_PATCH_IDENTITY: nexiam-explicit-bubble-positions-v1
+        depends_on:
+            postgres:
+                condition: service_healthy
+            app:
+                condition: service_healthy
+        volumes:
+            - .:/var/www/html
+            - app_storage:/var/www/html/storage
+        healthcheck:
+            test: ['CMD-SHELL', "pgrep -f 'queue:work' >/dev/null"]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+
+    omr-verification-worker:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+            args:
+                APP_KEY: ${APP_KEY}
+        command:
+            [
+                'php',
+                'artisan',
+                'queue:work',
+                '--queue=omr-verification',
+                '--sleep=1',
+                '--tries=1',
                 '--timeout=80',
             ]
         restart: unless-stopped
+        stop_grace_period: 120s
+        logging: *default-logging
         env_file:
             - .env
         environment:
@@ -89,7 +170,7 @@ services:
             OMR_WORKER_SIGNING_SECRET: ${OMR_WORKER_SIGNING_SECRET:-nexiam-local-omr-worker-signing-secret-change-me}
             OMR_WORKER_ENGINE_NAME: OMRChecker
             OMR_WORKER_ENGINE_COMMIT: de3f6982822895491be760325fd43e65e90fa293
-            OMR_WORKER_PATCH_IDENTITY: nexiam-headless-overlay-v1
+            OMR_WORKER_PATCH_IDENTITY: nexiam-explicit-bubble-positions-v1
         depends_on:
             postgres:
                 condition: service_healthy
@@ -99,7 +180,7 @@ services:
             - .:/var/www/html
             - app_storage:/var/www/html/storage
         healthcheck:
-            test: ['CMD-SHELL', "pgrep -f 'queue:work' >/dev/null"]
+            test: ['CMD-SHELL', "pgrep -f 'queue:work.*omr-verification' >/dev/null"]
             interval: 10s
             timeout: 3s
             retries: 5
@@ -109,6 +190,9 @@ services:
             context: .
             dockerfile: docker/php/Dockerfile
         command: ['php', 'artisan', 'schedule:work']
+        restart: unless-stopped
+        stop_grace_period: 30s
+        logging: *default-logging
         env_file:
             - .env
         environment:
@@ -140,6 +224,9 @@ services:
 
     postgres:
         image: postgres:16-alpine
+        restart: unless-stopped
+        stop_grace_period: 30s
+        logging: *default-logging
         environment:
             POSTGRES_DB: nexiam
             POSTGRES_USER: nexiam
@@ -156,6 +243,8 @@ services:
 
     mailpit:
         image: axllent/mailpit:v1.21
+        restart: unless-stopped
+        logging: *default-logging
         ports:
             - '18025:8025'
             - '11025:1025'
@@ -163,10 +252,14 @@ services:
     inference:
         build:
             context: docker/inference
+        restart: unless-stopped
+        stop_grace_period: 30s
+        logging: *default-logging
         environment:
             OMR_WORKER_SIGNING_SECRET: ${OMR_WORKER_SIGNING_SECRET:-nexiam-local-omr-worker-signing-secret-change-me}
             OMR_WORKER_CHILD_TIMEOUT_SECONDS: ${OMR_PROVIDER_DEADLINE_SECONDS:-30}
             OMR_WORKER_MAX_CONCURRENCY: ${OMR_WORKER_MAX_CONCURRENCY:-2}
+            OMR_RECTIFICATION_SHADOW_MODE: ${OMR_RECTIFICATION_SHADOW_MODE:-false}
         read_only: true
         tmpfs:
             - /tmp:size=64m,mode=1777
@@ -186,6 +279,156 @@ services:
             timeout: 3s
             retries: 5
 
+    # Publicly reachable relay is an explicit deployment opt-in. The default
+    # host bind is loopback; configure OMR_CAMERA_TURN_BIND_IP only after
+    # DNS, public routing, firewall and TLS prerequisites are verified.
+    omr-turn:
+        image: coturn/coturn:4.18.0-r0-alpine
+        profiles: ['omr-turn']
+        restart: unless-stopped
+        logging: *default-logging
+        environment:
+            OMR_CAMERA_TURN_SHARED_SECRET: ${OMR_CAMERA_TURN_SHARED_SECRET:-}
+            OMR_CAMERA_TURN_REALM: ${OMR_CAMERA_TURN_REALM:-}
+            OMR_CAMERA_TURN_EXTERNAL_IP: ${OMR_CAMERA_TURN_EXTERNAL_IP:-}
+        entrypoint: ['/bin/sh', '/usr/local/bin/omr-turn-entrypoint.sh']
+        volumes:
+            - ./docker/omr-turn/entrypoint.sh:/usr/local/bin/omr-turn-entrypoint.sh:ro
+            - type: bind
+              source: ${OMR_CAMERA_TURN_TLS_DIRECTORY:-./docker/omr-turn/tls-not-configured}
+              target: /run/omr-turn-tls
+              read_only: true
+              bind:
+                  create_host_path: false
+        tmpfs:
+            - /run/omr-turn:size=1m,uid=65534,gid=65534,mode=0700
+            - /var/lib/coturn:size=1m,uid=65534,gid=65534,mode=0700
+        cap_drop: ['ALL']
+        security_opt:
+            - no-new-privileges:true
+        ports:
+            - '${OMR_CAMERA_TURN_BIND_IP:-127.0.0.1}:3478:3478/udp'
+            - '${OMR_CAMERA_TURN_BIND_IP:-127.0.0.1}:3478:3478/tcp'
+            - '${OMR_CAMERA_TURN_BIND_IP:-127.0.0.1}:5349:5349/tcp'
+            - '${OMR_CAMERA_TURN_BIND_IP:-127.0.0.1}:49160-49200:49160-49200/udp'
+            - '${OMR_CAMERA_TURN_BIND_IP:-127.0.0.1}:49160-49200:49160-49200/tcp'
+
+ 
+
+# Initial CPU evaluation envelope: 2 GiB is a starting memory limit, not a latency guarantee.
+    tabfm-inference:
+        profiles: ['tabfm-runtime']
+        build:
+            context: docker/tabfm
+        user: '10002:10002'
+        environment:
+            TABPFN_CHECKPOINT_PATH: /app/model/tabpfn-v3-classifier-v3_20260417_binary.ckpt
+            TABPFN_CHECKPOINT_ID: ${TABPFN_CHECKPOINT_ID:-Prior-Labs/tabpfn_3/tabpfn-v3-classifier-v3_20260417_binary.ckpt}
+            TABPFN_CHECKPOINT_SHA256: ${TABPFN_CHECKPOINT_SHA256:-1f9949fd52e20b6ed8ece20b3b37242d2abbbf337d14b461a4244f9318031a88}
+            TABPFN_INSTITUTIONAL_USE_APPROVED: ${TABPFN_INSTITUTIONAL_USE_APPROVED:-false}
+            TABPFN_HOSTED_USE_APPROVED: ${TABPFN_HOSTED_USE_APPROVED:-false}
+            TABPFN_DEVICE: ${TABPFN_DEVICE:-cpu}
+            TABPFN_MAX_CONCURRENCY: '1'
+            OMP_NUM_THREADS: '1'
+            MKL_NUM_THREADS: '1'
+            OPENBLAS_NUM_THREADS: '1'
+        volumes:
+            - type: bind
+              source: ${TABPFN_CHECKPOINT_HOST_PATH:-./docker/tabfm/model.ckpt}
+              target: /app/model/tabpfn-v3-classifier-v3_20260417_binary.ckpt
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./docker/tabfm/worker.py
+              target: /app/worker.py
+              read_only: true
+              bind:
+                  create_host_path: false
+        restart: unless-stopped
+        read_only: true
+        tmpfs:
+            - /tmp:size=64m,mode=1777
+        cap_drop: ['ALL']
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 64
+        mem_limit: ${TABPFN_MEMORY_LIMIT:-2g}
+        cpus: 1.0
+        ports:
+            - '127.0.0.1:18101:8101'
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'python',
+                    '-c',
+                    'import json,os,urllib.request; r=urllib.request.urlopen("http://127.0.0.1:8101/health",timeout=25); d=json.load(r); assert r.status==200 and d.get("ready") is True and d.get("backend")=="tabpfn_pytorch"; p=d["provenance"]; assert p["package"]=="tabpfn" and p["package_version"]=="9.1.0" and p["checkpoint_identity"]==os.environ["TABPFN_CHECKPOINT_ID"] and p["checkpoint_sha256"]==os.environ["TABPFN_CHECKPOINT_SHA256"].lower()',
+                ]
+            interval: 10s
+            timeout: 30s
+            start_period: 120s
+            retries: 5
+
+# Opt-in isolated Xiam evaluation runtime. Never targets the ordinary `postgres` service.
+#
+# Safe local sequence (the Ollama endpoint is optional and must already be running):
+#   docker compose --profile xiam-eval up -d xiam-eval-postgres xiam-evaluator
+#   docker compose --profile xiam-eval exec xiam-evaluator php artisan migrate --force
+#   docker compose --profile xiam-eval exec -e XIAM_EVAL_ENABLED=true xiam-evaluator php artisan db:seed --class=Database\\Seeders\\XiamEvalSeeder
+#   docker compose --profile xiam-eval exec -e XIAM_EVAL_ENABLED=true -e XIAM_EVAL_DATABASE=nexiam_xiam_eval -e XIAM_EVAL_ACTOR=guidance.counselor@nexiam.test -e XIAM_AI_GATEWAY=laravel -e XIAM_AI_PROVIDER=ollama -e XIAM_AI_MODEL=<installed-local-model> -e OLLAMA_URL=http://host.docker.internal:11434 xiam-evaluator php artisan xiam:eval --live
+# `xiam:eval` retains its provider isolation/remote-provider allowlist; this command does not enable remote access.
+    xiam-eval-postgres:
+        image: postgres:16-alpine
+        profiles: ['xiam-eval']
+        environment:
+            POSTGRES_DB: nexiam_xiam_eval
+            POSTGRES_USER: nexiam_eval
+            POSTGRES_PASSWORD: ${XIAM_EVAL_DB_PASSWORD:-nexiam-xiam-eval-local-only}
+        volumes:
+            - xiam_eval_postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U nexiam_eval -d nexiam_xiam_eval']
+            interval: 5s
+            timeout: 3s
+            retries: 10
+
+    xiam-evaluator:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+            args:
+                APP_KEY: ${APP_KEY}
+        profiles: ['xiam-eval']
+        environment:
+            APP_NAME: NEXIAM Xiam Evaluator
+            APP_ENV: local
+            APP_DEBUG: 'true'
+            DB_CONNECTION: pgsql
+            DB_URL: ''
+            DB_HOST: xiam-eval-postgres
+            DB_PORT: 5432
+            DB_DATABASE: nexiam_xiam_eval
+            DB_USERNAME: nexiam_eval
+            DB_PASSWORD: ${XIAM_EVAL_DB_PASSWORD:-nexiam-xiam-eval-local-only}
+            SESSION_DRIVER: file
+            CACHE_STORE: file
+            QUEUE_CONNECTION: sync
+            FILESYSTEM_DISK: local
+            XIAM_EVAL_LOCAL_PROVIDER_HOSTS: host.docker.internal
+            XIAM_EVAL_DATABASE_HOSTS: xiam-eval-postgres
+            XIAM_EVAL_ENABLED: 'false'
+        depends_on:
+            xiam-eval-postgres:
+                condition: service_healthy
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        volumes:
+            - .:/var/www/html
+            - xiam_eval_storage:/var/www/html/storage
+
 volumes:
     app_storage:
     postgres_data:
+    xiam_eval_postgres_data:
+    xiam_eval_storage:

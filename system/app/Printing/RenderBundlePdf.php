@@ -13,13 +13,12 @@ final class RenderBundlePdf
     public function __construct(
         private readonly BundleRenderer $bundleRenderer,
         private readonly DomPdfPrintRenderer $pdfRenderer,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $bundleTemplate  native template.json content
      * @param  array<string, mixed>|null  $overlay  print overlay (title, header_lines, footer_lines, name_box_label, per_page)
-     * @return string  PDF bytes
+     * @return string PDF bytes
      */
     public function renderTemplate(array $bundleTemplate, ?array $overlay = null): string
     {

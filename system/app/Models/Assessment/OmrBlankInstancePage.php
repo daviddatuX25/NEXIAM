@@ -4,11 +4,14 @@ namespace App\Models\Assessment;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OmrBlankInstancePage extends Model
 {
     public const STATUS_PRINTED = 'printed';
+
     public const STATUS_CAPTURED = 'captured';
+
     public const STATUS_VOID = 'void';
 
     protected $table = 'omr_blank_instance_pages';
@@ -39,6 +42,16 @@ class OmrBlankInstancePage extends Model
     public function capturedPage(): BelongsTo
     {
         return $this->belongsTo(OmrCaptureSheetPage::class, 'captured_page_id');
+    }
+
+    public function claims(): HasMany
+    {
+        return $this->hasMany(OmrBlankInstancePageClaim::class, 'blank_instance_page_id');
+    }
+
+    public function reproductionAuthorizations(): HasMany
+    {
+        return $this->hasMany(OmrPaperReproductionAuthorization::class, 'blank_instance_page_id');
     }
 
     public function isCaptured(): bool

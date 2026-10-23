@@ -8,6 +8,7 @@ use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ProgramSelection;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -21,6 +22,7 @@ class CancelApplicantProgramSelection
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -33,7 +35,7 @@ class CancelApplicantProgramSelection
             'reason' => $reason,
         ], $idempotencyKey);
 
-        return DB::transaction(function () use ($attempt, $applicant, $reason, $idempotencyKey): ProgramSelection {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): ProgramSelection => DB::transaction(function () use ($attempt, $applicant, $reason, $idempotencyKey): ProgramSelection {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
             SelectionGuard::assertSelectable($locked, 'Cancelling your program choice');
@@ -58,6 +60,6 @@ class CancelApplicantProgramSelection
             ], (string) $applicant->id);
 
             return $selection;
-        });
+        }));
     }
 }

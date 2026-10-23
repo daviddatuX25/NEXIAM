@@ -35,6 +35,39 @@ final class StatusController extends Controller
     {
         $roadmap = [
             [
+                'key' => 'proposal-defense-governance',
+                'title' => 'Proposal defense & panel governance',
+                'description' => 'Mandated methodology revisions and locked research scope from the proposal defense.',
+                'items' => [
+                    ['name' => 'Three-objective scope structure', 'status' => 'complete', 'detail' => 'SO1 (Process Analysis), SO2 (System Requirements & RAD methodology), and SO3 (TAM Acceptance post-test). SO4, paired t-tests, and null hypotheses H01/H02 deleted entirely.'],
+                    ['name' => 'Defended Slovin population model (N=700 → n=255)', 'status' => 'complete', 'detail' => 'Applicant population baseline N=700 (adjusted for campus scale) at e=0.05 yields n=255 first-year students stratified across 11 courses (~23/course). Total evaluators: 255 students + 16 staff = 271.'],
+                    ['name' => 'IT Expert panel removal & SO2 validation shift', 'status' => 'complete', 'detail' => 'IT Experts (n=3) removed from TAM; technical architecture, security, and data privacy are validated via SO2 iterative design review and internal peer review during Rapid Construction.'],
+                    ['name' => 'Two-construct TAM post-test specification', 'status' => 'complete', 'detail' => 'Measures Perceived Usefulness (PU) and Perceived Ease of Use (PEOU) on a 5-point Likert scale (midpoint 3.0). Post-test only; ATU/BIU and pre-test indicators removed.'],
+                ],
+            ],
+            [
+                'key' => 'research-instruments-specs',
+                'title' => 'Research instruments & sampling specifications',
+                'description' => 'Field survey instruments, participant matrices, and interview guides across the RAD lifecycle.',
+                'items' => [
+                    ['name' => 'First-year student journey survey (Google Form / baseline)', 'status' => 'complete', 'detail' => '15-question journey instrument covering application hassle, test day friction, consultation queues, program capacity, 1-5 feature ratings, and constructive feedback.'],
+                    ['name' => 'Guidance & Registrar process inquiry (interactive brief)', 'status' => 'complete', 'detail' => 'Field inquiry capturing >5 day scoring duration, stencil errors, 70-80/day consultation flow, and paper bottlenecks; live on /capstone/client-brief.'],
+                    ['name' => 'Program Head departmental census protocol (N=11)', 'status' => 'complete', 'detail' => 'Total enumeration (N=11) via concise Google Form + in-depth interviews with key heads (BSIT, Education, BSHM) to report an institutional response rate.'],
+                    ['name' => 'Cutover TAM evaluation role-adapted tables (n=271)', 'status' => 'complete', 'detail' => 'Four role-adapted item tables: Registrar (8 items), Guidance (13 items), First-Year Students (9 items), Program Heads (9 items) evaluating post-cutover acceptance.'],
+                ],
+            ],
+            [
+                'key' => 'institutional-strategies',
+                'title' => 'Institutional policies & field strategies',
+                'description' => 'Non-obvious operational rules, legal mandates (RA 10931 / RA 10173), and field strategies governing NEXIAM.',
+                'items' => [
+                    ['name' => 'Dual-phase sampling strategy (baseline vs. cutover)', 'status' => 'complete', 'detail' => 'Exploratory cohort (n=30–50 students) for preliminary SO1/SO2 baseline metrics; full Slovin sample (n=255) reserved for post-cutover TAM evaluation (SO3).'],
+                    ['name' => 'State college open enrollment preservation (RA 10931)', 'status' => 'complete', 'detail' => 'Open admission by default; capacity limits and qualifying cutoffs apply strictly to laboratory-constrained, high-demand, or faculty-limited programs; counselor retains supremacy.'],
+                    ['name' => 'Counselor decision supremacy & descriptive AI boundaries', 'status' => 'complete', 'detail' => 'Automated rejection/admission is strictly prohibited; ML clustering and RAG models serve exclusively as decision-support dashboards for the counselor.'],
+                    ['name' => 'Student-pain-driven scheduling & hourly appointment slots', 'status' => 'complete', 'detail' => 'Directly justifies FR-04 and FR-07 by replacing all-day queue arrivals with 1-hour appointment windows and Guidance-controlled self-booking toggles (B4).'],
+                ],
+            ],
+            [
                 'key' => 'greenfield-parity',
                 'title' => 'Legacy → Greenfield parity',
                 'description' => 'Existing office capabilities being re-adopted in the new system.',
@@ -42,7 +75,7 @@ final class StatusController extends Controller
                     ['name' => 'Foundation, access, and staff shell', 'status' => 'complete', 'detail' => 'Runtime, authentication, navigation, capability boundaries, and audit foundation.'],
                     ['name' => 'Admissions and applicant portal', 'status' => 'in_progress', 'detail' => 'Digital intake, review, correction, applicant status, and staff case work.'],
                     ['name' => 'Consultation, follow-ups, and quota', 'status' => 'in_progress', 'detail' => 'Trackable consultation handoff, remarks, program choice, and quota decisions.'],
-                    ['name' => 'Examination scheduling and monitoring', 'status' => 'in_progress', 'detail' => 'Sessions, rooms, assignments, attendance, submission, and proctor work.'],
+                    ['name' => 'Examination scheduling and monitoring', 'status' => 'in_progress', 'detail' => 'Sessions, rooms, applicant assignments, attendance, and Test Administrator conduct.'],
                     ['name' => 'Grading, results, and release', 'status' => 'in_progress', 'detail' => 'Manual grading, result preparation, printing, release, and reversal controls.'],
                     ['name' => 'Setup and institutional reference data', 'status' => 'in_progress', 'detail' => 'Cycles, programs, rooms, policies, scoring setup, and operational configuration.'],
                 ],
@@ -52,11 +85,11 @@ final class StatusController extends Controller
                 'title' => 'New flagship capabilities',
                 'description' => 'The differentiating work that extends beyond a direct legacy rewrite.',
                 'items' => [
-                    ['name' => 'Nexi AI boundary and skills', 'status' => 'in_progress', 'detail' => 'Policy-aware AI context, capabilities, skills, and typed actions.'],
+                    ['name' => 'Xiam AI boundary and skills', 'status' => 'in_progress', 'detail' => 'Policy-aware AI context, capabilities, skills, and typed actions.'],
                     ['name' => 'Chatbot / assistant experience', 'status' => 'in_progress', 'detail' => 'Staff-facing conversational help connected to the current page and allowed actions.'],
                     ['name' => 'OMR-powered checking', 'status' => 'in_progress', 'detail' => 'Digital capture and analysis with a safe manual fallback.', 'children' => ['Capture and batch ingest', 'Review and manual fallback', 'Inference worker and quality evidence']],
-                    ['name' => 'OMR template builder and authoring studio', 'status' => 'in_progress', 'detail' => 'The OMR sub-macro: canonical templates, page/booklet composition, overlays, and proofing.', 'children' => ['Canonical template model', 'Page and booklet builder', 'Digital proof and activation checks']],
-                    ['name' => 'Future intelligence and scheduling assistance', 'status' => 'planned', 'detail' => 'Bounded assistance for planning and operations after the core contracts are stable.'],
+                    ['name' => 'Answer-sheet builder and authoring studio', 'status' => 'in_progress', 'detail' => 'Answer-sheet layouts, page and answer-key composition, sheet text, and proofing.', 'children' => ['Answer-sheet version model', 'Page and answer-key builder', 'Digital proof and activation checks']],
+                    ['name' => 'Future intelligence and scheduling assistance', 'status' => 'in_progress', 'detail' => 'Frontend chatbot/assistant surface working and a capability-matrix gate (skill/capability registry) is in place; scheduling proposal assistance has been started but is currently stalled on the core scheduling contracts.'],
                 ],
             ],
             [
@@ -76,10 +109,10 @@ final class StatusController extends Controller
             'Foundation, access, and staff shell' => ['Dashboard/home layout', 'Sidebar/navigation', 'Profile and user menu', 'Notifications and toasts', 'Capability-aware empty/denied states'],
             'Admissions and applicant portal' => ['Dashboard/work queue', 'Application list/table view', 'Application detail/dossier', 'Status and action bar', 'Correction dialog/form', 'Applicant portal/status timeline'],
             'Consultation, follow-ups, and quota' => ['Consultation dashboard', 'Schedule/list view', 'Applicant workspace', 'Follow-up queue', 'Remarks and thread history', 'Program/quota decision view'],
-            'Examination scheduling and monitoring' => ['Session dashboard', 'Table/card view', 'Schedule statistics/KPIs', 'Session detail', 'Roster/monitoring table', 'Room and proctor assignment', 'Live refresh and elapsed state'],
+            'Examination scheduling and monitoring' => ['Session dashboard', 'Table/card view', 'Schedule statistics/KPIs', 'Session detail', 'Roster/monitoring table', 'Room and session assignment', 'Live refresh and elapsed state'],
             'Grading, results, and release' => ['Grading dashboard', 'Session statistics/progress', 'Sheet review workspace', 'Manual score form', 'Result preview/print', 'Release and reversal actions'],
             'Setup and institutional reference data' => ['Setup dashboard', 'Catalog index/list', 'Create/edit forms', 'Activate/deactivate actions', 'Validation and empty states', 'Audit/history view'],
-            'Nexi AI boundary and skills' => ['AI dock/panel entry', 'Current page context', 'Skill/action availability', 'Capability-denied state', 'Execution progress and result'],
+            'Xiam AI boundary and skills' => ['AI dock/panel entry', 'Current page context', 'Skill/action availability', 'Capability-denied state', 'Execution progress and result'],
             'Chatbot / assistant experience' => ['Chat thread', 'Composer/loading/error states', 'Suggested prompts/actions', 'Result or source card', 'Confirm/cancel action'],
             'OMR-powered checking' => ['Capture dashboard', 'Batch progress', 'Sheet review queue', 'Image/page viewer', 'Manual fallback editor', 'Quality/error states'],
             'OMR template builder and authoring studio' => ['Template list', 'Builder canvas', 'Page/booklet controls', 'Overlay and marker profile', 'Proof/test capture', 'Publish/version state'],
@@ -169,9 +202,9 @@ sequenceDiagram
     participant Roster
     Guidance->>Scheduler: Create room and time
     Scheduler->>Session: Publish session
-    Session->>Roster: Assign applicants and proctor duty
+    Session->>Roster: Assign applicants
     Roster-->>Guidance: Show live attendance state
-    Guidance->>Roster: Record attendance and submission
+    Guidance->>Roster: Authorized Test Administrator records attendance and submission
     Roster-->>Session: Close only when conduct is complete
 MERMAID,
             'Grading, results, and release' => <<<'MERMAID'
@@ -199,18 +232,18 @@ sequenceDiagram
     Catalog->>Audit: Record authority and change
     Setup-->>Staff: Show active, inactive, or validation state
 MERMAID,
-            'Nexi AI boundary and skills' => <<<'MERMAID'
+            'Xiam AI boundary and skills' => <<<'MERMAID'
 sequenceDiagram
     actor Staff
     participant Page
-    participant Nexi
+    participant Xiam
     participant Policy
     participant Action
     Staff->>Page: Ask for help or action
-    Page->>Nexi: Send page context and request
-    Nexi->>Policy: Resolve capability and allowed skills
-    Policy-->>Nexi: Allow, constrain, or deny
-    Nexi->>Action: Prepare typed action when allowed
+    Page->>Xiam: Send page context and request
+    Xiam->>Policy: Resolve capability and allowed skills
+    Policy-->>Xiam: Allow, constrain, or deny
+    Xiam->>Action: Prepare typed action when allowed
     Action-->>Staff: Return result for confirmation
 MERMAID,
             'Chatbot / assistant experience' => <<<'MERMAID'

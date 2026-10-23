@@ -18,6 +18,7 @@ class RecordThreadMessage extends Model
     protected $fillable = [
         'record_thread_id',
         'sender_user_id',
+        'sequence',
         'body',
         'created_at',
     ];
@@ -25,6 +26,7 @@ class RecordThreadMessage extends Model
     protected function casts(): array
     {
         return [
+            'sequence' => 'integer',
             'created_at' => 'datetime',
         ];
     }

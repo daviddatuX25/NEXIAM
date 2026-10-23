@@ -21,8 +21,9 @@ class CreateConsultationSession
         string $scheduledAt,
         string $bookingMode,
         User $actor,
+        bool $autoAssignEnabled = false,
     ): ConsultationSession {
-        return DB::transaction(function () use ($cycle, $room, $code, $scheduledAt, $bookingMode, $actor): ConsultationSession {
+        return DB::transaction(function () use ($cycle, $room, $code, $scheduledAt, $bookingMode, $actor, $autoAssignEnabled): ConsultationSession {
             if (! in_array($bookingMode, ConsultationSession::BOOKING_MODES, true)) {
                 throw new RuntimeException('Invalid consultation booking mode.');
             }
@@ -36,6 +37,7 @@ class CreateConsultationSession
                 'status' => ConsultationSession::STATUS_DRAFT,
                 'booking_mode' => $bookingMode,
                 'scheduled_at' => $scheduledAt,
+                'auto_assign_enabled' => $autoAssignEnabled,
             ]);
 
             $this->recordAuditEvent->handle('consultation.session_created', [

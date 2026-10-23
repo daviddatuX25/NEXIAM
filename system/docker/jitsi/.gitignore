@@ -1,0 +1,3 @@
+/config/
+/.env-provision.lock
+/cloudflared-local.yaml

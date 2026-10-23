@@ -2,7 +2,6 @@
 
 namespace App\Assessment\Actions\Omr\Canonical;
 
-use App\Assessment\Omr\Canonical\OmrMarkerCalibrationArtifactGenerator;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Jobs\Assessment\RenderOmrMarkerCalibrationArtifactJob;
 use App\Models\Assessment\OmrMarkerProfile;
@@ -12,8 +11,7 @@ final class GenerateOmrMarkerCalibrationArtifact
 {
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $evidence */
     public function handle(OmrMarkerProfile $profile, array $evidence, User $actor): string

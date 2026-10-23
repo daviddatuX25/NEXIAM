@@ -1,0 +1,1389 @@
+{
+  "source": {
+    "url": "https://heida.ched.gov.ph/hei-directory/1",
+    "publisher": "Commission on Higher Education (CHED), Higher Education Institution Data Analytics (HEIDA)",
+    "asOf": "Accessed 2026-10-18; source displays 153 records and no publication date",
+    "retrievedAt": "2026-10-18",
+    "coverage": "All 153 Region I directory records across 16 observed pages (10 records per page except final page with 3); labels are displayed HEI names with NEW and code/status lines excluded. Campuses/locations embedded in displayed names retained.",
+    "extraction": "Rendered HEIDA directory; pagination markup uses Livewire gotoPage and observed browser navigation updated URL with ?page=2. Retrieved observed pages 1–16 using that exact query convention; 153 rows collected."
+  },
+  "records": [
+    {
+      "key": "ched-hei-new-abe-dagupan",
+      "label": "ABE International College of Business and Accountancy (Dagupan)",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1122-mc-arthur-highway-urdaneta-city-pangasinan",
+      "label": "ABE International College of Business and Accountancy-Urdaneta City, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1122"
+    },
+    {
+      "key": "ched-hei-01112-dagupan-city-pangasinan",
+      "label": "ABE International College of Business and Economics-Dagupan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 01112"
+    },
+    {
+      "key": "ched-hei-1152-san-patricio-street-cor-san-lorenzo-poblacion-zone-1-villasis-pangasinan",
+      "label": "Access Villasis Pangasinan Computer and Technical Colleges",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1152"
+    },
+    {
+      "key": "ched-hei-agoo-computer-college-philippines-agoo-la-union",
+      "label": "Agoo Computer College Philippines",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1130-calasiao-pangasinan",
+      "label": "AIE College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1130"
+    },
+    {
+      "key": "ched-hei-1102-pacific-building-don-e-ruiz-street-laoag-city-ilocos-norte",
+      "label": "AMA Computer College - Laoag City, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1102"
+    },
+    {
+      "key": "ched-hei-1101-barangay-san-miguel-mcarthur-highway-calasiao-pangasinan",
+      "label": "AMA Computer College - Pangasinan Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1101"
+    },
+    {
+      "key": "ched-hei-1108-gen-luna-st-brgy-4-san-fernando-city-la-union",
+      "label": "AMA Computer College-La Union, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1108"
+    },
+    {
+      "key": "ched-hei-1005-luna-street-anda-pangasinan",
+      "label": "Asbury College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1005"
+    },
+    {
+      "key": "ched-hei-asia-college-of-theology-and-seminary-san-fernando-city-la-union",
+      "label": "Asia College of Theology and Seminary",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1006-perez-blvd-dagupan-city-pangasinan",
+      "label": "Asiacareer College Foundation, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1006"
+    },
+    {
+      "key": "ched-hei-bacarra-medical-center-school-of-midwifery-bacarra-ilocos-norte",
+      "label": "Bacarra Medical Center School of Midwifery",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1053-balaoan-la-union",
+      "label": "Balaoan Institute",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1053"
+    },
+    {
+      "key": "ched-hei-1156-rizal-avenue-bayambang-pangasinan",
+      "label": "Bayambang Polytechnic College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1156"
+    },
+    {
+      "key": "ched-hei-1145-brgy-ilang-san-carlos-city-pangasinan",
+      "label": "Binalatongan Community College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1145"
+    },
+    {
+      "key": "ched-hei-carthel-sciencce-educational-foundation-dagupan-incundefined-dagupan-city-pangasinan",
+      "label": "Carthel Sciencce Educational Foundation Dagupan, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-central-college-of-pangasinan-san-carlos-city-pangasinan",
+      "label": "Central College of Pangasinan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NO UII)"
+    },
+    {
+      "key": "ched-hei-central-colleges-of-pangasinan-malasiqui-pangasinan",
+      "label": "Central Colleges of Pangasinan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1012-lingsat-san-fernando-city-la-union",
+      "label": "CICOSAT Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1012"
+    },
+    {
+      "key": "ched-hei-1114-castro-st-poblacion-manaoag-pangasinan",
+      "label": "Colegio De San Juan De Letran-Manaoag",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1114"
+    },
+    {
+      "key": "ched-hei-1113-quezon-avenue-alaminos-city-pangasinan",
+      "label": "Colegio San Jose De Alaminos, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1113"
+    },
+    {
+      "key": "ched-hei-congress-college-agoo-la-union-record-023",
+      "label": "Congress College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-congress-college-agoo-la-union-record-024",
+      "label": "Congress College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1016-a-b-fernandez-east-dagupan-city-pangasinan",
+      "label": "Dagupan Colleges Foundation, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1016"
+    },
+    {
+      "key": "ched-hei-1017-a-g-tupaz-cor-m-v-farinas-sts-brgy-8-san-vicente-laoag-city-ilocos-norte",
+      "label": "Data Center College of the Philippines of Laoag City, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1017"
+    },
+    {
+      "key": "ched-hei-1111-tamag-vigan-city-ilocos-sur",
+      "label": "Data Center College of the Philippines-Vigan City, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1111"
+    },
+    {
+      "key": "ched-hei-1018-general-segundo-avenue-brgy-13-laoag-city-ilocos-norte",
+      "label": "Divine Word College of Laoag, INC.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1018"
+    },
+    {
+      "key": "ched-hei-1019-j-p-rizal-st-bayaoas-urdaneta-city-pangasinan",
+      "label": "Divine Word College of Urdaneta, INC.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1019"
+    },
+    {
+      "key": "ched-hei-1020-vigan-city-ilocos-sur",
+      "label": "Divine Word College of Vigan, INC.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1020"
+    },
+    {
+      "key": "ched-hei-1023-national-highway-barangay-catbangen-san-fernando-city-la-union",
+      "label": "Don Mariano Marcos Memorial State University - Mid La Union Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1023"
+    },
+    {
+      "key": "ched-hei-1021-consolacion-agoo-la-union",
+      "label": "Don Mariano Marcos Memorial State University - South La Union Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1021"
+    },
+    {
+      "key": "ched-hei-1026-sapilang-bacnotan-la-union",
+      "label": "Don Mariano Marcos Memorial State University-North La Union-Main Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1026"
+    },
+    {
+      "key": "ched-hei-don-mariano-marcos-memorial-state-university-open-university-system-san-fernando-city-la-union",
+      "label": "Don Mariano Marcos Memorial State University-Open University System",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (01023a)"
+    },
+    {
+      "key": "ched-hei-escuela-nuestra-de-la-salette-dagupan-city-pangasinan",
+      "label": "Escuela Nuestra De La Salette",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1109-san-jose-drive-alaminos-city-pangasinan",
+      "label": "Golden West Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1109"
+    },
+    {
+      "key": "ched-hei-holy-infant-college-aguilar-pangasinan",
+      "label": "Holy Infant College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1032-bantay-ilocos-sur",
+      "label": "Ilocos Sur Community College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1032"
+    },
+    {
+      "key": "ched-hei-1082-darapidap-road-candon-city-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College Main Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1082"
+    },
+    {
+      "key": "ched-hei-1094-brgy-darapidap-candon-city-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College-Candon",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1094"
+    },
+    {
+      "key": "ched-hei-1091-poblacion-norte-cervantes-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College-Cervantes",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1091"
+    },
+    {
+      "key": "ched-hei-1089-tagudin-tagudin-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College-College of Arts and Sciences-Tagudin",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1089"
+    },
+    {
+      "key": "ched-hei-1088-poblacion-norte-santiago-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College-College of Engineering and Technology-Santiago",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1088"
+    },
+    {
+      "key": "ched-hei-1090-sulvec-narvacan-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College-College of Fisheries and Marine Sciences-Narvacan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1090"
+    },
+    {
+      "key": "ched-hei-1031-national-highway-santa-maria-ilocos-sur",
+      "label": "Ilocos Sur Polytechnic State College-Sta. Maria",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1031"
+    },
+    {
+      "key": "ched-hei-1141-pantay-daya-vigan-city-ilocos-sur",
+      "label": "Immaculate Conception School of Theology",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1141"
+    },
+    {
+      "key": "ched-hei-1132-undefined40-garcia-st-poblacion-urdaneta-city-pangasinan",
+      "label": "International College for Excellence, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1132"
+    },
+    {
+      "key": "ched-hei-international-college-of-asia-dagupan-city-pangasinan",
+      "label": "International College of Asia",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1128-undefined1799-mcarthur-highway-lucao-district-dagupan-city-pangasinan",
+      "label": "Kingfisher School of Business & Finance",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1128"
+    },
+    {
+      "key": "ched-hei-1155-7-quezon-boulevard-tayug-pangasinan",
+      "label": "Kingsville Advanced School, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1155"
+    },
+    {
+      "key": "ched-hei-1124-san-fernando-city-la-union",
+      "label": "La Finns Scholastica Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1124"
+    },
+    {
+      "key": "ched-hei-1124-biday-san-fernando-city-la-union",
+      "label": "LA FINNS SCHOLASTICA COLLEGES, INC.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1124"
+    },
+    {
+      "key": "ched-hei-1140-monte-del-rosario-compound-benteng-rosario-la-union",
+      "label": "La Union Christian Comprehensive College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1140"
+    },
+    {
+      "key": "ched-hei-1116-pescadores-st-central-west-bauang-la-union",
+      "label": "La Union Colleges of Science and Technology, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1116"
+    },
+    {
+      "key": "ched-hei-1154-san-fernando-airport-poro-point-freeport-zone-san-fernando-city-la-union",
+      "label": "Leading Edge International Aviation Academy Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1154"
+    },
+    {
+      "key": "ched-hei-1034-carlatan-san-fernando-city-la-union",
+      "label": "Lorma Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1034"
+    },
+    {
+      "key": "ched-hei-1035-lopez-jaena-street-tayug-pangasinan",
+      "label": "Luna Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1035"
+    },
+    {
+      "key": "ched-hei-1117-urdaneta-city-pangasinan",
+      "label": "Luzon College of Science and Technology",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1117"
+    },
+    {
+      "key": "ched-hei-1037-mcarthur-highway-san-vicente-urdaneta-city-pangasinan",
+      "label": "Lyceum Northern Luzon, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1037"
+    },
+    {
+      "key": "ched-hei-1110-nancayasan-urdaneta-city-pangasinan",
+      "label": "Lyceum Northwestern University-Urdaneta Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1110"
+    },
+    {
+      "key": "ched-hei-1103-tapuac-district-dagupan-city-pangasinan",
+      "label": "Lyceum-Northwestern University",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1103"
+    },
+    {
+      "key": "ched-hei-1104-quezon-avenue-vigan-city-ilocos-sur",
+      "label": "Macro Colleges",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1104"
+    },
+    {
+      "key": "ched-hei-1104-vigan-city-ilocos-sur",
+      "label": "Macro Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1104"
+    },
+    {
+      "key": "ched-hei-1003-bonifacio-st-malasiqui-pangasinan",
+      "label": "Malasiqui Agno Valley College Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1003"
+    },
+    {
+      "key": "ched-hei-marian-college-of-science-and-technology-bayambang-pangasinan",
+      "label": "Marian College of Science and Technology",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1040-brgy-16-quiling-sur-batac-city-ilocos-norte",
+      "label": "Mariano Marcos State University- Main Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1040"
+    },
+    {
+      "key": "ched-hei-1044-barangay-madamba-dingras-ilocos-norte",
+      "label": "Mariano Marcos State University-College of Agriculture, Food and Sustainable Development-Dingras",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1044"
+    },
+    {
+      "key": "ched-hei-1043-pias-sur-currimao-ilocos-norte",
+      "label": "Mariano Marcos State University-College of Aquatic Sciences & Applied Technology-Currimao",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1043"
+    },
+    {
+      "key": "ched-hei-1046-p-gomez-st-laoag-city-ilocos-norte",
+      "label": "Mariano Marcos State University-College of Industrial Technology-Laoag City",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1046"
+    },
+    {
+      "key": "ched-hei-1045-castro-avenue-laoag-city-ilocos-norte",
+      "label": "Mariano Marcos State University-College of Teacher Education-Laoag City",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1045"
+    },
+    {
+      "key": "ched-hei-1151-bacarra-ilocos-norte",
+      "label": "Mary Cause of Our Joy College Seminary, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1151"
+    },
+    {
+      "key": "ched-hei-1041-bonuan-gueset-dagupan-city-pangasinan",
+      "label": "Mary Help of Christians College Seminary",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1041"
+    },
+    {
+      "key": "ched-hei-1146-palapad-san-fabian-pangasinan",
+      "label": "Mary Help of Christians Theology Seminary",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1146"
+    },
+    {
+      "key": "ched-hei-1098-serafica-street-mangaldan-pangasinan",
+      "label": "Metro-Dagupan Colleges",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1098"
+    },
+    {
+      "key": "ched-hei-1062-magsingal-ilocos-sur",
+      "label": "Metropolitan Institute Of Arts And Science-Magsingal Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1062"
+    },
+    {
+      "key": "ched-hei-1119-pogonlomboy-mangatarem-pangasinan",
+      "label": "Mystical Rose College of Science and Technology, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1119"
+    },
+    {
+      "key": "ched-hei-national-college-of-science-and-technology-la-union-san-fernando-city-la-union",
+      "label": "National College of Science and Technology- La Union",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NO UII)"
+    },
+    {
+      "key": "ched-hei-1129-oaig-daya-candon-city-ilocos-sur",
+      "label": "NICOSAT Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1129"
+    },
+    {
+      "key": "ched-hei-1083-bacag-villasis-pangasinan",
+      "label": "NJ Valdez Colleges Foundation",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1083"
+    },
+    {
+      "key": "ched-hei-1048-ablan-ave-cor-mabini-laoag-city-ilocos-norte",
+      "label": "Northern Christian College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1048"
+    },
+    {
+      "key": "ched-hei-northern-colleges-foundation-perez-blvd-dagupan-city-pangasinan",
+      "label": "Northern Colleges Foundation",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1050-artacho-sison-pangasinan",
+      "label": "Northern Luzon Adventist College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1050"
+    },
+    {
+      "key": "ched-hei-1051-national-hi-way-lingsat-san-fernando-city-la-union",
+      "label": "Northern Philippines College for Maritime, Science and Technology, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1051"
+    },
+    {
+      "key": "ched-hei-1052-don-mariano-marcos-avenue-laoag-city-ilocos-norte",
+      "label": "Northwestern University",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1052"
+    },
+    {
+      "key": "ched-hei-1053-barangay-dr-camilo-balaoan-la-union",
+      "label": "Osias Educational Foundation",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1053"
+    },
+    {
+      "key": "ched-hei-1054-undefined1-perez-boulevard-san-carlos-city-pangasinan",
+      "label": "Palaris Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1054"
+    },
+    {
+      "key": "ched-hei-pangasinan-memorial-college-poblacion-lingayen-pangasinan",
+      "label": "Pangasinan Memorial College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NO UII)"
+    },
+    {
+      "key": "ched-hei-pangasinan-memorial-college-lingayen-pangasinan",
+      "label": "Pangasinan Memorial College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1057-perez-boulevard-dagupan-city-pangasinan",
+      "label": "Pangasinan Merchant Marine Academy, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1057"
+    },
+    {
+      "key": "ched-hei-1159-lingayen-pangasinan",
+      "label": "Pangasinan Polytechnic College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1159"
+    },
+    {
+      "key": "ched-hei-1058-alvear-street-lingayen-pangasinan",
+      "label": "Pangasinan State University - Lingayen",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1058"
+    },
+    {
+      "key": "ched-hei-1060-urdaneta-city-pangasinan",
+      "label": "Pangasinan State University - School Of Advanced Studies",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1060"
+    },
+    {
+      "key": "ched-hei-pangasinan-state-university-alaminos-city-campus-alaminos-city-pangasinan",
+      "label": "Pangasinan State University-Alaminos City Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (01058b)"
+    },
+    {
+      "key": "ched-hei-1064-asingan-pangasinan",
+      "label": "Pangasinan State University-Asingan Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1064"
+    },
+    {
+      "key": "ched-hei-1065-bayambang-pangasinan",
+      "label": "Pangasinan State University-Bayambang Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1065"
+    },
+    {
+      "key": "ched-hei-1066-binmaley-pangasinan",
+      "label": "Pangasinan State University-Binmaley Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1066"
+    },
+    {
+      "key": "ched-hei-1067-infanta-pangasinan",
+      "label": "Pangasinan State University-Infanta Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1067"
+    },
+    {
+      "key": "ched-hei-pangasinan-state-university-open-university-systems-lingayen-pangasinan",
+      "label": "Pangasinan State University-Open University Systems",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (01058a)"
+    },
+    {
+      "key": "ched-hei-1068-san-carlos-city-pangasinan",
+      "label": "Pangasinan State University-San Carlos City Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1068"
+    },
+    {
+      "key": "ched-hei-1069-santa-maria-pangasinan",
+      "label": "Pangasinan State University-Sta. Maria Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1069"
+    },
+    {
+      "key": "ched-hei-1070-urdaneta-city-pangasinan",
+      "label": "Pangasinan State University-Urdaneta City Campus",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1070"
+    },
+    {
+      "key": "ched-hei-1127-lopez-jaena-street-tayug-pangasinan",
+      "label": "Panpacific University North Philippines - Tayug Campus Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1127"
+    },
+    {
+      "key": "ched-hei-1055-mcarthur-highway-san-vicente-urdaneta-city-pangasinan",
+      "label": "Panpacific University, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1055"
+    },
+    {
+      "key": "ched-hei-1100-quezon-avenue-alaminos-city-pangasinan",
+      "label": "Pass College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1100"
+    },
+    {
+      "key": "ched-hei-pentecostal-school-of-theology-san-fernando-city-la-union",
+      "label": "Pentecostal School of Theology",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1059-montemayor-street-malasiqui-pangasinan",
+      "label": "Perpetual Help College of Pangasinan, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1059"
+    },
+    {
+      "key": "ched-hei-philippine-central-college-of-arts-science-and-technology-naguilian-la-union",
+      "label": "Philippine Central College of Arts, Science and Technology",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1133-dona-toribia-aspiras-st-san-antonio-agoo-la-union",
+      "label": "Philippine College of Northwestern Luzon",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1133"
+    },
+    {
+      "key": "ched-hei-1061-nalsian-calasiao-pangasinan",
+      "label": "Philippine College of Science and Technology (Calasiao, Pangasinan), Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1061"
+    },
+    {
+      "key": "ched-hei-1134-tavera-binalonan-pangasinan",
+      "label": "Philippine Darakbang Theological College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1134"
+    },
+    {
+      "key": "ched-hei-1157-caba-la-union",
+      "label": "Philippine Remnant College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1157"
+    },
+    {
+      "key": "ched-hei-philippine-western-union-college-alaminos-city-pangasinan",
+      "label": "Philippine Western Union College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1150-undefined0587-mcarthur-highway-brgy-nancayasan-urdaneta-city-pangasinan",
+      "label": "PHINMA-Upang College Urdaneta, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1150"
+    },
+    {
+      "key": "ched-hei-1144-rizal-san-carlos-city-pangasinan",
+      "label": "PIMSAT Colleges Incorporated - San Carlos City",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1144"
+    },
+    {
+      "key": "ched-hei-1062-mc-arthur-hi-way-bolosan-district-dagupan-city-pangasinan",
+      "label": "PIMSAT Colleges, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1062"
+    },
+    {
+      "key": "ched-hei-1060-san-joaquin-sur-agoo-la-union",
+      "label": "Polytechnic College of La Union (PCLU), Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1060"
+    },
+    {
+      "key": "ched-hei-polytechnic-colleges-of-region-1-incundefined-narvacan-ilocos-sur",
+      "label": "Polytechnic Colleges of Region 1, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-01071-urdaneta-city-pangasinan",
+      "label": "Pyramid Computer School",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 01071"
+    },
+    {
+      "key": "ched-hei-1137-san-pedro-west-rosales-pangasinan",
+      "label": "Rosales Wesleyan Bible College Incorporated",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1137"
+    },
+    {
+      "key": "ched-hei-sacred-heart-colleges-foundation-candon-city-ilocos-sur",
+      "label": "Sacred Heart Colleges Foundation",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-1073-poblacion-lingayen-pangasinan",
+      "label": "Saint Columban's College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1073"
+    },
+    {
+      "key": "ched-hei-1135-national-highway-lingsat-san-fernando-city-la-union",
+      "label": "Saint John Bosco College of Northern Luzon",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1135"
+    },
+    {
+      "key": "ched-hei-1074-national-highway-lingsat-san-fernando-city-la-union",
+      "label": "Saint Louis College-City of San Fernando",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1074"
+    },
+    {
+      "key": "ched-hei-1077-mabini-street-san-carlos-city-pangasinan",
+      "label": "San Carlos College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1077"
+    },
+    {
+      "key": "ched-hei-1078-greenhills-subdivision-san-fernando-city-la-union",
+      "label": "Sea and Sky College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1078"
+    },
+    {
+      "key": "ched-hei-1149-diversion-road-san-miguel-calasiao-pangasinan",
+      "label": "Señor Tesoro College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1149"
+    },
+    {
+      "key": "ched-hei-1115-san-eugenio-aringay-la-union",
+      "label": "South Ilocandia College of Arts and Technology, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1115"
+    },
+    {
+      "key": "ched-hei-1153-vigan-city-ilocos-sur",
+      "label": "St. Benedict College of Northern Luzon Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1153"
+    },
+    {
+      "key": "ched-hei-1131-licsi-manaoag-pangasinan",
+      "label": "St. Camillus College of Manaoag Foundation, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1131"
+    },
+    {
+      "key": "ched-hei-1075-poblacion-sur-santa-maria-ilocos-sur",
+      "label": "St. Mary's College Sta. Maria, Ilocos Sur, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1075"
+    },
+    {
+      "key": "ched-hei-1076-st-paul-avenue-bantay-ilocos-sur",
+      "label": "St. Paul College of Ilocos Sur, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1076"
+    },
+    {
+      "key": "ched-hei-1121-m-soriano-st-san-carlos-city-pangasinan",
+      "label": "St. Therese College Foundation, Inc",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1121"
+    },
+    {
+      "key": "ched-hei-1158-umingan-pangasinan",
+      "label": "Sta. Catalina's College of Science and Technology, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1158"
+    },
+    {
+      "key": "ched-hei-1105-bacnotan-la-union-record-134",
+      "label": "Sta. Veronica College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1105"
+    },
+    {
+      "key": "ched-hei-1105-bacnotan-la-union-record-135",
+      "label": "Sta. Veronica College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1105"
+    },
+    {
+      "key": "ched-hei-1107-arellano-street-dagupan-city-pangasinan",
+      "label": "STI College Dagupan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1107"
+    },
+    {
+      "key": "ched-hei-1148-j-p-rizal-st-cor-don-e-ruiz-st-laoag-city-ilocos-norte",
+      "label": "STI College Laoag",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1148"
+    },
+    {
+      "key": "ched-hei-1147-burgos-st-pantay-daya-vigan-city-ilocos-sur",
+      "label": "STI College Vigan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1147"
+    },
+    {
+      "key": "ched-hei-1106-san-fernando-city-la-union",
+      "label": "STI College-San Fernando City",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1106"
+    },
+    {
+      "key": "ched-hei-1002-new-street-east-maniboc-lingayen-pangasinan",
+      "label": "The Adelphi College Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1002"
+    },
+    {
+      "key": "ched-hei-1029-don-pedro-reinoso-st-alaminos-city-pangasinan",
+      "label": "The Great Plebeian College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1029"
+    },
+    {
+      "key": "ched-hei-1079-widdoes-st-san-fernando-city-la-union",
+      "label": "Union Christian College, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1079"
+    },
+    {
+      "key": "ched-hei-1014-arellano-dagupan-city-pangasinan",
+      "label": "Universidad De Dagupan, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1014"
+    },
+    {
+      "key": "ched-hei-1136-poblacion-binalonan-pangasinan",
+      "label": "University of Eastern Pangasinan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1136"
+    },
+    {
+      "key": "ched-hei-1036-perez-boulevard-dagupan-city-pangasinan",
+      "label": "University of Luzon, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1036"
+    },
+    {
+      "key": "ched-hei-1080-quirino-boulevard-vigan-city-ilocos-sur",
+      "label": "University of Northern Philippines",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1080"
+    },
+    {
+      "key": "ched-hei-1081-arellano-street-dagupan-city-pangasinan",
+      "label": "University of Pangasinan, Inc.",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1081"
+    },
+    {
+      "key": "ched-hei-1084-san-vicente-west-urdaneta-city-pangasinan",
+      "label": "Urdaneta City University",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1084"
+    },
+    {
+      "key": "ched-hei-1086-martin-posadas-avenue-san-carlos-city-pangasinan",
+      "label": "Virgen Milagrosa University Foundation",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1086"
+    },
+    {
+      "key": "ched-hei-1143-binalonan-airfield-binalonan-pangasinan",
+      "label": "WCC Aeronautical & Technological College, Incorporated",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1143"
+    },
+    {
+      "key": "ched-hei-1061-binalonan-pangasinan",
+      "label": "World Citi Colleges Binalonan",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record code 1061"
+    },
+    {
+      "key": "ched-hei-zaragosa-college-tayug-pangasinan",
+      "label": "Zaragosa College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NEW)"
+    },
+    {
+      "key": "ched-hei-zaragoza-college-zamora-tayug-pangasinan",
+      "label": "Zaragoza College",
+      "aliases": [],
+      "category": "ched-higher-education-institution",
+      "sourceUrl": "https://heida.ched.gov.ph/hei-directory/1",
+      "sourceAsOf": "2026-10-18 (directory accessed; source page displays no publication date)",
+      "sourceVersion": "HEIDA Region I directory record (NO UII)"
+    }
+  ]
+}

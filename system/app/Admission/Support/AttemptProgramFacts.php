@@ -4,6 +4,7 @@ namespace App\Admission\Support;
 
 use App\Consultation\Support\AttemptResultReadiness;
 use App\Models\Admission\AdmissionAttempt;
+use App\Models\Admission\AdmissionClearanceReceipt;
 use App\Models\Admission\EnrollmentStamp;
 use App\Models\Admission\ProgramFollowUp;
 use App\Models\Admission\ProgramSelection;
@@ -36,10 +37,12 @@ final class AttemptProgramFacts
 
     public static function isAdvised(AdmissionAttempt $attempt): bool
     {
-        return ConsultationDecision::query()
+        $latest = ConsultationDecision::query()
             ->where('admission_attempt_id', $attempt->id)
-            ->whereIn('decision_type', ['approve', 'modify', 'override'])
-            ->exists();
+            ->orderByDesc('id')
+            ->first();
+
+        return $latest !== null && in_array($latest->decision_type, ['approve', 'modify', 'override'], true);
     }
 
     /**
@@ -103,9 +106,28 @@ final class AttemptProgramFacts
         return self::openFollowUps($attempt) !== [];
     }
 
+    public static function hasOpenFollowUpForProgram(AdmissionAttempt $attempt, int $programId): bool
+    {
+        return ProgramFollowUp::query()
+            ->where('admission_attempt_id', $attempt->id)
+            ->where('program_id', $programId)
+            ->whereIn('status', ProgramFollowUp::OPEN_STATUSES)
+            ->exists();
+    }
+
     /**
-     * Canonical primary lifecycle tag for projections.
+     * Current clearance is derived from the latest immutable confirmation or revocation receipt.
      */
+    public static function isClearanceConfirmed(AdmissionAttempt $attempt): bool
+    {
+        $latestReceipt = AdmissionClearanceReceipt::query()
+            ->where('admission_attempt_id', $attempt->id)
+            ->latest('id')
+            ->first();
+
+        return $latestReceipt?->status === AdmissionClearanceReceipt::STATUS_CONFIRMED;
+    }
+
     public static function lifecycleTag(AdmissionAttempt $attempt): string
     {
         if (self::isEnrolled($attempt)) {

@@ -18,6 +18,16 @@ class ResultSheetTemplate extends Model
 
     public const MODE_DOCX = 'docx';
 
+    public const SOURCE_BUILDER = 'builder';
+
+    public const SOURCE_DOCX = 'docx';
+
+    public const SOURCE_LEGACY_HTML = 'legacy_html';
+
+    public const BUILDER_SCHEMA_VERSION = 1;
+
+    public const BUILDER_COMPILER_VERSION = 'result-sheet-builder-1';
+
     public const PAPER_A4 = 'a4';
 
     public const PAPER_LEGAL = 'legal';
@@ -48,6 +58,12 @@ class ResultSheetTemplate extends Model
         'document_extension',
         'watermark_text',
         'rating_scale_id',
+        'source_kind',
+        'builder_schema_version',
+        'builder_json',
+        'compiled_html',
+        'compiler_version',
+        'lock_version',
         'is_active',
         'created_by_user_id',
     ];
@@ -56,6 +72,9 @@ class ResultSheetTemplate extends Model
     {
         return [
             'is_active' => 'boolean',
+            'builder_json' => 'array',
+            'builder_schema_version' => 'integer',
+            'lock_version' => 'integer',
         ];
     }
 
@@ -70,5 +89,27 @@ class ResultSheetTemplate extends Model
     public static function active(): ?self
     {
         return static::query()->where('is_active', true)->latest('id')->first();
+    }
+
+    public function printChecksum(): string
+    {
+        return hash('sha256', json_encode([
+            'mode' => $this->mode,
+            'source_kind' => $this->source_kind,
+            'builder_schema_version' => $this->builder_schema_version,
+            'compiler_version' => $this->compiler_version,
+            'builder_json' => $this->builder_json,
+            'compiled_html_checksum' => hash('sha256', (string) ($this->compiled_html ?? $this->content)),
+            'paper_size' => $this->paper_size,
+            'orientation' => $this->orientation,
+            'logical_unit' => $this->logical_unit,
+            'watermark_text' => $this->watermark_text,
+            'document_checksum' => $this->document_checksum,
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    public function isBuilder(): bool
+    {
+        return $this->source_kind === self::SOURCE_BUILDER;
     }
 }

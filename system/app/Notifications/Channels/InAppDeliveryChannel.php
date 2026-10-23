@@ -6,9 +6,8 @@ use App\Notifications\Contracts\DeliveryChannel;
 use App\Notifications\NotificationDelivery;
 
 /**
- * In-app channel: the `notification_deliveries` row IS the durable projection.
- * Delivering means the row is confirmed readable by the bell (no external call);
- * the worker marks it `delivered` with `seen_at` on first surface.
+ * The in-app delivery row is the durable projection. Delivering confirms that
+ * the row is available; surfacing and human read state are recorded elsewhere.
  */
 final class InAppDeliveryChannel implements DeliveryChannel
 {
@@ -19,10 +18,6 @@ final class InAppDeliveryChannel implements DeliveryChannel
 
     public function deliver(NotificationDelivery $delivery): ?string
     {
-        $delivery->update([
-            'seen_at' => $delivery->seen_at ?? now(),
-        ]);
-
         return null;
     }
 }

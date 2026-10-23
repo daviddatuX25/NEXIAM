@@ -6,11 +6,8 @@ use RuntimeException;
 
 use function array_values;
 use function config;
-use function ctype_digit;
 use function hash;
 use function hash_equals;
-use function implode;
-use function is_array;
 use function json_encode;
 use function preg_match;
 
@@ -23,15 +20,16 @@ use function preg_match;
 final class OmrQrPayload
 {
     public const PREFIX = 'nexiam:blank';
+
     public const VERSION = 'v1';
+
     public const SIGNATURE_VERSION = 1;
 
     /** @param array<string, string> $keys */
     public function __construct(
         private readonly array $keys = [],
         private readonly ?string $currentKeyId = null,
-    ) {
-    }
+    ) {}
 
     public function sign(string $instanceCode, int $pageNo, int $pageCount, ?string $keyId = null): string
     {

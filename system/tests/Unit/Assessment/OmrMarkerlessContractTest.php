@@ -1,6 +1,6 @@
 <?php
 
-use App\Assessment\Omr\Layout\OmrTemplateLayoutException;
+use App\Assessment\Omr\Fiducial\OmrFiducial;
 use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 
 /*
@@ -118,7 +118,7 @@ test('marker-bearing behavior is opt-in: markers.enabled=true switches the page 
     expect($result->fiducial)->not->toBeNull()
         ->and($result->fiducial['name'])->toBe('omr_marker.jpg')
         ->and($result->fiducial['mime'])->toBe('image/jpeg')
-        ->and($result->fiducial['asset_hash'])->toBe(\App\Assessment\Omr\Fiducial\OmrFiducial::assetHash())
+        ->and($result->fiducial['asset_hash'])->toBe(OmrFiducial::assetHash())
         ->and(str_starts_with($result->fiducial['bytes'], "\xff\xd8\xff"))->toBeTrue();
 
     // Frame anchoring: pageDimensions become the fiducial-center frame, not paper.

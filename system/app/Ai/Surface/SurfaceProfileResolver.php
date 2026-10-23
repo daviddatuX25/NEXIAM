@@ -2,8 +2,11 @@
 
 namespace App\Ai\Surface;
 
+use App\Models\Ai\XiamInstitutionPolicy;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 /**
  * Resolves exactly one SurfaceProfile from trusted server context.
@@ -64,6 +67,9 @@ final class SurfaceProfileResolver
         // Ordinary staff on staff shell.
         if ($candidates === [] && $isStaffUser && ! $isApplicantUser) {
             $candidates[] = SurfaceProfileKey::Staff;
+        }
+        if (in_array(SurfaceProfileKey::Applicant, $candidates, true) && $this->applicantAiDisabled($user)) {
+            return ['profile' => null, 'reason' => 'applicant_ai_disabled'];
         }
 
         if ($candidates === []) {
@@ -143,12 +149,9 @@ final class SurfaceProfileResolver
 
     private function isProctorSessionContext(Request $request, User $user, ?string $routeName): bool
     {
-        if ($routeName === null) {
-            return false;
-        }
-
-        return $routeName === 'exams.monitoring'
-            || str_starts_with($routeName, 'exams.sessions.monitoring');
+        // ProctorSession is reserved for a future dedicated proctor terminal/guard.
+        // General staff monitoring routes (/exams/monitoring) belong to the Staff surface.
+        return false;
     }
 
     private function isApplicantRoute(?string $routeName): bool
@@ -158,6 +161,32 @@ final class SurfaceProfileResolver
         }
 
         return str_starts_with($routeName, 'applicant.');
+    }
+
+    private function applicantAiDisabled(User $user): bool
+    {
+        try {
+            if (! Schema::hasTable('xiam_institution_policies')) {
+                return false;
+            }
+
+            $institutionId = $user->applicantAccount()
+                ->with('identity')
+                ->first()
+                ?->identity
+                ?->institution_id;
+            if ($institutionId === null) {
+                return false;
+            }
+
+            $policy = XiamInstitutionPolicy::query()
+                ->where('institution_id', $institutionId)
+                ->first();
+
+            return $policy !== null && $policy->applicant_inquiry_enabled === false;
+        } catch (Throwable) {
+            return true;
+        }
     }
 
     private function isStaffRoute(?string $routeName): bool

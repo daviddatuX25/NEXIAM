@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" role="img" aria-labelledby="title desc">
+  <title id="title">Covered Court and Gymnasium entrance</title>
+  <desc id="desc">Grand covered court entrance with a steel roof truss, venue plaque, and basketball court markings.</desc>
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#b7d9e3"/><stop offset="1" stop-color="#eef2e9"/></linearGradient>
+    <linearGradient id="roof" x2="0" y2="1"><stop stop-color="#294958"/><stop offset="1" stop-color="#152f3e"/></linearGradient>
+    <linearGradient id="court" x2="0" y2="1"><stop stop-color="#cf9c61"/><stop offset="1" stop-color="#95623f"/></linearGradient>
+  </defs>
+  <path fill="#e8e6dc" d="M0 0h300v400H0z"/>
+  <path fill="url(#sky)" d="M0 0h300v206H0z"/>
+  <path fill="#344d55" d="M0 108 150 28l150 80v28H0z"/>
+  <path fill="url(#roof)" d="m12 112 138-72 138 72v20H12z"/>
+  <path fill="none" stroke="#9db4b9" stroke-width="3" d="m28 112 122-61 122 61M55 112l95-48 95 48M83 112l67-34 67 34M28 112h244M70 90v22m40-42v42m40-51v51m40-42v42m40-22v22"/>
+  <path fill="#d0d8d5" d="M27 127h246v19H27z"/>
+  <path fill="#243f4d" d="M62 90h176v42H62z"/>
+  <path fill="#f4f0dc" d="M70 96h160v29H70z"/>
+  <text x="150" y="108" fill="#263e49" font-family="Arial,sans-serif" font-size="8.5" font-weight="700" text-anchor="middle">COVERED COURT</text>
+  <text x="150" y="119" fill="#526873" font-family="Arial,sans-serif" font-size="7" font-weight="700" letter-spacing=".5" text-anchor="middle">&amp; GYMNASIUM</text>
+  <path fill="#2c4a57" d="M25 142h18v174H25zm232 0h18v174h-18z"/>
+  <path fill="#d8dfd8" d="M43 146h214v170H43z"/>
+  <path fill="#243e49" d="M52 152h196v157H52z"/>
+  <path fill="url(#court)" d="M60 161h180v137H60z"/>
+  <path fill="none" stroke="#fff4d8" stroke-width="2.5" d="M60 230h180M150 161v137M60 161v137m180-137v137M60 188h31v84H60m180-84h-31v84h31"/>
+  <circle cx="150" cy="230" r="24" fill="none" stroke="#fff4d8" stroke-width="2.5"/>
+  <path fill="none" stroke="#fff4d8" stroke-width="2.5" d="M60 202h13v56H60m180-56h-13v56h13"/>
+  <path fill="#e9ece7" d="M0 316h300v24H0z"/>
+  <path fill="#b9c7c5" d="M0 340h300v28H0z"/>
+  <path fill="#263c44" d="M0 368h300v32H0z"/>
+  <path fill="#e8d4ad" d="M20 372h260v4H20z"/>
+  <path fill="#425b60" d="M8 146h17v170H8zm267 0h17v170h-17z"/>
+  <path fill="#a5b8b8" d="M17 142h8v174h-8zm258 0h8v174h-8z"/>
+</svg>

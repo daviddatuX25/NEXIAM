@@ -18,7 +18,7 @@ class CloseConsultationSessionReservation
             $session = ConsultationSession::query()->lockForUpdate()->findOrFail($session->id);
 
             if ((int) $session->version !== $expectedVersion) {
-                throw new RuntimeException('Stale consultation session version.');
+                throw new RuntimeException('Stale Release Day session version.');
             }
 
             if (! $session->isOpenForReservation()) {

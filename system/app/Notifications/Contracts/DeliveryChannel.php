@@ -16,7 +16,7 @@ interface DeliveryChannel
      * Deliver one notification. Throws on provider failure; the worker owns the
      * retry/terminal state machine.
      *
-     * @return string|null  provider reference (e.g. mail message id), if any
+     * @return string|null provider reference (e.g. mail message id), if any
      */
     public function deliver(NotificationDelivery $delivery): ?string;
 }

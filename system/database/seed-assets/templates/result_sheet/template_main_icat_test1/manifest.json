@@ -1,0 +1,20 @@
+{
+  "schema_version": "nexiam.document-bundle.v1",
+  "surface_key": "result_sheet",
+  "template": {
+    "code": "ICAT_MAIN_TEST1",
+    "name": "ICAT Results (Word)",
+    "mode": "docx",
+    "source_kind": "docx",
+    "paper_size": "legal",
+    "orientation": "portrait",
+    "logical_unit": "full"
+  },
+  "files": {
+    "template.docx": {
+      "role": "source_docx",
+      "size": 13437231,
+      "sha256": "919eb5aebc9ac9e4a522fd03a03957cbe9cbc1155cb1f702fef57613da535c98"
+    }
+  }
+}

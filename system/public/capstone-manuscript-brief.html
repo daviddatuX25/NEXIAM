@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXIAM · Manuscript Brief</title>
+  <style>
+    :root { color-scheme: dark; --bg: #090d1c; --panel: #11182b; --line: #2a3656; --text: #eef2ff; --muted: #a8b3d0; --accent: #73a7ff; --ok: #72ddb0; }
+    * { box-sizing: border-box; } body { margin: 0; background: radial-gradient(circle at 80% 0%, #1a2b55 0, transparent 38rem), var(--bg); color: var(--text); font: 15px/1.55 system-ui, sans-serif; }
+    main { width: min(980px, calc(100% - 2rem)); margin: auto; padding: 3rem 0 5rem; } header { border-bottom: 1px solid var(--line); padding-bottom: 2rem; }
+    .eyebrow { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; } h1 { margin: .5rem 0; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; } h2 { margin: 2.2rem 0 .7rem; font-size: 1.55rem; } h3 { margin: 0 0 .3rem; }
+    p, li { color: var(--muted); } strong { color: var(--text); } a { color: var(--accent); } .actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.2rem; } .actions a { border: 1px solid var(--line); border-radius: .7rem; padding: .55rem .8rem; text-decoration: none; } .actions a.primary { background: var(--accent); color: #081126; font-weight: 700; }
+    article, .notice { border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); padding: 1rem; margin-top: 1rem; } .notice { border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; } ul { padding-left: 1.25rem; } li { margin: .5rem 0; } table { width: 100%; border-collapse: collapse; margin-top: .8rem; } th, td { border: 1px solid var(--line); padding: .7rem; text-align: left; vertical-align: top; } th { color: var(--text); background: #0d1426; } td { color: var(--muted); } .status { color: var(--ok); font-weight: 700; } footer { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1rem; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">NEXIAM · capstone manuscript</div>
+    <h1>Requirements and Chapter 3 brief</h1>
+    <p>This page is the documentation/manuscript surface. It records the problem, process changes, current evidence, and working Chapter 3 status. It is separate from the interview script and feature roadmap.</p>
+    <div class="actions">
+      <a class="primary" href="/capstone/status">Open feature roadmap</a>
+      <a href="/capstone-interview-guide.html">Open interview guide</a>
+      <a href="/capstone-wireframe-review.html">Open wireframe review</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>Working manuscript status</h2>
+    <div class="notice"><p class="status">Chapter 3 — Results and Discussion: working draft complete.</p><p>The current draft explains the recorded process matrix, the legacy-to-greenfield adaptation, the flagship AI/chatbot/OMR direction, and the interface evidence. Client validation remains a separate next step.</p></div>
+  </section>
+
+  <section>
+    <h2>Process change summary</h2>
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Evidence to discuss</th></tr></thead>
+      <tbody>
+        <tr><td>Paper application</td><td>Digital application and portal</td><td>Structured intake, correction version, applicant status</td></tr>
+        <tr><td>Stencil/manual scoring</td><td>OMR checking with manual fallback</td><td>Capture, review queue, exception state, human correction</td></tr>
+        <tr><td>Invisible consultation handoff</td><td>Trackable follow-up and quota state</td><td>Owner, remark, next action, program decision</td></tr>
+        <tr><td>One scheduling mode</td><td>Online and face-to-face policy</td><td>Mode, booking rule, staff assignment, confirmed session</td></tr>
+        <tr><td>School-admin-only scheduling</td><td>Policy-controlled applicant booking</td><td>Open, invitation-only, or staff-assigned activity</td></tr>
+        <tr><td>Manual result handoff</td><td>Controlled prepare, print, release, and reversal</td><td>Completeness gate, authority, audit record</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Feature evidence to explain</h2>
+    <div class="grid">
+      <article><h3>Legacy adaptation</h3><p>Admissions, applicant access, consultation, examinations, grading, release, and setup are being re-adopted with visible ownership, status, authority, and audit evidence.</p></article>
+      <article><h3>Flagship additions</h3><p>Nexi AI, the chatbot/assistant experience, OMR-powered checking, and the OMR template builder extend the legacy workflow instead of being hidden as isolated demos.</p></article>
+      <article><h3>Interface completeness</h3><p>Each feature is checked against its dashboard, cards/statistics, list/table, detail/workspace, action controls, empty/loading/error states, and audit/history needs.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Still requiring client confirmation</h2>
+    <ul>
+      <li>Booking rules for examination and consultation.</li>
+      <li>OMR exception and manual fallback rules.</li>
+      <li>Follow-up fields, owners, and closure conditions.</li>
+      <li>Authority required for correction, quota, release, and reversal.</li>
+      <li>Office vocabulary and missing interface inclusions.</li>
+    </ul>
+  </section>
+
+  <footer>Documentation/manuscript surface only. Use the interview guide for questions and the roadmap for implementation scope.</footer>
+</main>
+</body>
+</html>

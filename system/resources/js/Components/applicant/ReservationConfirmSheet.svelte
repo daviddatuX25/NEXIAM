@@ -9,7 +9,7 @@
   import * as Dialog from '@/Components/ui/dialog';
 
   let {
-    open = false,
+    open = $bindable(false),
     title = 'Confirm reservation',
     description = '',
     rows = [],
@@ -19,9 +19,16 @@
     onConfirm = () => {},
     onClose = () => {},
   } = $props();
+
+  function handleOpenChange(isOpen) {
+    open = isOpen;
+    if (!isOpen) {
+      onClose();
+    }
+  }
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root bind:open onOpenChange={handleOpenChange}>
   <Dialog.Content class="sm:max-w-md">
     <Dialog.Header>
       <Dialog.Title>{title}</Dialog.Title>

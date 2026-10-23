@@ -119,6 +119,7 @@ final class OmrHtmlSanitizer
                     $name = strtolower($tag[2]);
                     if ($tag[1] === '/') {
                         array_pop($stack);
+
                         continue;
                     }
                     $attributes = $tag[3] ?? '';

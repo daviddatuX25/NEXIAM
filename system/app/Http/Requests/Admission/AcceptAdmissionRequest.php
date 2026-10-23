@@ -18,6 +18,7 @@ class AcceptAdmissionRequest extends FormRequest
     {
         return [
             'expected_version' => ['required', 'integer', 'min:1'],
+            'verify_documents' => ['sometimes', 'boolean'],
         ];
     }
 }

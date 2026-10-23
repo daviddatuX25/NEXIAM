@@ -27,6 +27,7 @@
         <env name="CACHE_STORE" value="array" force="true"/>
         <env name="DB_CONNECTION" value="sqlite" force="true"/>
         <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="DB_TAM_DATABASE" value=":memory:" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="DB_HOST" value="" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
@@ -38,6 +39,7 @@
         <env name="PEST_BROWSER_ENABLED" value="false" force="true"/>
         <env name="OMR_PROVIDER" value="fake" force="true"/>
         <env name="OMR_ALLOW_FAKE_PROVIDER" value="true" force="true"/>
+        <env name="XIAM_AI_GATEWAY" value="fake" force="true"/>
         <!-- DevTools getContent()/setContent() replaces the View original and breaks assertInertia -->
         <env name="INERTIA_DEVTOOLS_ENABLED" value="false" force="true"/>
     </php>

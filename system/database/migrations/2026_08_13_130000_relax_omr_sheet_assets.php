@@ -11,8 +11,8 @@ return new class extends Migration
         // One active run per PAGE, not per sheet.
         Schema::getConnection()->statement('DROP INDEX IF EXISTS omr_processing_runs_one_active');
         Schema::getConnection()->statement(
-            "CREATE UNIQUE INDEX omr_processing_runs_one_active"
-            ." ON omr_processing_runs (sheet_id, page_no)"
+            'CREATE UNIQUE INDEX omr_processing_runs_one_active'
+            .' ON omr_processing_runs (sheet_id, page_no)'
             ." WHERE status IN ('pending', 'claimed', 'retryable_failed')",
         );
 
@@ -27,11 +27,11 @@ return new class extends Migration
                 .' DROP CONSTRAINT IF EXISTS omr_capture_sheets_status_check',
             );
             Schema::getConnection()->statement(
-                "ALTER TABLE omr_capture_sheets"
-                ." ADD CONSTRAINT omr_capture_sheets_status_check"
+                'ALTER TABLE omr_capture_sheets'
+                .' ADD CONSTRAINT omr_capture_sheets_status_check'
                 ." CHECK (status IN ('received', 'pending_pages', 'queued', 'processing', 'needs_review', 'reviewed', 'committed', 'failed_terminal')),"
-                ." ADD CONSTRAINT omr_capture_sheets_asset_check"
-                ." CHECK (asset_path IS NOT NULL OR expected_page_count > 1)",
+                .' ADD CONSTRAINT omr_capture_sheets_asset_check'
+                .' CHECK (asset_path IS NOT NULL OR expected_page_count > 1)',
             );
         }
 

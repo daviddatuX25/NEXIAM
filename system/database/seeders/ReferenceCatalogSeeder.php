@@ -6,8 +6,8 @@ use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\AptitudeArea;
 use App\Models\Foundation\Institution;
-use App\Models\Foundation\Program;
 use App\Models\Foundation\Room;
+use App\Models\Foundation\SpaceKind;
 use Illuminate\Database\Seeder;
 
 class ReferenceCatalogSeeder extends Seeder
@@ -17,26 +17,100 @@ class ReferenceCatalogSeeder extends Seeder
         $institution = Institution::query()->where('code', 'SYN-INST-001')->firstOrFail();
         $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
 
-        foreach ([
-            ['code' => 'BSN', 'name' => 'Bachelor of Science in Nursing'],
-            ['code' => 'BSPSY', 'name' => 'Bachelor of Science in Psychology'],
-        ] as $program) {
-            Program::query()->updateOrCreate(
+        $rooms = [
+            [
+                'code' => 'ITBR-104',
+                'name' => 'ITBR 104',
+                'capacity' => 30,
+                'space_kind' => SpaceKind::Room,
+                'latitude' => 16.9389720,
+                'longitude' => 120.4446960,
+                'building_name' => 'IT Building',
+                'floor_level' => '1st Floor',
+                'directions_hint' => 'Center front of land grounds, 1st floor of the IT Building.',
+                'photo_path' => null,
+            ],
+            [
+                'code' => 'ITBR-105',
+                'name' => 'ITBR 105',
+                'capacity' => 40,
+                'space_kind' => SpaceKind::Room,
+                'latitude' => 16.9389570,
+                'longitude' => 120.4447570,
+                'building_name' => 'IT Building',
+                'floor_level' => '1st Floor',
+                'directions_hint' => 'First floor of the IT Building, just in front of land grounds.',
+                'photo_path' => null,
+            ],
+            [
+                'code' => 'CC-01',
+                'name' => 'Covered Court',
+                'capacity' => 150,
+                'space_kind' => SpaceKind::AssemblyVenue,
+                'latitude' => 16.9381384,
+                'longitude' => 120.4438426,
+                'building_name' => 'Campus Sports Complex',
+                'floor_level' => 'Ground Level',
+                'directions_hint' => 'Behind the main administration building, adjacent to the grandstand bleachers.',
+                'photo_path' => null,
+            ],
+            [
+                'code' => 'REG-WIN-1',
+                'name' => 'Registrar Window 1',
+                'capacity' => 1,
+                'space_kind' => SpaceKind::ServicePoint,
+                'latitude' => 16.9377033,
+                'longitude' => 120.4440507,
+                'building_name' => 'Administration Building',
+                'floor_level' => 'Ground Floor',
+                'directions_hint' => 'Main administration building lobby, first counter on the right.',
+                'photo_path' => null,
+            ],
+        ];
+
+        if (app()->environment('testing')) {
+            $rooms = [
+                ...$rooms,
                 [
-                    'institution_id' => $institution->id,
-                    'code' => $program['code'],
+                    'code' => 'RM-101',
+                    'name' => 'Main Hall 101',
+                    'capacity' => 40,
+                    'space_kind' => SpaceKind::Room,
+                    'latitude' => 16.9389570,
+                    'longitude' => 120.4447570,
+                    'building_name' => 'Academic Building',
+                    'floor_level' => 'Ground Floor',
+                    'directions_hint' => 'Enter the Academic Building through the main entrance; Room 101 is the first classroom on the right.',
+                    'photo_path' => null,
                 ],
                 [
-                    'name' => $program['name'],
-                    'is_active' => true,
+                    'code' => 'RM-LabA',
+                    'name' => 'Guidance Lab A',
+                    'capacity' => 24,
+                    'space_kind' => SpaceKind::Room,
+                    'latitude' => 16.9389720,
+                    'longitude' => 120.4446960,
+                    'building_name' => 'IT Building',
+                    'floor_level' => '1st Floor',
+                    'directions_hint' => 'Enter the IT Building lobby and follow the corridor to Computer Lab A beside the student work area.',
+                    'photo_path' => null,
                 ],
-            );
+                [
+                    'code' => 'ITBR-106',
+                    'name' => 'ITBR 106 (Computer Lab)',
+                    'capacity' => 40,
+                    'space_kind' => SpaceKind::Room,
+                    'latitude' => 16.9389570,
+                    'longitude' => 120.4447570,
+                    'building_name' => 'IT Building',
+                    'floor_level' => '2nd Floor',
+                    'directions_hint' => 'Enter main lobby, climb Staircase B to 2nd floor, second door on the left.',
+                    'photo_path' => null,
+                ],
+            ];
         }
 
-        foreach ([
-            ['code' => 'RM-101', 'name' => 'Main Hall 101', 'capacity' => 40],
-            ['code' => 'RM-LabA', 'name' => 'Guidance Lab A', 'capacity' => 24],
-        ] as $room) {
+        foreach ($rooms as $room) {
             Room::query()->updateOrCreate(
                 [
                     'institution_id' => $institution->id,
@@ -44,7 +118,14 @@ class ReferenceCatalogSeeder extends Seeder
                 ],
                 [
                     'name' => $room['name'],
+                    'space_kind' => $room['space_kind'],
                     'capacity' => $room['capacity'],
+                    'latitude' => $room['latitude'] ?? null,
+                    'longitude' => $room['longitude'] ?? null,
+                    'building_name' => $room['building_name'] ?? null,
+                    'floor_level' => $room['floor_level'] ?? null,
+                    'directions_hint' => $room['directions_hint'] ?? null,
+                    'photo_path' => $room['photo_path'] ?? null,
                     'is_active' => true,
                 ],
             );
@@ -93,9 +174,9 @@ class ReferenceCatalogSeeder extends Seeder
                 'code' => 'SYN-WINDOW-2026-A',
             ],
             [
-                'name' => 'Synthetic Intake Window A',
-                'opens_at' => '2026-02-01 00:00:00',
-                'closes_at' => '2026-04-30 23:59:59',
+                'name' => 'Regular Admissions Intake Window',
+                'opens_at' => '2026-08-01 00:00:00',
+                'closes_at' => '2026-12-31 23:59:59',
                 'status' => 'published',
             ],
         );

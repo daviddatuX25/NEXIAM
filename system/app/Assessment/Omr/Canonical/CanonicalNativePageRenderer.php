@@ -38,15 +38,16 @@ final class CanonicalNativePageRenderer
             .'.field{position:absolute;overflow:hidden;border:.25mm solid #334155;background:#fff;}'
             .'.option{position:absolute;text-align:center;font:700 6pt DejaVu Sans,sans-serif;}'
             .'.question{position:absolute;text-align:right;font:700 6pt DejaVu Sans,sans-serif;}'
+            .'.identity-write-in{position:absolute;border:.25mm solid #111;background:#fff;}'
             .'.marker{position:absolute;}'
             .'.signature-line{position:absolute;border-bottom:.3mm solid #334155;}'
             .'</style></head><body>';
 
         foreach ($pages as $index => $page) {
-            $pageNo = $index + 1;
+            $pageNo = (int) ($page['page_no'] ?? $index + 1);
             $dims = (array) ($page['pageDimensions'] ?? [0, 0]);
             $markers = is_array($page['markers'] ?? null) ? $page['markers'] : [];
-            $paper = is_array($markers['paper'] ?? null) ? $markers['paper'] : [];
+            $paper = is_array($markers['paper'] ?? null) ? $markers['paper'] : (array) ($template['paper'] ?? []);
             $paperWidthMm = (float) ($paper['width_mm'] ?? OmrPageDimensionMath::millimetresFromPixels((int) ($dims[0] ?? 0)));
             $paperHeightMm = (float) ($paper['height_mm'] ?? OmrPageDimensionMath::millimetresFromPixels((int) ($dims[1] ?? 0)));
             $insets = $this->insets($markers);
@@ -70,7 +71,7 @@ final class CanonicalNativePageRenderer
         }
         $dims = (array) ($page['pageDimensions'] ?? [0, 0]);
         $markers = is_array($page['markers'] ?? null) ? $page['markers'] : [];
-        $paper = is_array($markers['paper'] ?? null) ? $markers['paper'] : [];
+        $paper = is_array($markers['paper'] ?? null) ? $markers['paper'] : (array) ($template['paper'] ?? []);
         $paperWidth = (float) ($paper['width_mm'] ?? OmrPageDimensionMath::millimetresFromPixels((int) ($dims[0] ?? 0)));
         $paperHeight = (float) ($paper['height_mm'] ?? OmrPageDimensionMath::millimetresFromPixels((int) ($dims[1] ?? 0)));
         $insets = $this->insets($markers);
@@ -104,12 +105,20 @@ final class CanonicalNativePageRenderer
             $labelGapMm = $this->pxToMm((int) ($block['labelsGap'] ?? 0));
             foreach ($labels as $labelIndex => $label) {
                 foreach ($values as $valueIndex => $value) {
-                    $bx = $vertical ? $x + $labelIndex * $labelGapMm : $x + $valueIndex * $bubbleGapMm;
-                    $by = $vertical ? $y + $valueIndex * $bubbleGapMm : $y + $labelIndex * $labelGapMm;
+                    [$bx, $by] = $this->bubblePositionMm(
+                        $block,
+                        $labelIndex,
+                        $valueIndex,
+                        $vertical ? $x + $labelIndex * $labelGapMm : $x + $valueIndex * $bubbleGapMm,
+                        $vertical ? $y + $valueIndex * $bubbleGapMm : $y + $labelIndex * $labelGapMm,
+                        $insets['left'],
+                        $insets['top'],
+                    );
                     $svg .= '<circle cx="'.($bx + $bubbleMm / 2).'" cy="'.($by + $bubbleMm / 2).'" r="'.($bubbleMm / 2).'" fill="#fff" stroke="#000" stroke-width="0.28"/>';
                 }
             }
         }
+
         return $svg.'</svg>';
     }
 
@@ -205,35 +214,98 @@ final class CanonicalNativePageRenderer
                 }
             }
             if ($vertical) {
+                $writeInHeight = $bubbleMm * 1.15;
                 foreach ($labels as $col => $label) {
                     foreach ($values as $row => $value) {
-                        $x = $originX + $col * $labelGapMm;
-                        $y = $originY + $row * $bubbleGapMm;
+                        [$x, $y] = $this->bubblePositionMm(
+                            $block,
+                            $col,
+                            $row,
+                            $originX + $col * $labelGapMm,
+                            $originY + $row * $bubbleGapMm,
+                            $insets['left'],
+                            $insets['top'],
+                        );
                         $html .= $this->bubble($x, $y, $bubbleMm);
                         if ($row === 0) {
-                            $html .= '<div class="option" style="left:'.($x - .8).'mm;top:'.max(0.0, $y - 4.5).'mm;width:'.($bubbleMm + 1.6).'mm;">'.($vertical && str_starts_with((string) $label, 'APPLICANT_NUMBER_') ? $col + 1 : $this->questionNumber((string) $label, $col)).'</div>';
+                            if (str_starts_with((string) $label, 'APPLICANT_NUMBER_')) {
+                                $html .= '<div class="identity-write-in" style="left:'.$x.'mm;top:'.max(0.0, $y - $writeInHeight - 1.5).'mm;width:'.$bubbleMm.'mm;height:'.$writeInHeight.'mm;"></div>';
+                            } else {
+                                $html .= '<div class="option" style="left:'.($x - .8).'mm;top:'.max(0.0, $y - 4.5).'mm;width:'.($bubbleMm + 1.6).'mm;">'.$this->questionNumber((string) $label, $col).'</div>';
+                            }
                         }
                         if ($col === 0) {
                             $html .= '<div class="question" style="left:'.max(0.0, $x - 5).'mm;top:'.($y + $bubbleMm / 2 - 1.8).'mm;width:4mm;">'.$this->escape((string) $value).'</div>';
                         }
                     }
                 }
+
                 continue;
             }
             foreach ($values as $option => $value) {
-                $x = $originX + $option * $bubbleGapMm;
-                $html .= '<div class="option" style="left:'.($x - .8).'mm;top:'.max(0.0, $originY - 4.5).'mm;width:'.($bubbleMm + 1.6).'mm;">'.$this->escape((string) $value).'</div>';
+                [$optionX, $optionY] = $this->bubblePositionMm(
+                    $block,
+                    0,
+                    $option,
+                    $originX + $option * $bubbleGapMm,
+                    $originY,
+                    $insets['left'],
+                    $insets['top'],
+                );
+                $html .= '<div class="option" style="left:'.($optionX - .8).'mm;top:'.max(0.0, $optionY - 4.5).'mm;width:'.($bubbleMm + 1.6).'mm;">'.$this->escape((string) $value).'</div>';
             }
             foreach ($labels as $row => $label) {
-                $y = $originY + $row * $labelGapMm;
-                $html .= '<div class="question" style="left:'.max(0.0, $originX - 5).'mm;top:'.($y + $bubbleMm / 2 - 1.8).'mm;width:4mm;">'.$this->escape((string) $this->questionNumber((string) $label, $row)).'</div>';
+                [$rowX, $rowY] = $this->bubblePositionMm(
+                    $block,
+                    $row,
+                    0,
+                    $originX,
+                    $originY + $row * $labelGapMm,
+                    $insets['left'],
+                    $insets['top'],
+                );
+                $html .= '<div class="question" style="left:'.max(0.0, $rowX - 5).'mm;top:'.($rowY + $bubbleMm / 2 - 1.8).'mm;width:4mm;">'.$this->escape((string) $this->questionNumber((string) $label, $row)).'</div>';
                 foreach ($values as $option => $value) {
-                    $html .= $this->bubble($originX + $option * $bubbleGapMm, $y, $bubbleMm);
+                    [$bubbleX, $bubbleY] = $this->bubblePositionMm(
+                        $block,
+                        $row,
+                        $option,
+                        $originX + $option * $bubbleGapMm,
+                        $originY + $row * $labelGapMm,
+                        $insets['left'],
+                        $insets['top'],
+                    );
+                    $html .= $this->bubble($bubbleX, $bubbleY, $bubbleMm);
                 }
             }
         }
 
         return $html;
+    }
+
+    /** @param array<string,mixed> $block @return array{0:float,1:float} */
+    private function bubblePositionMm(
+        array $block,
+        int $labelIndex,
+        int $valueIndex,
+        float $fallbackX,
+        float $fallbackY,
+        float $insetLeft,
+        float $insetTop,
+    ): array {
+        if (! array_key_exists('bubblePositions', $block)) {
+            return [$fallbackX, $fallbackY];
+        }
+
+        $position = $block['bubblePositions'][$labelIndex][$valueIndex] ?? null;
+        if (! is_array($position) || count($position) !== 2 || ! is_int($position[0] ?? null) || ! is_int($position[1] ?? null)) {
+            throw new RuntimeException('canonical_explicit_bubble_position_invalid');
+        }
+
+        return [
+            $insetLeft + $this->pxToMm($position[0]),
+            $insetTop + $this->pxToMm($position[1]),
+        ];
     }
 
     private function bubble(float $x, float $y, float $diameterMm): string

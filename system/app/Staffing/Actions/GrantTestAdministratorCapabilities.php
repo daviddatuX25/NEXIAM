@@ -29,25 +29,44 @@ class GrantTestAdministratorCapabilities
             throw new RuntimeException('ta_delegate_self_denied');
         }
 
-        if (! $this->eligible->isEligible($target)) {
+        if (! $this->eligible->isEligible($target) || ! $this->eligible->canDelegate($actor, $target)) {
             throw new RuntimeException('ta_recipient_ineligible');
         }
 
-        if ($this->eligible->hasDelegatedTa($target)) {
-            return $target->fresh(['roles', 'permissions', 'staffProfile']) ?? $target;
-        }
-
         return DB::transaction(function () use ($actor, $target): User {
-            $caps = CapabilityCatalog::testAdministratorCapabilities();
-            $target->givePermissionTo($caps);
+            $freshActor = User::query()->find($actor->getKey());
+            if ($freshActor === null || ! $this->authorizer->allows($freshActor, CapabilityCatalog::GUIDANCE_TA_DELEGATE)) {
+                throw new RuntimeException('ta_delegate_denied');
+            }
+
+            $freshTarget = User::query()
+                ->with(['roles', 'permissions', 'staffProfile'])
+                ->whereKey($target->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            if (! $this->eligible->isEligible($freshTarget) || ! $this->eligible->canDelegate($freshActor, $freshTarget)) {
+                throw new RuntimeException('ta_recipient_ineligible');
+            }
+            if ($this->eligible->hasDelegatedTa($freshTarget)) {
+                return $freshTarget;
+            }
+
+            $isExistingFullDesignation = $this->eligible->hasLegacyDelegatedTa($freshTarget);
+            $allCaps = CapabilityCatalog::delegatedTestAdministratorCapabilities();
+            $existingDirect = $freshTarget->getDirectPermissions()->pluck('name')->all();
+            $caps = $isExistingFullDesignation
+                ? array_values(array_diff($allCaps, $existingDirect))
+                : $allCaps;
+            $freshTarget->givePermissionTo($allCaps);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-            $this->recordAuditEvent->handle('staff.ta_capabilities_granted', [
-                'user_id' => $target->id,
+            $this->recordAuditEvent->handle($isExistingFullDesignation ? 'staff.ta_governance_capabilities_backfilled' : 'staff.ta_capabilities_granted', [
+                'user_id' => $freshTarget->id,
                 'capabilities' => $caps,
-            ], (string) $actor->id);
+                'existing_full_ta_designation' => $isExistingFullDesignation,
+            ], (string) $freshActor->id);
 
-            return $target->fresh(['roles', 'permissions', 'staffProfile']) ?? $target;
+            return $freshTarget->fresh(['roles', 'permissions', 'staffProfile']) ?? $freshTarget;
         });
     }
 }

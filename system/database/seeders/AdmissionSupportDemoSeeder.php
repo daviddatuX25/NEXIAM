@@ -22,6 +22,10 @@ use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ProgramFollowUp;
 use App\Models\Admission\ProgramPool;
 use App\Models\Assessment\GradingSession;
+use App\Models\Assessment\OmrQuestionBookletVersion;
+use App\Models\Communications\PublicPolicy;
+use App\Models\Consultation\ConsultationAssignment;
+use App\Models\Consultation\ConsultationSession;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
@@ -30,6 +34,7 @@ use App\Models\Foundation\Institution;
 use App\Models\Foundation\Program;
 use App\Models\Foundation\ProgramQuota;
 use App\Models\Foundation\Room;
+use App\Models\Foundation\SeatingArrangement;
 use App\Models\Release\ConsultationDecision;
 use App\Models\User;
 use App\Release\Actions\PrepareResultDocument;
@@ -41,9 +46,9 @@ use Illuminate\Database\Seeder;
  * Developer-ready admission-support demo (HANDOFF Phase 9).
  *
  * Builds three released+advised applicants on the SYN foundation:
- *   1. Normal advised-default route → enrolling → enrolled (paper = BSN).
+ *   1. Normal advised-default route → enrolling → enrolled (paper = BSIT).
  *   2. Enrolling with an open targeted PH follow-up (assigned PH resolves).
- *   3. Paper-different final program (default BSN, signed sheet BSPSY) with
+ *   3. Paper-different final program (default BSIT, signed sheet BA-Psych) with
  *      quota variance recorded.
  *
  * Idempotent: re-running is a no-op when the demo pool already exists.
@@ -54,16 +59,33 @@ class AdmissionSupportDemoSeeder extends Seeder
     public function run(): void
     {
         $institution = Institution::query()->where('code', 'SYN-INST-001')->firstOrFail();
+        if (! $institution->usesSeatingArrangements()) {
+            throw new \RuntimeException('Admission support demo requires Allow assigned seating to be enabled explicitly before seeding.');
+        }
+        if (! $institution->usesMultiSetBooklets()) {
+            foreach (['RM-AS-1', 'RM-AS-2', 'RM-AS-3'] as $roomCode) {
+                $room = Room::query()->where('institution_id', $institution->id)->where('code', $roomCode)->first();
+                $arrangement = $room?->defaultSeatingArrangement()->first()
+                    ?? SeatingArrangement::query()
+                        ->where('availability_mode', SeatingArrangement::AVAILABILITY_ALL_ROOMS)
+                        ->where('is_active', true)
+                        ->whereRaw('(rows * columns) <= ?', [40])
+                        ->firstOrFail();
+                if ($arrangement->booklet_pattern !== SeatingArrangement::PATTERN_UNIFORM) {
+                    throw new \RuntimeException('Admission support demo layout requires Allow alternate Booklet Sets to be enabled explicitly before seeding.');
+                }
+            }
+        }
         $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
         $window = ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
         $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
-        $ph = User::query()->where('email', 'program.head.bsn@nexiam.test')->firstOrFail();
+        $ph = User::query()->where('email', 'program.head.bsit@nexiam.test')->firstOrFail();
 
-        $bsn = Program::query()->where('code', 'BSN')->firstOrFail();
-        $bspsy = Program::query()->where('code', 'BSPSY')->firstOrFail();
+        $bsit = Program::query()->where('code', 'BSIT')->firstOrFail();
+        $baPsych = Program::query()->where('code', 'BA-Psych')->firstOrFail();
 
-        foreach ([$bsn, $bspsy] as $program) {
+        foreach ([$bsit, $baPsych] as $program) {
             ProgramQuota::query()->updateOrCreate(
                 ['program_id' => $program->id, 'academic_cycle_id' => $cycle->id],
                 ['slots' => 5],
@@ -73,7 +95,7 @@ class AdmissionSupportDemoSeeder extends Seeder
         $already = ProgramPool::query()->where('admission_attempt_id', $this->attemptFor($institution, $cycle, 'demo.santos@nexiam.test')?->id ?? -1)->exists();
 
         if (! $already) {
-            $this->buildJourneys($institution, $cycle, $window, $guidance, $registrar, $ph, $bsn, $bspsy);
+            $this->buildJourneys($institution, $cycle, $window, $guidance, $registrar, $ph);
         }
 
         // Always ensure the dashboard schedule exists (idempotent).
@@ -85,6 +107,7 @@ class AdmissionSupportDemoSeeder extends Seeder
             $this->consultationSchedule($santos, $cruz, $reyes, $guidance);
         }
 
+        $this->call(AdmissionBenchmarkSeeder::class);
         $this->command?->info($already
             ? 'AdmissionSupportDemoSeeder: journeys already applied; consultation schedule ensured.'
             : 'AdmissionSupportDemoSeeder: 3 journeys + consultation schedule ready.');
@@ -97,8 +120,6 @@ class AdmissionSupportDemoSeeder extends Seeder
         User $guidance,
         User $registrar,
         User $ph,
-        Program $bsn,
-        Program $bspsy,
     ): void {
         $santos = $this->journey($institution, $cycle, $window, $this->room($institution, 'RM-AS-1'), $guidance, $registrar, [
             'email' => 'demo.santos@nexiam.test',
@@ -107,7 +128,7 @@ class AdmissionSupportDemoSeeder extends Seeder
             'sessionCode' => 'EX-AS-1',
             'poolKey' => 'as-pool-santos',
         ]);
-        $this->normalRoute($santos, $guidance, $registrar, $bsn, $bspsy);
+        $this->normalRoute($santos, $guidance, $registrar);
 
         $cruz = $this->journey($institution, $cycle, $window, $this->room($institution, 'RM-AS-2'), $guidance, $registrar, [
             'email' => 'demo.cruz@nexiam.test',
@@ -116,7 +137,7 @@ class AdmissionSupportDemoSeeder extends Seeder
             'sessionCode' => 'EX-AS-2',
             'poolKey' => 'as-pool-cruz',
         ]);
-        $this->followUpRoute($cruz, $guidance, $registrar, $ph, $bsn, $bspsy);
+        $this->followUpRoute($cruz, $guidance, $registrar, $ph);
 
         $reyes = $this->journey($institution, $cycle, $window, $this->room($institution, 'RM-AS-3'), $guidance, $registrar, [
             'email' => 'demo.reyes@nexiam.test',
@@ -125,7 +146,7 @@ class AdmissionSupportDemoSeeder extends Seeder
             'sessionCode' => 'EX-AS-3',
             'poolKey' => 'as-pool-reyes',
         ]);
-        $this->paperDifferentRoute($reyes, $guidance, $registrar, $bsn, $bspsy);
+        $this->paperDifferentRoute($reyes, $guidance, $registrar);
     }
 
     /**
@@ -134,22 +155,22 @@ class AdmissionSupportDemoSeeder extends Seeder
      * the demo applicants so the dashboard shows real numbers.
      */
     private function consultationSchedule(
-        \App\Models\Admission\AdmissionAttempt $santos,
-        \App\Models\Admission\AdmissionAttempt $cruz,
-        \App\Models\Admission\AdmissionAttempt $reyes,
+        AdmissionAttempt $santos,
+        AdmissionAttempt $cruz,
+        AdmissionAttempt $reyes,
         User $guidance,
     ): void {
         $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
         $room = $this->room(Institution::query()->where('code', 'SYN-INST-001')->firstOrFail(), 'RM-AS-1');
 
-        $session = \App\Models\Consultation\ConsultationSession::query()->where('code', 'CON-AS-TODAY')->first();
+        $session = ConsultationSession::query()->where('code', 'CON-AS-TODAY')->first();
 
         if ($session === null) {
-            $session = \App\Models\Consultation\ConsultationSession::query()->create([
+            $session = ConsultationSession::query()->create([
                 'academic_cycle_id' => $cycle->id,
                 'room_id' => $room->id,
                 'code' => 'CON-AS-TODAY',
-                'status' => \App\Models\Consultation\ConsultationSession::STATUS_PUBLISHED,
+                'status' => ConsultationSession::STATUS_PUBLISHED,
                 'booking_mode' => 'staff_only',
                 'scheduled_at' => now()->startOfDay()->setTime(9, 0),
                 'version' => 1,
@@ -159,16 +180,16 @@ class AdmissionSupportDemoSeeder extends Seeder
         }
 
         foreach ([$santos, $cruz, $reyes] as $attempt) {
-            $exists = \App\Models\Consultation\ConsultationAssignment::query()
+            $exists = ConsultationAssignment::query()
                 ->where('consultation_session_id', $session->id)
                 ->where('admission_attempt_id', $attempt->id)
                 ->exists();
 
             if (! $exists) {
-                \App\Models\Consultation\ConsultationAssignment::query()->create([
+                ConsultationAssignment::query()->create([
                     'consultation_session_id' => $session->id,
                     'admission_attempt_id' => $attempt->id,
-                    'status' => \App\Models\Consultation\ConsultationAssignment::STATUS_ASSIGNED,
+                    'status' => ConsultationAssignment::STATUS_ASSIGNED,
                     'source' => 'staff_assigned',
                     'assigned_by_user_id' => $guidance->id,
                     'version' => 1,
@@ -212,6 +233,10 @@ class AdmissionSupportDemoSeeder extends Seeder
         if ($existing !== null) {
             $attempt = $existing;
         } else {
+            $policy = PublicPolicy::designatedIntake((int) $institution->getKey())
+                ?? throw new \RuntimeException('A designated published PublicPolicy revision is required for seeded intake.');
+            $revision = $policy->publishedRevision
+                ?? throw new \RuntimeException('The designated intake policy has no published revision.');
             $intake = new AdmissionIntakeData(
                 firstName: $profile['firstName'],
                 lastName: $profile['lastName'],
@@ -219,8 +244,7 @@ class AdmissionSupportDemoSeeder extends Seeder
                 sex: 'female',
                 contactEmail: $profile['email'],
                 applicantType: 'new',
-                programPreferenceCodes: ['BSN', 'BSPSY'],
-                grades: ['GWA' => '1.80', 'ENG' => '90.00', 'FIL' => '88.00', 'MATH' => '86.00', 'SCI' => '87.00'],
+                programPreferenceCodes: ['BSIT', 'BA-Psych'],
                 middleName: null,
                 suffix: null,
                 contactPhone: '09171230001',
@@ -231,6 +255,9 @@ class AdmissionSupportDemoSeeder extends Seeder
                 province: 'Ilocos Sur',
                 zipCode: '2714',
                 termsAccepted: true,
+                publicPolicyId: (int) $policy->getKey(),
+                publicPolicyRevisionId: (int) $revision->getKey(),
+                publicPolicyRevisionDigest: $revision->contentDigest(),
             );
 
             $result = app(SubmitAdmissionAttempt::class)->handle($institution, $cycle, $window, $intake, 'demo');
@@ -265,18 +292,18 @@ class AdmissionSupportDemoSeeder extends Seeder
             app(FinalizeGradingSession::class)->handle($grading, $guidance, (int) ($grading->version ?? 1));
         }
 
+        if (! $attempt->resultDocuments()->where('status', 'ready')->exists()) {
+            app(PrepareResultDocument::class)->handle($attempt, $guidance);
+            $document = $attempt->resultDocuments()->where('status', 'ready')->latest()->firstOrFail();
+            app(ReleaseResult::class)->handle($attempt, $document, $guidance, 'as-release-'.$profile['sessionCode']);
+        }
+
         $advised = ConsultationDecision::query()
             ->where('admission_attempt_id', $attempt->id)
             ->exists();
 
         if (! $advised) {
             app(RecordConsultationDecision::class)->handle($attempt, $guidance, 'approve', 'Demo consultation evidence.', 'as-consult-'.$profile['sessionCode']);
-        }
-
-        if (! $attempt->resultDocuments()->where('status', 'ready')->exists()) {
-            app(PrepareResultDocument::class)->handle($attempt, $guidance);
-            $document = $attempt->resultDocuments()->where('status', 'ready')->latest()->firstOrFail();
-            app(ReleaseResult::class)->handle($attempt, $document, $guidance, 'as-release-'.$profile['sessionCode']);
         }
 
         return $attempt->fresh();
@@ -297,6 +324,17 @@ class AdmissionSupportDemoSeeder extends Seeder
             now()->subHours(2)->toDateTimeString(),
             now()->addMinutes(30)->toDateTimeString(),
             $guidance,
+            ExamSession::SEATING_MODE_ASSIGNED_SEATING,
+            OmrQuestionBookletVersion::query()
+                ->whereHas('booklet', fn ($query) => $query->where('code', ExamMaterialRoutingDemoSeeder::BOOKLET_CODE))
+                ->whereNotNull('finalized_at')
+                ->firstOrFail(),
+            $room->defaultSeatingArrangement()->first()
+                ?? SeatingArrangement::query()
+                    ->where('availability_mode', SeatingArrangement::AVAILABILITY_ALL_ROOMS)
+                    ->where('is_active', true)
+                    ->whereRaw('(rows * columns) <= ?', [$room->capacity])
+                    ->firstOrFail(),
         );
     }
 
@@ -306,9 +344,9 @@ class AdmissionSupportDemoSeeder extends Seeder
         string $poolKey,
     ): void {
         if (ProgramPool::currentFor($attempt->id) === null) {
-            app(SetGuidanceProgramPool::class)->handle($attempt, $guidance, 'BSN', [
-                ['program_code' => 'BSN', 'display_order' => 1, 'basis' => 'preference'],
-                ['program_code' => 'BSPSY', 'display_order' => 2, 'basis' => 'guidance_option'],
+            app(SetGuidanceProgramPool::class)->handle($attempt, $guidance, 'BSIT', [
+                ['program_code' => 'BSIT', 'display_order' => 1, 'basis' => 'preference'],
+                ['program_code' => 'BA-Psych', 'display_order' => 2, 'basis' => 'guidance_option'],
             ], 'Demo pool with advised default.', $poolKey);
         }
     }
@@ -317,20 +355,18 @@ class AdmissionSupportDemoSeeder extends Seeder
         AdmissionAttempt $attempt,
         User $guidance,
         User $registrar,
-        Program $bsn,
-        Program $bspsy,
     ): void {
         $this->poolAndDefault($attempt, $guidance, 'as-pool-santos');
 
         if (! AttemptProgramFacts::isEnrolled($attempt)) {
             if (! AttemptProgramFacts::isEnrolling($attempt)) {
-                app(StampAttemptEnrolling::class)->handle($attempt, $registrar, 'BSN', 'ENR-DEMO-001', 'Demo sheet received.', 'as-enrolling-santos');
+                app(StampAttemptEnrolling::class)->handle($attempt, $registrar, 'BSIT', 'ENR-DEMO-001', 'Demo sheet received.', 'as-enrolling-santos');
             }
 
             app(StampAttemptEnrolled::class)->handle(
                 $attempt,
                 $registrar,
-                'BSN',
+                'BSIT',
                 'ENR-DEMO-001',
                 hash('sha256', 'demo-santos-sheet'),
                 'Registrar Clerk (demo)',
@@ -345,8 +381,6 @@ class AdmissionSupportDemoSeeder extends Seeder
         User $guidance,
         User $registrar,
         User $ph,
-        Program $bsn,
-        Program $bspsy,
     ): void {
         $this->poolAndDefault($attempt, $guidance, 'as-pool-cruz');
 
@@ -357,11 +391,11 @@ class AdmissionSupportDemoSeeder extends Seeder
             ->exists();
 
         if (! $open) {
-            app(OpenProgramFollowUp::class)->handle($attempt, $guidance, 'BSN', 'Program-fit edge case for demo.', 'as-followup-cruz');
+            app(OpenProgramFollowUp::class)->handle($attempt, $guidance, 'BSIT', 'Program-fit edge case for demo.', 'as-followup-cruz');
         }
 
         if (! AttemptProgramFacts::isEnrolling($attempt)) {
-            app(StampAttemptEnrolling::class)->handle($attempt, $registrar, 'BSN', 'ENR-DEMO-002', 'Demo sheet received.', 'as-enrolling-cruz');
+            app(StampAttemptEnrolling::class)->handle($attempt, $registrar, 'BSIT', 'ENR-DEMO-002', 'Demo sheet received.', 'as-enrolling-cruz');
         }
     }
 
@@ -369,24 +403,22 @@ class AdmissionSupportDemoSeeder extends Seeder
         AdmissionAttempt $attempt,
         User $guidance,
         User $registrar,
-        Program $bsn,
-        Program $bspsy,
     ): void {
         $this->poolAndDefault($attempt, $guidance, 'as-pool-reyes');
 
         if (! AttemptProgramFacts::isEnrolled($attempt)) {
             if (! AttemptProgramFacts::isEnrolling($attempt)) {
-                app(StampAttemptEnrolling::class)->handle($attempt, $registrar, 'BSN', 'ENR-DEMO-003', 'Demo sheet received.', 'as-enrolling-reyes');
+                app(StampAttemptEnrolling::class)->handle($attempt, $registrar, 'BSIT', 'ENR-DEMO-003', 'Demo sheet received.', 'as-enrolling-reyes');
             }
 
             app(StampAttemptEnrolled::class)->handle(
                 $attempt,
                 $registrar,
-                'BSPSY',
+                'BA-Psych',
                 'ENR-DEMO-003',
                 hash('sha256', 'demo-reyes-sheet'),
                 'Registrar Clerk (demo)',
-                'Signed sheet confirms BSPSY (differs from provisional BSN).',
+                'Signed sheet confirms BA-Psych (differs from provisional BSIT).',
                 'as-enrolled-reyes',
             );
         }

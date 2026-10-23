@@ -5,8 +5,10 @@ use App\Examination\Actions\RecordExamSubmission;
 use App\Models\Assessment\GradingSession;
 use App\Models\Assessment\ScoreRecord;
 use App\Models\Examination\ExamAssignment;
+use App\Models\Examination\ExamAttendanceRecord;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\Institution;
 use App\Models\Foundation\Room;
 use App\Models\User;
 
@@ -285,6 +287,54 @@ test('finalize rejects a stale version', function (): void {
     expect($grading->fresh()->status)->toBe(GradingSession::STATUS_OPEN);
 });
 
+test('finalize requires a positive integer expected version', function (): void {
+    $fixture = buildGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    $grading = $fixture['grading'];
+
+    $this->actingAs($guidance)
+        ->postJson(route('grading.finalize', $grading), [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('expected_version');
+
+    $this->actingAs($guidance)
+        ->postJson(route('grading.finalize', $grading), ['expected_version' => 0])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('expected_version');
+});
+
+test('grading session and score routes reject a foreign institution scope', function (): void {
+    $fixture = buildGradingFixture($this);
+    $guidance = $fixture['guidance'];
+    $grading = $fixture['grading'];
+    $attempt = $fixture['attempts'][0];
+    $areas = activeAreas();
+    $foreignInstitution = Institution::query()->create([
+        'code' => 'GRADING-FOREIGN-'.uniqid(),
+        'name' => 'Foreign grading institution',
+    ]);
+    $guidance->staffProfile->update(['institution_id' => $foreignInstitution->id]);
+
+    $this->actingAs($guidance)
+        ->get(route('grading.sessions.show', $grading))
+        ->assertNotFound();
+    $this->actingAs($guidance)
+        ->post(route('grading.finalize', $grading), ['expected_version' => $grading->version])
+        ->assertNotFound();
+    $this->actingAs($guidance)
+        ->get(route('grading.sessions.attempts.scores', [$grading, $attempt]))
+        ->assertNotFound();
+    $this->actingAs($guidance)
+        ->put(route('grading.sessions.attempts.scores.update', [$grading, $attempt]), [
+            'scores' => [['aptitude_area_id' => $areas[0], 'score' => 80]],
+            'idempotency_key' => 'foreign-scope-score',
+        ])
+        ->assertNotFound();
+    $this->actingAs($guidance)
+        ->delete(route('grading.sessions.attempts.scores.destroy', [$grading, $attempt]))
+        ->assertNotFound();
+});
+
 test('grading routes require manual scoring capability', function (): void {
     $fixture = buildGradingFixture($this);
     $registrar = $fixture['registrar'];
@@ -293,12 +343,12 @@ test('grading routes require manual scoring capability', function (): void {
 
     $this->actingAs($registrar)->get(route('grading.index'))->assertForbidden();
     $this->actingAs($registrar)->get(route('grading.sessions.show', $grading))->assertForbidden();
-    $this->actingAs($registrar)->post(route('grading.finalize', $grading))->assertForbidden();
+    $this->actingAs($registrar)->post(route('grading.finalize', $grading), ['expected_version' => $grading->version])->assertForbidden();
     $this->actingAs($registrar)->get(route('grading.sessions.attempts.scores', [$grading, $attempt]))->assertForbidden();
 });
 
 test('manual scoring works in degraded mode (REQ-VS-017)', function (): void {
-    config(['nexi.mode' => 'degraded']);
+    config(['xiam.mode' => 'degraded']);
 
     $fixture = buildGradingFixture($this);
     $guidance = $fixture['guidance'];
@@ -549,9 +599,8 @@ test('present applicant without submission is excluded from the roster (GRE-1/5)
 
     $attendanceAction = app(RecordExamAttendance::class);
     $submissionAction = app(RecordExamSubmission::class);
-    foreach ([$submitted, $noSubmission] as $assignment) {
-        $attendanceAction->handle($assignment, $guidance, 'present', 'att-nosub-'.$assignment->id);
-    }
+    $attendanceAction->handle($submitted, $guidance, ExamAttendanceRecord::OUTCOME_PRESENT, 'att-nosub-'.$submitted->id);
+    $attendanceAction->handle($noSubmission, $guidance, ExamAttendanceRecord::OUTCOME_VOID, 'att-nosub-'.$noSubmission->id);
     $submissionAction->handle($submitted, $guidance, 'sub-nosub-'.$submitted->id);
 
     $this->actingAs($guidance)
@@ -581,4 +630,33 @@ test('present applicant without submission is excluded from the roster (GRE-1/5)
         ->assertSessionHasNoErrors();
 
     expect($grading->fresh()->status)->toBe(GradingSession::STATUS_FINALIZED);
+});
+test('scoring routes show a completed exam roster and save scores using exam identity', function (): void {
+    $fixture = buildGradingFixture($this);
+    $examSession = $fixture['session'];
+    $attempt = $fixture['attempts'][0];
+    $areas = activeAreas();
+
+    $this->actingAs($fixture['guidance'])
+        ->get('/scoring')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('Assessment/Grading'));
+
+    $this->actingAs($fixture['guidance'])
+        ->get('/scoring/sessions/'.$examSession->id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Assessment/GradingSession')
+            ->has('applicants', 1)
+            ->where('applicants.0.attempt_id', $attempt->id));
+
+    $this->actingAs($fixture['guidance'])
+        ->put('/scoring/sessions/'.$examSession->id.'/attempts/'.$attempt->id.'/scores', [
+            'scores' => array_map(fn (int $areaId): array => [
+                'aptitude_area_id' => $areaId,
+                'score' => 84,
+            ], $areas),
+            'idempotency_key' => 'scoring-e-route-'.uniqid(),
+        ])
+        ->assertRedirect('/scoring/sessions/'.$examSession->id);
 });

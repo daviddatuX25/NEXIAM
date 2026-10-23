@@ -28,11 +28,11 @@ class PublishConsultationSession
             $session = ConsultationSession::query()->lockForUpdate()->findOrFail($session->id);
 
             if ((int) $session->version !== $expectedVersion) {
-                throw new RuntimeException('Stale consultation session version.');
+                throw new RuntimeException('Stale Release Day session version.');
             }
 
             if ($session->status !== ConsultationSession::STATUS_DRAFT) {
-                throw new RuntimeException('Only draft sessions may be published.');
+                throw new RuntimeException('Only draft Release Day sessions may be published.');
             }
 
             $assignments = ConsultationAssignment::query()
@@ -56,11 +56,15 @@ class PublishConsultationSession
                 eventType: 'consultation.session_published.v1',
                 templateKey: 'consultation.session_published',
                 payload: [
-                    'subject' => 'Your consultation session has been scheduled',
-                    'body' => "Your consultation session {$session->code} has been published. See the NEXIAM portal for the schedule.",
-                    'action_label' => 'View consultation schedule',
+                    'institution_id' => $session->academicCycle?->institution_id,
+                    'domain' => 'results',
+                    'canonical_slug' => 'consultation-published',
+                    'subject' => 'Your Release Day session is scheduled',
+                    'body' => "Your Release Day session {$session->code} is scheduled. See the NEXIAM portal for the schedule.",
+                    'action_label' => 'View Release Day session',
                     'action_url' => route('applicant.consultation'),
                     'consultation_session_id' => $session->id,
+                    'session_version' => $session->version,
                     'code' => $session->code,
                     'scheduled_at' => $session->scheduled_at?->toIso8601String(),
                 ],

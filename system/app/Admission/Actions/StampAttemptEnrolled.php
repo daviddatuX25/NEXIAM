@@ -12,6 +12,7 @@ use App\Models\Admission\EnrollmentStamp;
 use App\Models\Admission\ProgramSelection;
 use App\Models\Foundation\Program;
 use App\Models\User;
+use App\Scheduling\AssignmentPlanningMutex;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -27,6 +28,7 @@ class StampAttemptEnrolled
     public function __construct(
         private readonly CommandIdempotency $idempotency,
         private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentPlanningMutex $planningMutex,
     ) {}
 
     public function handle(
@@ -56,7 +58,7 @@ class StampAttemptEnrolled
             return $replayed;
         }
 
-        return DB::transaction(function () use ($attempt, $registrar, $finalProgramCode, $paperReference, $paperHash, $verifier, $reason, $idempotencyKey): EnrollmentStamp {
+        return $this->planningMutex->run(AssignmentPlanningMutex::DOMAIN_QUOTA, (int) $attempt->academic_cycle_id, fn (): EnrollmentStamp => DB::transaction(function () use ($attempt, $registrar, $finalProgramCode, $paperReference, $paperHash, $verifier, $reason, $idempotencyKey): EnrollmentStamp {
             $locked = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
             $enrolling = AttemptProgramFacts::activeStamp($locked);
@@ -117,6 +119,6 @@ class StampAttemptEnrolled
             ], (string) $registrar->id);
 
             return $stamp;
-        });
+        }));
     }
 }

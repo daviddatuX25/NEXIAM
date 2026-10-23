@@ -76,6 +76,14 @@ class ProgramFollowUp extends Model
     }
 
     /**
+     * @return BelongsTo<AdmissionAttempt, $this>
+     */
+    public function admissionAttempt(): BelongsTo
+    {
+        return $this->attempt();
+    }
+
+    /**
      * @return BelongsTo<Program, $this>
      */
     public function program(): BelongsTo

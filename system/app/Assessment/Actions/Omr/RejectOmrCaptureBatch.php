@@ -5,7 +5,6 @@ namespace App\Assessment\Actions\Omr;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\User;
-use App\Support\SensitiveAssetStore;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -17,9 +16,7 @@ use RuntimeException;
  */
 final class RejectOmrCaptureBatch
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(OmrCaptureBatch $batch, User $actor): OmrCaptureBatch
     {

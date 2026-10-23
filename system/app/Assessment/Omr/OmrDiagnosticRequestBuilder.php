@@ -2,6 +2,7 @@
 
 namespace App\Assessment\Omr;
 
+use App\Assessment\Omr\Canonical\CanonicalArtifactSet;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -11,7 +12,8 @@ use function array_map;
 use function array_unique;
 use function array_values;
 use function count;
-use function hash;
+use function hash_equals;
+use function in_array;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -29,8 +31,7 @@ use function str_starts_with;
 final class OmrDiagnosticRequestBuilder
 {
     /**
-     * @throws RuntimeException when the version is not marker-bearing or its
-     *                          bundle/review manifest is incomplete
+     * @throws RuntimeException when the pinned mode, target, bundle, or review manifest is incomplete
      */
     public function build(
         OmrAnswerSheetTemplateVersion $version,
@@ -38,56 +39,90 @@ final class OmrDiagnosticRequestBuilder
         string $imageMime,
         int $pageNo = 1,
     ): OmrDetectionRequest {
-        $templateJson = is_array($version->native_bundle_json) ? ($version->native_bundle_json['template'] ?? null) : null;
-        $marker = is_array($templateJson) ? OmrCapturePolicy::markerMetadata($templateJson) : null;
-        if ($marker === null) {
-            throw new RuntimeException('The diagnostic requires a marker-bearing template version; scan (CropPage) profiles are not supported.');
+        $registrationMode = $version->registration_mode;
+        if (! $registrationMode instanceof OmrRegistrationMode
+            || (int) $version->id < 1
+            || $pageNo < 1
+            || $pageNo > min(4, $version->pageCount())) {
+            throw new RuntimeException('The immutable diagnostic target identity is invalid.');
         }
 
-        [$width, $height] = $this->imageDimensions($imageBytes);
-        if ($width === null || $height === null) {
-            throw new RuntimeException('The uploaded image cannot be decoded.');
+        $bundle = NativeBundle::loadForVersion($version);
+        if (! hash_equals((string) $version->config_hash, (string) ($bundle->fileHashes['config.json'] ?? ''))) {
+            throw new RuntimeException('The immutable diagnostic config hash does not match its config.json bytes.');
+        }
+        $manifestMode = $bundle->manifest['registration_mode'] ?? null;
+        if (($manifestMode !== null && $manifestMode !== $registrationMode->value)
+            || ($manifestMode === null && $registrationMode !== OmrRegistrationMode::FiducialAnchored)) {
+            throw new RuntimeException('The immutable version registration mode does not match its native bundle.');
         }
 
-        $bundle = NativeBundle::load((string) $version->template->code, (int) $version->version);
         $reviewManifest = is_array($version->review_manifest_json) ? $version->review_manifest_json : null;
         if ($reviewManifest === null) {
             throw new RuntimeException('The template version has no review manifest to derive diagnostic geometry from.');
         }
+
+        $templateJson = is_array($version->native_bundle_json) ? ($version->native_bundle_json['template'] ?? null) : null;
+        $marker = is_array($templateJson) ? OmrCapturePolicy::markerMetadata($templateJson) : null;
+        $nativeTemplate = $bundle->pageTemplate($pageNo);
+        if ($registrationMode === OmrRegistrationMode::FiducialAnchored && $marker === null) {
+            throw new RuntimeException('The anchored diagnostic requires its immutable marker profile and assets.');
+        }
+        if ($registrationMode === OmrRegistrationMode::DocumentBound) {
+            if ($marker !== null || ! empty($nativeTemplate['markers']) || $this->hasMutatingCrop($nativeTemplate)) {
+                throw new RuntimeException('The document-bound diagnostic bundle contains marker or geometry-warping state.');
+            }
+        }
+
+        $workerIdentity = [
+            'name' => (string) config('omr.omrchecker.engine_name', ''),
+            'commit' => (string) config('omr.omrchecker.engine_commit', ''),
+            'patch_identity' => (string) config('omr.omrchecker.patch_identity', ''),
+        ];
+        if (in_array('', array_map('trim', $workerIdentity), true)) {
+            throw new RuntimeException('The configured OMR worker identity is incomplete.');
+        }
+
+        $sourceImage = OmrSourceImage::fromBytes($imageBytes);
 
         return new OmrDetectionRequest(
             envelopeVersion: OmrDetectionRequest::ENVELOPE_VERSION,
             runId: 'omr-diagnostic-'.(string) Str::uuid(),
             correlationId: 'omr:diagnostic:'.$version->id,
             imageBytes: $imageBytes,
-            inputHash: hash('sha256', $imageBytes),
+            inputHash: $sourceImage->inputHash,
             imageMime: $imageMime,
-            imageWidth: $width,
-            imageHeight: $height,
+            imageWidth: $sourceImage->width,
+            imageHeight: $sourceImage->height,
             areas: [],
             items: $this->diagnosticItems($reviewManifest, $pageNo),
             identityRegions: [],
             nativeBundleHash: (string) $version->native_bundle_hash,
             manifestHash: (string) $version->review_manifest_hash,
-            configHash: (string) $version->config_hash,
+            configHash: (string) $bundle->fileHashes['config.json'],
             bookletHash: '',
-            nativeTemplate: $bundle->pageTemplate($pageNo),
-            nativeConfig: $bundle->config,
+            nativeTemplate: $nativeTemplate,
+            nativeConfigJson: $bundle->assetBytes('config.json'),
             nativeBundleMetadata: [
                 'files' => $bundle->fileHashes,
                 'engine' => $bundle->manifest['engine'] ?? null,
                 'bundle_version' => $bundle->manifest['bundle_version'] ?? null,
                 'mapping_hash' => $version->authoring_manifest['mapping_hash'] ?? $version->review_manifest_hash,
+                'rectification_marker_insets_px' => $marker !== null ? $this->rectificationMarkerInsets($marker) : null,
             ],
             reviewManifest: $reviewManifest,
-            engineName: (string) $version->engine_name,
-            engineCommit: $version->engine_commit !== null ? (string) $version->engine_commit : null,
-            patchIdentity: (string) $version->patch_identity,
+            engineName: $workerIdentity['name'],
+            engineCommit: $workerIdentity['commit'],
+            patchIdentity: $workerIdentity['patch_identity'],
             expectedFieldLabels: [],
             expectedOptionCodes: [],
-            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            registrationMode: $registrationMode,
+            templateVersionId: (int) $version->id,
+            candidateTargetId: null,
+            sourceImage: $sourceImage,
             pageNo: $pageNo,
-            nativeAssets: [$marker['asset_name'] => $bundle->assetBytes($marker['asset_name'])],
+            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            nativeAssets: $marker !== null ? [$marker['asset_name'] => $bundle->assetBytes($marker['asset_name'])] : [],
         );
     }
 
@@ -95,15 +130,20 @@ final class OmrDiagnosticRequestBuilder
      * Build the same signed worker request for a materialized draft candidate.
      */
     public function buildCandidate(
-        \App\Assessment\Omr\Canonical\CanonicalArtifactSet $artifactSet,
+        CanonicalArtifactSet $artifactSet,
         string $imageBytes,
         string $imageMime,
         int $pageNo = 1,
     ): OmrDetectionRequest {
-        [$width, $height] = $this->imageDimensions($imageBytes);
-        if ($width === null || $height === null) {
-            throw new RuntimeException('The candidate preview image cannot be decoded.');
+        $modeValue = $artifactSet->template['registration_mode'] ?? null;
+        $registrationMode = is_string($modeValue) ? OmrRegistrationMode::tryFrom($modeValue) : null;
+        if (! $registrationMode instanceof OmrRegistrationMode
+            || ($artifactSet->definition['registration_mode'] ?? null) !== $modeValue
+            || ($artifactSet->manifest['registration_mode'] ?? null) !== $modeValue
+            || preg_match('/^[a-f0-9]{64}$/', $artifactSet->artifactHash) !== 1) {
+            throw new RuntimeException('The candidate diagnostic target identity or registration mode is invalid.');
         }
+
         $page = null;
         foreach ((array) ($artifactSet->template['pages'] ?? []) as $candidatePage) {
             if (is_array($candidatePage) && (int) ($candidatePage['page_no'] ?? 0) === $pageNo) {
@@ -111,14 +151,11 @@ final class OmrDiagnosticRequestBuilder
                 break;
             }
         }
-        if (! is_array($page)) {
+        if (! is_array($page) || $pageNo < 1 || $pageNo > 4) {
             throw new RuntimeException("The candidate bundle has no page {$pageNo}.");
         }
         $markers = (array) ($page['markers'] ?? []);
         $assetName = (string) ($markers['asset_name'] ?? '');
-        if ($assetName === '' || ! isset($artifactSet->files[$assetName])) {
-            throw new RuntimeException('The candidate bundle has no declared marker asset.');
-        }
         $nativeTemplate = [
             'pageDimensions' => $page['pageDimensions'] ?? $artifactSet->template['pageDimensions'] ?? null,
             'bubbleDimensions' => $artifactSet->template['bubbleDimensions'] ?? null,
@@ -126,31 +163,43 @@ final class OmrDiagnosticRequestBuilder
             'fieldBlocks' => NativeBundle::workerFieldBlocks((array) ($page['fieldBlocks'] ?? [])),
             'preProcessors' => $page['preProcessors'] ?? [],
         ];
+        if ($registrationMode === OmrRegistrationMode::FiducialAnchored) {
+            if ($assetName === '' || ! isset($artifactSet->files[$assetName])) {
+                throw new RuntimeException('The anchored candidate bundle has no declared marker asset.');
+            }
+        } elseif ($markers !== [] || $assetName !== '' || $this->hasMutatingCrop($nativeTemplate)) {
+            throw new RuntimeException('The document-bound candidate contains marker or geometry-warping state.');
+        }
+
         $reviewManifest = $artifactSet->reviewManifest;
+        $sourceImage = OmrSourceImage::fromBytes($imageBytes);
 
         return new OmrDetectionRequest(
             envelopeVersion: OmrDetectionRequest::ENVELOPE_VERSION,
             runId: 'omr-candidate-'.(string) Str::uuid(),
             correlationId: 'omr:candidate:'.$artifactSet->artifactHash,
             imageBytes: $imageBytes,
-            inputHash: hash('sha256', $imageBytes),
+            inputHash: $sourceImage->inputHash,
             imageMime: $imageMime,
-            imageWidth: $width,
-            imageHeight: $height,
+            imageWidth: $sourceImage->width,
+            imageHeight: $sourceImage->height,
             areas: [],
             items: $this->diagnosticItems($reviewManifest, $pageNo),
             identityRegions: [],
             nativeBundleHash: (string) ($reviewManifest['bundle_hash'] ?? ''),
             manifestHash: $artifactSet->reviewManifestHash,
-            configHash: hash('sha256', json_encode($artifactSet->config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)),
+            configHash: $artifactSet->configHash,
             bookletHash: '',
             nativeTemplate: $nativeTemplate,
-            nativeConfig: $artifactSet->config,
+            nativeConfigJson: $artifactSet->file('config.json'),
             nativeBundleMetadata: [
                 'files' => $reviewManifest['file_hashes'] ?? [],
                 'engine' => $artifactSet->manifest['engine'] ?? null,
                 'bundle_version' => $artifactSet->manifest['bundle_version'] ?? null,
                 'mapping_hash' => $artifactSet->definition['source_hash'] ?? $artifactSet->reviewManifestHash,
+                'rectification_marker_insets_px' => $registrationMode === OmrRegistrationMode::FiducialAnchored
+                    ? $this->rectificationMarkerInsets($markers)
+                    : null,
             ],
             reviewManifest: $reviewManifest,
             engineName: (string) ($artifactSet->manifest['engine']['name'] ?? config('omr.omrchecker.engine_name', 'OMRChecker')),
@@ -158,13 +207,19 @@ final class OmrDiagnosticRequestBuilder
             patchIdentity: (string) ($artifactSet->manifest['engine']['patch_set'] ?? config('omr.omrchecker.patch_identity', '')),
             expectedFieldLabels: [],
             expectedOptionCodes: [],
-            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            registrationMode: $registrationMode,
+            templateVersionId: null,
+            candidateTargetId: 'candidate:'.$artifactSet->artifactHash,
+            sourceImage: $sourceImage,
             pageNo: $pageNo,
-            nativeAssets: [$assetName => $artifactSet->files[$assetName]],
+            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            nativeAssets: $registrationMode === OmrRegistrationMode::FiducialAnchored
+                ? [$assetName => $artifactSet->files[$assetName]]
+                : [],
         );
     }
+
     /**
-     *
      * @param  array<string, mixed>  $pageTemplate
      * @param  list<array<string, mixed>>  $shifts
      * @return list<string>
@@ -278,6 +333,93 @@ final class OmrDiagnosticRequestBuilder
             'w' => max(array_map(static fn (array $region): float => (float) $region['x'] + $region['w'], $regions)) - min(array_map(static fn (array $region): float => (float) $region['x'], $regions)),
             'h' => max(array_map(static fn (array $region): float => (float) $region['y'] + $region['h'], $regions)) - min(array_map(static fn (array $region): float => (float) $region['y'], $regions)),
         ];
+    }
+
+    /**
+     * Rebind only the image portion of an existing pinned request. Geometry,
+     * hashes, engine identity, and expected observation labels remain intact.
+     */
+    public function rebindImage(
+        OmrDetectionRequest $request,
+        string $imageBytes,
+        string $imageMime,
+        int $pageNo,
+        ?OmrClientQuad $clientQuad = null,
+    ): OmrDetectionRequest {
+        $sourceImage = OmrSourceImage::fromBytes($imageBytes);
+
+        return new OmrDetectionRequest(
+            envelopeVersion: $request->envelopeVersion,
+            runId: $request->runId,
+            correlationId: $request->correlationId,
+            imageBytes: $imageBytes,
+            inputHash: $sourceImage->inputHash,
+            imageMime: $imageMime,
+            imageWidth: $sourceImage->width,
+            imageHeight: $sourceImage->height,
+            areas: $request->areas,
+            items: $request->items,
+            identityRegions: $request->identityRegions,
+            nativeBundleHash: $request->nativeBundleHash,
+            manifestHash: $request->manifestHash,
+            configHash: $request->configHash,
+            nativeTemplate: $request->nativeTemplate,
+            bookletHash: $request->bookletHash,
+            nativeConfigJson: $request->nativeConfigJson,
+            nativeBundleMetadata: $request->nativeBundleMetadata,
+            reviewManifest: $request->reviewManifest,
+            engineName: $request->engineName,
+            engineCommit: $request->engineCommit,
+            patchIdentity: $request->patchIdentity,
+            expectedFieldLabels: $request->expectedFieldLabels,
+            expectedOptionCodes: $request->expectedOptionCodes,
+            registrationMode: $request->registrationMode,
+            templateVersionId: $request->templateVersionId,
+            candidateTargetId: $request->candidateTargetId,
+            sourceImage: $sourceImage,
+            pageNo: $pageNo,
+            providerDeadline: $request->providerDeadline,
+            clientQuad: $clientQuad,
+            nativeAssets: $request->nativeAssets,
+        );
+    }
+
+    /** @param array<string, mixed> $pageTemplate */
+    private function hasMutatingCrop(array $pageTemplate): bool
+    {
+        foreach ((array) ($pageTemplate['preProcessors'] ?? []) as $processor) {
+            $name = is_string($processor) ? $processor : (is_array($processor) ? ($processor['name'] ?? null) : null);
+            if (in_array($name, ['CropPage', 'CropOnMarkers'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $markers
+     * @return array{top: int, right: int, bottom: int, left: int}|null
+     */
+    private function rectificationMarkerInsets(array $markers): ?array
+    {
+        $insets = $markers['insets_px'] ?? null;
+        if (is_array($insets)
+            && min(array_map(static fn (string $side): int => (int) ($insets[$side] ?? 0), ['top', 'right', 'bottom', 'left'])) > 0) {
+            return [
+                'top' => (int) $insets['top'],
+                'right' => (int) $insets['right'],
+                'bottom' => (int) $insets['bottom'],
+                'left' => (int) $insets['left'],
+            ];
+        }
+
+        $inset = (int) ($markers['inset'] ?? 0);
+        if ($inset <= 0) {
+            return null;
+        }
+
+        return ['top' => $inset, 'right' => $inset, 'bottom' => $inset, 'left' => $inset];
     }
 
     /** @return array{0: ?int, 1: ?int} */

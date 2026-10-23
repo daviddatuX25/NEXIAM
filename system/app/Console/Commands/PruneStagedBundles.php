@@ -6,7 +6,6 @@ use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
-use function explode;
 use function preg_match;
 
 /**

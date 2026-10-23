@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OmrTemplateBookletPair extends Model
 {
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_RETIRED = 'retired';
 
     protected $table = 'omr_template_booklet_pairs';

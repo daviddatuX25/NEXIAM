@@ -19,7 +19,7 @@
   };
 </script>
 
-<div class={`relative overflow-hidden rounded-2xl glass-panel p-5 transition-shadow hover:shadow-md ${statusStyles[status] || statusStyles.ok}`}>
+<div class={`relative overflow-hidden rounded-[var(--radius,0.5rem)] border border-border/80 bg-card p-5 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:border-primary/40 shadow-sm dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] ${statusStyles[status] || statusStyles.ok}`}>
   {#if href}
     <Link {href} class="absolute inset-0 z-10">
       <span class="sr-only">View {label}</span>
@@ -47,8 +47,7 @@
         </div>
       {/if}
     </div>
-
-    <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground">
+    <div class="mt-2 text-3xl font-extrabold font-mono tabular-nums tracking-tight text-foreground">
       {value}
     </div>
 

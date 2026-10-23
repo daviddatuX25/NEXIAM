@@ -11,16 +11,22 @@
    */
   import { Link, router } from '@inertiajs/svelte';
   import { usePage } from '@inertiajs/svelte';
-  import { ChevronDown, ChevronRight, Menu, LayoutDashboard, Blocks, Sun, Moon } from 'lucide-svelte';
+  import { ChevronDown, ChevronRight, Menu, LayoutDashboard, Blocks } from 'lucide-svelte';
   import ToastManager from '@/Components/kit/ToastManager.svelte';
   import NotificationBell from '@/Components/kit/NotificationBell.svelte';
-  import NexiDock from '@/Components/kit/Nexi/NexiDock.svelte';
+  import PreferencesMenu from '@/Components/kit/PreferencesMenu.svelte';
+  import InstitutionalBackdrop from '@/Components/kit/InstitutionalBackdrop.svelte';
   import { Button } from '@/Components/ui/button';
+  import NexiamLogo from '@/Components/kit/NexiamLogo.svelte';
+  import { clearStaffIdleMarker } from '@/lib/staff-idle-marker';
+  import { closeStaffIdleAlert } from '@/lib/staff-idle-alerts.svelte';
 
   let { children, breadcrumbs = [] } = $props();
 
   const page = usePage();
   const user = $derived(page.props.auth?.user ?? null);
+  const institution = $derived(page.props.institution);
+  let logoLoadError = $state(false);
   const headTitle = $derived(
     breadcrumbs.length > 0
       ? `${breadcrumbs[breadcrumbs.length - 1].label} - NEXIAM`
@@ -35,15 +41,18 @@
   });
 
   let userDropdownOpen = $state(false);
-  let darkMode = $state(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
-
-  function toggleTheme() {
-    document.documentElement.classList.toggle('dark');
-    darkMode = document.documentElement.classList.contains('dark');
-    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-  }
 
   function logout() {
+    const generation = page.props.auth?.staff_inactivity_generation;
+    if (typeof generation === 'string' && generation.trim().length > 0) {
+      clearStaffIdleMarker();
+      try {
+        closeStaffIdleAlert();
+      } catch {
+        // The browser alert must not block staff sign-out.
+      }
+    }
+
     router.post('/logout');
   }
 
@@ -81,7 +90,8 @@
   <title>{headTitle}</title>
 </svelte:head>
 
-<div class="h-dvh w-full max-w-[100vw] flex overflow-hidden">
+<div class="h-dvh w-full max-w-[100vw] flex overflow-hidden relative">
+  <InstitutionalBackdrop fixed={true} opacity="opacity-[0.11] sm:opacity-[0.14] dark:opacity-[0.22]" />
   {#if sidebarOpen}
   <button
     type="button"
@@ -97,9 +107,20 @@
   >
     <div class="flex flex-col h-full overflow-hidden">
       <div class="h-20 flex items-center px-6 border-b border-border/50 shrink-0">
-        <Link href="/staff" class="flex items-center gap-3" onclick={closeDropdowns}>
-          <span class="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg shrink-0" aria-hidden="true">N</span>
-          <span class="font-bold text-xl tracking-tight text-foreground">NEXIAM</span>
+        <Link href="/" class="flex items-center gap-3 hover:opacity-85 transition-opacity min-w-0" onclick={closeDropdowns} title="{institution?.name ?? 'NEXIAM'} Public Homepage" aria-label="{institution?.name ?? 'NEXIAM'} Public Homepage">
+          {#if institution?.logo_url && !logoLoadError}
+            <img src={institution.logo_url} alt="Logo" class="size-10 rounded-xl object-contain shrink-0 shadow-sm" onerror={() => (logoLoadError = true)} />
+          {:else}
+            <span class="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg shrink-0" aria-hidden="true">
+              {institution?.short_name?.slice(0, 1) ?? 'N'}
+            </span>
+          {/if}
+          <div class="min-w-0 flex flex-col leading-tight">
+            <span class="font-bold text-lg tracking-tight text-foreground truncate">{institution?.short_name ?? 'NEXIAM'}</span>
+            {#if institution?.campus}
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate">{institution.campus}</span>
+            {/if}
+          </div>
         </Link>
         <Button variant="ghost" size="icon" class="md:hidden ml-auto" onclick={() => (sidebarOpen = !sidebarOpen)} aria-label="Close menu">
           <Menu class="h-5 w-5" />
@@ -160,7 +181,7 @@
     </div>
   </aside>
 
-  <div class="flex min-w-0 flex-1 flex-col md:pl-64 relative print:pl-0">
+  <div class="flex min-w-0 flex-1 flex-col md:pl-64 relative z-10 print:pl-0">
     <!-- Header -->
     <header class="shrink-0 z-20 h-20 glass-panel border-b border-l-0 flex items-center justify-between px-4 lg:px-8 relative print:hidden">
       <div class="flex items-center gap-4">
@@ -168,7 +189,7 @@
           <Menu class="h-5 w-5" />
         </Button>
         {#if breadcrumbs.length === 0}
-          <span class="text-2xl font-semibold tracking-tight text-foreground">NEXIAM</span>
+          <Link href="/" class="flex items-center gap-2 hover:opacity-85 transition-opacity" title="NEXIAM Public Homepage" aria-label="NEXIAM Public Homepage"><NexiamLogo variant="mark" size="sm" class="size-6" /><span class="text-2xl font-semibold tracking-tight text-foreground">NEXIAM</span></Link>
         {:else if breadcrumbs.length === 1}
           <h1 class="text-2xl font-semibold tracking-tight text-foreground">{breadcrumbs[0].label}</h1>
         {:else}
@@ -244,16 +265,13 @@
 
       <div class="flex items-center gap-2 sm:gap-4">
         <NotificationBell />
-        <Button variant="ghost" size="icon" onclick={toggleTheme} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} class="rounded-full min-h-[44px] min-w-[44px]">
-          <Sun class="h-5 w-5 dark:hidden" />
-          <Moon class="h-5 w-5 hidden dark:block" />
-        </Button>
-        <ToastManager />
+        <PreferencesMenu />
+        <ToastManager placement="below-anchor" />
       </div>
     </header>
 
     <!-- Main content -->
-    <main class="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-8 scroll-smooth" id="main-content">
+    <main class="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-8 scroll-smooth relative z-10" id="main-content">
       <div class="min-w-0 w-full max-w-full">
         {@render children?.()}
       </div>
@@ -261,7 +279,6 @@
   </div>
 </div>
 
-<NexiDock />
 
 <style>
   .scrollbar-hide {

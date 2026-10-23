@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Omr\Canonical;
 
+use App\Assessment\Omr\Canonical\OmrPageDimensionMath;
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
-use App\Assessment\Omr\Canonical\OmrPageDimensionMath;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

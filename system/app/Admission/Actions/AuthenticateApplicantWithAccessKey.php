@@ -57,17 +57,20 @@ class AuthenticateApplicantWithAccessKey
             if ($account === null) {
                 $email = $identity->email;
                 if ($email === null || $email === '') {
-                    throw new RuntimeException('Applicant email is required for portal access.');
+                    $email = sprintf('applicant.%d@internal.nexiam.local', (int) $identity->id);
                 }
 
                 $existingUser = User::query()->where('email', $email)->first();
-                if ($existingUser !== null) {
-                    if ($existingUser->staffProfile()->exists()) {
-                        throw new RuntimeException('This email cannot be used for applicant portal access.');
-                    }
-
+                if ($existingUser !== null && ! $existingUser->staffProfile()->exists() && ! $existingUser->applicantAccount()->exists()) {
                     $user = $existingUser;
                 } else {
+                    if ($existingUser !== null && $existingUser->staffProfile()->exists()) {
+                        throw new RuntimeException('This email cannot be used for applicant portal access.');
+                    }
+                    if ($existingUser !== null) {
+                        $email = sprintf('applicant.%d.%s@internal.nexiam.local', (int) $identity->id, Str::lower(Str::random(8)));
+                    }
+
                     $user = User::query()->create([
                         'name' => trim($identity->first_name.' '.$identity->last_name),
                         'email' => $email,
@@ -88,6 +91,7 @@ class AuthenticateApplicantWithAccessKey
             }
 
             ApplicantCapabilityGrants::sync($user);
+            app(ClaimPreApplicationInquiries::class)->claimForUser($user);
 
             $this->recordAuditEvent->handle('admission.applicant_login', [
                 'account_id' => $account->id,

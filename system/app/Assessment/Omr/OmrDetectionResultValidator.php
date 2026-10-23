@@ -2,19 +2,23 @@
 
 namespace App\Assessment\Omr;
 
-use function is_finite;
+use function array_is_list;
+use function array_keys;
+use function array_unique;
+use function count;
 use function getimagesizefromstring;
 use function hash;
+use function in_array;
 use function is_array;
+use function is_finite;
 use function is_int;
 use function is_string;
 use function preg_match;
 use function strlen;
 
 /**
- * Validates provider observations against the exact v2 request. This is the
+ * Validates provider observations against the exact v4 request. This is the
  * only boundary before persistence; answer-key comparison happens in NEXIAM.
- *
  * Returns the effective success: the provider payload unchanged when it is
  * well-formed and safely aligned, or an amended copy carrying a required
  * `sheet_misaligned` issue when a field-block shift can cross the native
@@ -72,7 +76,7 @@ final class OmrDetectionResultValidator
 
         if ($request->envelopeVersion !== OmrDetectionRequest::ENVELOPE_VERSION
             || $success->responseEnvelopeVersion !== $request->envelopeVersion) {
-            $errors[] = 'response envelope version does not match the v2 request';
+            $errors[] = 'response envelope version does not match the v4 request';
         }
 
         foreach ([
@@ -92,10 +96,26 @@ final class OmrDetectionResultValidator
             }
         }
 
-        if ($success->imageMime !== $request->imageMime
-            || ($request->imageWidth !== null && $success->imageWidth !== $request->imageWidth)
-            || ($request->imageHeight !== null && $success->imageHeight !== $request->imageHeight)) {
-            $errors[] = 'decoded image metadata does not match the request';
+        $sourceImage = $success->sourceImage;
+        $requestSourceImage = $request->sourceImage->toArray();
+        $sourceImageMatches = is_array($sourceImage)
+            && count($sourceImage) === 4
+            && ($sourceImage['width'] ?? null) === $requestSourceImage['width']
+            && ($sourceImage['height'] ?? null) === $requestSourceImage['height']
+            && ($sourceImage['orientation'] ?? null) === $requestSourceImage['orientation']
+            && ($sourceImage['input_hash'] ?? null) === $requestSourceImage['input_hash'];
+
+        if ($success->registrationMode !== $request->registrationMode->value
+            || $success->templateVersionId !== $request->templateVersionId
+            || $success->candidateTargetId !== $request->candidateTargetId
+            || $success->expectedPageNo !== $request->pageNo
+            || ! $sourceImageMatches) {
+            $errors[] = 'registration, target, page, or source-image identity does not match the request';
+        }
+
+        if ($request->registrationMode === OmrRegistrationMode::DocumentBound
+            && ! OmrDocumentRectification::isAccepted($success->rectification)) {
+            $errors[] = 'document-bound provider output has no accepted single server rectification';
         }
 
         if (! in_array($success->calibrationStatus, self::CALIBRATION_STATUSES, true)) {
@@ -212,16 +232,114 @@ final class OmrDetectionResultValidator
                 $errors[] = "item {$item->position} has an unknown state '{$item->state}'";
             }
 
-            if ($item->state === OmrDetectedItem::STATE_MARKED && $item->selectedOption === null) {
-                $errors[] = "item {$item->position} is marked without a selected option";
+            if ($item->legacyEvidenceLimited) {
+                $errors[] = "item {$item->position} is legacy evidence limited and cannot be accepted as live v3 evidence";
             }
 
-            if ($item->selectedOption !== null && ! in_array($item->selectedOption, $geometry->optionCodes(), true)) {
+            $allowedOptions = $geometry->optionCodes();
+            $candidateCodes = [];
+            if (! array_is_list($item->observedOptions)) {
+                $errors[] = "item {$item->position} observed_options must be an ordered list";
+            } else {
+                foreach ($item->observedOptions as $candidate) {
+                    if (! is_string($candidate) || $candidate === '') {
+                        $errors[] = "item {$item->position} has a malformed observed option";
+
+                        continue;
+                    }
+                    if (isset($candidateCodes[$candidate])) {
+                        $errors[] = "item {$item->position} has duplicate observed option '{$candidate}'";
+                    }
+                    $candidateCodes[$candidate] = true;
+                    if (! in_array($candidate, $allowedOptions, true)) {
+                        $errors[] = "item {$item->position} observed option '{$candidate}' is not a valid option";
+                    }
+                }
+            }
+
+            $observationCodes = [];
+            if (! array_is_list($item->optionObservations)) {
+                $errors[] = "item {$item->position} option_observations must be an ordered list";
+            } else {
+                foreach ($item->optionObservations as $observation) {
+                    if (! $observation instanceof OmrOptionObservation) {
+                        $errors[] = "item {$item->position} has a malformed option observation";
+
+                        continue;
+                    }
+                    if (isset($observationCodes[$observation->code])) {
+                        $errors[] = "item {$item->position} has duplicate option observation '{$observation->code}'";
+                    }
+                    $observationCodes[$observation->code] = true;
+                    if (! in_array($observation->code, $allowedOptions, true)) {
+                        $errors[] = "item {$item->position} option observation '{$observation->code}' is not a valid option";
+                    }
+                    if ($observation->classification === '') {
+                        $errors[] = "item {$item->position} option observation '{$observation->code}' has no classification";
+                    }
+                    if ($observation->mean !== null && ! is_finite($observation->mean)) {
+                        $errors[] = "item {$item->position} option observation '{$observation->code}' has an invalid mean";
+                    }
+                }
+            }
+
+            foreach (array_keys($candidateCodes) as $candidate) {
+                if (! isset($observationCodes[$candidate])) {
+                    $errors[] = "item {$item->position} observed option '{$candidate}' has no option observation";
+                }
+            }
+
+            if ($item->state === OmrDetectedItem::STATE_MARKED) {
+                if (count($candidateCodes) !== 1) {
+                    $errors[] = "item {$item->position} marked state must have exactly one observed option";
+                } elseif ($item->selectedOption === null || ! isset($candidateCodes[$item->selectedOption])) {
+                    $errors[] = "item {$item->position} marked state selected option does not match its candidate";
+                }
+            } elseif ($item->state === OmrDetectedItem::STATE_AMBIGUOUS) {
+                if (count($candidateCodes) < 2) {
+                    $errors[] = "item {$item->position} ambiguous state must have at least two observed options";
+                }
+                if ($item->selectedOption !== null) {
+                    $errors[] = "item {$item->position} ambiguous state cannot carry a selected option";
+                }
+            } elseif ($item->state === OmrDetectedItem::STATE_BLANK) {
+                if ($candidateCodes !== []) {
+                    $errors[] = "item {$item->position} blank state cannot carry observed options";
+                }
+                if ($item->selectedOption !== null) {
+                    $errors[] = "item {$item->position} blank state cannot carry a selected option";
+                }
+            } elseif ($item->state === OmrDetectedItem::STATE_UNREADABLE && $item->selectedOption !== null) {
+                $errors[] = "item {$item->position} unreadable state cannot carry a selected option";
+            }
+
+            if ($item->selectedOption !== null && ! in_array($item->selectedOption, $allowedOptions, true)) {
                 $errors[] = "item {$item->position} selected option '{$item->selectedOption}' is not a valid option";
             }
 
-            if ($item->state !== OmrDetectedItem::STATE_MARKED && $item->selectedOption !== null) {
-                $errors[] = "item {$item->position} carries a selected option in state '{$item->state}'";
+            if ($item->issueCodes !== [] && ! array_is_list($item->issueCodes)) {
+                $errors[] = "item {$item->position} issue_codes must be an ordered list";
+            } else {
+                $seenIssueCodes = [];
+                foreach ($item->issueCodes as $issueCode) {
+                    if (! is_string($issueCode)
+                        || preg_match('/^[a-z0-9_]{1,64}$/', $issueCode) !== 1) {
+                        $errors[] = "item {$item->position} has a malformed issue code";
+
+                        continue;
+                    }
+                    if (isset($seenIssueCodes[$issueCode])) {
+                        $errors[] = "item {$item->position} has duplicate issue code '{$issueCode}'";
+                    }
+                    $seenIssueCodes[$issueCode] = true;
+                    if (in_array($issueCode, ['answer_key', 'correct_option', 'correctness', 'score', 'scores', 'area_scores', 'per_area_scores', 'converted_score'], true)) {
+                        $errors[] = "item {$item->position} issue code '{$issueCode}' contains forbidden scoring data";
+                    }
+                }
+            }
+
+            if (preg_match('/^[a-f0-9]{64}$/', $item->evidenceHash) !== 1) {
+                $errors[] = "item {$item->position} evidence hash is invalid";
             }
 
             if ($allowConfidence ? ! $this->isConfidence($item->confidence) : $item->confidence !== null) {
@@ -269,7 +387,7 @@ final class OmrDetectionResultValidator
         if ($dimensions === false || ($dimensions['mime'] ?? null) !== 'image/png'
             || (int) $dimensions[0] !== $aligned['width'] || (int) $dimensions[1] !== $aligned['height']
             || $aligned['width'] <= 0 || $aligned['height'] <= 0
-            || $aligned['width'] * $aligned['height'] > (int) config('omr.upload.max_pixels', 20_000_000)) {
+            || (int) config('omr.upload.max_pixels', 20_000_000) < $aligned['width'] * $aligned['height']) {
             return ['aligned image metadata is invalid'];
         }
 
@@ -286,6 +404,7 @@ final class OmrDetectionResultValidator
             if (! is_array($shift) || ! is_string($shift['block'] ?? null)
                 || ! is_int($shift['x'] ?? null) || ! is_int($shift['y'] ?? null)) {
                 $errors[] = 'field-block shift is malformed';
+
                 continue;
             }
             if (! in_array($shift['block'], $expected, true) || isset($seen[$shift['block']])) {
@@ -430,6 +549,11 @@ final class OmrDetectionResultValidator
             imageWidth: $success->imageWidth,
             imageHeight: $success->imageHeight,
             birthdateProposal: $success->birthdateProposal,
+            registrationMode: $success->registrationMode,
+            templateVersionId: $success->templateVersionId,
+            candidateTargetId: $success->candidateTargetId,
+            expectedPageNo: $success->expectedPageNo,
+            sourceImage: $success->sourceImage,
         );
     }
 

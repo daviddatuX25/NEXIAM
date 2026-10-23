@@ -2,11 +2,17 @@
 
 namespace Tests;
 
+use App\Models\Auth\StaffSessionLease;
+use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -14,11 +20,35 @@ abstract class TestCase extends BaseTestCase
     {
         $this->pinSqliteTestingEnvironment();
 
+        if (getenv('DOCUMENT_RECOVERY_SYNTHETIC_ENV') === '1') {
+            $viewCachePath = __DIR__.'/../storage/framework/views';
+            if (! is_dir($viewCachePath) && ! mkdir($viewCachePath, 0700, true) && ! is_dir($viewCachePath)) {
+                throw new \RuntimeException("Unable to create the isolated Blade view cache directory: {$viewCachePath}");
+            }
+
+            if (! is_writable($viewCachePath)) {
+                throw new \RuntimeException("The isolated Blade view cache directory is not writable: {$viewCachePath}");
+            }
+        }
+
         $this->app = $this->createApplication();
     }
 
     protected function setUp(): void
     {
+
+        if (getenv('NEXIAM_TEST_FULL_REFRESH_EACH_TEST') === '1' && ! RefreshDatabaseState::$migrated) {
+            $connection = DB::connection();
+            if ($connection->getDriverName() !== 'pgsql'
+                || $connection->getDatabaseName() !== 'nexiam_messaging_acceptance') {
+                throw new \RuntimeException('Refusing per-test full migration refresh outside the dedicated PostgreSQL messaging acceptance database.');
+            }
+
+            DB::statement('DROP SCHEMA public CASCADE');
+            DB::statement('CREATE SCHEMA public AUTHORIZATION CURRENT_USER');
+            RefreshDatabaseState::$migrated = false;
+        }
+
         parent::setUp();
 
         $this->withoutMiddleware([
@@ -34,8 +64,67 @@ abstract class TestCase extends BaseTestCase
         ]);
     }
 
+    public function actingAs(Authenticatable $user, $guard = null)
+    {
+        parent::actingAs($user, $guard);
+
+        if ($user instanceof User) {
+            $state = $user->authenticationState()->first();
+            if ($state !== null && $user->staffProfile()->exists()) {
+                $this->app['session']->start();
+                $sessionId = (string) $this->app['session']->getId();
+                $generation = (string) Str::uuid();
+
+                $this->app['session']->put('auth.surface', 'staff');
+                $this->app['session']->put('auth.session_version', (int) $state->session_version);
+                $this->app['session']->put('auth.staff_inactivity_generation', $generation);
+
+                StaffSessionLease::query()->updateOrCreate(
+                    [
+                        'session_id_hash' => hash_hmac('sha256', $sessionId, (string) config('app.key')),
+                    ],
+                    [
+                        'user_id' => $user->getKey(),
+                        'inactivity_generation' => $generation,
+                        'authenticated_at' => now(),
+                        'idle_expires_at' => now()->addMinutes(15),
+                        'absolute_expires_at' => now()->addHours(8),
+                        'effective_idle_minutes' => 15,
+                        'revoked_at' => null,
+                    ]
+                );
+
+                return $this;
+            }
+        }
+
+        $this->app['session']->forget(['auth.surface', 'auth.session_version', 'auth.staff_inactivity_generation']);
+
+        return $this;
+    }
+
+    public function withSession(array $data)
+    {
+        if ($data === [] || array_key_exists('auth.surface', $data) || array_key_exists('auth.session_version', $data)) {
+            $this->app['session']->forget(['auth.surface', 'auth.session_version']);
+        }
+
+        $result = parent::withSession($data);
+        $this->app['session']->save();
+        $this->app['session']->start();
+
+        return $result;
+    }
+
     protected function pinSqliteTestingEnvironment(): void
     {
+        // NEXIAM_TEST_PIN_SQLITE=0 keeps the caller's DB_* env (Compose
+        // postgres runs, e.g. 35.42 focused suites against real CHECK/FK
+        // constraints). Any other value pins the in-memory sqlite sandbox.
+        if (getenv('NEXIAM_TEST_PIN_SQLITE') === '0') {
+            return;
+        }
+
         putenv('APP_ENV=testing');
         putenv('DB_CONNECTION=sqlite');
         putenv('DB_DATABASE=:memory:');

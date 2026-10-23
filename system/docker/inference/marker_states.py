@@ -51,6 +51,23 @@ def parse_match_scores(engine_log: str) -> dict[str, float]:
         scores[f"quarter_{match.group(1)}"] = float(match.group(2))
     return scores
 
+def parse_raw_marker_telemetry(engine_log: str) -> dict[str, float | None]:
+    """Extract all 4 quarter scores for forensic telemetry.
+
+    Merges successful Quarter match scores with failing quadrant max_t values,
+    ensuring all four canonical quarter keys ('quarter_1'..'quarter_4') are present,
+    with None for any quadrant with no match evidence.
+    """
+    telemetry: dict[str, float | None] = {f"quarter_{i}": None for i in range(1, 5)}
+    for match in QUARTER_SCORE_RE.finditer(engine_log):
+        telemetry[f"quarter_{match.group(1)}"] = float(match.group(2))
+    for entry in parse_quad_failures(engine_log):
+        q = entry.get("quadrant")
+        if q is not None and 1 <= q <= 4:
+            key = f"quarter_{q}"
+            if telemetry[key] is None:
+                telemetry[key] = float(entry["max_t"])
+    return telemetry
 
 def classify(engine_log: str, sheet_present: bool) -> dict:
     """Conservative typed classification of a marker-chain failure.

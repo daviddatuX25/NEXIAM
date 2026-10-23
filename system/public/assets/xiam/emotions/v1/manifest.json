@@ -1,0 +1,16 @@
+{
+    "version": "v1",
+    "sprite": "/assets/xiam/emotions/v1/sprite.svg",
+    "viewBox": "0 0 128 128",
+    "emotions": {
+        "idle": { "symbol": "idle", "label": "Idle" },
+        "hi": { "symbol": "hi", "label": "Hello" },
+        "thumbs-up": { "symbol": "thumbs-up", "label": "Thumbs up" },
+        "celebrating": { "symbol": "celebrating", "label": "Celebrating" },
+        "star-eyes": { "symbol": "star-eyes", "label": "Star eyes" },
+        "laughing": { "symbol": "laughing", "label": "Laughing" },
+        "shock": { "symbol": "shock", "label": "Surprised" },
+        "sad": { "symbol": "sad", "label": "Sad" },
+        "angry": { "symbol": "angry", "label": "Angry" }
+    }
+}

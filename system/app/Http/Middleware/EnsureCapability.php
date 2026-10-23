@@ -17,26 +17,29 @@ class EnsureCapability
     public function __construct(
         private readonly CapabilityAuthorizer $authorizer,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  Closure(Request): Response  $next
      */
-    public function handle(Request $request, Closure $next, string $capability): Response
+    public function handle(Request $request, Closure $next, string ...$capabilities): Response
     {
-        $decision = $this->authorizer->decide($request->user(), $capability);
+        $lastDecision = null;
 
-        if (! $decision->allowed) {
-            $this->recordAuditEvent->handle('authorization.denied', [
-                'capability' => $capability,
-                'reason' => $decision->reason,
-                'path' => $request->path(),
-            ], $request->user()?->getAuthIdentifier() ? (string) $request->user()->getAuthIdentifier() : 'anonymous');
+        foreach ($capabilities as $capability) {
+            $lastDecision = $this->authorizer->decide($request->user(), $capability);
 
-            abort(403, 'Forbidden');
+            if ($lastDecision->allowed) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        $this->recordAuditEvent->handle('authorization.denied', [
+            'capability' => implode(',', $capabilities),
+            'reason' => $lastDecision?->reason ?? 'capability_missing',
+            'path' => $request->path(),
+        ], $request->user()?->getAuthIdentifier() ? (string) $request->user()->getAuthIdentifier() : 'anonymous');
+
+        abort(403, 'Forbidden');
     }
 }

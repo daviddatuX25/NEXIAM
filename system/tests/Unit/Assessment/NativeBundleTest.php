@@ -2,6 +2,93 @@
 
 use App\Assessment\Omr\NativeBundle;
 use App\Assessment\Omr\NativeManifestDeriver;
+use App\Models\Assessment\OmrAnswerSheetTemplate;
+use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
+use App\Models\Foundation\Institution;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+
+uses(RefreshDatabase::class);
+
+/** @return array{version:OmrAnswerSheetTemplateVersion,directory:string,bundle:NativeBundle} */
+function persistedNativeBundleFixture(string $institutionCode): array
+{
+    $institution = Institution::query()->create(['code' => $institutionCode, 'name' => $institutionCode]);
+    $template = OmrAnswerSheetTemplate::factory()->create([
+        'institution_id' => $institution->id,
+        'code' => 'SYN-OMR-ONE-PAGE',
+    ]);
+    $bundle = NativeBundle::load('SYN-OMR-ONE-PAGE', 1);
+    $directory = sprintf('omr-bundles/institutions/%d/templates/%d/v1', $institution->id, $template->id);
+    $source = app_path('Assessment/Omr/NativeBundles/SYN-OMR-ONE-PAGE/v1');
+    foreach (array_keys($bundle->fileHashes) as $name) {
+        Storage::disk('local')->put($directory.'/'.$name, file_get_contents($source.'/'.$name));
+    }
+    $version = OmrAnswerSheetTemplateVersion::factory()->create([
+        'template_id' => $template->id,
+        'version' => 1,
+        'status' => OmrAnswerSheetTemplateVersion::STATUS_COMPILED,
+        'native_bundle_json' => [
+            'relative_dir' => $directory,
+            'files' => $bundle->fileHashes,
+        ],
+        'native_bundle_hash' => $bundle->bundleHash,
+    ]);
+
+    return ['version' => $version, 'directory' => $directory, 'bundle' => $bundle];
+}
+
+test('version loader selects the persisted institution template directory for shared code and version', function (): void {
+    Storage::fake('local');
+    $first = persistedNativeBundleFixture('NATIVE-OWNER-A');
+    $second = persistedNativeBundleFixture('NATIVE-OWNER-B');
+    $loadedFirst = NativeBundle::loadForVersion($first['version']);
+    $loadedSecond = NativeBundle::loadForVersion($second['version']);
+
+    expect($loadedFirst->fileHashes)->toBe($first['bundle']->fileHashes)
+        ->and($loadedSecond->fileHashes)->toBe($second['bundle']->fileHashes)
+        ->and($first['directory'])->not->toBe($second['directory']);
+});
+
+test('version loader rejects missing directories and tampered persisted bytes or hashes', function (): void {
+    Storage::fake('local');
+    $missing = persistedNativeBundleFixture('NATIVE-MISSING');
+    Storage::disk('local')->deleteDirectory($missing['directory']);
+    expect(fn () => NativeBundle::loadForVersion($missing['version']))
+        ->toThrow(RuntimeException::class, 'directory');
+
+    $tampered = persistedNativeBundleFixture('NATIVE-TAMPERED');
+    Storage::disk('local')->put($tampered['directory'].'/config.json', '{"tampered":true}');
+    expect(fn () => NativeBundle::loadForVersion($tampered['version']))
+        ->toThrow(RuntimeException::class);
+
+    $wrongHash = persistedNativeBundleFixture('NATIVE-HASH');
+    DB::table('omr_answer_sheet_template_versions')->where('id', $wrongHash['version']->id)
+        ->update(['native_bundle_hash' => hash('sha256', 'not-the-bundle')]);
+    expect(fn () => NativeBundle::loadForVersion($wrongHash['version']))
+        ->toThrow(RuntimeException::class);
+});
+
+test('version loader rejects owner namespace substitution and symlink escape', function (): void {
+    Storage::fake('local');
+    $owner = persistedNativeBundleFixture('NATIVE-PATH-OWNER');
+    $foreign = persistedNativeBundleFixture('NATIVE-PATH-FOREIGN');
+    DB::table('omr_answer_sheet_template_versions')->where('id', $owner['version']->id)
+        ->update(['native_bundle_json' => json_encode([
+            ...$owner['version']->native_bundle_json,
+            'relative_dir' => $foreign['directory'],
+        ])]);
+    expect(fn () => NativeBundle::loadForVersion($owner['version']))
+        ->toThrow(RuntimeException::class, 'owner and version');
+
+    $symlink = persistedNativeBundleFixture('NATIVE-SYMLINK');
+    Storage::disk('local')->deleteDirectory($symlink['directory']);
+    $linkPath = Storage::disk('local')->path($symlink['directory']);
+    mkdir(dirname($linkPath), 0777, true);
+    symlink(Storage::disk('local')->path($foreign['directory']), $linkPath);
+    expect(fn () => NativeBundle::loadForVersion($symlink['version']))
+        ->toThrow(RuntimeException::class, 'escapes');
+});
 
 function syntheticNativeBundle(): NativeBundle
 {

@@ -17,7 +17,7 @@ return [
         'name' => (string) env('OMR_PROVIDER_NAME', 'nexiam.fake'),
         'version' => (string) env('OMR_PROVIDER_VERSION', '1'),
         'commit' => env('OMR_PROVIDER_COMMIT'),
-        'request_version' => (string) env('OMR_PROVIDER_REQUEST_VERSION', 'nexiam.omr.detection.v2'),
+        'request_version' => (string) env('OMR_PROVIDER_REQUEST_VERSION', 'nexiam.omr.detection.v3'),
         'deadline_seconds' => (int) env('OMR_PROVIDER_DEADLINE_SECONDS', 30),
     ],
 
@@ -27,13 +27,13 @@ return [
         'signing_secret' => (string) env('OMR_WORKER_SIGNING_SECRET', ''),
         'connect_timeout_seconds' => (float) env('OMR_WORKER_CONNECT_TIMEOUT_SECONDS', 2),
         'max_clock_skew_seconds' => (int) env('OMR_WORKER_MAX_CLOCK_SKEW_SECONDS', 30),
-        'max_response_bytes' => (int) env('OMR_WORKER_MAX_RESPONSE_BYTES', 18 * 1024 * 1024),
-        'max_result_bytes' => (int) env('OMR_WORKER_MAX_RESULT_BYTES', 2 * 1024 * 1024),
+        'max_response_bytes' => (int) env('OMR_WORKER_MAX_RESPONSE_BYTES', 25 * 1024 * 1024),
+        'max_result_bytes' => (int) env('OMR_WORKER_MAX_RESULT_BYTES', 8 * 1024 * 1024),
         'max_aligned_bytes' => (int) env('OMR_WORKER_MAX_ALIGNED_BYTES', 15 * 1024 * 1024),
-        'contract_version' => (string) env('OMR_WORKER_CONTRACT_VERSION', 'nexiam.omr.detection.v2'),
+        'contract_version' => (string) env('OMR_WORKER_CONTRACT_VERSION', 'nexiam.omr.detection.v3'),
         'engine_name' => (string) env('OMR_WORKER_ENGINE_NAME', 'OMRChecker'),
         'engine_commit' => (string) env('OMR_WORKER_ENGINE_COMMIT', 'de3f6982822895491be760325fd43e65e90fa293'),
-        'patch_identity' => (string) env('OMR_WORKER_PATCH_IDENTITY', 'nexiam-headless-overlay-v1'),
+        'patch_identity' => (string) env('OMR_WORKER_PATCH_IDENTITY', 'nexiam-explicit-bubble-positions-v1'),
     ],
 
     'retry' => [
@@ -57,6 +57,7 @@ return [
     'fake' => [
         'applicant_number' => env('OMR_FAKE_APPLICANT_NUMBER'),
         'ground_truth' => [],
+        'evidence_cases' => [],
     ],
 
 ];

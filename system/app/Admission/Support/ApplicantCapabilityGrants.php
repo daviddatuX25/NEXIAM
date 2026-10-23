@@ -27,6 +27,7 @@ final class ApplicantCapabilityGrants
             CapabilityCatalog::APPLICANT_PROGRAM_SELECT,
             CapabilityCatalog::RECORD_THREAD_PARTICIPATE,
             CapabilityCatalog::NOTIFY_READ_OWN,
+            CapabilityCatalog::APPLICANT_OFFICE_INQUIRY_USE,
         ];
     }
 

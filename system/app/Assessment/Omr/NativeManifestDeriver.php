@@ -40,6 +40,9 @@ final class NativeManifestDeriver
 
             foreach ((array) $pageTemplate['fieldBlocks'] as $blockName => $block) {
                 $fieldType = (string) ($block['fieldType'] ?? '__CUSTOM__');
+                $blockBubbleDimensions = is_array($block['bubbleDimensions'] ?? null) && count($block['bubbleDimensions']) === 2
+                    ? [(int) $block['bubbleDimensions'][0], (int) $block['bubbleDimensions'][1]]
+                    : [(int) $bubbleDimensions[0], (int) $bubbleDimensions[1]];
                 $values = $this->bubbleValues($fieldType, $block);
                 $direction = (string) ($block['direction'] ?? 'vertical');
                 $origin = $block['origin'];
@@ -53,21 +56,32 @@ final class NativeManifestDeriver
 
                 foreach ($labels as $labelIndex => $label) {
                     foreach ($values as $valueIndex => $value) {
-                        $x = (float) $origin[0];
-                        $y = (float) $origin[1];
-                        if ($direction === 'vertical') {
-                            $x += $labelIndex * $labelsGap;
-                            $y += $valueIndex * $bubblesGap;
+                        $position = is_array($block['bubblePositions'] ?? null)
+                            ? ($block['bubblePositions'][$labelIndex][$valueIndex] ?? null)
+                            : null;
+                        if (! is_array($position) || count($position) !== 2 || ! is_int($position[0] ?? null) || ! is_int($position[1] ?? null)) {
+                            if (array_key_exists('bubblePositions', $block)) {
+                                throw new RuntimeException(sprintf('Native field block %s declares invalid explicit bubble positions.', $blockName));
+                            }
+                            $x = (float) $origin[0];
+                            $y = (float) $origin[1];
+                            if ($direction === 'vertical') {
+                                $x += $labelIndex * $labelsGap;
+                                $y += $valueIndex * $bubblesGap;
+                            } else {
+                                $x += $valueIndex * $bubblesGap;
+                                $y += $labelIndex * $labelsGap;
+                            }
                         } else {
-                            $x += $valueIndex * $bubblesGap;
-                            $y += $labelIndex * $labelsGap;
+                            $x = (float) $position[0];
+                            $y = (float) $position[1];
                         }
 
                         $region = [
                             'x' => $x / (float) $pageDims[0],
                             'y' => $y / (float) $pageDims[1],
-                            'w' => (float) $bubbleDimensions[0] / (float) $pageDims[0],
-                            'h' => (float) $bubbleDimensions[1] / (float) $pageDims[1],
+                            'w' => (float) $blockBubbleDimensions[0] / (float) $pageDims[0],
+                            'h' => (float) $blockBubbleDimensions[1] / (float) $pageDims[1],
                         ];
 
                         $this->assertRegion($region, $pageDims, (string) $blockName, $label, (string) $value);
@@ -79,8 +93,8 @@ final class NativeManifestDeriver
                             'pixel' => [
                                 'x' => (int) round($x),
                                 'y' => (int) round($y),
-                                'w' => (int) $bubbleDimensions[0],
-                                'h' => (int) $bubbleDimensions[1],
+                                'w' => $blockBubbleDimensions[0],
+                                'h' => $blockBubbleDimensions[1],
                             ],
                             'region' => $region,
                         ];
@@ -147,6 +161,11 @@ final class NativeManifestDeriver
             'template_version' => $bundle->version,
             'bundle_hash' => $bundle->bundleHash,
             'file_hashes' => $bundle->fileHashes,
+            ...($bundle->manifest['registration_mode'] ?? null ? [
+                'registration_mode' => $bundle->manifest['registration_mode'],
+                'qr_mode' => $bundle->manifest['qr_mode'],
+                'compiled_pages' => $bundle->manifest['compiled_pages'],
+            ] : []),
             'engine' => $bundle->manifest['engine'],
             'page_count' => $bundle->pageCount(),
             'pages' => $pages,
@@ -232,9 +251,9 @@ final class NativeManifestDeriver
 
                 $otherRegion = $fields[$otherIndex]['region'];
                 $overlap = $region['x'] < $otherRegion['x'] + $otherRegion['w']
-                    && $region['x'] + $region['w'] > $otherRegion['x']
+                    && $otherRegion['x'] < $region['x'] + $region['w']
                     && $region['y'] < $otherRegion['y'] + $otherRegion['h']
-                    && $region['y'] + $region['h'] > $otherRegion['y'];
+                    && $otherRegion['y'] < $region['y'] + $region['h'];
 
                 if ($overlap) {
                     throw new RuntimeException(sprintf(

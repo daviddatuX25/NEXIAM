@@ -8,13 +8,13 @@ use RuntimeException;
 final readonly class CanonicalArtifactSet
 {
     /**
-     * @param array<string,mixed> $definition
-     * @param array<string,mixed> $template
-     * @param array<string,mixed> $config
-     * @param array<string,mixed> $manifest
-     * @param array<string,mixed> $reviewManifest
-     * @param array<string,string> $files
-     * @param list<array{page_no:int,bytes:string,mime:string,width:int,height:int,sha256:string,metadata:array<string,mixed>}> $pages
+     * @param  array<string,mixed>  $definition
+     * @param  array<string,mixed>  $template
+     * @param  array<string,mixed>  $config
+     * @param  array<string,mixed>  $manifest
+     * @param  array<string,mixed>  $reviewManifest
+     * @param  array<string,string>  $files
+     * @param  list<array{page_no:int,bytes:string,mime:string,width:int,height:int,sha256:string,metadata:array<string,mixed>}>  $pages
      */
     public function __construct(
         public array $definition,
@@ -32,9 +32,8 @@ final readonly class CanonicalArtifactSet
         public string $pdfHash,
         public string $referenceHash,
         public string $markerHash,
-    ) {
-    }
-
+        public string $geometryIdentity = '',
+    ) {}
 
     /** Drop large raster/PDF buffers when only native diagnostics are needed. */
     public function forDiagnostics(): self
@@ -55,8 +54,10 @@ final readonly class CanonicalArtifactSet
             pdfHash: $this->pdfHash,
             referenceHash: $this->referenceHash,
             markerHash: $this->markerHash,
+            geometryIdentity: $this->geometryIdentity,
         );
     }
+
     public function file(string $name): string
     {
         if (! array_key_exists($name, $this->files)) {

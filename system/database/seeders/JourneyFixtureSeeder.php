@@ -9,6 +9,7 @@ use App\Admission\Support\ApplicantAccessKey;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ApplicantAccessChallenge;
 use App\Models\Admission\ApplicantIdentity;
+use App\Models\Communications\PublicPolicy;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\Institution;
@@ -104,6 +105,10 @@ class JourneyFixtureSeeder extends Seeder
             ->first();
 
         if ($identity === null) {
+            $policy = PublicPolicy::designatedIntake((int) $institution->getKey())
+                ?? throw new RuntimeException('A designated published PublicPolicy revision is required for seeded intake.');
+            $revision = $policy->publishedRevision
+                ?? throw new RuntimeException('The designated intake policy has no published revision.');
             $result = app(SubmitAdmissionAttempt::class)->handle(
                 $institution,
                 $cycle,
@@ -115,14 +120,7 @@ class JourneyFixtureSeeder extends Seeder
                     sex: $sex,
                     contactEmail: $email,
                     applicantType: 'new',
-                    programPreferenceCodes: ['BSN', 'BSPSY'],
-                    grades: [
-                        'GWA' => '1.85',
-                        'ENG' => '90.00',
-                        'FIL' => '91.00',
-                        'MATH' => '88.00',
-                        'SCI' => '89.00',
-                    ],
+                    programPreferenceCodes: ['BSIT', 'BA-Psych'],
                     middleName: null,
                     suffix: null,
                     contactPhone: '09171234567',
@@ -133,6 +131,9 @@ class JourneyFixtureSeeder extends Seeder
                     province: 'Ilocos Sur',
                     zipCode: '2714',
                     termsAccepted: true,
+                    publicPolicyId: (int) $policy->getKey(),
+                    publicPolicyRevisionId: (int) $revision->getKey(),
+                    publicPolicyRevisionDigest: $revision->contentDigest(),
                 ),
                 $actor,
             );

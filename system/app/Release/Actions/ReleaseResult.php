@@ -2,10 +2,9 @@
 
 namespace App\Release\Actions;
 
+use App\Consultation\Support\AttemptResultReadiness;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Admission\AdmissionAttempt;
-use App\Models\Assessment\GradingSession;
-use App\Models\Examination\ExamAssignment;
 use App\Models\Release\ResultDocument;
 use App\Models\Release\ResultRelease;
 use App\Models\User;
@@ -43,44 +42,78 @@ class ReleaseResult
             throw new RuntimeException('Invalid release mode.');
         }
 
+        // Idempotency check bound to target attempt + document
         $existing = ResultRelease::query()->where('idempotency_key', $idempotencyKey)->first();
         if ($existing !== null) {
+            if ($existing->admission_attempt_id !== $attempt->id || $existing->result_document_id !== $document->id) {
+                throw new RuntimeException('Idempotency key has already been used for a different admission attempt or document.');
+            }
+
             return $existing;
         }
 
         $created = collect();
 
         $release = DB::transaction(function () use ($attempt, $document, $actor, $idempotencyKey, $mode, &$created): ResultRelease {
+            // Lock attempt and document for update to guarantee concurrency safety
+            $attempt = AdmissionAttempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+            $document = ResultDocument::query()->whereKey($document->id)->lockForUpdate()->firstOrFail();
+
+            // Re-check idempotency under lock in case of concurrent execution
+            $existing = ResultRelease::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing !== null) {
+                if ($existing->admission_attempt_id !== $attempt->id || $existing->result_document_id !== $document->id) {
+                    throw new RuntimeException('Idempotency key has already been used for a different admission attempt or document.');
+                }
+
+                return $existing;
+            }
+
+            // Document Ownership Invariant: prevent foreign document release
+            if ($document->admission_attempt_id !== $attempt->id) {
+                throw new RuntimeException('Result document does not belong to this admission attempt.');
+            }
+
+            // Prerequisite 1: Document must be ready
             if ($document->status !== ResultDocument::STATUS_READY) {
                 throw new RuntimeException('Result document is not ready.');
             }
 
-            // I2 (2026-08-14): consultation is NOT a release prerequisite —
-            // release requires grading finalized + document prepared only.
-            $sessionId = ExamAssignment::query()
-                ->where('admission_attempt_id', $attempt->id)
-                ->value('exam_session_id');
-
-            if ($sessionId === null) {
-                throw new RuntimeException('Exam assignment required before release.');
+            // Prerequisite 2: Attempt must be accepted
+            if (! $attempt->isAccepted()) {
+                throw new RuntimeException('Admission attempt must be accepted through intake verification before results release.');
             }
 
-            $gradingFinalized = GradingSession::query()
-                ->where('exam_session_id', $sessionId)
-                ->where('status', GradingSession::STATUS_FINALIZED)
-                ->exists();
-
-            if (! $gradingFinalized) {
-                throw new RuntimeException('Grading must be finalized before release.');
+            // Prerequisite 3: the exact current document must contain frozen individual scores.
+            if (
+                (int) $attempt->current_result_document_id !== (int) $document->id
+                || ! AttemptResultReadiness::isReady($attempt)
+            ) {
+                throw new RuntimeException('The current prepared individual result is required before release.');
             }
 
-            ResultRelease::query()
+            // Consultation is not a release prerequisite; an exact current prepared individual result is.
+
+            // Concurrency: Lock current active releases for this attempt
+            $currentReleases = ResultRelease::query()
                 ->where('admission_attempt_id', $attempt->id)
                 ->where('is_current', true)
-                ->update([
+                ->lockForUpdate()
+                ->get();
+
+            // Demote current release: mark not current and record superseded/unreleased timestamp
+            foreach ($currentReleases as $currentRelease) {
+                $currentRelease->update([
                     'is_current' => false,
+                    'superseded_at' => now(),
                     'unreleased_at' => now(),
+                    'unrelease_reason' => 'Superseded by new release version.',
                 ]);
+            }
 
             $version = (int) ResultRelease::query()->where('admission_attempt_id', $attempt->id)->max('release_version') + 1;
 
@@ -98,6 +131,8 @@ class ReleaseResult
             $this->recordAuditEvent->handle('release.result_released', [
                 'release_id' => $release->id,
                 'attempt_id' => $attempt->id,
+                'document_id' => $document->id,
+                'version' => $version,
                 'mode' => $mode,
             ], (string) $actor->id);
 
@@ -110,17 +145,44 @@ class ReleaseResult
                     eventType: 'result.released.v1',
                     templateKey: $online ? 'result.released.online' : 'result.released.f2f',
                     payload: [
+                        'institution_id' => $attempt->institution_id,
+                        'domain' => 'results',
+                        'canonical_slug' => $online ? 'released-online' : 'released-f2f',
                         'subject' => $online ? 'Your admission result is available' : 'Your admission result is ready',
                         'body' => $online
                             ? "Your admission result for {$attempt->reference_code} has been released. View it in the NEXIAM portal."
                             : "Your admission result for {$attempt->reference_code} has been released. Claim it at your consultation session.",
                         'action_label' => 'View result',
                         'action_url' => route('applicant.portal'),
+                        'release_id' => $release->id,
+                        'release_version' => $release->release_version,
                         'attempt_id' => $attempt->id,
-                        'reference_code' => $attempt->reference_code,
+                        'identity_id' => $recipient->id,
                         'mode' => $mode,
+                        'event_context' => [
+                            'application_no' => $attempt->reference_code,
+                            'applicant_name' => $recipient->fullName(),
+                            'institution_name' => $attempt->academicCycle?->institution?->name,
+                            'portal_url' => route('applicant.portal'),
+                        ],
+                        'document_snapshot' => $online ? [
+                            'mode' => 'result_document',
+                            'document_id' => $document->id,
+                            'document_path' => $document->storage_path,
+                            'document_version' => $document->version,
+                            'release_id' => $release->id,
+                            'release_version' => $release->release_version,
+                            'attempt_id' => $attempt->id,
+                            'identity_id' => $recipient->id,
+                            'institution_id' => $attempt->institution_id,
+                            'document_checksum' => $document->checksum,
+                            'paper_size' => 'a4',
+                            'orientation' => 'portrait',
+                        ] : null,
                     ],
-                    channels: [NotificationDelivery::CHANNEL_IN_APP, NotificationDelivery::CHANNEL_MAIL],
+                    channels: $online
+                        ? [NotificationDelivery::CHANNEL_IN_APP, NotificationDelivery::CHANNEL_MAIL]
+                        : [NotificationDelivery::CHANNEL_IN_APP],
                 );
 
                 $created = app(NotificationIntentDispatcher::class)->dispatch(

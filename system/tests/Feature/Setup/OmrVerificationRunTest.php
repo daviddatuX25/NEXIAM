@@ -2,9 +2,18 @@
 
 use App\Assessment\Actions\Omr\Verification\StartOmrTemplateVerification;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
-use App\Assessment\Omr\Canonical\OmrTemplateAssetStore;
+use App\Assessment\Omr\OmrCheckerDetection;
+use App\Assessment\Omr\OmrDetectedItem;
+use App\Assessment\Omr\OmrDetectionPort;
+use App\Assessment\Omr\OmrDetectionRequest;
+use App\Assessment\Omr\OmrDetectionResult;
+use App\Assessment\Omr\OmrDetectionSuccess;
+use App\Assessment\Omr\OmrLayoutVerificationPort;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Omr\Verification\OmrVerificationRunService;
 use App\Authorization\CapabilityCatalog;
 use App\Jobs\Assessment\RunOmrTemplateVerificationJob;
+use App\Jobs\Assessment\RunOmrTemplateVerificationVariantJob;
 use App\Models\Assessment\OmrMarkerProfile;
 use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
@@ -14,32 +23,69 @@ use App\Models\Foundation\AuditEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use App\Assessment\Omr\OmrDetectionPort;
-use App\Assessment\Omr\OmrDetectionResult;
-use App\Assessment\Omr\OmrDetectionSuccess;
-use App\Assessment\Omr\OmrDetectedItem;
 use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-function durableRunWorkerResponse(string $runId, bool $success): array
+/** Extract the request manifest from a signed multipart worker call. */
+function durableRunManifestFromBody(string $body): array
+{
+    if (! str_contains($body, 'name="manifest"')) {
+        return [];
+    }
+
+    $parts = preg_split("/\r\n--[A-Za-z0-9._-]+/", $body);
+    foreach ($parts as $part) {
+        if (! str_contains($part, 'name="manifest"')) {
+            continue;
+        }
+        [, $json] = explode("\r\n\r\n", $part, 2);
+        $decoded = json_decode(trim($json), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    return [];
+}
+
+function durableRunWorkerResponse(string $runId, bool $success, string $requestBody): array
 {
     if (! $success) {
         return [json_encode(['code' => 'marker_missing', 'detail' => 'fixture rejection'], JSON_THROW_ON_ERROR), ['Content-Type' => 'application/json']];
     }
+    $manifest = durableRunManifestFromBody($requestBody);
+    $targetIdentity = array_key_exists('template_version_id', $manifest)
+        ? ['template_version_id' => $manifest['template_version_id']]
+        : ['candidate_target_id' => $manifest['candidate_target_id']];
     $payload = [
-        'contract_version' => 'nexiam.omr.detection.v2',
+        'contract_version' => OmrDetectionRequest::ENVELOPE_VERSION,
+        'registration_mode' => $manifest['registration_mode'],
+        ...$targetIdentity,
+        'expected_page_no' => $manifest['expected_page_no'],
+        'source_image' => $manifest['source_image'],
         'run_id' => $runId,
-        'correlation_id' => 'omr:durable-run',
+        'correlation_id' => $manifest['correlation_id'],
         'outcome' => 'succeeded',
-        'engine' => ['name' => 'OMRChecker', 'version' => 'de3f69828228', 'commit' => str_repeat('c', 40), 'patch_identity' => 'nexiam-headless-overlay-v1'],
-        'input_hash' => str_repeat('i', 64),
-        'native_bundle_hash' => str_repeat('n', 64),
-        'manifest_hash' => str_repeat('m', 64),
-        'config_hash' => str_repeat('g', 64),
+        'engine' => [
+            'name' => $manifest['engine']['name'],
+            'version' => 'de3f69828228',
+            'commit' => $manifest['engine']['commit'],
+            'patch_identity' => $manifest['engine']['patch_identity'],
+        ],
+        'input_hash' => $manifest['input_hash'],
+        'native_bundle_hash' => $manifest['native_bundle_hash'],
+        'manifest_hash' => $manifest['manifest_hash'],
+        'config_hash' => $manifest['config_hash'],
+        'booklet_hash' => $manifest['booklet_hash'],
+        'image' => [
+            'mime' => $manifest['image_mime'],
+            'width' => $manifest['image_width'],
+            'height' => $manifest['image_height'],
+        ],
         'calibration_status' => 'unqualified',
         'aligned_image' => ['mime' => 'image/png', 'width' => 2480, 'height' => 3508],
         'layout_overlay' => ['mime' => 'image/png', 'width' => 2480, 'height' => 3508],
@@ -66,7 +112,7 @@ function durableRunWorkerResponse(string $runId, bool $success): array
 
     return [$body, [
         'Content-Type' => 'multipart/form-data; boundary='.$boundary,
-        'X-Nexiam-Contract' => 'nexiam.omr.detection.v2',
+        'X-Nexiam-Contract' => OmrDetectionRequest::ENVELOPE_VERSION,
         'X-Nexiam-Run-Id' => $runId,
         'X-Nexiam-Timestamp' => $timestamp,
         'X-Nexiam-Result-SHA256' => $resultHash,
@@ -78,17 +124,18 @@ function durableRunWorkerResponse(string $runId, bool $success): array
 
 final class DurableRunDetectorFake implements OmrDetectionPort
 {
-    public function detect(\App\Assessment\Omr\OmrDetectionRequest $request): OmrDetectionResult
+    public function detect(OmrDetectionRequest $request): OmrDetectionResult
     {
-        $items = array_map(static fn ($geometry): OmrDetectedItem => new OmrDetectedItem(
-            position: $geometry->position,
-            areaCode: $geometry->areaCode,
-            questionNo: $geometry->questionNo,
-            selectedOption: $geometry->options[0]->code ?? null,
-            state: OmrDetectedItem::STATE_MARKED,
-            confidence: null,
-            region: $geometry->region,
-        ), $request->items);
+        $items = array_map(static function ($geometry): OmrDetectedItem {
+            $selected = $geometry->options[0]->code ?? null;
+
+            return OmrDetectedItem::fromGeometry(
+                geometry: $geometry,
+                selectedOption: $selected,
+                state: OmrDetectedItem::STATE_MARKED,
+                confidence: null,
+            );
+        }, $request->items);
 
         return OmrDetectionResult::succeeded(new OmrDetectionSuccess(
             engineName: $request->engineName,
@@ -106,6 +153,11 @@ final class DurableRunDetectorFake implements OmrDetectionPort
             runId: $request->runId,
             correlationId: $request->correlationId,
             bookletHash: $request->bookletHash,
+            registrationMode: $request->registrationMode->value,
+            templateVersionId: $request->templateVersionId,
+            candidateTargetId: $request->candidateTargetId,
+            expectedPageNo: $request->pageNo,
+            sourceImage: $request->sourceImage->toArray(),
             nativeBundleHash: $request->nativeBundleHash,
             manifestHash: $request->manifestHash,
             patchIdentity: $request->patchIdentity,
@@ -142,6 +194,10 @@ function durableRunDraft(User $actor): OmrTemplateAuthoringDraft
         'authoring_json' => [
             'marker' => ['insets_mm' => ['top' => 12, 'right' => 12, 'bottom' => 14, 'left' => 12]],
             'canonical' => ['settings' => ['paper_width_mm' => 210, 'paper_height_mm' => 297]],
+            'pages' => [[
+                'page_no' => 1,
+                'paper' => ['width_mm' => 210, 'height_mm' => 297],
+            ]],
             'studio' => ['components' => [[
                 'id' => 'Part_1', 'type' => 'mcq', 'name' => 'Part 1', 'subjectName' => 'General Ability',
                 'posX' => 25, 'posY' => 70, 'w_mm' => 40, 'h_mm' => 50, 'questionsCount' => 1,
@@ -169,22 +225,76 @@ function durableRunCapableUser(): User
     return $user;
 }
 
-function durableRunFakeWorker(int $successUntil = 1): int
+function durableRunUseWorker(): void
 {
-    $calls = 0;
-    Http::fake(['*/layout-verification' => function ($request) use (&$calls, $successUntil) {
-        $calls++;
-        [$body, $headers] = durableRunWorkerResponse((string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''), $calls <= $successUntil);
-        return Http::response($body, $calls <= $successUntil ? 200 : 422, $headers);
-    }]);
-
-    return $calls;
+    config([
+        'omr.provider.driver' => 'omrchecker',
+        'omr.omrchecker.enabled' => true,
+        'omr.omrchecker.contract_version' => OmrDetectionRequest::ENVELOPE_VERSION,
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    app()->instance(
+        OmrLayoutVerificationPort::class,
+        new OmrCheckerDetection,
+    );
 }
 
-/** Execute the durable job inline even while Queue::fake() is active. */
-function durableRunJobInline(int $runId): void
+function durableRunFakeWorker(int $successUntil = 1): void
 {
-    app()->call([new RunOmrTemplateVerificationJob($runId), 'handle']);
+    config([
+        'omr.provider.driver' => 'omrchecker',
+        'omr.omrchecker.enabled' => true,
+        'omr.omrchecker.contract_version' => OmrDetectionRequest::ENVELOPE_VERSION,
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    app()->instance(
+        OmrLayoutVerificationPort::class,
+        new OmrCheckerDetection,
+    );
+    $calls = 0;
+    Http::swap(new Factory);
+    Http::fake(['*/layout-verification' => function ($request) use (&$calls, $successUntil) {
+        $calls++;
+        [$body, $headers] = durableRunWorkerResponse(
+            (string) ($request->header('X-Nexiam-Run-Id')[0] ?? ''),
+            $calls <= $successUntil,
+            $request->body(),
+        );
+
+        return Http::response($body, $calls <= $successUntil ? 200 : 422, $headers);
+    }]);
+}
+
+/** Execute the coordinator and all queued variant jobs inline until terminal or blocked. */
+function durableRunJobInline(int $runId, int $maxSteps = 30): void
+{
+    $run = OmrTemplateVerificationRun::query()->find($runId);
+    if ($run !== null && $run->status === OmrTemplateVerificationRun::STATUS_QUEUED) {
+        try {
+            app()->call([new RunOmrTemplateVerificationJob($runId, (int) $run->attempt, (int) $run->optimistic_version), 'handle']);
+        } catch (Throwable) {
+            return;
+        }
+    }
+
+    $steps = 0;
+    while ($steps++ < $maxSteps) {
+        $run = OmrTemplateVerificationRun::query()->find($runId);
+        if ($run === null || $run->isTerminal()) {
+            break;
+        }
+        $phase = (array) $run->phase_detail;
+        $variant = $phase['current_variant'] ?? null;
+        $state = $phase['state'] ?? null;
+        if (! is_string($variant) || $variant === '' || $state !== 'ready') {
+            break;
+        }
+        try {
+            app()->call([new RunOmrTemplateVerificationVariantJob($runId, (int) $run->attempt, $variant, (int) $run->optimistic_version), 'handle']);
+        } catch (Throwable) {
+            break;
+        }
+    }
 }
 
 test('start returns 202 with run_id/status_url and dispatches the durable job', function (): void {
@@ -198,7 +308,7 @@ test('start returns 202 with run_id/status_url and dispatches the durable job', 
     $draft = durableRunDraft($actor);
 
     $this->actingAs($actor)
-        ->postJson(route('setup.omr.templates.canonical.drafts.verify.digital', $draft), ['idempotency_key' => 'start-key-1'])
+        ->postJson(route('setup.omr.templates.canonical.drafts.verification_runs.start', $draft), ['idempotency_key' => 'start-key-1'])
         ->assertStatus(202)
         ->assertJsonStructure(['run_id', 'status_url']);
 
@@ -207,11 +317,27 @@ test('start returns 202 with run_id/status_url and dispatches the durable job', 
         ->and($run->status)->toBe(OmrTemplateVerificationRun::STATUS_QUEUED)
         ->and($run->attempt)->toBe(1)
         ->and($run->mode)->toBe('digital')
+        ->and($run->progress_done)->toBe(0)
+        ->and($run->progress_total)->toBe(14)
         ->and(strlen($run->plan_hash))->toBe(64)
         ->and(strlen($run->artifact_hash))->toBe(64);
 
-    Queue::assertPushed(RunOmrTemplateVerificationJob::class, 1);
+    Queue::assertPushed(RunOmrTemplateVerificationJob::class, function (RunOmrTemplateVerificationJob $job) use ($run): bool {
+        return $job->runId === $run->id && $job->queue === 'omr-verification' && $job->timeout === 75 && $job->tries === 1;
+    });
     expect(AuditEvent::query()->where('event_type', 'omr.verification.started')->whereJsonContains('payload', ['run_id' => $run->id])->exists())->toBeTrue();
+});
+
+test('verification coordinator and variant jobs enforce 75s timeout and omr-verification queue', function (): void {
+    $coordinator = new RunOmrTemplateVerificationJob(42, 1, 0);
+    expect($coordinator->queue)->toBe('omr-verification')
+        ->and($coordinator->timeout)->toBe(75)
+        ->and($coordinator->tries)->toBe(1);
+
+    $variant = new RunOmrTemplateVerificationVariantJob(42, 1, 'clean', 0);
+    expect($variant->queue)->toBe('omr-verification')
+        ->and($variant->timeout)->toBe(75)
+        ->and($variant->tries)->toBe(1);
 });
 
 test('duplicate start replays the same active run without a second dispatch', function (): void {
@@ -225,17 +351,133 @@ test('duplicate start replays the same active run without a second dispatch', fu
     $draft = durableRunDraft($actor);
 
     $first = $this->actingAs($actor)
-        ->postJson(route('setup.omr.templates.canonical.drafts.verify.digital', $draft), ['idempotency_key' => 'start-key-a'])
+        ->postJson(route('setup.omr.templates.canonical.drafts.verification_runs.start', $draft), ['idempotency_key' => 'start-key-a'])
         ->assertStatus(202)
         ->json();
     $second = $this->actingAs($actor)
-        ->postJson(route('setup.omr.templates.canonical.drafts.verify.digital', $draft), ['idempotency_key' => 'start-key-b'])
+        ->postJson(route('setup.omr.templates.canonical.drafts.verification_runs.start', $draft), ['idempotency_key' => 'start-key-b'])
         ->assertStatus(202)
         ->json();
 
     expect($second['run_id'])->toBe($first['run_id']);
     expect(OmrTemplateVerificationRun::query()->where('draft_id', $draft->id)->count())->toBe(1);
     Queue::assertPushed(RunOmrTemplateVerificationJob::class, 1);
+});
+
+test('same idempotency key resumes only the current digital run with target flags', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    Queue::fake();
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    $url = route('setup.omr.templates.canonical.drafts.verification_runs.start', $draft);
+
+    $first = $this->actingAs($actor)
+        ->postJson($url, ['idempotency_key' => 'start-replay-current'])
+        ->assertStatus(202)
+        ->assertJson([
+            'mode' => OmrTemplateVerificationRun::MODE_DIGITAL,
+            'target_current' => true,
+            'target_stale' => false,
+            'digital_verification_current' => false,
+        ])
+        ->json();
+    $replay = $this->actingAs($actor)
+        ->postJson($url, ['idempotency_key' => 'start-replay-current'])
+        ->assertStatus(202)
+        ->assertJson([
+            'run_id' => $first['run_id'],
+            'mode' => OmrTemplateVerificationRun::MODE_DIGITAL,
+            'target_current' => true,
+            'target_stale' => false,
+        ])
+        ->json();
+
+    expect($replay['status_url'])->toBe($first['status_url'])
+        ->and(OmrTemplateVerificationRun::query()->where('draft_id', $draft->id)->count())->toBe(1);
+    Queue::assertPushed(RunOmrTemplateVerificationJob::class, 1);
+});
+
+test('digital start supersedes a stale active physical run without returning it', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    Queue::fake();
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    $stale = OmrTemplateVerificationRun::query()->create([
+        'draft_id' => $draft->id,
+        'status' => OmrTemplateVerificationRun::STATUS_AWAITING_CAPTURE,
+        'mode' => OmrTemplateVerificationRun::MODE_QUICK_REHEARSAL,
+        'attempt' => 1,
+        'plan_version' => 'v1',
+        'plan_hash' => str_repeat('p', 64),
+        'expected_vector_hash' => str_repeat('e', 64),
+        'artifact_hash' => str_repeat('o', 64),
+        'native_bundle_hash' => str_repeat('n', 64),
+        'manifest_hash' => str_repeat('m', 64),
+        'config_hash' => str_repeat('g', 64),
+        'mapping_hash' => str_repeat('x', 64),
+        'progress_done' => 0,
+        'progress_total' => 1,
+        'started_by_user_id' => $actor->id,
+        'started_at' => now()->subHour(),
+        'last_heartbeat_at' => now(),
+    ]);
+
+    $current = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+
+    expect($current->mode)->toBe(OmrTemplateVerificationRun::MODE_DIGITAL)
+        ->and($current->draft_id)->toBe($draft->id)
+        ->and($current->artifact_hash)->not->toBe($stale->artifact_hash)
+        ->and($current->mapping_hash)->not->toBe($stale->mapping_hash)
+        ->and($stale->fresh()->status)->toBe(OmrTemplateVerificationRun::STATUS_FAILED)
+        ->and($stale->fresh()->error_code)->toBe('target_changed_superseded')
+        ->and(OmrTemplateVerificationRun::query()->where('draft_id', $draft->id)->whereIn('status', OmrTemplateVerificationRun::ACTIVE_STATUSES)->count())->toBe(1);
+
+    Queue::assertPushed(RunOmrTemplateVerificationJob::class, 1);
+});
+
+test('digital start refuses a current-target physical run instead of returning the wrong mode', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    Queue::fake();
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    $digital = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    $digital->forceFill(['status' => OmrTemplateVerificationRun::STATUS_FAILED, 'finished_at' => now()])->save();
+    $physical = OmrTemplateVerificationRun::query()->create([
+        'draft_id' => $draft->id,
+        'status' => OmrTemplateVerificationRun::STATUS_AWAITING_CAPTURE,
+        'mode' => OmrTemplateVerificationRun::MODE_QUICK_REHEARSAL,
+        'attempt' => 1,
+        'plan_version' => $digital->plan_version,
+        'plan_hash' => $digital->plan_hash,
+        'expected_vector_hash' => $digital->expected_vector_hash,
+        'artifact_hash' => $digital->artifact_hash,
+        'native_bundle_hash' => $digital->native_bundle_hash,
+        'manifest_hash' => $digital->manifest_hash,
+        'config_hash' => $digital->config_hash,
+        'mapping_hash' => $digital->mapping_hash,
+        'progress_done' => 0,
+        'progress_total' => 1,
+        'started_by_user_id' => $actor->id,
+        'started_at' => now(),
+        'last_heartbeat_at' => now(),
+    ]);
+
+    expect(fn () => app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor))
+        ->toThrow(RuntimeException::class, 'verification_active_run_mode_conflict');
+    expect($physical->fresh()->status)->toBe(OmrTemplateVerificationRun::STATUS_AWAITING_CAPTURE)
+        ->and(OmrTemplateVerificationRun::query()->where('draft_id', $draft->id)->whereIn('status', OmrTemplateVerificationRun::ACTIVE_STATUSES)->count())->toBe(1);
 });
 
 test('the same idempotency key replays the terminal run after it passed', function (): void {
@@ -250,13 +492,13 @@ test('the same idempotency key replays the terminal run after it passed', functi
     app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
 
     $first = $this->actingAs($actor)
-        ->postJson(route('setup.omr.templates.canonical.drafts.verify.digital', $draft), ['idempotency_key' => 'start-key-x'])
+        ->postJson(route('setup.omr.templates.canonical.drafts.verification_runs.start', $draft), ['idempotency_key' => 'start-key-x'])
         ->assertStatus(202)
         ->json();
     RunOmrTemplateVerificationJob::dispatchSync($first['run_id']);
 
     $replay = $this->actingAs($actor)
-        ->postJson(route('setup.omr.templates.canonical.drafts.verify.digital', $draft), ['idempotency_key' => 'start-key-x'])
+        ->postJson(route('setup.omr.templates.canonical.drafts.verification_runs.start', $draft), ['idempotency_key' => 'start-key-x'])
         ->assertStatus(202)
         ->json();
 
@@ -336,6 +578,16 @@ test('status endpoint reports phase, real progress, safe issue, actions, run ver
             'run_version' => 0,
             'plan' => ['plan_hash' => str_repeat('p', 64), 'plan_version' => 'v1', 'challenge_code' => null],
         ])
+        ->assertJsonStructure([
+            'target' => ['kind', 'id', 'hashes' => ['artifact', 'native_bundle', 'manifest', 'config', 'mapping']],
+        ])
+        ->assertJsonPath('target.kind', 'candidate')
+        ->assertJsonPath('target.id', $draft->id)
+        ->assertJsonPath('target.hashes.artifact', str_repeat('a', 64))
+        ->assertJsonPath('target.hashes.native_bundle', str_repeat('n', 64))
+        ->assertJsonPath('target.hashes.manifest', str_repeat('m', 64))
+        ->assertJsonPath('target.hashes.config', str_repeat('g', 64))
+        ->assertJsonPath('target.hashes.mapping', str_repeat('d', 64))
         ->assertJsonPath('evidence.0.variant', 'clean')
         ->assertJsonPath('evidence.0.vector_match', true)
         ->assertJsonPath('evidence.0.urls.aligned', route('setup.omr.templates.canonical.verification_runs.assets.show', ['run' => $run->id, 'asset' => $asset->id]));
@@ -393,6 +645,39 @@ test('draft-owned runs are owner-scoped: a foreign staff actor cannot read, retr
 
     $outsider->revokePermissionTo(CapabilityCatalog::GUIDANCE_SCORING_OMR);
     $this->actingAs($outsider)->getJson(route('setup.omr.templates.canonical.verification_runs.status', $run))->assertForbidden();
+});
+
+test('queued digital status exposes the planned denominator before worker claim', function (): void {
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    $run = OmrTemplateVerificationRun::query()->create([
+        'draft_id' => $draft->id,
+        'status' => OmrTemplateVerificationRun::STATUS_QUEUED,
+        'mode' => OmrTemplateVerificationRun::MODE_DIGITAL,
+        'attempt' => 1,
+        'plan_version' => 'v1',
+        'plan_hash' => str_repeat('p', 64),
+        'expected_vector_hash' => str_repeat('e', 64),
+        'artifact_hash' => str_repeat('a', 64),
+        'native_bundle_hash' => str_repeat('n', 64),
+        'manifest_hash' => str_repeat('m', 64),
+        'config_hash' => str_repeat('g', 64),
+        'mapping_hash' => str_repeat('d', 64),
+        'progress_done' => 0,
+        'progress_total' => 0,
+        'started_by_user_id' => $actor->id,
+        'started_at' => now(),
+        'last_heartbeat_at' => now(),
+    ]);
+
+    $this->actingAs($actor)
+        ->getJson(route('setup.omr.templates.canonical.verification_runs.status', $run))
+        ->assertOk()
+        ->assertJson([
+            'status' => OmrTemplateVerificationRun::STATUS_QUEUED,
+            'progress' => ['done' => 0, 'total' => 14, 'percent' => 0.0],
+            'safe_issue' => null,
+        ]);
 });
 
 test('a timed-out worker surfaces retry through the status endpoint', function (): void {
@@ -491,16 +776,10 @@ test('a stale target fails closed at job execution and preserves completed evide
     expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_QUEUED);
 
     // Simulate a concurrent authoring change AFTER the run was pinned: the
-    // artifact set hash moves, so the pinned run can never pass.
-    $draft->forceFill([
-        'authoring_json' => [
-            ...(array) $draft->authoring_json,
-            'canonical' => [...(array) ($draft->authoring_json['canonical'] ?? []), 'artifact_set' => [
-                ...(array) ($draft->authoring_json['canonical']['artifact_set'] ?? []),
-                'artifact_hash' => str_repeat('x', 64),
-            ]],
-        ],
-    ])->save();
+    // solved geometry moves, so rematerialization no longer matches the run.
+    $changedAuthoring = (array) $draft->authoring_json;
+    $changedAuthoring['mapping']['field_blocks']['Part_1']['origin'][0] = (int) ($changedAuthoring['mapping']['field_blocks']['Part_1']['origin'][0] ?? 0) + 1;
+    $draft->forceFill(['authoring_json' => $changedAuthoring])->save();
 
     durableRunFakeWorker(1);
     app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
@@ -523,6 +802,7 @@ test('worker unavailable preserves partial evidence and exposes retry', function
         'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
         'omr.omrchecker.signing_secret' => str_repeat('s', 40),
     ]);
+    durableRunUseWorker();
     Queue::fake();
     $actor = durableRunCapableUser();
     $draft = durableRunDraft($actor);
@@ -573,4 +853,236 @@ test('a failed matrix run records a typed no_go failure and never promotes the d
     expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_FAILED)
         ->and($run->error_code)->toBe('marker_missing')
         ->and($draft->fresh()->stage)->toBe(OmrTemplateAuthoringDraft::STAGE_MAPPING_COMPLETE);
+});
+
+test('durable verification drains entire 14-variant chain to terminal pass and promotes draft', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    durableRunFakeWorker(7); // 7 exact-recovery variants pass, 3 reject variants reject
+    app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
+
+    $run = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    durableRunJobInline($run->id);
+
+    $run = $run->fresh();
+    expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_PASSED)
+        ->and($run->progress_done)->toBe(14)
+        ->and($run->progress_total)->toBe(14)
+        ->and($run->captures()->count())->toBe(14)
+        ->and($run->error_code)->toBeNull()
+        ->and($run->finished_at)->not->toBeNull();
+
+    $draft = $draft->fresh();
+    expect($draft->stage)->toBe(OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED)
+        ->and($draft->authoring_json['verification']['proof_hash'] ?? null)->toBe($run->proof_hash);
+
+    $passedEvent = AuditEvent::query()->where('event_type', 'omr.verification.passed')->latest('id')->first();
+    expect($passedEvent)->not->toBeNull()
+        ->and($passedEvent->payload['run_id'] ?? null)->toBe($run->id)
+        ->and($passedEvent->payload['draft_id'] ?? null)->toBe($draft->id);
+});
+test('duplicate variant delivery is a no-op that leaves run and captures intact', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    Queue::fake();
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    durableRunFakeWorker(7);
+    app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
+
+    $run = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    // Run coordinator (step 0)
+    app()->call([new RunOmrTemplateVerificationJob($run->id, (int) $run->attempt, (int) $run->optimistic_version), 'handle']);
+
+    $run = $run->fresh();
+    expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_CLEAN_RECOVERY);
+
+    // Run clean variant (step 1)
+    app()->call([new RunOmrTemplateVerificationVariantJob($run->id, (int) $run->attempt, 'clean', (int) $run->optimistic_version), 'handle']);
+
+    $run = $run->fresh();
+    expect($run->captures()->count())->toBe(1)
+        ->and($run->captures()->first()->variant)->toBe('clean')
+        ->and($run->status)->toBe(OmrTemplateVerificationRun::STATUS_VARIANT_MATRIX);
+
+    $versionBefore = $run->optimistic_version;
+    // Deliver a duplicate clean variant job with the previous optimistic version
+    app()->call([new RunOmrTemplateVerificationVariantJob($run->id, (int) $run->attempt, 'clean', $versionBefore - 1), 'handle']);
+
+    // Run state and captures must be unchanged
+    $run = $run->fresh();
+    expect($run->captures()->count())->toBe(1)
+        ->and($run->optimistic_version)->toBe($versionBefore)
+        ->and($run->status)->toBe(OmrTemplateVerificationRun::STATUS_VARIANT_MATRIX);
+});
+
+test('out of order variant delivery is rejected without corrupting the run', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    Queue::fake();
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    durableRunFakeWorker(7);
+    app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
+
+    $run = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    // Run coordinator only (step 0, run is in clean_recovery waiting for 'clean')
+    app()->call([new RunOmrTemplateVerificationJob($run->id, (int) $run->attempt, (int) $run->optimistic_version), 'handle']);
+
+    $run = $run->fresh();
+    expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_CLEAN_RECOVERY);
+
+    // Attempt to deliver variant 'rotation' out of order (expecting 'clean')
+    app()->call([new RunOmrTemplateVerificationVariantJob($run->id, (int) $run->attempt, 'rotation', (int) $run->optimistic_version), 'handle']);
+
+    $run = $run->fresh();
+    expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_CLEAN_RECOVERY)
+        ->and($run->captures()->count())->toBe(0);
+});
+
+test('partial failure at variant preserves prior captures and retrying finishes full chain', function (): void {
+    config([
+        'omr.qr-keyring.current' => 'current-v1',
+        'omr.qr-keyring.keys' => ['current-v1' => 'test-secret'],
+        'omr.omrchecker.signing_secret' => str_repeat('s', 40),
+    ]);
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    // Worker succeeds for clean (1) only, then fails on perspective (2)
+    durableRunFakeWorker(1);
+    app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
+
+    $run = app(StartOmrTemplateVerification::class)->handle($draft->fresh(), $actor);
+    durableRunJobInline($run->id);
+
+    $run = $run->fresh();
+    expect($run->status)->toBe(OmrTemplateVerificationRun::STATUS_FAILED)
+        ->and($run->attempt)->toBe(1)
+        ->and($run->captures()->count())->toBe(14); // All variants executed and recorded
+    // Retry the run with Queue fake to verify queued status before draining
+    Queue::fake();
+    durableRunFakeWorker(7);
+    $retryResponse = $this->actingAs($actor)
+        ->postJson(route('setup.omr.templates.canonical.verification_runs.retry', $run))
+        ->assertStatus(202)
+        ->json();
+
+    $retried = $run->fresh();
+    expect($retried->status)->toBe(OmrTemplateVerificationRun::STATUS_QUEUED)
+        ->and($retried->attempt)->toBe(2);
+    Queue::assertPushed(RunOmrTemplateVerificationJob::class, 1);
+
+    // Drain attempt 2 to completion
+    durableRunFakeWorker(7);
+    app()->instance(OmrDetectionPort::class, new DurableRunDetectorFake);
+    durableRunJobInline($retried->id);
+
+    $retried = $retried->fresh();
+    expect($retried->status)->toBe(OmrTemplateVerificationRun::STATUS_PASSED)
+        ->and($retried->attempt)->toBe(2)
+        ->and($retried->captures()->where('attempt', 2)->count())->toBe(14)
+        ->and($retried->captures()->where('attempt', 1)->count())->toBe(14) // attempt 1 captures preserved
+        ->and($draft->fresh()->stage)->toBe(OmrTemplateAuthoringDraft::STAGE_DIGITAL_VERIFIED);
+});
+
+test('multi-page digital verification advances through every page matrix', function (): void {
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    $authoring = (array) $draft->authoring_json;
+    $authoring['pages'][] = ['page_no' => 2, 'paper' => ['width_mm' => 210, 'height_mm' => 297]];
+    $authoring['mapping']['input']['page_count'] = 2;
+    $draft->forceFill(['requested_page_count' => 2, 'authoring_json' => $authoring])->save();
+    $run = OmrTemplateVerificationRun::query()->create([
+        'draft_id' => $draft->id,
+        'status' => OmrTemplateVerificationRun::STATUS_VARIANT_MATRIX,
+        'mode' => OmrTemplateVerificationRun::MODE_DIGITAL,
+        'attempt' => 1,
+        'plan_version' => 'v3',
+        'plan_hash' => str_repeat('p', 64),
+        'expected_vector_hash' => str_repeat('e', 64),
+        'artifact_hash' => str_repeat('a', 64),
+        'native_bundle_hash' => str_repeat('n', 64),
+        'manifest_hash' => str_repeat('m', 64),
+        'config_hash' => str_repeat('g', 64),
+        'mapping_hash' => str_repeat('d', 64),
+        'progress_done' => 13,
+        'progress_total' => 28,
+        'phase_detail' => ['stage' => 'variant_matrix', 'current_variant' => 'page-1:multipage_order', 'state' => 'ready'],
+        'started_by_user_id' => $actor->id,
+        'started_at' => now(),
+        'last_heartbeat_at' => now(),
+    ]);
+    $service = app(OmrVerificationRunService::class);
+    $claimed = $service->claimVariant($run->id, 1, 'page-1:multipage_order', 0);
+
+    expect($claimed)->not->toBeNull();
+
+    $advanced = $service->completeVariant(
+        $run->id,
+        1,
+        'page-1:multipage_order',
+        (int) $claimed->optimistic_version,
+        static function (): void {},
+    );
+
+    expect($advanced?->progress_done)->toBe(14)
+        ->and($advanced?->progress_total)->toBe(28)
+        ->and($advanced?->phase_detail['current_variant'])->toBe('page-2:clean')
+        ->and($advanced?->phase_detail['state'])->toBe('ready');
+});
+
+test('document-bound digital cursor advances its eight-variant matrix per page', function (): void {
+    $actor = durableRunCapableUser();
+    $draft = durableRunDraft($actor);
+    $authoring = (array) $draft->authoring_json;
+    $authoring['pages'][] = ['page_no' => 2, 'paper' => ['width_mm' => 210, 'height_mm' => 297]];
+    $authoring['mapping']['input']['page_count'] = 2;
+    $draft->forceFill(['registration_mode' => OmrRegistrationMode::DocumentBound, 'requested_page_count' => 2, 'authoring_json' => $authoring])->save();
+    $run = OmrTemplateVerificationRun::query()->create([
+        'draft_id' => $draft->id,
+        'status' => OmrTemplateVerificationRun::STATUS_CLEAN_RECOVERY,
+        'mode' => OmrTemplateVerificationRun::MODE_DIGITAL,
+        'attempt' => 1,
+        'plan_version' => 'v3',
+        'plan_hash' => str_repeat('p', 64),
+        'expected_vector_hash' => str_repeat('e', 64),
+        'artifact_hash' => str_repeat('a', 64),
+        'native_bundle_hash' => str_repeat('n', 64),
+        'manifest_hash' => str_repeat('m', 64),
+        'config_hash' => str_repeat('g', 64),
+        'mapping_hash' => str_repeat('d', 64),
+        'progress_done' => 0,
+        'progress_total' => 16,
+        'phase_detail' => ['stage' => 'clean_recovery', 'current_variant' => 'page-1:clean', 'state' => 'ready'],
+        'started_by_user_id' => $actor->id,
+        'started_at' => now(),
+        'last_heartbeat_at' => now(),
+    ]);
+    $service = app(OmrVerificationRunService::class);
+    expect($service->claimVariant($run->id, 1, 'perspective', 0))->toBeNull();
+    $claimed = $service->claimVariant($run->id, 1, 'page-1:clean', 0);
+    expect($claimed)->not->toBeNull();
+
+    $advanced = $service->completeVariant($run->id, 1, 'page-1:clean', (int) $claimed->optimistic_version, static function (): void {});
+    expect($advanced?->progress_done)->toBe(1)
+        ->and($advanced?->progress_total)->toBe(16)
+        ->and($advanced?->phase_detail['current_variant'])->toBe('page-1:mild_shear');
+    $advanced->forceFill([
+        'progress_done' => 8,
+        'phase_detail' => ['stage' => 'variant_matrix', 'current_variant' => 'page-2:clean', 'state' => 'ready'],
+    ])->save();
+    $pageTwo = $service->claimVariant($run->id, 1, 'page-2:clean', (int) $advanced->optimistic_version);
+    expect($pageTwo)->not->toBeNull();
+    expect($service->completeVariant($run->id, 1, 'page-2:clean', (int) $pageTwo->optimistic_version, static function (): void {})?->phase_detail['current_variant'])->toBe('page-2:mild_shear');
 });

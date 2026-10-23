@@ -55,6 +55,11 @@ class EnrollmentStamp extends Model
         return in_array($this->stamp_type, [self::STAMP_ENROLLING, self::STAMP_ENROLLED], true);
     }
 
+    public function isEffective(): bool
+    {
+        return $this->isActive();
+    }
+
     /**
      * @return BelongsTo<AdmissionAttempt, $this>
      */

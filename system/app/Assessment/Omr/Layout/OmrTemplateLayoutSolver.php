@@ -6,10 +6,9 @@ use App\Assessment\Omr\Fiducial\OmrFiducial;
 use App\Assessment\Omr\OmrCapturePolicy;
 
 use function array_key_exists;
-use function chr;
 use function array_map;
-use function array_merge;
 use function array_values;
+use function chr;
 use function count;
 use function hash;
 use function intdiv;
@@ -30,28 +29,47 @@ use function sprintf;
 final class OmrTemplateLayoutSolver
 {
     public const SCHEMA = 'nexiam.omr.layout-blueprint.v1';
+
     public const SOLVER_VERSION = 'nexiam.omr.layout-solver.v1';
+
     public const PPI = 242;
+
     public const BUBBLE = 56;
+
     public const MARGIN = 80;
+
     public const ROW_PITCH = 80;
+
     public const MCQ4_OPTION_GAP = 66;
+
     public const COMPACT_BUBBLE = 40;
+
     public const COMPACT_MCQ4_OPTION_GAP = 52;
+
     public const IDENTITY_LABELS_GAP = 66;
+
     public const IDENTITY_BUBBLES_GAP = 60;
+
     public const FLOW_TOP = 900;
+
     public const COMPACT_FLOW_TOP = 940;
+
     public const FLOW_BOTTOM_RESERVE = 230;
+
     // Marker-bearing frame mode: the identity grid is re-derived inside the
     // fiducial-center frame (smaller vertical pitch so the 25-row flow still
     // fits the frame budget), and the bottom reserve shrinks because marker
     // profiles print no calibration/footer content below the answer frame.
     public const MARKER_FRAME_FLOW_BOTTOM_RESERVE = 180;
+
     public const MARKER_FRAME_ROW_PITCH = 76;
+
     public const MARKER_FRAME_IDENTITY_LABELS_GAP = 52;
+
     public const MARKER_FRAME_IDENTITY_BUBBLES_GAP = 46;
+
     public const MIN_COLUMN_GAP = 16;
+
     public const MIN_MARKER_SIZE = 72;
 
     /** @var array<string, array{0: int, 1: int}> */
@@ -77,9 +95,12 @@ final class OmrTemplateLayoutSolver
     ];
 
     private const IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 60, 'labelsGap' => 66, 'origin' => [200, 260]];
+
     private const IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 60, 'labelsGap' => 66, 'origin' => [1000, 260]];
+
     // Keep compact native identity grids clear of the EDQ overlay and answer flow.
     private const COMPACT_IDENTITY_APPLICANT = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['APPLICANT_NUMBER_1..10'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [200, 300]];
+
     private const COMPACT_IDENTITY_BIRTHDATE = ['fieldType' => 'QTYPE_INT', 'fieldLabels' => ['BIRTHDATE_1..6'], 'bubblesGap' => 52, 'labelsGap' => 66, 'origin' => [1000, 300]];
 
     /**
@@ -98,6 +119,7 @@ final class OmrTemplateLayoutSolver
 
     /**
      * @param  array<string, mixed>  $blueprint
+     *
      * @throws OmrTemplateLayoutException when the blueprint cannot be solved
      */
     public function solve(array $blueprint): SolvedOmrTemplateLayout

@@ -5,6 +5,10 @@ namespace App\Assessment\Actions\Omr;
 use App\Assessment\Omr\Layout\OmrTemplateLayoutSolver;
 use App\Assessment\Omr\NativeBundle;
 use App\Assessment\Omr\NativeManifestDeriver;
+use App\Assessment\Omr\OmrQrMode;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Support\MaterialOwnerAccess;
+use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrAnswerSheetTemplate;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
@@ -38,8 +42,8 @@ final class SaveAuthoredTemplateDraft
         private readonly NativeManifestDeriver $manifestDeriver,
         private readonly RecordAuditEvent $recordAuditEvent,
         private readonly SolveOmrTemplateLayout $solveLayout,
-    ) {
-    }
+        private readonly MaterialOwnerAccess $institutionAccess,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $templateJson  authored native template.json content
@@ -54,6 +58,7 @@ final class SaveAuthoredTemplateDraft
         bool $skipDuplicateCheck = false,
         ?array $layoutBlueprint = null,
     ): OmrAnswerSheetTemplateVersion {
+        $institutionId = $this->institutionAccess->institutionId($actor, CapabilityCatalog::GUIDANCE_SCORING_OMR);
         if (preg_match('/^[A-Z0-9-]{3,32}$/', $templateCode) !== 1) {
             throw new RuntimeException('Template codes must be 3–32 characters of A-Z, 0-9, or dashes.');
         }
@@ -63,9 +68,12 @@ final class SaveAuthoredTemplateDraft
         }
 
         $template = OmrAnswerSheetTemplate::query()->firstOrCreate(
-            ['code' => $templateCode],
+            ['institution_id' => $institutionId, 'code' => $templateCode],
             ['name' => $templateName, 'is_synthetic' => true],
         );
+        if (! $template->wasRecentlyCreated && ! (bool) $template->is_synthetic) {
+            throw new RuntimeException('Authored template provenance must match the existing template.');
+        }
 
         $nextVersion = ((int) $template->versions()->max('version')) + 1;
 
@@ -85,12 +93,14 @@ final class SaveAuthoredTemplateDraft
             (int) ($pageDimensions[0] ?? 2060),
             (int) ($pageDimensions[1] ?? 3144),
         ]);
-        $configHash = hash('sha256', json_encode($config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        $configBytes = json_encode($config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $configHash = hash('sha256', $configBytes);
         $templateBytes = json_encode($templateJson, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         $templateHash = hash('sha256', $templateBytes);
 
         if (! $skipDuplicateCheck) {
             $duplicate = OmrAnswerSheetTemplateVersion::query()
+                ->whereHas('template', static fn ($query) => $query->where('institution_id', $institutionId))
                 ->where('config_hash', $configHash)
                 ->where('template_json_hash', $templateHash)
                 ->exists();
@@ -99,7 +109,7 @@ final class SaveAuthoredTemplateDraft
             }
         }
 
-        $relativeDir = 'omr-bundles/'.$templateCode.'/v'.$nextVersion;
+        $relativeDir = sprintf('omr-bundles/institutions/%d/templates/%d/v%d', $institutionId, $template->id, $nextVersion);
         $disk = Storage::disk('local');
 
         $pinned = config('omr.omrchecker');
@@ -111,7 +121,7 @@ final class SaveAuthoredTemplateDraft
 
         $files = [
             'template.json' => $templateBytes,
-            'config.json' => json_encode($config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+            'config.json' => $configBytes,
         ];
 
         foreach ($pages as $index => $page) {
@@ -153,8 +163,7 @@ final class SaveAuthoredTemplateDraft
         $fileHashes['manifest.json'] = hash('sha256', $manifestBytes);
 
         try {
-            // Verify through the unchanged load path: shape, hashes, geometry.
-            $bundle = NativeBundle::load($templateCode, $nextVersion);
+            $bundle = NativeBundle::loadFromDirectory($disk->path($relativeDir), $templateCode, $nextVersion);
             $derived = $this->manifestDeriver->derive($bundle);
         } catch (Throwable $exception) {
             $disk->deleteDirectory($relativeDir);
@@ -163,7 +172,7 @@ final class SaveAuthoredTemplateDraft
         }
 
         try {
-            $version = DB::transaction(function () use ($template, $nextVersion, $bundle, $derived, $actor, $overlay, $solvedLayout, $configHash, $templateHash, $engine, $templateName, $templateCode, $pages): OmrAnswerSheetTemplateVersion {
+            $version = DB::transaction(function () use ($template, $nextVersion, $bundle, $derived, $actor, $overlay, $solvedLayout, $configHash, $templateHash, $engine, $templateCode, $pages, $relativeDir): OmrAnswerSheetTemplateVersion {
                 // Row lock + re-check: the staged version number must still be
                 // the next one. The DB unique (template_id, version) constraint
                 // is the hard backstop.
@@ -179,6 +188,9 @@ final class SaveAuthoredTemplateDraft
                     'template_id' => $template->id,
                     'version' => $nextVersion,
                     'status' => OmrAnswerSheetTemplateVersion::STATUS_DRAFT,
+                    'registration_mode' => OmrRegistrationMode::FiducialAnchored,
+                    'qr_mode' => OmrQrMode::Signed,
+                    'page_count' => count($pages),
                     'page_width' => $width,
                     'page_height' => $height,
                     'identity_regions_json' => $this->identityRegionsPayload($derived['manifest']),
@@ -189,13 +201,14 @@ final class SaveAuthoredTemplateDraft
                     'layout_blueprint_json' => $solvedLayout?->normalizedBlueprint,
                     'layout_blueprint_hash' => $solvedLayout?->blueprintHash,
                     'layout_solver_version' => $solvedLayout !== null ? OmrTemplateLayoutSolver::SOLVER_VERSION : null,
+                    'native_bundle_hash' => $bundle->bundleHash,
                     'native_bundle_json' => [
+                        'relative_dir' => $relativeDir,
                         'template' => $bundle->template,
                         'config' => $bundle->config,
                         'manifest' => $bundle->manifest,
                         'files' => $bundle->fileHashes,
                     ],
-                    'native_bundle_hash' => $bundle->bundleHash,
                     'review_manifest_json' => $derived['manifest'],
                     'review_manifest_hash' => $derived['hash'],
                     'engine_name' => $engine['name'],

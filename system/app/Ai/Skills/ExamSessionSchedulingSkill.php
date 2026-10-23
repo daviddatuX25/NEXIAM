@@ -30,6 +30,9 @@ final class ExamSessionSchedulingSkill
         return [
             'exams.sessions.list@1',
             'exams.session.show@1',
+            'exams.rooms.available@1',
+            'foundation.academic_cycles.list@1',
+            'exams.session.create@1',
             'exams.session.reservation.open@1',
             'exams.session.assign@1',
             'exams.session.publish@1',
@@ -54,16 +57,22 @@ TXT;
      */
     public static function legalTransitions(): array
     {
-        $reads = ['exams.sessions.list@1', 'exams.session.show@1'];
-        $mutators = [
+        $reads = [
+            'exams.sessions.list@1',
+            'exams.session.show@1',
+            'exams.rooms.available@1',
+            'foundation.academic_cycles.list@1',
+        ];
+        $proposals = [
+            'exams.session.create@1',
             'exams.session.reservation.open@1',
             'exams.session.assign@1',
             'exams.session.publish@1',
         ];
 
         return [
-            self::CURSOR_STARTED => $reads,
-            self::CURSOR_SESSION_LOADED => array_merge($reads, $mutators),
+            self::CURSOR_STARTED => array_merge($reads, ['exams.session.create@1']),
+            self::CURSOR_SESSION_LOADED => array_merge($reads, $proposals),
             self::CURSOR_AWAITING_CONFIRM => [], // only HTTP confirm endpoint
             self::CURSOR_DONE => $reads,
         ];

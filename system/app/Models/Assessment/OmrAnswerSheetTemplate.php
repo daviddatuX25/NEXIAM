@@ -2,16 +2,25 @@
 
 namespace App\Models\Assessment;
 
+use Database\Factories\OmrAnswerSheetTemplateFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OmrAnswerSheetTemplate extends Model
 {
+    use HasFactory;
+
+    protected static function newFactory(): OmrAnswerSheetTemplateFactory
+    {
+        return OmrAnswerSheetTemplateFactory::new();
+    }
+
     protected $table = 'omr_answer_sheet_templates';
 
     protected $attributes = ['is_synthetic' => false];
 
-    protected $fillable = ['code', 'name', 'is_synthetic'];
+    protected $fillable = ['institution_id', 'code', 'name', 'is_synthetic'];
 
     protected function casts(): array
     {

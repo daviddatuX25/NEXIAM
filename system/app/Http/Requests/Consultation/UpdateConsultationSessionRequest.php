@@ -25,6 +25,7 @@ class UpdateConsultationSessionRequest extends FormRequest
             'scheduled_at' => ['required', 'date'],
             'booking_mode' => ['required', Rule::in(ConsultationSession::BOOKING_MODES)],
             'expected_version' => ['required', 'integer'],
+            'auto_assign_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

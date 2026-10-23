@@ -11,8 +11,7 @@ final readonly class LayoutDiagnostic
         public string $code,
         public string $message,
         public array $context = [],
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

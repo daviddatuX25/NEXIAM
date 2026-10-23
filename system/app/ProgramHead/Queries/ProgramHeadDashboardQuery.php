@@ -4,7 +4,7 @@ namespace App\ProgramHead\Queries;
 
 use App\Admission\Support\QuotaReservation;
 use App\Models\Admission\AdmissionAttempt;
-use App\Models\Admission\EnrollmentStamp;
+use App\Models\Admission\AdmissionClearanceReceipt;
 use App\Models\Admission\ProgramFollowUp;
 use App\Models\Admission\ProgramSelection;
 use App\Models\Foundation\AcademicCycle;
@@ -12,6 +12,7 @@ use App\Models\Foundation\Program;
 use App\Models\Foundation\ProgramQuota;
 use App\Models\Release\ConsultationDecision;
 use App\Models\Release\ResultRelease;
+use App\Testing\PracticeWorkspace;
 
 /**
  * D-ROLE-05: program-scoped, active-cycle metric dictionary with source +
@@ -30,7 +31,7 @@ final class ProgramHeadDashboardQuery
             ->where('is_active', true)
             ->first();
 
-        $attempts = AdmissionAttempt::query()
+        $attempts = AdmissionAttempt::query()->forWorkspace()
             ->when($cycle !== null, fn ($q) => $q->where('academic_cycle_id', $cycle->id))
             ->where('status', AdmissionAttempt::STATUS_ACCEPTED)
             ->get();
@@ -67,21 +68,22 @@ final class ProgramHeadDashboardQuery
                 ->count('admission_attempt_id'),
             'guidance_pool_candidates' => count($poolCandidateIds),
             'active_reservations' => ProgramSelection::query()
+                ->whereIn('admission_attempt_id', $ids)
                 ->where('program_id', $programId)
                 ->whereIn('status', ProgramSelection::NON_TERMINAL_STATUSES)
                 ->distinct('admission_attempt_id')
                 ->count('admission_attempt_id'),
             'open_follow_ups' => ProgramFollowUp::query()
+                ->whereIn('admission_attempt_id', $ids)
                 ->where('program_id', $programId)
                 ->whereIn('status', ProgramFollowUp::OPEN_STATUSES)
                 ->count(),
-            'enrolling' => EnrollmentStamp::query()
-                ->where('stamp_type', EnrollmentStamp::STAMP_ENROLLING)
-                ->where('provisional_program_id', $programId)
-                ->count(),
-            'enrolled' => EnrollmentStamp::query()
-                ->where('stamp_type', EnrollmentStamp::STAMP_ENROLLED)
-                ->where('final_program_id', $programId)
+            'pending_review_count' => PendingProgramReviewQuery::countFor($program, $cycle?->id),
+            'ready_for_enrollment' => AdmissionAttempt::query()
+                ->whereIn('id', $ids)
+                ->whereHas('latestClearanceReceipt', fn ($query) => $query
+                    ->where('program_id', $programId)
+                    ->where('status', AdmissionClearanceReceipt::STATUS_CONFIRMED))
                 ->count(),
         ];
 
@@ -92,7 +94,7 @@ final class ProgramHeadDashboardQuery
 
         $committed = $cycle === null
             ? 0
-            : QuotaReservation::committedForCycle($cycle->id, $programId);
+            : QuotaReservation::committedForCycle($cycle->id, $programId, practiceSetId: app(PracticeWorkspace::class)->currentId());
 
         $metrics['quota'] = [
             'configured' => $quota !== null,

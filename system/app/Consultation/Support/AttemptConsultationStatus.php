@@ -14,9 +14,11 @@ final class AttemptConsultationStatus
 {
     public static function isAdvised(AdmissionAttempt $attempt): bool
     {
-        return ConsultationDecision::query()
+        $latest = ConsultationDecision::query()
             ->where('admission_attempt_id', $attempt->id)
-            ->whereIn('decision_type', ['approve', 'modify', 'override'])
-            ->exists();
+            ->orderByDesc('id')
+            ->first();
+
+        return $latest !== null && in_array($latest->decision_type, ['approve', 'modify', 'override'], true);
     }
 }

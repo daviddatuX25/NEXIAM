@@ -2,6 +2,8 @@
 
 namespace App\Models\Foundation;
 
+use App\Models\Admission\AdmissionAttemptGradeValue;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -46,15 +48,15 @@ class IntakeGradeField extends Model
     }
 
     /**
-     * @return HasMany<\App\Models\Admission\AdmissionAttemptGradeValue, $this>
+     * @return HasMany<AdmissionAttemptGradeValue, $this>
      */
     public function values(): HasMany
     {
-        return $this->hasMany(\App\Models\Admission\AdmissionAttemptGradeValue::class);
+        return $this->hasMany(AdmissionAttemptGradeValue::class);
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, self>
+     * @return Collection<int, self>
      */
     public static function activeForInstitution(int $institutionId)
     {

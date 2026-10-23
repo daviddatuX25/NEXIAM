@@ -10,8 +10,7 @@ class CommitFoundationDemo
 {
     public function __construct(
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $payload

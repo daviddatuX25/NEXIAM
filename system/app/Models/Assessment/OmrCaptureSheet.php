@@ -11,20 +11,31 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OmrCaptureSheet extends Model
 {
     public const STATUS_RECEIVED = 'received';
+
     public const STATUS_PENDING_PAGES = 'pending_pages';
+
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_NEEDS_REVIEW = 'needs_review';
+
     public const STATUS_REVIEWED = 'reviewed';
+
     public const STATUS_COMMITTED = 'committed';
+
     public const STATUS_FAILED_TERMINAL = 'failed_terminal';
 
     public const MODE_MANUAL = 'manual';
+
     public const MODE_AUTO = 'auto';
 
     public const ASSET_PENDING_WRITE = 'pending_write';
+
     public const ASSET_LIVE = 'live';
+
     public const ASSET_CLEANUP_PENDING = 'cleanup_pending';
+
     public const ASSET_INTEGRITY_FAILED = 'integrity_failed';
 
     public const UNCOMMITTED_STATUSES = [self::STATUS_RECEIVED, self::STATUS_QUEUED, self::STATUS_PROCESSING, self::STATUS_NEEDS_REVIEW, self::STATUS_REVIEWED, self::STATUS_FAILED_TERMINAL];
@@ -32,6 +43,11 @@ class OmrCaptureSheet extends Model
     protected $fillable = [
         'batch_id',
         'admission_attempt_id',
+        'booklet_set_id',
+        'observed_set_code',
+        'set_resolution_reason',
+        'set_resolved_by_user_id',
+        'set_resolved_at',
         'status',
         'expected_page_count',
         'capture_mode',
@@ -83,6 +99,7 @@ class OmrCaptureSheet extends Model
             'reviewed_json' => 'array',
             'upload_claimed_at' => 'datetime',
             'upload_claim_expires_at' => 'datetime',
+            'set_resolved_at' => 'datetime',
             'aligned_bytes' => 'integer',
             'aligned_width' => 'integer',
             'aligned_height' => 'integer',
@@ -100,6 +117,11 @@ class OmrCaptureSheet extends Model
     public function admissionAttempt(): BelongsTo
     {
         return $this->belongsTo(AdmissionAttempt::class);
+    }
+
+    public function bookletSet(): BelongsTo
+    {
+        return $this->belongsTo(OmrBookletSet::class, 'booklet_set_id');
     }
 
     public function currentProcessingRun(): BelongsTo
@@ -196,6 +218,20 @@ class OmrCaptureSheet extends Model
         $scores = $this->reviewed_json['per_area_scores'] ?? [];
 
         return is_array($scores) ? $scores : [];
+    }
+
+    public function draftScores(): array
+    {
+        $scores = $this->review_draft_json['per_area_scores'] ?? [];
+
+        return is_array($scores) ? $scores : [];
+    }
+
+    public function effectiveProvenance(): array
+    {
+        $provenance = $this->reviewed_json['provenance'] ?? ($this->review_draft_json['provenance'] ?? []);
+
+        return is_array($provenance) ? $provenance : [];
     }
 
     public function wasAbstained(): bool

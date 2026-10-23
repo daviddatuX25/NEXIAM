@@ -2,6 +2,14 @@
 
 namespace App\Assessment\Actions\Omr;
 
+use App\Assessment\Omr\Diagnostics\OmrPinnedRequestDiagnosticTarget;
+use App\Assessment\Omr\OmrCaptureAnalysisPort;
+use App\Assessment\Omr\OmrCaptureAnalysisRequest;
+use App\Assessment\Omr\OmrCaptureInput;
+use App\Assessment\Omr\OmrCapturePolicy;
+use App\Assessment\Omr\OmrCaptureResolver;
+use App\Assessment\Omr\OmrClientQuad;
+use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrDetectionIssue;
 use App\Assessment\Omr\OmrDetectionOutcome;
 use App\Assessment\Omr\OmrDetectionPort;
@@ -9,17 +17,22 @@ use App\Assessment\Omr\OmrDetectionRequest;
 use App\Assessment\Omr\OmrDetectionResult;
 use App\Assessment\Omr\OmrDetectionResultValidator;
 use App\Assessment\Omr\OmrDetectionSuccess;
-use App\Assessment\Omr\OmrDetectedItem;
 use App\Assessment\Omr\OmrInvalidDetectionOutput;
 use App\Assessment\Omr\OmrItemGeometry;
 use App\Assessment\Omr\OmrPinnedSnapshot;
+use App\Assessment\Omr\OmrPreparedCaptureEvidence;
+use App\Assessment\Omr\OmrRegistrationMode;
+use App\Assessment\Omr\OmrSourceImage;
 use App\Assessment\Omr\OmrTemplateProjectionException;
+use App\Assessment\Support\KitCompositionContext;
 use App\Authorization\CapabilityAuthorizer;
 use App\Authorization\CapabilityCatalog;
 use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Assessment\OmrCaptureSheet;
 use App\Models\Assessment\OmrCaptureSheetPage;
+use App\Models\Assessment\OmrCaptureSheetPageRevision;
 use App\Models\Assessment\OmrProcessingRun;
+use App\Models\Assessment\TestKitVersion;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Support\SensitiveAssetStore;
@@ -48,13 +61,14 @@ use function strlen;
 final class RunOmrSheetAnalysis
 {
     public function __construct(
+        private readonly OmrCaptureAnalysisPort $analysis,
         private readonly OmrDetectionPort $detector,
         private readonly OmrDetectionResultValidator $validator,
         private readonly CapabilityAuthorizer $authorizer,
         private readonly RecordAuditEvent $recordAuditEvent,
         private readonly SensitiveAssetStore $assetStore,
-    ) {
-    }
+        private readonly OmrCaptureResolver $captureResolver,
+    ) {}
 
     public function handle(int $runId): OmrProcessingRun
     {
@@ -69,9 +83,41 @@ final class RunOmrSheetAnalysis
         try {
             $this->assertAuthorized($actor, $sheet);
             $request = $this->request($run, $sheet, $page);
-            $result = $this->detector->detect($request);
+            $prepared = null;
+            if ($request->registrationMode === OmrRegistrationMode::FiducialAnchored) {
+                $prepared = $this->analysis->analyze(new OmrCaptureAnalysisRequest(
+                    capture: new OmrCaptureInput(
+                        bytes: $request->imageBytes,
+                        mime: $request->imageMime,
+                        pageNo: $request->pageNo,
+                        pageCount: 1,
+                        clientQuad: $request->clientQuad,
+                        cropPolicy: $request->cropPolicy,
+                    ),
+                    target: new OmrPinnedRequestDiagnosticTarget(
+                        $request,
+                        'grading:'.$run->run_uuid,
+                        max(1, (int) $sheet->expected_page_count),
+                    ),
+                    pageNo: $request->pageNo,
+                ));
+                $result = $prepared->providerResult;
+                $request = $prepared->detectionRequest ?? $request;
+                if ($result === null) {
+                    return $this->fail(
+                        $run->id,
+                        $claimToken,
+                        true,
+                        $prepared->code ?? 'capture_analysis_failed',
+                    );
+                }
+            } elseif ($request->registrationMode === OmrRegistrationMode::DocumentBound) {
+                $result = $this->detector->detect($request);
+            } else {
+                throw new RuntimeException('The pinned OMR version has no supported registration mode.');
+            }
         } catch (OmrTemplateProjectionException $exception) {
-            return $this->fail($run->id, $claimToken, true, $exception->errorCode);
+            return $this->fail($run->id, $claimToken, false, $exception->errorCode);
         } catch (OmrInvalidDetectionOutput) {
             return $this->fail($run->id, $claimToken, false, 'provider_output_invalid');
         } catch (Throwable) {
@@ -91,6 +137,8 @@ final class RunOmrSheetAnalysis
             $snapshot = OmrPinnedSnapshot::pin(
                 $sheet->batch->templateVersion,
                 $sheet->batch->bookletVersion,
+                $sheet->bookletSet,
+                $this->kitContextForSheet($sheet),
             );
         } catch (OmrTemplateProjectionException $exception) {
             return $this->fail($run->id, $claimToken, true, $exception->errorCode);
@@ -110,6 +158,8 @@ final class RunOmrSheetAnalysis
             $result,
             $success,
             $snapshot,
+            $prepared,
+            max(1, (int) $run->page_revision),
         );
     }
 
@@ -124,6 +174,18 @@ final class RunOmrSheetAnalysis
             $sheet = OmrCaptureSheet::query()->lockForUpdate()->find($run->sheet_id);
             $page = $this->pageFor($run, $sheet);
 
+            if (! $this->pageIsCurrent($run, $sheet, $page)) {
+                $run->forceFill([
+                    'status' => OmrProcessingRun::STATUS_SUPERSEDED,
+                    'diagnostic_code' => 'stale_page_revision',
+                    'claim_token' => null,
+                    'claim_expires_at' => null,
+                    'next_retry_at' => null,
+                ])->save();
+
+                return;
+            }
+
             $run->update([
                 'status' => OmrProcessingRun::STATUS_TERMINAL_FAILED,
                 'diagnostic_code' => $safeCode,
@@ -131,20 +193,18 @@ final class RunOmrSheetAnalysis
                 'claim_expires_at' => null,
                 'next_retry_at' => null,
             ]);
-
-            if ($sheet !== null && $this->pageIsCurrent($run, $sheet, $page)) {
-                $page->update(['status' => OmrCaptureSheetPage::STATUS_FAILED_TERMINAL]);
-                $sheet->update([
-                    'status' => OmrCaptureSheet::STATUS_FAILED_TERMINAL,
-                    'version' => (int) $sheet->version + 1,
-                    'proposal_json' => [
-                        'envelope' => OmrDetectionRequest::ENVELOPE_VERSION,
-                        'abstained' => true,
-                        'reason' => 'provider_failed',
-                        'safe_error' => $safeCode,
-                    ],
-                ]);
-            }
+            $page->update(['status' => OmrCaptureSheetPage::STATUS_FAILED_TERMINAL]);
+            $sheet->update([
+                'status' => OmrCaptureSheet::STATUS_FAILED_TERMINAL,
+                'version' => (int) $sheet->version + 1,
+                'proposal_json' => [
+                    'envelope' => OmrDetectionRequest::ENVELOPE_VERSION,
+                    'abstained' => true,
+                    'reason' => 'provider_failed',
+                    'safe_error' => $safeCode,
+                ],
+            ]);
+            $this->appendPageRevisionSnapshot($sheet, $page, $run->actor_id === null ? null : (int) $run->actor_id);
         });
     }
 
@@ -181,12 +241,13 @@ final class RunOmrSheetAnalysis
             if (! $this->pageIsCurrent($run, $sheet, $page)
                 || ! in_array($sheet->status, [OmrCaptureSheet::STATUS_QUEUED, OmrCaptureSheet::STATUS_PROCESSING], true)
                 || ! in_array($page->status, [OmrCaptureSheetPage::STATUS_QUEUED, OmrCaptureSheetPage::STATUS_PROCESSING], true)) {
-                $run->update([
-                    'status' => OmrProcessingRun::STATUS_TERMINAL_FAILED,
-                    'diagnostic_code' => 'stale_run',
+                $run->forceFill([
+                    'status' => OmrProcessingRun::STATUS_SUPERSEDED,
+                    'diagnostic_code' => 'stale_page_revision',
                     'claim_token' => null,
                     'claim_expires_at' => null,
-                ]);
+                    'next_retry_at' => null,
+                ])->save();
 
                 return null;
             }
@@ -225,28 +286,57 @@ final class RunOmrSheetAnalysis
 
     private function request(OmrProcessingRun $run, OmrCaptureSheet $sheet, OmrCaptureSheetPage|OmrCaptureSheet $page): OmrDetectionRequest
     {
-        $snapshot = OmrPinnedSnapshot::pin(
-            $sheet->batch->templateVersion,
-            $sheet->batch->bookletVersion,
-        );
+        $version = $sheet->batch->templateVersion;
+        $registrationMode = $version->registration_mode;
+        $versionId = (int) $version->getKey();
         $pageNo = (int) $run->page_no;
-        $bytes = $this->assetStore->read((string) $page->asset_path, (string) $page->asset_hmac);
-        $inputHash = hash('sha256', $bytes);
-        [$imageWidth, $imageHeight] = $this->imageDimensions($bytes);
-
-        if ($imageWidth === null || $imageHeight === null) {
-            throw new RuntimeException('The uploaded OMR page image cannot be decoded.');
+        if (! $registrationMode instanceof OmrRegistrationMode
+            || $versionId < 1
+            || $pageNo < 1
+            || $pageNo > 4
+            || $pageNo > (int) $version->page_count) {
+            throw new OmrTemplateProjectionException('registration_policy_mismatch', 'The pinned OMR version has no valid immutable registration/page identity.');
         }
+
+        $nativeBundle = is_array($version->native_bundle_json) ? $version->native_bundle_json : [];
+        $nativeTemplate = is_array($nativeBundle['template'] ?? null) ? $nativeBundle['template'] : [];
+        $nativeManifest = is_array($nativeBundle['manifest'] ?? null) ? $nativeBundle['manifest'] : [];
+        $manifestMode = $nativeManifest['registration_mode'] ?? null;
+        if (($manifestMode !== null && $manifestMode !== $registrationMode->value)
+            || ($manifestMode === null && $registrationMode !== OmrRegistrationMode::FiducialAnchored)) {
+            throw new OmrTemplateProjectionException('registration_policy_mismatch', 'The pinned OMR version registration policy does not match its native manifest.');
+        }
+        $markerMetadata = OmrCapturePolicy::markerMetadata($nativeTemplate);
+        if (($registrationMode === OmrRegistrationMode::FiducialAnchored && $markerMetadata === null)
+            || ($registrationMode === OmrRegistrationMode::DocumentBound && $markerMetadata !== null)) {
+            throw new OmrTemplateProjectionException('registration_policy_mismatch', 'The pinned OMR version marker assets do not match its explicit registration mode.');
+        }
+
+        $snapshot = OmrPinnedSnapshot::pin(
+            $version,
+            $sheet->batch->bookletVersion,
+            $sheet->bookletSet,
+            $this->kitContextForSheet($sheet),
+        );
+        $pageTemplate = $snapshot->pageTemplates[$pageNo] ?? null;
+        if (! is_array($pageTemplate)
+            || ($registrationMode === OmrRegistrationMode::DocumentBound
+                && (in_array('CropOnMarkers', (array) ($pageTemplate['preProcessors'] ?? []), true)
+                    || $snapshot->nativeAssets !== []))) {
+            throw new OmrTemplateProjectionException('registration_policy_mismatch', 'The pinned OMR page preprocessing contract conflicts with its registration mode.');
+        }
+
+        $bytes = $this->assetStore->read((string) $page->asset_path, (string) $page->asset_hmac);
+        $sourceImage = OmrSourceImage::fromBytes($bytes);
+        $inputHash = $sourceImage->inputHash;
 
         $expected = [
             'input_hash' => [$inputHash, (string) $run->input_hash],
             'native_bundle_hash' => [$snapshot->nativeBundleHash, (string) $run->native_bundle_hash],
             'manifest_hash' => [$snapshot->manifestHash, (string) $run->manifest_hash],
-            'config_hash' => [$snapshot->configHash, (string) $run->config_hash],
-            'booklet_hash' => [(string) $sheet->batch->bookletVersion->answer_key_hash, (string) $run->booklet_hash],
+            'booklet_hash' => [$snapshot->bookletHash, (string) $run->booklet_hash],
             'patch_identity' => [$snapshot->patchIdentity, (string) $run->patch_identity],
         ];
-
         foreach ($expected as $name => [$actual, $pinned]) {
             if ($actual === '' || $actual !== $pinned) {
                 throw new OmrInvalidDetectionOutput("Pinned {$name} changed before provider invocation.");
@@ -257,6 +347,20 @@ final class RunOmrSheetAnalysis
             $snapshot->items,
             static fn (OmrItemGeometry $item): bool => $item->pageNo === $pageNo,
         ));
+        $clientQuad = null;
+        if ($page->client_quad_json !== null) {
+            if ($registrationMode !== OmrRegistrationMode::DocumentBound || ! is_array($page->client_quad_json)) {
+                throw new RuntimeException('A client quad is allowed only for document-bound inference.');
+            }
+            $clientQuad = OmrClientQuad::fromArray($page->client_quad_json);
+            if (! $clientQuad->isBoundTo($sourceImage, $pageNo)) {
+                throw new RuntimeException('The stored client quad no longer matches its source page.');
+            }
+        }
+        $cropPolicy = $this->cropPolicy($page->crop_policy);
+        if ($cropPolicy === 'keep_original' && $registrationMode !== OmrRegistrationMode::DocumentBound) {
+            throw new RuntimeException('Keeping the original image is supported only for document-bound capture.');
+        }
 
         return new OmrDetectionRequest(
             envelopeVersion: OmrDetectionRequest::ENVELOPE_VERSION,
@@ -265,8 +369,8 @@ final class RunOmrSheetAnalysis
             imageBytes: $bytes,
             inputHash: $inputHash,
             imageMime: (string) $page->original_mime,
-            imageWidth: $imageWidth,
-            imageHeight: $imageHeight,
+            imageWidth: $sourceImage->width,
+            imageHeight: $sourceImage->height,
             areas: $snapshot->areas,
             items: $pageItems,
             identityRegions: $snapshot->pageIdentityRegions[$pageNo] ?? $snapshot->identityRegions,
@@ -274,18 +378,32 @@ final class RunOmrSheetAnalysis
             manifestHash: $snapshot->manifestHash,
             configHash: $snapshot->configHash,
             bookletHash: $snapshot->bookletHash,
-            nativeTemplate: $snapshot->pageTemplates[$pageNo] ?? $snapshot->nativeTemplate,
-            nativeConfig: $snapshot->nativeConfig,
-            nativeBundleMetadata: $snapshot->nativeBundleMetadata,
+            nativeTemplate: $pageTemplate,
+            nativeConfigJson: $snapshot->nativeConfigJson,
+            nativeBundleMetadata: [
+                ...$snapshot->nativeBundleMetadata,
+                'registration_mode' => $registrationMode->value,
+                'qr_mode' => $version->qr_mode->value,
+                'compiled_pages' => array_map(
+                    static fn (int $compiledPageNo): array => ['page_no' => $compiledPageNo],
+                    array_keys($snapshot->pageTemplates),
+                ),
+            ],
             reviewManifest: $snapshot->reviewManifest,
-            nativeAssets: $snapshot->nativeAssets,
             engineName: (string) $run->provider_name,
             engineCommit: $run->provider_commit !== null ? (string) $run->provider_commit : null,
             patchIdentity: $snapshot->patchIdentity,
             expectedFieldLabels: $snapshot->expectedFieldLabels,
             expectedOptionCodes: $snapshot->expectedOptionCodes,
-            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            registrationMode: $registrationMode,
+            templateVersionId: $versionId,
+            candidateTargetId: null,
+            sourceImage: $sourceImage,
             pageNo: $pageNo,
+            providerDeadline: (float) config('omr.provider.deadline_seconds', 30),
+            clientQuad: $clientQuad,
+            nativeAssets: $snapshot->nativeAssets,
+            cropPolicy: $cropPolicy,
         );
     }
 
@@ -297,26 +415,35 @@ final class RunOmrSheetAnalysis
         OmrDetectionResult $result,
         OmrDetectionSuccess $success,
         OmrPinnedSnapshot $snapshot,
+        ?OmrPreparedCaptureEvidence $prepared = null,
+        int $pageRevision = 1,
     ): OmrProcessingRun {
-        $proposal = $this->project($request, $success, $snapshot);
+        $proposal = $this->project($request, $success, $snapshot, max(1, $pageRevision));
         $alignedFields = $this->alignedFields($success);
         $alignedPath = $alignedFields['aligned_asset_path'] ?? null;
+        $discardAlignedAsset = false;
 
         try {
-            return DB::transaction(function () use ($runId, $claimToken, $actor, $request, $result, $success, $proposal, $alignedFields): OmrProcessingRun {
+            $runResult = DB::transaction(function () use ($runId, $claimToken, $actor, $request, $result, $success, $proposal, $alignedFields, $prepared, &$discardAlignedAsset): OmrProcessingRun {
                 $run = OmrProcessingRun::query()->lockForUpdate()->findOrFail($runId);
                 $sheet = OmrCaptureSheet::query()->with($this->analysisRelations())->lockForUpdate()->findOrFail($run->sheet_id);
                 $page = $this->pageFor($run, $sheet);
 
-                if (! hash_equals((string) $run->claim_token, $claimToken)
-                    || $run->status !== OmrProcessingRun::STATUS_CLAIMED
-                    || ! $this->pageIsCurrent($run, $sheet, $page)) {
-                    $run->update([
-                        'status' => OmrProcessingRun::STATUS_TERMINAL_FAILED,
-                        'diagnostic_code' => 'stale_result',
+                if ($run->status !== OmrProcessingRun::STATUS_CLAIMED
+                    || ! hash_equals((string) $run->claim_token, $claimToken)) {
+                    $discardAlignedAsset = true;
+
+                    return $run;
+                }
+                if (! $this->pageIsCurrent($run, $sheet, $page)) {
+                    $run->forceFill([
+                        'status' => OmrProcessingRun::STATUS_SUPERSEDED,
+                        'diagnostic_code' => 'stale_page_revision',
                         'claim_token' => null,
                         'claim_expires_at' => null,
-                    ]);
+                        'next_retry_at' => null,
+                    ])->save();
+                    $discardAlignedAsset = true;
 
                     return $run;
                 }
@@ -367,6 +494,7 @@ final class RunOmrSheetAnalysis
                         'issue_count' => count($success->issues),
                         'calibration_status' => $success->calibrationStatus,
                         'aligned_image_hash' => $success->alignedImage['hash'] ?? null,
+                        'prepared_capture' => $prepared?->normalize(),
                     ],
                 ]);
 
@@ -384,6 +512,9 @@ final class RunOmrSheetAnalysis
                 } else {
                     $this->maybeMerge($sheet);
                 }
+                if ($sheet->status === OmrCaptureSheet::STATUS_NEEDS_REVIEW) {
+                    $this->applyMaterialResolution($sheet);
+                }
 
                 $this->recordAuditEvent->handle('grading.omr_sheet_analyzed', [
                     'sheet_id' => $sheet->id,
@@ -395,8 +526,19 @@ final class RunOmrSheetAnalysis
                     'issue_count' => count($success->issues),
                 ], (string) $actor->id);
 
+                $this->appendPageRevisionSnapshot($sheet, $page, (int) $actor->getAuthIdentifier());
+
                 return $run;
             });
+            if ($discardAlignedAsset && $alignedPath !== null) {
+                try {
+                    $this->assetStore->delete($alignedPath);
+                } catch (Throwable) {
+                    // Best-effort cleanup of a derivative no longer referenced by the page.
+                }
+            }
+
+            return $runResult;
         } catch (Throwable $exception) {
             if ($alignedPath !== null) {
                 try {
@@ -450,6 +592,65 @@ final class RunOmrSheetAnalysis
         $this->flagInvalidBirthdate($sheet, $merged['birthdate']);
     }
 
+    private function applyMaterialResolution(OmrCaptureSheet $sheet): void
+    {
+        $freshSheet = $sheet->fresh();
+        $resolution = $this->captureResolver->resolveSheet($freshSheet, $this->kitContextForSheet($freshSheet));
+        if ($resolution->isResolved()) {
+            $resolvedAttemptId = $resolution->attempt?->id === null ? null : (int) $resolution->attempt->id;
+            $resolvedBookletSetId = $resolution->materialSet?->booklet_set_id === null
+                ? null
+                : (int) $resolution->materialSet->booklet_set_id;
+            if (($sheet->admission_attempt_id !== null
+                    && (int) $sheet->admission_attempt_id !== $resolvedAttemptId)
+                || ($sheet->booklet_set_id !== null
+                    && (int) $sheet->booklet_set_id !== $resolvedBookletSetId)) {
+                $sheet->issues()->firstOrCreate(
+                    [
+                        'page_no' => 0,
+                        'question_no' => null,
+                        'issue_code' => 'replacement_material_identity_changed',
+                        'state' => 'open',
+                    ],
+                    [
+                        'severity' => 'required',
+                        'evidence_json' => [
+                            'prior_admission_attempt_id' => $sheet->admission_attempt_id,
+                            'resolved_admission_attempt_id' => $resolvedAttemptId,
+                            'prior_booklet_set_id' => $sheet->booklet_set_id,
+                            'resolved_booklet_set_id' => $resolvedBookletSetId,
+                        ],
+                        'version' => 1,
+                    ],
+                );
+
+                return;
+            }
+            $sheet->update([
+                'admission_attempt_id' => $resolution->attempt?->id,
+                'booklet_set_id' => $resolution->materialSet?->booklet_set_id,
+                'set_resolution_reason' => 'submission_frozen_seat',
+            ]);
+
+            return;
+        }
+
+        $failure = $resolution->failure;
+        $sheet->issues()->firstOrCreate(
+            [
+                'page_no' => 0,
+                'question_no' => null,
+                'issue_code' => $failure?->code ?? 'material_unresolved',
+                'state' => 'open',
+            ],
+            [
+                'severity' => 'required',
+                'evidence_json' => $failure?->context ?? [],
+                'version' => 1,
+            ],
+        );
+    }
+
     private function flagInvalidBirthdate(OmrCaptureSheet $sheet, ?string $birthdate): void
     {
         if ($birthdate === null || $this->isValidMmDdYyyy($birthdate)) {
@@ -484,7 +685,7 @@ final class RunOmrSheetAnalysis
     }
 
     /**
-     * @param list<array<string, mixed>> $proposals
+     * @param  list<array<string, mixed>>  $proposals
      * @return array{proposal: array<string, mixed>, applicant_number: ?string, applicant_number_confidence: ?float, birthdate: ?string, sheet_confidence: ?float, identity_conflict: bool, per_page_applicant_numbers: array<string, mixed>, per_page_birthdates: array<string, mixed>}
      */
     private function mergeProposals(array $proposals): array
@@ -533,24 +734,18 @@ final class RunOmrSheetAnalysis
 
         $byArea = [];
         foreach ($items as $item) {
-            $byArea[(string) ($item['area_code'] ?? '')][] = $item;
+            $byArea[(int) ($item['area_id'] ?? 0)][] = $item;
         }
-        foreach ($byArea as $areaCode => $areaItems) {
-            $perArea[(int) $areaItems[0]['area_id']] = [
+        foreach ($byArea as $areaId => $areaItems) {
+            $perArea[$areaId] = [
                 'score' => count(array_filter($areaItems, fn (array $item): bool => (int) ($item['score'] ?? 0) === 1)),
-                'confidence' => $this->averageConfidence(array_map(
-                    fn (array $item): OmrDetectedItem => new OmrDetectedItem(
-                        position: (int) $item['position'],
-                        areaCode: (string) $item['area_code'],
-                        questionNo: (int) $item['question_no'],
-                        selectedOption: $item['detected_answer'] ?? null,
-                        state: (string) $item['state'],
-                        confidence: $item['confidence'] ?? null,
-                        region: \App\Assessment\Omr\OmrRegion::fromArray((array) $item['region']),
-                    ),
+                'confidence' => $this->averageConfidenceValues(array_map(
+                    static fn (array $item): ?float => isset($item['confidence'])
+                        ? (float) $item['confidence']
+                        : null,
                     $areaItems,
                 )),
-                'area_code' => $areaCode,
+                'area_code' => (string) ($areaItems[0]['area_code'] ?? ''),
             ];
         }
 
@@ -603,9 +798,31 @@ final class RunOmrSheetAnalysis
                 return $run;
             }
 
-            $current = $this->pageIsCurrent($run, $sheet, $page);
+            if (! $this->pageIsCurrent($run, $sheet, $page)) {
+                $run->forceFill([
+                    'status' => OmrProcessingRun::STATUS_SUPERSEDED,
+                    'diagnostic_code' => 'stale_page_revision',
+                    'claim_token' => null,
+                    'claim_expires_at' => null,
+                    'next_retry_at' => null,
+                    'duration_ms' => $result?->timings !== null ? (int) round($result->timings->detectionMs) : null,
+                    'timings_json' => $result?->timings !== null ? [
+                        'detection_ms' => $result->timings->detectionMs,
+                        'preprocess_ms' => $result->timings->preprocessMs,
+                    ] : null,
+                    'output_json' => [
+                        'outcome' => $result?->outcome->value ?? 'superseded',
+                        'superseded' => true,
+                    ],
+                ])->save();
+
+                return $run;
+            }
+
+            $current = true;
+
             $exhausted = (int) $run->attempts >= (int) config('omr.retry.tries', 3);
-            $willRetry = $retryable && ! $exhausted && $current;
+            $willRetry = $retryable && ! $exhausted;
 
             $run->update([
                 'status' => $willRetry
@@ -642,6 +859,7 @@ final class RunOmrSheetAnalysis
                     ]);
                 }
             }
+            $this->appendPageRevisionSnapshot($sheet, $page, $run->actor_id === null ? null : (int) $run->actor_id);
 
             $this->recordAuditEvent->handle('grading.omr_sheet_analysis_failed', [
                 'sheet_id' => $sheet->id,
@@ -680,6 +898,11 @@ final class RunOmrSheetAnalysis
                 'safe_error' => $code,
             ],
         ]);
+        $this->appendPageRevisionSnapshot(
+            $sheet,
+            $page,
+            $run->actor_id === null ? null : (int) $run->actor_id,
+        );
     }
 
     /** @param array<string, mixed> $snapshotReviewManifest */
@@ -710,10 +933,44 @@ final class RunOmrSheetAnalysis
         return $page;
     }
 
+    private function appendPageRevisionSnapshot(
+        OmrCaptureSheet $sheet,
+        OmrCaptureSheetPage|OmrCaptureSheet $page,
+        ?int $actorUserId,
+    ): void {
+        if (! $page instanceof OmrCaptureSheetPage) {
+            return;
+        }
+
+        $page->setRelation('sheet', $sheet);
+        $sourceRevisionId = $page->current_revision_id === null
+            ? null
+            : (int) $page->current_revision_id;
+        if ($sourceRevisionId === null && (int) $page->current_revision !== 1) {
+            throw new RuntimeException('omr_page_revision_history_missing');
+        }
+
+        $revision = OmrCaptureSheetPageRevision::capture(
+            $page,
+            $sourceRevisionId === null
+                ? OmrCaptureSheetPageRevision::KIND_SOURCE
+                : OmrCaptureSheetPageRevision::KIND_ANALYSIS,
+            sourceRevisionId: $sourceRevisionId,
+            actorUserId: $actorUserId,
+        );
+        $page->forceFill(['current_revision_id' => $revision->getKey()])->save();
+    }
+
     private function pageIsCurrent(OmrProcessingRun $run, OmrCaptureSheet $sheet, OmrCaptureSheetPage|OmrCaptureSheet $page): bool
     {
-        return (int) $page->current_processing_run_id === (int) $run->id
-            && (int) $sheet->version === (int) $run->expected_sheet_version;
+        if ((int) $page->current_processing_run_id !== (int) $run->id
+            || (int) $sheet->version !== (int) $run->expected_sheet_version) {
+            return false;
+        }
+
+        return $page instanceof OmrCaptureSheet
+            ? (int) $run->page_revision === 1
+            : (int) $run->page_revision === (int) $page->current_revision;
     }
 
     private function setPageProcessing(OmrCaptureSheetPage|OmrCaptureSheet $page, OmrProcessingRun $run): void
@@ -750,15 +1007,45 @@ final class RunOmrSheetAnalysis
         }
     }
 
+    /** @return array<string, mixed>|null */
+    private function kitContextForSheet(OmrCaptureSheet $sheet): ?array
+    {
+        $sheet->loadMissing('batch.gradingSession.examSession.currentMaterialSnapshot.testKitVersion');
+        $materialSnapshot = $sheet->batch->gradingSession?->examSession?->currentMaterialSnapshot;
+        if ($materialSnapshot === null || $materialSnapshot->test_kit_version_id === null) {
+            return null;
+        }
+
+        $kitVersion = $materialSnapshot->testKitVersion;
+        if (! $kitVersion instanceof TestKitVersion
+            || (int) $kitVersion->id !== (int) $materialSnapshot->test_kit_version_id) {
+            throw new OmrTemplateProjectionException(
+                'pair_geometry_coverage_mismatch',
+                'The frozen Test Kit version for this OMR sitting is unavailable.',
+            );
+        }
+        $context = app(KitCompositionContext::class)->resolveVersion($kitVersion);
+        if ((int) $context['test_kit_version_id'] !== (int) $materialSnapshot->test_kit_version_id
+            || (string) $context['manifest_sha256'] !== (string) $materialSnapshot->manifest_sha256
+            || (int) $context['template_version_id'] !== (int) $materialSnapshot->template_version_id
+            || (int) $context['booklet_version_id'] !== (int) $materialSnapshot->booklet_version_id
+            || (int) $context['test_instrument_version_id'] !== (int) $materialSnapshot->test_instrument_version_id
+            || (int) ($context['version']->selected_acceptance_receipt_id ?? 0) !== (int) $materialSnapshot->acceptance_receipt_id) {
+            throw new OmrTemplateProjectionException(
+                'pair_geometry_coverage_mismatch',
+                'The frozen Test Kit composition does not match the material snapshot.',
+            );
+        }
+
+        return $context;
+    }
+
     /** @return list<string> */
     private function analysisRelations(): array
     {
         return [
             'batch.gradingSession.examSession.academicCycle',
             'batch.templateVersion.areas.aptitudeArea',
-            'batch.templateVersion.areas.questions.options',
-            'batch.bookletVersion.questions.templateQuestion',
-            'batch.bookletVersion.questions.templateQuestion.options',
             'batch.bookletVersion.questions.aptitudeArea',
             'admissionAttempt',
             'pages',
@@ -770,25 +1057,34 @@ final class RunOmrSheetAnalysis
         OmrDetectionRequest $request,
         OmrDetectionSuccess $success,
         OmrPinnedSnapshot $snapshot,
+        int $pageRevision,
     ): array {
         if ($this->hasRequiredMisalignment($success)) {
             return $this->misalignedProposal($request, $success);
         }
 
-        $items = array_map(function (OmrDetectedItem $item) use ($snapshot): array {
+        $items = array_map(function (OmrDetectedItem $item) use ($snapshot, $request, $pageRevision): array {
             $correctOption = $snapshot->correctOptionsByPosition[$item->position] ?? null;
             $score = $item->selectedOption !== null && $correctOption !== null && $item->selectedOption === $correctOption ? 1 : 0;
 
             return [
                 'position' => $item->position,
                 'area_code' => $item->areaCode,
-                'area_id' => $snapshot->areaIdsByCode[$item->areaCode] ?? null,
+                'area_id' => $snapshot->formalSubtestIdsByPosition[$item->position] ?? ($snapshot->areaIdsByCode[$item->areaCode] ?? null),
                 'question_no' => $item->questionNo,
                 'detected_answer' => $item->selectedOption,
                 'correct_option_code' => $correctOption,
                 'state' => $item->state,
                 'confidence' => $item->confidence,
                 'region' => $item->region->toArray(),
+                'observed_options' => $item->observedOptions,
+                'option_observations' => array_map(
+                    static fn ($observation): array => $observation->toArray(),
+                    $item->optionObservations,
+                ),
+                'issue_codes' => $item->issueCodes,
+                'legacy_evidence_limited' => $item->legacyEvidenceLimited,
+                'evidence_hash' => hash('sha256', $item->evidenceHash."\0".$request->inputHash."\0".$pageRevision),
                 'score' => $score,
             ];
         }, $success->items);
@@ -954,6 +1250,20 @@ final class RunOmrSheetAnalysis
     }
 
     /** @param list<?float> $confidences */
+    private function averageConfidenceValues(array $confidences): ?float
+    {
+        $sum = 0.0;
+        foreach ($confidences as $confidence) {
+            if ($confidence === null) {
+                return null;
+            }
+            $sum += $confidence;
+        }
+
+        return $confidences === [] ? null : round($sum / count($confidences), 4);
+    }
+
+    /** @param list<?float> $confidences */
     private function minConfidence(array $confidences): ?float
     {
         $values = array_values(array_filter($confidences, fn ($value): bool => $value !== null));
@@ -971,6 +1281,16 @@ final class RunOmrSheetAnalysis
         }
 
         return [(int) $info[0], (int) $info[1]];
+    }
+
+    private function cropPolicy(?string $cropPolicy): string
+    {
+        $cropPolicy ??= 'auto_document_quad';
+        if (! in_array($cropPolicy, ['auto_document_quad', 'keep_original'], true)) {
+            throw new RuntimeException('The stored OMR crop policy is unsupported.');
+        }
+
+        return $cropPolicy;
     }
 
     private function backoffFor(int $attempts): int

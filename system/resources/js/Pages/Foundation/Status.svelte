@@ -125,6 +125,27 @@
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <Badge class="border-blue-400/30 bg-blue-400/10 px-3 py-1.5 text-blue-300">{foundation.phase}</Badge>
+        <a
+          href="/capstone/prototype"
+          class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3.5 py-2 text-sm font-semibold text-sky-300 transition hover:border-sky-400 hover:bg-sky-500/20"
+        >
+          <span>Interactive Prototype</span>
+          <span>→</span>
+        </a>
+        <a
+          href="/capstone/office-guide"
+          class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-sm font-semibold text-emerald-300 transition hover:border-emerald-400 hover:bg-emerald-500/20"
+        >
+          <span>Office Field Guide</span>
+          <span>→</span>
+        </a>
+        <a
+          href="/capstone/demo-guide"
+          class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3.5 py-2 text-sm font-semibold text-blue-300 transition hover:border-blue-400 hover:bg-blue-500/20"
+        >
+          <span>Master Demo Guide</span>
+          <span>→</span>
+        </a>
         <button
           type="button"
           class="min-h-10 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
@@ -242,7 +263,7 @@
       <p>{foundation.legacyReference}</p>
       <div class="flex flex-wrap gap-2">
         <a class="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800" href="/capstone-interview-guide.html">Interview guide</a>
-        <a class="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800" href="/foundation/client-brief">Client brief</a>
+        <a class="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800" href="/capstone/client-brief">Client brief</a>
         <a class="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800" href="/capstone-manuscript-brief.html">Manuscript brief</a>
         <a class="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800" href="/capstone-wireframe-review.html">Wireframe review</a>
         <a class="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800" href="/ui-kit">UI kit</a>

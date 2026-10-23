@@ -1,14 +1,23 @@
 <?php
 
-use App\Models\Assessment\GradingSession;
+use App\Assessment\Actions\RecordScores;
+use App\Authorization\CapabilityCatalog;
+use App\Examination\Actions\CreateDirectAssessmentCohort;
 use App\Models\Consultation\ConsultationAssignment;
 use App\Models\Consultation\ConsultationSession;
-use App\Models\Examination\ExamAssignment;
-use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
+use App\Models\Foundation\Institution;
 use App\Models\Foundation\Room;
-use App\Models\Release\ResultDocument;
 use App\Models\User;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+require_once __DIR__.'/../../Support/TestKitHelpers.php';
+require_once __DIR__.'/../../Support/NormConversionFixtures.php';
+
+beforeEach(function (): void {
+    $this->withoutVite();
+});
 
 function acceptConsultationApplicant(string $email, string $lastName = 'Applicant'): array
 {
@@ -62,43 +71,49 @@ function createConsultationDraftSession(
     return ConsultationSession::query()->where('code', $code)->firstOrFail();
 }
 
-function makeConsultationResultReady(array $result): void
+function recordCompleteConsultationScoring(TestCase $test, array $result): void
 {
-    $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
-    $room = Room::query()->where('code', 'RM-101')->firstOrFail();
+    static $scoringFixtures;
+    $scoringFixtures ??= new WeakMap;
 
-    $examSession = ExamSession::query()->create([
-        'academic_cycle_id' => $cycle->id,
-        'room_id' => $room->id,
-        'code' => 'EX-RDY-'.str_replace('.', '', uniqid('', true)),
-        'status' => ExamSession::STATUS_COMPLETED,
-        'starts_at' => now()->subDays(5),
-        'effective_end_at' => now()->subDays(5)->addHours(2),
-        'closed_at' => now()->subDays(5),
-    ]);
+    $attempt = $result['attempt'];
+    $guidance = consultationGuidanceUser();
+    if (! isset($scoringFixtures[$test])) {
+        $guidance->givePermissionTo([
+            CapabilityCatalog::GUIDANCE_ASSESSMENT_CATALOG,
+            CapabilityCatalog::GUIDANCE_EXAM_SCHEDULE,
+            CapabilityCatalog::GUIDANCE_SCORING_MANUAL,
+        ]);
+        $profile = createTestApprovedProfileVersion($test, $guidance, 'CONSULTATION-FLOW-'.Str::upper(Str::random(10)));
+        $scoringFixtures[$test] = [
+            'kit_version' => createTestActiveKitVersion($guidance, $profile),
+        ];
+    }
 
-    ExamAssignment::query()->create([
-        'exam_session_id' => $examSession->id,
-        'admission_attempt_id' => $result['attempt']->id,
-        'status' => ExamAssignment::STATUS_ASSIGNED,
-        'source' => ExamAssignment::SOURCE_STAFF_ASSIGNED,
-    ]);
-
-    GradingSession::query()->create([
-        'exam_session_id' => $examSession->id,
-        'status' => GradingSession::STATUS_FINALIZED,
-        'opened_at' => now()->subDays(4),
-        'finalized_at' => now()->subDays(3),
-    ]);
-
-    ResultDocument::query()->create([
-        'admission_attempt_id' => $result['attempt']->id,
-        'template_version' => 'e2-v1',
-        'checksum' => hash('sha256', 'doc-'.$result['attempt']->id),
-        'status' => ResultDocument::STATUS_READY,
-        'storage_path' => 'results/test-'.$result['attempt']->id.'.html',
-        'preview_path' => 'results/test-'.$result['attempt']->id.'.html',
-    ]);
+    $cycle = AcademicCycle::query()->findOrFail($attempt->academic_cycle_id);
+    $assessment = app(CreateDirectAssessmentCohort::class)->handle(
+        cycle: $cycle,
+        attemptIds: [(int) $attempt->id],
+        actor: $guidance,
+        label: 'Consultation individual scoring '.$attempt->reference_code,
+        kitVersion: $scoringFixtures[$test]['kit_version'],
+    );
+    app(RecordScores::class)->handle(
+        gradingSession: $assessment['grading_session'],
+        attempt: $attempt,
+        scores: [[
+            'metric_code' => 'RAW_A',
+            'typed_outputs' => [
+                'percentile_rank' => '82',
+                'stanine' => '7',
+            ],
+            'external_provenance' => 'Synthetic software-test external final; no institutional result claim.',
+        ]],
+        actor: $guidance,
+        idempotencyKey: 'consultation-flow-individual-score-'.$attempt->id,
+        scoringMode: 'manual_converted',
+        testKitVersionId: (int) $scoringFixtures[$test]['kit_version']->id,
+    );
 }
 
 function publishConsultationSession(User $guidance, ConsultationSession $session): ConsultationSession
@@ -135,7 +150,7 @@ test('create requires an explicit booking mode; both modes are legal', function 
         ->toBe(ConsultationSession::BOOKING_OPEN_FOR_RESERVATION);
 });
 
-test('assign is blocked until the attempt is result-ready, then allowed', function (): void {
+test('assign is blocked until individual scoring is complete, then allowed', function (): void {
     seedE2Foundation();
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-GATE-1');
@@ -147,7 +162,7 @@ test('assign is blocked until the attempt is result-ready, then allowed', functi
         ])
         ->assertSessionHasErrors('assign');
 
-    makeConsultationResultReady($result);
+    recordCompleteConsultationScoring($this, $result);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), [
@@ -164,7 +179,7 @@ test('publish requires at least one assignment; lifecycle runs publish/unpublish
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-LC-1');
     $result = acceptConsultationApplicant('cons-lc@example.test', 'Life');
-    makeConsultationResultReady($result);
+    recordCompleteConsultationScoring($this, $result);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.publish', $session), ['expected_version' => $session->version])
@@ -199,13 +214,13 @@ test('open reservation lets applicant reserve into assignment; close blocks new 
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-RES-1');
     $filler = acceptConsultationApplicant('cons-res-filler@example.test', 'Filler');
-    makeConsultationResultReady($filler);
+    recordCompleteConsultationScoring($this, $filler);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), ['admission_attempt_id' => $filler['attempt']->id])
         ->assertRedirect();
 
-    $session = publishConsultationSession($guidance, $session);
+    $session->refresh();
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.reservation.open', $session), ['expected_version' => $session->version])
@@ -213,27 +228,38 @@ test('open reservation lets applicant reserve into assignment; close blocks new 
     expect($session->fresh()->booking_mode)->toBe(ConsultationSession::BOOKING_OPEN_FOR_RESERVATION);
 
     $result = acceptConsultationApplicant('cons-res@example.test', 'Reserve');
-    makeConsultationResultReady($result);
+    recordCompleteConsultationScoring($this, $result);
 
     loginConsultationApplicant($result);
+    expect(route('applicant.consultation', [], false))->toBe('/applicant/release-schedule')
+        ->and(route('applicant.consultation.reserve', [], false))->toBe('/applicant/release-schedule/reserve');
     $this->get(route('applicant.consultation'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Applicant/Consultation')
+            ->component('Applicant/ReleaseSchedule')
             ->where('page_state', 'booking_open')
-            ->where('sessions.0.code', 'CONS-RES-1'));
+            ->where('sessions.0.code', 'CONS-RES-1')
+            ->has('calendar_days'));
 
     $this->post(route('applicant.consultation.reserve'), [
         'consultation_session_id' => $session->id,
         'admission_attempt_id' => $result['attempt']->id,
         'idempotency_key' => 'cons-res-'.$result['attempt']->id.'-'.$session->id,
-    ])->assertRedirect(route('applicant.consultation'));
+    ])->assertRedirect('/applicant/release-schedule');
+
+    expect(ConsultationAssignment::query()
+        ->active()
+        ->where('admission_attempt_id', $result['attempt']->id)
+        ->firstOrFail()
+        ->origin)->toBe(ConsultationAssignment::ORIGIN_RESERVATION);
 
     $this->get(route('applicant.consultation'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('page_state', 'assigned_or_reserved')
-            ->where('assignment.source', ConsultationAssignment::SOURCE_APPLICANT_RESERVED));
+            ->where('assignment.source', ConsultationAssignment::SOURCE_APPLICANT_RESERVED)
+            ->where('assignment.session.status', ConsultationSession::STATUS_DRAFT)
+            ->where('assignment.session.published', false));
 
     $this->post(route('logout'));
 
@@ -243,7 +269,7 @@ test('open reservation lets applicant reserve into assignment; close blocks new 
         ->assertRedirect();
 
     $other = acceptConsultationApplicant('cons-blocked@example.test', 'Blocked');
-    makeConsultationResultReady($other);
+    recordCompleteConsultationScoring($this, $other);
     loginConsultationApplicant($other);
     $this->post(route('applicant.consultation.reserve'), [
         'consultation_session_id' => $session->id,
@@ -251,16 +277,18 @@ test('open reservation lets applicant reserve into assignment; close blocks new 
     ])->assertSessionHasErrors('reserve');
 });
 
-test('reserve requires a published session even when booking is open', function (): void {
+test('reserve rejects a published session even when booking is open', function (): void {
     seedE2Foundation();
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-UNPUB-1');
     $result = acceptConsultationApplicant('cons-unpub@example.test', 'Unpub');
-    makeConsultationResultReady($result);
+    recordCompleteConsultationScoring($this, $result);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.reservation.open', $session), ['expected_version' => $session->version])
         ->assertRedirect();
+
+    $session->update(['status' => ConsultationSession::STATUS_PUBLISHED]);
 
     loginConsultationApplicant($result);
     $this->post(route('applicant.consultation.reserve'), [
@@ -283,8 +311,8 @@ test('capacity denies reserve when session is full; staff assignment denied too'
     $session = createConsultationDraftSession($guidance, 'CONS-CAP-1', $room);
     $a = acceptConsultationApplicant('cons-cap-a@example.test', 'CapA');
     $b = acceptConsultationApplicant('cons-cap-b@example.test', 'CapB');
-    makeConsultationResultReady($a);
-    makeConsultationResultReady($b);
+    recordCompleteConsultationScoring($this, $a);
+    recordCompleteConsultationScoring($this, $b);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), ['admission_attempt_id' => $a['attempt']->id])
@@ -326,7 +354,7 @@ test('staff cannot silently overwrite an active assignment', function (): void {
     $session = createConsultationDraftSession($guidance, 'CONS-MOVE-1');
     $otherSession = createConsultationDraftSession($guidance, 'CONS-MOVE-2', daysAhead: 11);
     $a = acceptConsultationApplicant('cons-move-a@example.test', 'MoveA');
-    makeConsultationResultReady($a);
+    recordCompleteConsultationScoring($this, $a);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), ['admission_attempt_id' => $a['attempt']->id])
@@ -359,6 +387,24 @@ test('open reservation locks draft schedule edits until closed', function (): vo
         ->assertSessionHasErrors('schedule');
 });
 
+test('Release Day create page provides suggestions only for offered institution cycles', function (): void {
+    seedE2Foundation();
+    $guidance = consultationGuidanceUser();
+    $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
+    ConsultationSession::factory()->for($cycle, 'academicCycle')->create([
+        'code' => 'Release-07',
+        'status' => ConsultationSession::STATUS_CANCELLED,
+    ]);
+
+    $this->actingAs($guidance)
+        ->get(route('consultation.sessions.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Consultation/ConsultationSessionCreate')
+            ->where('session_code_suggestions.'.$cycle->id, 'Release-08')
+        );
+});
+
 test('capability deny: staff without PLAN cannot manage consultation sessions', function (): void {
     seedE2Foundation();
     $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
@@ -382,13 +428,104 @@ test('capability deny: staff without PLAN cannot manage consultation sessions', 
         ->assertForbidden();
 });
 
-test('ready pool lists result-ready applicants only', function (): void {
+test('auto-assign toggle requires the consultation planning capability', function (): void {
+    seedE2Foundation();
+    $institution = Institution::query()->where('code', 'SYN-INST-001')->firstOrFail();
+    $session = createConsultationDraftSession(consultationGuidanceUser(), 'CONS-TOGGLE-RELEASE-ONLY');
+    $releaseOnly = User::factory()->create();
+    $releaseOnly->staffProfile()->create([
+        'institution_id' => $institution->id,
+        'office' => 'guidance',
+        'department_id' => null,
+        'program_codes' => [],
+    ]);
+    $releaseOnly->givePermissionTo(CapabilityCatalog::GUIDANCE_RESULTS_RELEASE);
+
+    $releaseOnly->authenticationState()->create([
+        'activation_completed_at' => now(),
+        'password_set_at' => now(),
+        'must_change_password' => false,
+        'mfa_required' => false,
+        'two_factor_generation' => (string) Str::uuid(),
+    ]);
+    $this->actingAs($releaseOnly)
+        ->withSession([
+            'auth.surface' => 'staff',
+            'auth.session_version' => (int) $releaseOnly->authenticationState->session_version,
+        ])
+        ->patch(route('consultation.sessions.toggle-auto-assign', $session), [
+            'auto_assign_enabled' => true,
+        ])
+        ->assertForbidden();
+
+    expect($session->fresh()->auto_assign_enabled)->toBeFalse();
+});
+
+test('consultation session routes hide sessions from another institution', function (): void {
+    seedE2Foundation();
+    $guidance = consultationGuidanceUser();
+    $foreignInstitution = Institution::query()->create([
+        'code' => 'FOR-CONS-SESSION',
+        'name' => 'Foreign Consultation University',
+        'slug' => 'foreign-consultation-session-university',
+        'is_active' => true,
+    ]);
+    $foreignCycle = AcademicCycle::query()->create([
+        'institution_id' => $foreignInstitution->id,
+        'code' => 'FOR-CONS-SESSION-CYCLE',
+        'name' => 'Foreign Consultation Cycle',
+        'opens_on' => '2026-01-01',
+        'closes_on' => '2026-12-31',
+        'school_year' => '2026-2027',
+        'semester' => '1',
+        'is_active' => true,
+    ]);
+    $foreignRoom = Room::factory()->create(['institution_id' => $foreignInstitution->id]);
+    $foreignSession = ConsultationSession::factory()->create([
+        'academic_cycle_id' => $foreignCycle->id,
+        'room_id' => $foreignRoom->id,
+    ]);
+
+    $this->actingAs($guidance)
+        ->get(route('consultation.sessions.show', $foreignSession))
+        ->assertNotFound();
+
+    $this->get(route('consultation.sessions.edit', $foreignSession))
+        ->assertNotFound();
+
+    $this->patch(route('consultation.sessions.toggle-auto-assign', $foreignSession), [
+        'auto_assign_enabled' => true,
+    ])->assertNotFound();
+
+    $this->put(route('consultation.sessions.update', $foreignSession), [
+        'academic_cycle_id' => $foreignCycle->id,
+        'room_id' => $foreignRoom->id,
+        'code' => $foreignSession->code,
+        'scheduled_at' => now()->addDays(10)->format('Y-m-d H:i:s'),
+        'booking_mode' => ConsultationSession::BOOKING_STAFF_ONLY,
+        'expected_version' => $foreignSession->version,
+    ])->assertNotFound();
+
+    $this->post(route('consultation.sessions.bulk-publish'), [
+        'session_ids' => [$foreignSession->id],
+    ])->assertNotFound();
+
+    $this->post(route('consultation.sessions.store'), [
+        'academic_cycle_id' => $foreignCycle->id,
+        'room_id' => $foreignRoom->id,
+        'code' => 'CONS-FOREIGN-STORE',
+        'scheduled_at' => now()->addDays(10)->format('Y-m-d H:i:s'),
+        'booking_mode' => ConsultationSession::BOOKING_STAFF_ONLY,
+    ])->assertNotFound();
+});
+
+test('ready pool lists individually scored applicants without requiring documents', function (): void {
     seedE2Foundation();
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-POOL-1');
     $ready = acceptConsultationApplicant('cons-pool-ready@example.test', 'Ready');
     acceptConsultationApplicant('cons-pool-not@example.test', 'NotReady');
-    makeConsultationResultReady($ready);
+    recordCompleteConsultationScoring($this, $ready);
 
     $this->actingAs($guidance)
         ->get(route('consultation.sessions.show', $session))
@@ -405,7 +542,7 @@ test('reassign moves a seat to another session and keeps history', function (): 
     $from = createConsultationDraftSession($guidance, 'CONS-RE-1');
     $to = createConsultationDraftSession($guidance, 'CONS-RE-2', daysAhead: 11);
     $a = acceptConsultationApplicant('cons-re-a@example.test', 'ReA');
-    makeConsultationResultReady($a);
+    recordCompleteConsultationScoring($this, $a);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $from), ['admission_attempt_id' => $a['attempt']->id])
@@ -434,7 +571,7 @@ test('cancel session is terminal and cancels active assignments', function (): v
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-CANCEL-1');
     $a = acceptConsultationApplicant('cons-cancel-a@example.test', 'CancelA');
-    makeConsultationResultReady($a);
+    recordCompleteConsultationScoring($this, $a);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), ['admission_attempt_id' => $a['attempt']->id])
@@ -457,13 +594,13 @@ test('idempotent reserve reuses the existing assignment', function (): void {
     $guidance = consultationGuidanceUser();
     $session = createConsultationDraftSession($guidance, 'CONS-IDEM-1');
     $result = acceptConsultationApplicant('cons-idem@example.test', 'Idem');
-    makeConsultationResultReady($result);
+    recordCompleteConsultationScoring($this, $result);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), ['admission_attempt_id' => $result['attempt']->id])
         ->assertRedirect();
 
-    $session = publishConsultationSession($guidance, $session);
+    $session->refresh();
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.reservation.open', $session), ['expected_version' => $session->version])
         ->assertRedirect();
@@ -482,7 +619,7 @@ test('idempotent reserve reuses the existing assignment', function (): void {
         ->toBe(ConsultationAssignment::SOURCE_STAFF_ASSIGNED);
 });
 
-test('portal shows not_result_ready until grading and document are ready', function (): void {
+test('portal blocks appointment scheduling until individual scoring is complete', function (): void {
     seedE2Foundation();
     $result = acceptConsultationApplicant('cons-portal-notready@example.test', 'NotReady');
 
@@ -490,20 +627,20 @@ test('portal shows not_result_ready until grading and document are ready', funct
     $this->get(route('applicant.consultation'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Applicant/Consultation')
+            ->component('Applicant/ReleaseSchedule')
             ->where('page_state', 'not_result_ready'));
 });
 
 test('portal shows no_open_sessions when nothing is published and open', function (): void {
     seedE2Foundation();
     $result = acceptConsultationApplicant('cons-portal-closed@example.test', 'Closed');
-    makeConsultationResultReady($result);
+    recordCompleteConsultationScoring($this, $result);
 
     loginConsultationApplicant($result);
     $this->get(route('applicant.consultation'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Applicant/Consultation')
+            ->component('Applicant/ReleaseSchedule')
             ->where('page_state', 'no_open_sessions'));
 });
 
@@ -515,7 +652,7 @@ test('portal denies a staff account without an applicant identity', function ():
         ->get(route('applicant.consultation'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Applicant/Consultation')
+            ->component('Applicant/ReleaseSchedule')
             ->where('page_state', 'denied'));
 });
 
@@ -525,7 +662,7 @@ test('reserve denies an attempt that is not the applicants own', function (): vo
     $session = createConsultationDraftSession($guidance, 'CONS-OWN-1');
     $owner = acceptConsultationApplicant('cons-own-a@example.test', 'OwnA');
     $other = acceptConsultationApplicant('cons-own-b@example.test', 'OwnB');
-    makeConsultationResultReady($owner);
+    recordCompleteConsultationScoring($this, $owner);
 
     $this->actingAs($guidance)
         ->post(route('consultation.sessions.assign', $session), ['admission_attempt_id' => $owner['attempt']->id])

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands\Assessment;
 
-use App\Assessment\Omr\Canonical\OmrPageDimensionMath;
 use App\Assessment\Omr\Canonical\OmrPresetSourceAdapter;
 use App\Assessment\Omr\NativeBundle;
 use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
@@ -115,8 +114,8 @@ final class OmrCanonicalParityCommand extends Command
 
         $tempT = tempnam(sys_get_temp_dir(), 'nexiam-parity-t-');
         $tempPdf = tempnam(sys_get_temp_dir(), 'nexiam-parity-pdf-');
-        $templatePath = $tempT . '.json';
-        $pdfPath = $tempPdf . '.pdf';
+        $templatePath = $tempT.'.json';
+        $pdfPath = $tempPdf.'.pdf';
         rename((string) $tempT, $templatePath);
         rename((string) $tempPdf, $pdfPath);
         file_put_contents($templatePath, json_encode($bundleTemplate, JSON_THROW_ON_ERROR));

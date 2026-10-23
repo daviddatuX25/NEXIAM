@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Assessment\OmrCaptureBatch;
 use App\Models\Assessment\OmrCaptureSheet;
+use Illuminate\Support\Str;
 
 /**
  * Opt-in multi-state OMR batch fixture for capture-surface testing.
@@ -38,6 +40,37 @@ class OmrDemoMultiStateBatchSeeder extends OmrDemoBatchSeeder
             $this->createFailedSheet($ctx, $batch);
         }
 
-        $this->command?->info(sprintf('OMR demo batch #%d multi-state: needs-review, incomplete, and failed sheets present.', $batch->id));
+        if (! $batch->sheets()->where('client_capture_id', 'like', 'omr-demo-dup-%')->exists()
+            && $batch->sheets()->where('status', OmrCaptureSheet::STATUS_NEEDS_REVIEW)->exists()) {
+            $this->createDuplicateSheet($ctx, $batch);
+        }
+
+        $this->command?->info(sprintf('OMR demo batch #%d multi-state: needs-review, incomplete, failed, and duplicate sheets present.', $batch->id));
+    }
+
+    protected function createDuplicateSheet(array $ctx, OmrCaptureBatch $batch): void
+    {
+        $needsReview = $batch->sheets()->where('status', OmrCaptureSheet::STATUS_NEEDS_REVIEW)->first();
+        if ($needsReview === null) {
+            return;
+        }
+
+        $dupCaptureId = 'omr-demo-dup-'.$batch->id.'-'.Str::uuid();
+        $dupSheet = OmrCaptureSheet::query()->create([
+            ...$needsReview->replicate(['client_capture_id', 'id'])->getAttributes(),
+            'batch_id' => $batch->id,
+            'client_capture_id' => $dupCaptureId,
+            'status' => OmrCaptureSheet::STATUS_NEEDS_REVIEW,
+            'admission_attempt_id' => $needsReview->admission_attempt_id,
+            'detected_applicant_number' => $needsReview->detected_applicant_number,
+            'version' => 1,
+            'captured_at' => now()->subMinutes(10),
+        ]);
+
+        foreach ($needsReview->pages as $page) {
+            $dupSheet->pages()->create(
+                $page->replicate(['sheet_id', 'id'])->getAttributes(),
+            );
+        }
     }
 }

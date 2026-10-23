@@ -2,13 +2,18 @@
 
 namespace App\Models\Foundation;
 
+use App\Setup\Actions\ActivateAcademicCycle;
+use App\Setup\Actions\DeactivateAcademicCycle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 
 class AcademicCycle extends Model
 {
+    protected $attributes = [
+        'allow_guidance_all_in_one_intake' => false,
+    ];
+
     protected $fillable = [
         'institution_id',
         'code',
@@ -18,6 +23,10 @@ class AcademicCycle extends Model
         'opens_on',
         'closes_on',
         'is_active',
+        'allow_guidance_all_in_one_intake',
+        'admission_notification_policy',
+        'exam_notification_policy',
+        'communication_master_controls',
     ];
 
     /**
@@ -29,6 +38,10 @@ class AcademicCycle extends Model
             'opens_on' => 'date',
             'closes_on' => 'date',
             'is_active' => 'boolean',
+            'allow_guidance_all_in_one_intake' => 'boolean',
+            'admission_notification_policy' => 'array',
+            'exam_notification_policy' => 'array',
+            'communication_master_controls' => 'array',
         ];
     }
 
@@ -87,36 +100,16 @@ class AcademicCycle extends Model
      */
     public function activate(): void
     {
-        DB::transaction(function (): void {
-            static::query()
-                ->where('institution_id', $this->institution_id)
-                ->where('id', '!=', $this->id)
-                ->update(['is_active' => false]);
-
-            $this->update(['is_active' => true]);
-
-            $window = $this->primaryWindow();
-            if ($window !== null) {
-                ApplicationWindow::query()
-                    ->where('academic_cycle_id', $this->id)
-                    ->where('id', '!=', $window->id)
-                    ->where('status', 'published')
-                    ->update(['status' => 'closed']);
-
-                $window->update(['status' => 'published']);
-            }
-        });
+        app(ActivateAcademicCycle::class)->handle($this, 'system');
     }
 
     public function deactivate(): void
     {
-        DB::transaction(function (): void {
-            $this->update(['is_active' => false]);
-            ApplicationWindow::query()
-                ->where('academic_cycle_id', $this->id)
-                ->where('status', 'published')
-                ->update(['status' => 'closed']);
-        });
+        if (! $this->is_active) {
+            return;
+        }
+
+        app(DeactivateAcademicCycle::class)->handle($this, 'system');
     }
 
     /**

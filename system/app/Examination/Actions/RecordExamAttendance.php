@@ -12,9 +12,7 @@ use RuntimeException;
 
 class RecordExamAttendance
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(
         ExamAssignment $assignment,
@@ -22,27 +20,47 @@ class RecordExamAttendance
         string $outcome,
         string $idempotencyKey,
     ): ExamAttendanceRecord {
+        if (! in_array($outcome, [
+            ExamAttendanceRecord::OUTCOME_PRESENT,
+            ExamAttendanceRecord::OUTCOME_ABSENT,
+            ExamAttendanceRecord::OUTCOME_VOID,
+        ], true)) {
+            throw new RuntimeException('Invalid attendance outcome.');
+        }
+
         $existing = ExamAttendanceRecord::query()->where('idempotency_key', $idempotencyKey)->first();
         if ($existing !== null) {
             return $existing;
         }
 
         return DB::transaction(function () use ($assignment, $actor, $outcome, $idempotencyKey): ExamAttendanceRecord {
+            $session = ExamSession::query()->lockForUpdate()->findOrFail($assignment->exam_session_id);
             $assignment = ExamAssignment::query()->lockForUpdate()->findOrFail($assignment->id);
-            $session = ExamSession::query()->findOrFail($assignment->exam_session_id);
 
-            if (! in_array($session->status, [ExamSession::STATUS_PUBLISHED, ExamSession::STATUS_IN_PROGRESS], true)) {
-                throw new RuntimeException('Attendance is not allowed for this session state.');
+            if ((int) $assignment->exam_session_id !== (int) $session->id || ! $assignment->isActive()) {
+                throw new RuntimeException('Attendance requires an active assignment in this session.');
             }
 
-            if (now()->lt($session->starts_at) || now()->gt($session->effective_end_at)) {
-                throw new RuntimeException('Attendance is outside the approved time window.');
+            if (! $session->attendanceIsOpen()) {
+                throw new RuntimeException('Attendance requires a started session that has not closed.');
             }
 
-            if ($assignment->attendanceRecord()->exists()) {
-                throw new RuntimeException('Attendance already recorded for assignment.');
-            }
+            $record = $assignment->attendanceRecord()->lockForUpdate()->first();
+            if ($record !== null) {
+                $record->update([
+                    'outcome' => $outcome,
+                    'recorded_by_user_id' => $actor->id,
+                    'recorded_at' => now(),
+                ]);
 
+                $this->recordAuditEvent->handle('exam.attendance_updated', [
+                    'record_id' => $record->id,
+                    'assignment_id' => $assignment->id,
+                    'outcome' => $outcome,
+                ], (string) $actor->id);
+
+                return $record;
+            }
             $record = ExamAttendanceRecord::query()->create([
                 'exam_assignment_id' => $assignment->id,
                 'recorded_by_user_id' => $actor->id,

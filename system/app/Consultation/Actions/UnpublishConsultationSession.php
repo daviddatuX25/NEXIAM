@@ -23,11 +23,11 @@ class UnpublishConsultationSession
             $session = ConsultationSession::query()->lockForUpdate()->findOrFail($session->id);
 
             if ((int) $session->version !== $expectedVersion) {
-                throw new RuntimeException('Stale consultation session version.');
+                throw new RuntimeException('Stale Release Day session version.');
             }
 
             if ($session->status !== ConsultationSession::STATUS_PUBLISHED) {
-                throw new RuntimeException('Only published sessions may be unpublished.');
+                throw new RuntimeException('Only published Release Day sessions may be unpublished.');
             }
 
             $session->update([

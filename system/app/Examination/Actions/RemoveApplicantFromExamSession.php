@@ -11,9 +11,7 @@ use RuntimeException;
 
 class RemoveApplicantFromExamSession
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(private readonly RecordAuditEvent $recordAuditEvent) {}
 
     public function handle(ExamSession $session, ExamAssignment $assignment, User $actor, ?string $reason = null): ExamAssignment
     {
@@ -28,9 +26,8 @@ class RemoveApplicantFromExamSession
             if (! $assignment->isActive()) {
                 throw new RuntimeException('Assignment is not active.');
             }
-
-            if (in_array($session->status, [ExamSession::STATUS_COMPLETED, ExamSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Cannot remove applicants from a closed session.');
+            if ($session->status !== ExamSession::STATUS_DRAFT) {
+                throw new RuntimeException('Published or finalized session rosters are locked for ordinary scheduling. Exam Day walk-in and early-traveler changes must use AccommodateApplicantExamSession on Monitoring.');
             }
 
             $assignment->update([

@@ -39,8 +39,7 @@ final class ActivateOmrConfiguration
         private readonly NativeManifestDeriver $manifestDeriver,
         private readonly RecordAuditEvent $recordAuditEvent,
         private readonly OmrTemplateGeometryProjector $geometryProjector,
-    ) {
-    }
+    ) {}
 
     public function handle(
         OmrAnswerSheetTemplateVersion $templateVersion,
@@ -55,11 +54,15 @@ final class ActivateOmrConfiguration
             $booklet = OmrQuestionBookletVersion::query()->lockForUpdate()->findOrFail($bookletVersion->id);
 
             if ($template->status !== OmrAnswerSheetTemplateVersion::STATUS_DRAFT
-                || $booklet->status !== OmrQuestionBookletVersion::STATUS_DRAFT) {
-                throw new RuntimeException('Only draft OMR template and booklet versions may be activated.');
+                || ! in_array($booklet->status, [OmrQuestionBookletVersion::STATUS_DRAFT, OmrQuestionBookletVersion::STATUS_FINALIZED], true)) {
+                throw new RuntimeException('Only draft OMR template and draft/finalized booklet versions may be activated.');
             }
 
-            $bundle = NativeBundle::load((string) $template->template->code, (int) $template->version);
+            // Legacy activation remains only a caller boundary; loading exact owned bytes
+            // does not qualify the version for physical use.
+            $bundle = is_array($template->native_bundle_json) && isset($template->native_bundle_json['relative_dir'])
+                ? NativeBundle::loadForVersion($template)
+                : NativeBundle::load((string) $template->template->code, (int) $template->version);
             $derived = $this->manifestDeriver->derive($bundle);
             $projection = $this->geometryProjector->project($template, $derived['manifest']);
             $manifest = [
@@ -73,11 +76,26 @@ final class ActivateOmrConfiguration
             $this->assertPairContract($projection, $booklet);
             $this->linkBookletQuestions($projection, $booklet);
 
+            // The partial unique index enforces one active version globally, not per template.
+            OmrAnswerSheetTemplateVersion::query()
+                ->whereKeyNot($template->id)
+                ->where('status', OmrAnswerSheetTemplateVersion::STATUS_ACTIVE)
+                ->update([
+                    'status' => OmrAnswerSheetTemplateVersion::STATUS_RETIRED,
+                    'updated_at' => now(),
+                ]);
+
+            $relativeDir = is_array($template->native_bundle_json)
+                && is_string($template->native_bundle_json['relative_dir'] ?? null)
+                    ? $template->native_bundle_json['relative_dir']
+                    : null;
+
             $template->forceFill([
                 'identity_regions_json' => $identityRegions,
                 'status' => OmrAnswerSheetTemplateVersion::STATUS_ACTIVE,
                 'native_bundle_version' => (string) ($bundle->manifest['bundle_version'] ?? 'nexiam.omr.native-bundle.v1'),
                 'native_bundle_json' => [
+                    'relative_dir' => $relativeDir,
                     'template' => $bundle->template,
                     'config' => $bundle->config,
                     'manifest' => $bundle->manifest,
@@ -89,16 +107,27 @@ final class ActivateOmrConfiguration
                 'patch_identity' => (string) $bundle->manifest['engine']['patch_set'],
                 'review_manifest_json' => $manifest,
                 'review_manifest_hash' => $manifestHash,
-                'config_hash' => hash('sha256', json_encode($bundle->config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)),
+                'config_hash' => (string) $bundle->fileHashes['config.json'],
                 'activated_by_user_id' => $actor->id,
                 'activated_at' => now(),
             ])->save();
 
-            $booklet->forceFill([
-                'status' => OmrQuestionBookletVersion::STATUS_ACTIVE,
-                'activated_by_user_id' => $actor->id,
-                'activated_at' => now(),
-            ])->save();
+            if ($booklet->status === OmrQuestionBookletVersion::STATUS_DRAFT) {
+                $contentHash = is_string($booklet->content_hash) && trim($booklet->content_hash) !== ''
+                    ? $booklet->content_hash
+                    : hash('sha256', "omr-booklet:{$booklet->id}:content");
+                $answerKeyHash = is_string($booklet->answer_key_hash) && trim($booklet->answer_key_hash) !== ''
+                    ? $booklet->answer_key_hash
+                    : hash('sha256', "omr-booklet:{$booklet->id}:answer-key");
+
+                $booklet->forceFill([
+                    'content_hash' => $contentHash,
+                    'answer_key_hash' => $answerKeyHash,
+                    'status' => OmrQuestionBookletVersion::STATUS_FINALIZED,
+                    'finalized_by_user_id' => $actor->id,
+                    'finalized_at' => now(),
+                ])->save();
+            }
 
             $pair = OmrTemplateBookletPair::query()->create([
                 'template_version_id' => $template->id,
@@ -236,40 +265,48 @@ final class ActivateOmrConfiguration
     }
 
     /**
-     * Links each projected template question to its authored booklet row
-     * (matched by area + within-area position) or key-generates a booklet
-     * row cycling the question's declared option set.
+     * Links projected questions to authored booklet rows. Secure versions must
+     * already contain every answer key; legacy rows retain their historical
+     * compatibility path and are not used by the new authoring workspace.
      */
     private function linkBookletQuestions(GeometryProjectionResult $projection, OmrQuestionBookletVersion $booklet): void
     {
         $areaIdsByCode = AptitudeArea::query()->where('is_active', true)->pluck('id', 'code');
+        $secureItems = $booklet->items()->get()->keyBy(
+            fn ($item): string => $item->aptitude_area_id.':'.$item->authored_position,
+        );
+        if ($secureItems->isEmpty() && ! $booklet->questions()->exists()) {
+            throw new RuntimeException('An OMR Booklet must contain authored answer keys before activation.');
+        }
         $position = 1;
 
         foreach ($projection->projectedQuestions as $question) {
             $areaId = (int) $areaIdsByCode[$question['area_code']];
-            $authored = $booklet->questions()
-                ->where('aptitude_area_id', $areaId)
-                ->orderBy('question_position')
-                ->skip($question['question_no'] - 1)
-                ->first();
-
-            if ($authored !== null) {
-                $authored->update(['template_question_id' => $question['template_question_id']]);
-
+            $questionPosition = (int) $question['question_no'];
+            if ($secureItems->isNotEmpty()) {
+                $authored = $secureItems->get($areaId.':'.$questionPosition);
+                if ($authored === null) {
+                    throw new RuntimeException('Every projected question must have an authored answer key before activation.');
+                }
                 $position++;
 
                 continue;
             }
 
-            $declared = array_column($question['options'], 'code');
-            $booklet->questions()->create([
-                'template_question_id' => $question['template_question_id'],
-                'aptitude_area_id' => $areaId,
-                'question_position' => $position,
-                'correct_option_code' => $declared[($position - 1) % count($declared)],
-            ]);
+            $authored = $booklet->questions()
+                ->where('aptitude_area_id', $areaId)
+                ->orderBy('question_position')
+                ->skip($questionPosition - 1)
+                ->first();
 
-            $position++;
+            if ($authored !== null) {
+                $authored->update(['template_question_id' => $question['template_question_id']]);
+                $position++;
+
+                continue;
+            }
+
+            throw new RuntimeException('Every projected question must have an authored answer key before activation.');
         }
     }
 }

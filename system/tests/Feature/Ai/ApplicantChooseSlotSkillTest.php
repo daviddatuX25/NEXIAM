@@ -1,18 +1,21 @@
 <?php
 
+use App\Ai\Adapters\LaravelAi\XiamAgent;
 use App\Ai\Skills\ApplicantChooseSlotSkill;
-use App\Models\Ai\NexiProposal;
-use App\Models\Ai\NexiRun;
-use App\Models\Ai\NexiRunEvent;
-use App\Models\Ai\NexiTaskGrant;
+use App\Ai\Skills\SkillEngine;
+use App\Models\Ai\XiamRun;
+use App\Models\Ai\XiamRunEvent;
+use App\Models\Ai\XiamTaskGrant;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\Room;
 use App\Models\User;
+use Illuminate\Testing\TestResponse;
+use Laravel\Ai\Responses\Data\ToolCall;
 
 beforeEach(function (): void {
-    config(['nexi.process_inline' => true, 'nexi.ai.gateway' => 'fake', 'nexi.enabled' => true]);
+    config(['xiam.process_inline' => true, 'xiam.ai.gateway' => 'fake', 'xiam.enabled' => true]);
 });
 
 function slotSkillGuidance(): User
@@ -76,14 +79,18 @@ function slotSkillOpenReservation(User $guidance, ExamSession $session): void
 
 function slotSkillStart(array $overrides = []): array
 {
-    return test()->postJson(route('nexi.skills.start'), array_merge([
-        'skill_key' => 'applicant.choose_slot@1',
-        'page_pack_key' => 'applicant.schedule@1',
-        'page_pack_version' => 1,
-    ], $overrides))->json();
+    test()->postJson(route('xiam.mode.update'), ['mode' => 'assistant'])->assertOk();
+    xiamKeepCurrentSessionCookie();
+
+    return test()->withHeader('X-Xiam-Browser-Session', 'applicant-slot-test')
+        ->postJson(route('xiam.skills.start'), array_merge([
+            'skill_key' => 'applicant.choose_slot@1',
+            'page_pack_key' => 'applicant.schedule@1',
+            'page_pack_version' => 1,
+        ], $overrides))->json();
 }
 
-function slotSkillInvoke(string $grantId, string $capabilityId, array $input = [], ?string $conversationId = null): \Illuminate\Testing\TestResponse
+function slotSkillInvoke(string $grantId, string $capabilityId, array $input = [], ?string $conversationId = null): TestResponse
 {
     $payload = [
         'grant_id' => $grantId,
@@ -95,7 +102,7 @@ function slotSkillInvoke(string $grantId, string $capabilityId, array $input = [
         $payload['conversation_id'] = $conversationId;
     }
 
-    return test()->postJson(route('nexi.skills.invoke'), $payload);
+    return test()->postJson(route('xiam.skills.invoke'), $payload);
 }
 
 test('applicant skill start issues choose_slot grant with allowlist and guidance', function (): void {
@@ -114,19 +121,31 @@ test('applicant skill start issues choose_slot grant with allowlist and guidance
         ])
         ->and($start['guidance_digest'])->toBeString()->not->toBeEmpty();
 
-    $grant = NexiTaskGrant::query()->findOrFail($start['grant_id']);
+    $applicant = User::query()->where('email', 'skill-start@example.test')->firstOrFail();
+    $identityInstitutionId = $result['attempt']->identity->institution_id;
+
+    expect($applicant->actorScope()->institutionId)->toBeNull()
+        ->and($identityInstitutionId)->not->toBeNull();
+
+    $grant = XiamTaskGrant::query()->findOrFail($start['grant_id']);
     expect($grant->actor_type)->toBe('applicant')
+        ->and($grant->institution_id)->toBe($identityInstitutionId)
         ->and($grant->surface_key)->toBe('applicant')
         ->and($grant->skill_key)->toBe(ApplicantChooseSlotSkill::KEY)
         ->and($grant->skill_version)->toBe(ApplicantChooseSlotSkill::VERSION);
+
+    $directGrant = app(SkillEngine::class)->startApplicantSlotSkill($applicant, $start['context_epoch']);
+    expect($directGrant->institution_id)->toBe($identityInstitutionId);
 });
 
 test('applicant skill start is denied for staff without applicant account', function (): void {
     seedE2Foundation();
     $staff = slotSkillGuidance();
     $this->actingAs($staff);
+    $this->postJson(route('xiam.mode.update'), ['mode' => 'assistant'])->assertOk();
+    xiamKeepCurrentSessionCookie();
 
-    $this->postJson(route('nexi.skills.start'), [
+    $this->postJson(route('xiam.skills.start'), [
         'skill_key' => 'applicant.choose_slot@1',
         'page_pack_key' => 'applicant.schedule@1',
     ])->assertStatus(403)->assertJson(['error' => 'surface_denied']);
@@ -152,7 +171,7 @@ test('skill invoke lists own open slots and advances cursor', function (): void 
         ->and($response['result']['slots'])->not->toBeEmpty()
         ->and($response['result']['slots'][0]['id'])->toBe($session->id);
 
-    $grant = NexiTaskGrant::query()->findOrFail($start['grant_id']);
+    $grant = XiamTaskGrant::query()->findOrFail($start['grant_id']);
     expect($grant->scope_bounds['cursor'])->toBe(ApplicantChooseSlotSkill::CURSOR_SLOTS_LOADED);
 });
 
@@ -184,17 +203,17 @@ test('skill propose never writes; confirm reserves idempotently', function (): v
         ->and(ExamAssignment::query()->active()->where('admission_attempt_id', $result['attempt']->id)->count())->toBe(0);
 
     // Cursor locked while awaiting confirm.
-    $grant = NexiTaskGrant::query()->findOrFail($start['grant_id']);
+    $grant = XiamTaskGrant::query()->findOrFail($start['grant_id']);
     expect($grant->scope_bounds['cursor'])->toBe(ApplicantChooseSlotSkill::CURSOR_AWAITING_CONFIRM);
 
-    $this->postJson(route('nexi.proposals.confirm', $propose['proposal']['id']), [
+    $this->postJson(route('xiam.proposals.confirm', $propose['proposal']['id']), [
         'idempotency_key' => 'skill-confirm-1',
     ])->assertOk();
 
     expect(ExamAssignment::query()->active()->where('admission_attempt_id', $result['attempt']->id)->count())->toBe(1);
 
     // Same proposal again → already executed, no duplicate.
-    $this->postJson(route('nexi.proposals.confirm', $propose['proposal']['id']), [
+    $this->postJson(route('xiam.proposals.confirm', $propose['proposal']['id']), [
         'idempotency_key' => 'skill-confirm-2',
     ])->assertStatus(422);
 
@@ -237,7 +256,7 @@ test('cursor gates block further invokes while awaiting confirm', function (): v
         ->assertJson(['error' => 'capability_illegal_for_cursor']);
 });
 
-test('skill invoke denies an attempt that is not the actor own', function (): void {
+test('skill invoke rejects caller supplied execution', function (): void {
     seedE2Foundation();
     $guidance = slotSkillGuidance();
     $victim = slotSkillSetup('skill-victim@example.test', 'SkillVictim');
@@ -253,17 +272,15 @@ test('skill invoke denies an attempt that is not the actor own', function (): vo
 
     slotSkillInvoke($start['grant_id'], 'exams.slots.list@1', [], $start['conversation_id'])->assertOk();
 
-    $response = slotSkillInvoke($start['grant_id'], 'exams.slot.reserve@1', [
+    slotSkillInvoke($start['grant_id'], 'exams.slot.reserve@1', [
         'exam_session_id' => $session->id,
         'admission_attempt_id' => $victim['attempt']->id,
         'execute' => true,
     ], $start['conversation_id'])
-        ->assertOk()
-        ->json();
+        ->assertStatus(422)
+        ->assertJson(['error' => 'forbidden_field:execute']);
 
-    expect($response['result']['mode'])->toBe('denied')
-        ->and($response['result']['reason'])->toBe('not_own_attempt')
-        ->and(ExamAssignment::query()->active()->where('admission_attempt_id', $victim['attempt']->id)->count())->toBe(0);
+    expect(ExamAssignment::query()->active()->where('admission_attempt_id', $victim['attempt']->id)->count())->toBe(0);
 });
 
 test('assistant turn proposes slot reservation with skill events', function (): void {
@@ -281,30 +298,37 @@ test('assistant turn proposes slot reservation with skill events', function (): 
     $this->actingAs($user);
     slotSkillInvoke($start['grant_id'], 'exams.slots.list@1', [], $start['conversation_id'])->assertOk();
 
-    $this->actingAs($user)
-        ->postJson(route('nexi.turns.store'), [
+    config(['xiam.ai.gateway' => 'laravel']);
+    XiamAgent::fake([
+        new ToolCall('call-reserve', 'exams_slot_reserve_1', [
+            'exam_session_id' => $session->id,
+            'admission_attempt_id' => (int) $result['attempt']->id,
+        ]),
+        'I have prepared your slot reservation proposal.',
+    ]);
+
+    $this->withHeader('X-Xiam-Browser-Session', 'applicant-slot-test')
+        ->actingAs($user)
+        ->postJson(route('xiam.turns.store'), [
             'message' => "reserve slot {$session->id} for attempt {$result['attempt']->id}",
             'idempotency_key' => 'skill-turn-1',
             'page_pack_key' => 'applicant.schedule@1',
             'page_pack_version' => 1,
-            'mode' => 'assistant',
-            'conversation_id' => $start['conversation_id'],
         ])->assertAccepted();
 
-    $run = NexiRun::query()->where('conversation_id', $start['conversation_id'])->latest('created_at')->firstOrFail();
-    $types = NexiRunEvent::query()
+    $run = XiamRun::query()->where('conversation_id', $start['conversation_id'])->latest('created_at')->firstOrFail();
+    $types = XiamRunEvent::query()
         ->where('run_id', $run->id)
         ->orderBy('seq')
         ->pluck('type')
         ->all();
 
-    expect($types)->toContain('skill.plan')
-        ->and($types)->toContain('skill.tool')
-        ->and($types)->toContain('skill.result')
+    expect($types)->toContain('tool.call')
+        ->and($types)->toContain('tool.result')
         ->and($types)->toContain('skill.proposal')
         ->and($types)->toContain('assistant.message');
 
-    $proposalEvent = NexiRunEvent::query()
+    $proposalEvent = XiamRunEvent::query()
         ->where('run_id', $run->id)
         ->where('type', 'skill.proposal')
         ->firstOrFail();
@@ -313,7 +337,7 @@ test('assistant turn proposes slot reservation with skill events', function (): 
     expect($proposalId)->not->toBeNull();
 
     $this->actingAs($user)
-        ->postJson(route('nexi.proposals.confirm', $proposalId), [
+        ->postJson(route('xiam.proposals.confirm', $proposalId), [
             'idempotency_key' => 'skill-turn-confirm-1',
         ])
         ->assertOk();
@@ -321,14 +345,14 @@ test('assistant turn proposes slot reservation with skill events', function (): 
     expect(ExamAssignment::query()->active()->where('admission_attempt_id', $result['attempt']->id)->count())->toBe(1);
 });
 
-test('degraded manual calendar reserve still works when Nexi disabled', function (): void {
+test('degraded manual calendar reserve still works when Xiam disabled', function (): void {
     seedE2Foundation();
     $guidance = slotSkillGuidance();
     $result = slotSkillSetup('skill-manual@example.test', 'SkillManual');
     $session = slotSkillSession($guidance, 'EX-SKILL-M1');
     slotSkillOpenReservation($guidance, $session);
 
-    config(['nexi.enabled' => false]);
+    config(['xiam.enabled' => false]);
 
     slotSkillLogin($result);
 

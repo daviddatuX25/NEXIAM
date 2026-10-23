@@ -10,21 +10,21 @@
     mode = 'resubmit',
     attempt,
     programs = [],
-    grade_fields = [],
+    intake_suggestions = { schools: [], shs: [], programs: [] },
   } = $props();
 
   const isAmend = $derived(mode === 'amend');
 
-  const initialGrades = Object.fromEntries(
-    (grade_fields ?? []).map((f) => [
-      f.code,
-      attempt.grades?.find((g) => g.code === f.code)?.value ?? '',
-    ]),
-  );
-
   const form = useForm({
     expected_version: attempt.version,
     applicant_type: attempt.applicant_type ?? 'new',
+    identity_first_name: attempt.identity?.first_name ?? '',
+    identity_middle_name: attempt.identity?.middle_name ?? '',
+    identity_last_name: attempt.identity?.last_name ?? '',
+    identity_suffix: attempt.identity?.suffix ?? '',
+    identity_sex: attempt.identity?.sex ?? 'male',
+    identity_email: attempt.identity?.email ?? attempt.contact_email ?? '',
+    identity_phone: attempt.identity?.phone ?? attempt.contact_phone ?? '',
     contact_email: attempt.contact_email ?? '',
     contact_phone: attempt.contact_phone ?? '',
     program_preference_1_code: attempt.program_preference_1_code ?? '',
@@ -36,7 +36,6 @@
     zip_code: attempt.zip_code ?? '',
     last_school_enrolled: attempt.last_school_enrolled ?? '',
     strand: attempt.strand ?? '',
-    grades: initialGrades,
     resubmission_notes: '',
   });
 
@@ -56,7 +55,7 @@
   <div class="mx-auto max-w-2xl space-y-6">
     <div class="space-y-2">
       <Link
-        href="/applicant/schedule"
+        href="/applicant/portal"
         class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft class="size-4" />
@@ -92,8 +91,10 @@
       <IntakeCorrectionFields
         {form}
         {programs}
-        {grade_fields}
+        intake_suggestions={intake_suggestions}
         identity={attempt.identity}
+        identityEditable={true}
+        birthdateEditable={false}
         showResubmissionNotes={!isAmend}
         idPrefix="correct"
       />
@@ -106,7 +107,7 @@
         <Button type="submit" class="min-h-11" disabled={form.processing}>
           {isAmend ? 'Save details' : 'Resubmit for review'}
         </Button>
-        <Link href="/applicant/schedule">
+        <Link href="/applicant/portal">
           <Button type="button" variant="outline" class="min-h-11">Cancel</Button>
         </Link>
       </div>

@@ -1,0 +1,860 @@
+import { d as effectiveRecognitionPitchMm, O as OMR_BUBBLE_DIAMETER_MM, e as effectiveRecognitionGeometryMm, G as GRID_BUBBLE_ORIGIN_OFFSET_MM, m as minimumRecognitionPitchMm, c as contentBlockSizeMm } from "./omrStudioGeometry-DyCkNaaw.js";
+const COMPONENT_PATH_FILTERS = {
+  sheet_designer: {
+    path: "sheet_designer",
+    includeTextComponents: true,
+    includeQuestionComponents: true,
+    includeOverlayControls: true
+  },
+  upload_document: {
+    path: "upload_document",
+    includeTextComponents: true,
+    includeQuestionComponents: false,
+    includeOverlayControls: true
+  }
+};
+function isQuestionGridComponent(c) {
+  return c.type === "mcq" || c.type === "tf" || c.type === "likert" || c.type === "custom";
+}
+const DEFAULT_SHEET_HTML_DECORATIONS = {
+  showFiducials: false,
+  qr: {
+    visible: false,
+    xMm: 162,
+    yMm: 18,
+    sizeMm: 26,
+    overlayTag: "blank_instance_qr"
+  }
+};
+const DEFAULT_A4_SETTINGS = {
+  paperWidthMm: 210,
+  paperHeightMm: 297,
+  marginMm: 15,
+  markerPattern: "square",
+  markerInsetsMm: { top: 12, right: 12, bottom: 14, left: 12 }
+};
+const CANVAS_PX_PER_MM = 2.476;
+const CANVAS_BUBBLE_DIAMETER_PX = OMR_BUBBLE_DIAMETER_MM * CANVAS_PX_PER_MM;
+const GRID_SECTION_HEADER_HEIGHT_MM = 3.5;
+function gridOptionLabels(g) {
+  if (g.type === "tf") return ["T", "F"];
+  if (g.type === "likert") return ["1", "2", "3", "4", "5"];
+  if (g.type === "custom")
+    return (g.customValuesStr || "A, B").split(",").map((v) => v.trim()).filter(Boolean);
+  const count = Number(g.optionsCount) || 4;
+  return ["A", "B", "C", "D", "E"].slice(0, Math.max(2, Math.min(5, count)));
+}
+function gridBlockWidthMm(g) {
+  const opts = gridOptionLabels(g).length;
+  const rows = Number(g.questionsCount) || 1;
+  return contentBlockSizeMm(
+    opts,
+    rows,
+    Number(g.bubblePitchMm) || 6,
+    Number(g.rowPitchMm) || 6.8,
+    Number(g.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM
+  ).w_mm;
+}
+function gridBlockHeightMm(g) {
+  const opts = gridOptionLabels(g).length;
+  const rows = Number(g.questionsCount) || 1;
+  return contentBlockSizeMm(
+    opts,
+    rows,
+    Number(g.bubblePitchMm) || 6,
+    Number(g.rowPitchMm) || 6.8,
+    Number(g.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM
+  ).h_mm;
+}
+function rollBlockWidthMm(r) {
+  const digits = Number(r.digitsCount) || 7;
+  const geometry = effectiveRecognitionGeometryMm({
+    kind: "roll",
+    bubbleDiameterMm: r.bubbleDiameterMm,
+    bubblePitchMm: r.bubblePitchMm,
+    rowPitchMm: r.rowPitchMm
+  });
+  return Number(
+    (geometry.bubbleDiameterMm + (digits - 1) * geometry.bubblePitchMm + 1.5).toFixed(1)
+  );
+}
+function rollBlockHeightMm(r) {
+  const geometry = effectiveRecognitionGeometryMm({
+    kind: "roll",
+    bubbleDiameterMm: r.bubbleDiameterMm,
+    bubblePitchMm: r.bubblePitchMm,
+    rowPitchMm: r.rowPitchMm
+  });
+  return Number(
+    (geometry.bubbleDiameterMm + 9 * geometry.rowPitchMm + 1.5).toFixed(1)
+  );
+}
+const CANVAS_ROLL_PADDING_PX = 3.5;
+const CANVAS_ROLL_MARGIN_PX = 3.5;
+function minimumCanvasPitchMm(bubbleDiameterMm = OMR_BUBBLE_DIAMETER_MM) {
+  return minimumRecognitionPitchMm(bubbleDiameterMm);
+}
+function canvasRollRowGapPx(rowPitchMm, bubbleDiameterPx) {
+  const effectiveRowPitchMm = effectiveRecognitionPitchMm(
+    rowPitchMm,
+    Number(bubbleDiameterPx) / CANVAS_PX_PER_MM,
+    4.8
+  );
+  return Math.max(
+    0,
+    effectiveRowPitchMm * CANVAS_PX_PER_MM - bubbleDiameterPx
+  );
+}
+function canvasRollBubbleGapPx(bubblePitchMm, bubbleDiameterPx) {
+  const effectiveBubblePitchMm = effectiveRecognitionPitchMm(
+    bubblePitchMm,
+    Number(bubbleDiameterPx) / CANVAS_PX_PER_MM,
+    5.5
+  );
+  return Math.max(
+    0,
+    effectiveBubblePitchMm * CANVAS_PX_PER_MM - bubbleDiameterPx
+  );
+}
+function canvasRollBlockWidthMm(r) {
+  const geometry = effectiveRecognitionGeometryMm({
+    kind: "roll",
+    bubbleDiameterMm: r.bubbleDiameterMm,
+    bubblePitchMm: r.bubblePitchMm,
+    rowPitchMm: r.rowPitchMm
+  });
+  const bubbleDiameterPx = geometry.bubbleDiameterMm * CANVAS_PX_PER_MM;
+  const labelWidthPx = 3.5 * CANVAS_PX_PER_MM;
+  const labelGapPx = 1.5 * CANVAS_PX_PER_MM;
+  const bubbleGapPx = canvasRollBubbleGapPx(
+    geometry.bubblePitchMm,
+    bubbleDiameterPx
+  );
+  const digits = Number(r.digitsCount) || 7;
+  const widthPx = CANVAS_ROLL_PADDING_PX * 2 + labelWidthPx + labelGapPx + digits * bubbleDiameterPx + Math.max(0, digits - 1) * bubbleGapPx;
+  return Number((widthPx / CANVAS_PX_PER_MM).toFixed(1));
+}
+function canvasRollBlockHeightMm(r) {
+  const geometry = effectiveRecognitionGeometryMm({
+    kind: "roll",
+    bubbleDiameterMm: r.bubbleDiameterMm,
+    bubblePitchMm: r.bubblePitchMm,
+    rowPitchMm: r.rowPitchMm
+  });
+  const bubbleDiameterPx = geometry.bubbleDiameterMm * CANVAS_PX_PER_MM;
+  const titleLinePx = Math.max(
+    8,
+    (Number(r.typography?.fontSizePt) || 7.5) * 0.9 * 1.5
+  );
+  const writeRowPx = bubbleDiameterPx * 1.15;
+  const rowGapPx = canvasRollRowGapPx(geometry.rowPitchMm, bubbleDiameterPx);
+  const heightPx = CANVAS_ROLL_PADDING_PX * 2 + titleLinePx + CANVAS_ROLL_MARGIN_PX + writeRowPx + CANVAS_ROLL_MARGIN_PX + 10 * bubbleDiameterPx + 9 * rowGapPx;
+  return Number((heightPx / CANVAS_PX_PER_MM).toFixed(1));
+}
+function componentBlockSizeMm(c) {
+  if (c.type === "roll") {
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, rollBlockWidthMm(c)),
+      h_mm: Math.max(Number(c.h_mm) || 0, canvasRollBlockHeightMm(c))
+    };
+  }
+  if (isQuestionGridComponent(c)) {
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, gridBlockWidthMm(c)),
+      h_mm: Math.max(Number(c.h_mm) || 0, gridBlockHeightMm(c))
+    };
+  }
+  return { w_mm: Number(c.w_mm) || 40, h_mm: Number(c.h_mm) || 12 };
+}
+const CANVAS_RENDER_BUBBLE_PX = 10.5;
+function canvasSectionBoundsMm(options, questions, bubblePitchMm, rowPitchMm, isRoll = false, bubbleDiameterMm = 4.5, renderBubblePx = CANVAS_RENDER_BUBBLE_PX) {
+  const optionCount = Math.max(2, Number(options) || 4);
+  const rowCount = Math.min(50, Math.max(1, Number(questions) || 1));
+  if (!isRoll) {
+    const geometry2 = effectiveRecognitionGeometryMm({
+      kind: "grid",
+      bubbleDiameterMm,
+      bubblePitchMm,
+      rowPitchMm
+    });
+    return {
+      w_mm: Number(
+        (GRID_BUBBLE_ORIGIN_OFFSET_MM.x + geometry2.bubbleDiameterMm + (optionCount - 1) * geometry2.bubblePitchMm + 0.5).toFixed(1)
+      ),
+      h_mm: Number(
+        (GRID_BUBBLE_ORIGIN_OFFSET_MM.y + geometry2.bubbleDiameterMm + (rowCount - 1) * geometry2.rowPitchMm + 0.5).toFixed(1)
+      )
+    };
+  }
+  const geometry = effectiveRecognitionGeometryMm({
+    kind: "roll",
+    bubbleDiameterMm,
+    bubblePitchMm,
+    rowPitchMm
+  });
+  const renderBubblePxForMode = geometry.bubbleDiameterMm * CANVAS_PX_PER_MM;
+  const bPitch = geometry.bubblePitchMm;
+  const rPitch = geometry.rowPitchMm;
+  const bubbleGapPx = Math.max(
+    0,
+    bPitch * CANVAS_PX_PER_MM - renderBubblePxForMode
+  );
+  const rowGapPx = Math.max(
+    0,
+    rPitch * CANVAS_PX_PER_MM - renderBubblePxForMode
+  );
+  const widthPx = 8 + 16 + optionCount * renderBubblePxForMode + Math.max(0, optionCount - 1) * bubbleGapPx;
+  const heightPx = 8 + rowCount * renderBubblePxForMode + Math.max(0, rowCount - 1) * rowGapPx;
+  return {
+    w_mm: Number((widthPx / CANVAS_PX_PER_MM).toFixed(1)),
+    h_mm: Number((heightPx / CANVAS_PX_PER_MM).toFixed(1))
+  };
+}
+function canvasComponentBlockSizeMm(c) {
+  if (c.type === "roll") {
+    return {
+      w_mm: canvasRollBlockWidthMm(c),
+      h_mm: Math.max(Number(c.h_mm) || 0, canvasRollBlockHeightMm(c))
+    };
+  }
+  if (isQuestionGridComponent(c)) {
+    const bubbleDiameterMm = Number(c.bubbleDiameterMm) || 4.5;
+    const size = canvasSectionBoundsMm(
+      gridOptionLabels(c).length,
+      c.questionsCount,
+      c.bubblePitchMm,
+      c.rowPitchMm,
+      false,
+      bubbleDiameterMm,
+      bubbleDiameterMm * CANVAS_PX_PER_MM
+    );
+    return {
+      w_mm: Math.max(Number(c.w_mm) || 0, size.w_mm),
+      h_mm: Math.max(Number(c.h_mm) || 0, size.h_mm)
+    };
+  }
+  return componentBlockSizeMm(c);
+}
+function normalizeQuestionGridRowPositions(components, marginMm, paperWidthMm = 210, minimumGapMm = 2) {
+  const rows = /* @__PURE__ */ new Map();
+  for (const component of components.filter(isQuestionGridComponent)) {
+    const key = `${component.page_no ?? 1}:${Number(component.posY).toFixed(1)}`;
+    rows.set(key, [...rows.get(key) ?? [], component]);
+  }
+  let changed = false;
+  const printableWidth = paperWidthMm - marginMm * 2;
+  for (const row of rows.values()) {
+    if (row.length < 2) continue;
+    row.sort((left, right) => Number(left.posX) - Number(right.posX));
+    const widths = row.map(
+      (component) => canvasComponentBlockSizeMm(component).w_mm
+    );
+    const collides = row.some(
+      (component, index) => index > 0 && Number(component.posX) - (Number(row[index - 1].posX) + widths[index - 1]) < minimumGapMm
+    );
+    const totalWidth = widths.reduce((sum, width) => sum + width, 0);
+    if (!collides || totalWidth > printableWidth) continue;
+    const gap = (printableWidth - totalWidth) / (row.length - 1);
+    let nextX = marginMm;
+    row.forEach((component, index) => {
+      const normalizedX = Number(nextX.toFixed(1));
+      changed ||= normalizedX !== Number(component.posX);
+      component.posX = normalizedX;
+      nextX += widths[index] + gap;
+    });
+  }
+  return changed;
+}
+function esc(value) {
+  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function safeComponentColor(value, fallback = "transparent") {
+  const color = String(value ?? "").trim();
+  if (color === "transparent" || /^#[0-9a-f]{3,8}$/i.test(color))
+    return color;
+  return fallback;
+}
+function componentBackgroundColor(component) {
+  return safeComponentColor(component.backgroundColor);
+}
+function componentInputBackgroundColor(component) {
+  if ("inputBackgroundColor" in component)
+    return safeComponentColor(component.inputBackgroundColor, "#ffffff");
+  return "#ffffff";
+}
+function fieldInputStyleClass(style) {
+  if (style === "box") return "omr-field-input-box";
+  if (style === "underline") return "omr-field-input-underline";
+  return "omr-field-input-dotted";
+}
+function typographyToStyleString(t) {
+  if (!t) return "";
+  return `font-size: ${t.fontSizePt ?? 12}pt; font-family: ${esc(t.fontFamily)}; font-weight: ${t.fontWeight ?? 700}; color: ${esc(t.textColor)}; text-align: ${esc(t.textAlign)}; line-height: ${t.lineHeight ?? 1.2}; letter-spacing: ${t.letterSpacingPx ?? 0}px;`;
+}
+const SHEET_CSS = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: 210mm 297mm; margin: 0; }
+    html, body {
+      width: 100%;
+      min-height: 297mm;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+    }
+    .omr-sheet {
+      width: 210mm;
+      height: 297mm;
+      overflow: hidden;
+      position: relative;
+      break-after: page;
+      page-break-after: always;
+    }
+    .omr-sheet:last-child { break-after: auto; page-break-after: auto; }
+    .omr-comp { position: absolute; }
+    .omr-fiducial {
+      position: absolute;
+      width: 6mm;
+      height: 6mm;
+      z-index: 1;
+      background: #ffffff;
+    }
+    .omr-fiducial-square {
+      border: 1mm solid #0f172a;
+    }
+    .omr-fiducial-target {
+      border: 0.7mm solid #0f172a;
+      border-radius: 50%;
+      background: radial-gradient(circle, #0f172a 0 18%, #ffffff 19% 42%, #0f172a 43% 58%, #ffffff 59%);
+    }
+    .omr-fiducial-aruco {
+      border: 0.6mm solid #0f172a;
+      background:
+        linear-gradient(90deg, #0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%),
+        linear-gradient(#0f172a 25%, transparent 25% 50%, #0f172a 50% 75%, transparent 75%);
+      background-size: 2mm 2mm;
+    }
+    .omr-qr-reservation {
+      position: absolute;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1mm;
+      padding: 1.5mm;
+      border: 0.35mm dashed #64748b;
+      border-radius: 1mm;
+      background: #ffffff;
+      color: #334155;
+      text-align: center;
+    }
+    .omr-qr-placeholder {
+      display: grid;
+      place-items: center;
+      width: 70%;
+      aspect-ratio: 1;
+      border: 0.5mm solid #0f172a;
+      background:
+        linear-gradient(90deg, #0f172a 12%, transparent 12% 24%, #0f172a 24% 36%, transparent 36% 48%, #0f172a 48% 60%, transparent 60% 72%, #0f172a 72% 84%, transparent 84%),
+        linear-gradient(#0f172a 12%, transparent 12% 24%, #0f172a 24% 36%, transparent 36% 48%, #0f172a 48% 60%, transparent 60% 72%, #0f172a 72% 84%, transparent 84%);
+      background-size: 100% 100%;
+      color: #ffffff;
+      font: 700 5pt/1 monospace;
+    }
+    .omr-qr-label {
+      font: 700 5.5pt/1 monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .omr-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 6mm;
+      border-bottom: 0.6mm solid #0f172a;
+      padding-bottom: 1mm;
+    }
+    .omr-header .omr-title { text-transform: uppercase; line-height: 1.15; }
+    .omr-header .omr-subtitle { text-transform: uppercase; letter-spacing: 0.3px; margin-top: 0.5mm; }
+    .omr-header .omr-sheet-code {
+      font-family: monospace;
+      font-weight: 800;
+      border: 0.35mm solid #0f172a;
+      padding: 0.8mm 1.6mm;
+      border-radius: 0.6mm;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .omr-field-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1mm;
+      border: 0.4mm solid #334155;
+      border-radius: 1mm;
+      padding: 1.2mm 2mm;
+      background: #f8fafc;
+      width: 100%;
+      height: 100%;
+    }
+    .omr-field-label {
+      flex: 0 0 auto;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1.15;
+    }
+    .omr-field-input {
+      flex: 1 1 auto;
+      min-height: 4mm;
+      width: 100%;
+      background: #ffffff;
+    }
+    .omr-field-input-dotted { border-bottom: 0.35mm dashed #94a3b8; }
+    .omr-field-input-underline { border-bottom: 0.35mm solid #334155; }
+    .omr-field-input-box { border: 0.35mm solid #334155; border-radius: 0.7mm; }
+    .omr-field-input-multiline { min-height: 9mm; border: 0.35mm solid #334155; border-radius: 0.7mm; }
+
+    .omr-instructions {
+      border: 0.35mm solid #cbd5e1;
+      border-radius: 1mm;
+      padding: 1.5mm 2mm;
+      width: 100%;
+      height: 100%;
+    }
+
+    .omr-id-container {
+      border: 0.5mm solid #0f172a;
+      border-radius: 1mm;
+      padding: 1.5mm 2mm;
+      background: #fafafa;
+    }
+    .omr-id-boxes {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1mm;
+      margin-bottom: 1mm;
+    }
+    .omr-id-box {
+      width: 3.6mm;
+      height: 4.2mm;
+      border: 0.4mm solid #0f172a;
+      border-radius: 0.6mm;
+      background: #ffffff;
+    }
+    .omr-id-matrix { display: flex; flex-direction: column; gap: 0.6mm; }
+    .omr-id-row { display: flex; align-items: center; justify-content: flex-start; gap: 1.5mm; }
+    .omr-id-num {
+      font-weight: 800;
+      font-family: monospace;
+      color: #334155;
+      width: 3.5mm;
+      flex: 0 0 3.5mm;
+      text-align: right;
+    }
+    .omr-id-bubs { display: flex; gap: 1mm; }
+    .omr-id-bub {
+      width: ${OMR_BUBBLE_DIAMETER_MM}mm;
+      height: ${OMR_BUBBLE_DIAMETER_MM}mm;
+      border: 0.35mm solid #1e293b;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .omr-grid-block { background: #ffffff; }
+    .omr-subject-header {
+      font-weight: 900;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 0.8mm 1mm;
+      border-radius: 0.6mm;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 0.8mm;
+    }
+    .omr-option-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1.5mm;
+      font-weight: 900;
+      margin-bottom: 0.8mm;
+    }
+    .omr-q-num-spacer { width: 3.5mm; flex: 0 0 3.5mm; }
+    .omr-opt-label { width: ${OMR_BUBBLE_DIAMETER_MM}mm; flex: 0 0 ${OMR_BUBBLE_DIAMETER_MM}mm; text-align: center; font-size: 5.5pt; font-family: monospace; color: #0f172a; }
+    .omr-q-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1.5mm;
+      margin-bottom: 0.5mm;
+    }
+    .omr-q-num {
+      font-weight: 700;
+      font-family: monospace;
+      color: #334155;
+      width: 3.5mm;
+      flex: 0 0 3.5mm;
+      text-align: right;
+      padding-right: 0.5mm;
+      font-size: 6pt;
+    }
+    .omr-bubs { display: flex; gap: 1.5mm; }
+    .omr-bub {
+      width: ${OMR_BUBBLE_DIAMETER_MM}mm;
+      height: ${OMR_BUBBLE_DIAMETER_MM}mm;
+      border: 0.35mm solid #1e293b;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+    .omr-signature {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .omr-signature .omr-sign-label { font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
+    .omr-signature .omr-sign-line { border-bottom: 0.35mm solid #334155; flex: 1; margin: 0.6mm 0; }
+    .omr-signature .omr-sign-cert { font-weight: 600; line-height: 1.25; }
+`;
+function renderHtmlDecorations(settings, decorations) {
+  const decorationMarkup = [];
+  const markerInsets = settings.markerInsetsMm ?? DEFAULT_A4_SETTINGS.markerInsetsMm;
+  const top = Math.max(0, Number(markerInsets.top) || 0);
+  const right = Math.max(0, Number(markerInsets.right) || 0);
+  const bottom = Math.max(0, Number(markerInsets.bottom) || 0);
+  const left = Math.max(0, Number(markerInsets.left) || 0);
+  const markerClass = `omr-fiducial omr-fiducial-${settings.markerPattern}`;
+  if (decorations.showFiducials) {
+    decorationMarkup.push(
+      `<div class="${markerClass}" style="top: ${top}mm; left: ${left}mm;" aria-label="Top left fiducial marker"></div>`,
+      `<div class="${markerClass}" style="top: ${top}mm; right: ${right}mm;" aria-label="Top right fiducial marker"></div>`,
+      `<div class="${markerClass}" style="bottom: ${bottom}mm; left: ${left}mm;" aria-label="Bottom left fiducial marker"></div>`,
+      `<div class="${markerClass}" style="bottom: ${bottom}mm; right: ${right}mm;" aria-label="Bottom right fiducial marker"></div>`
+    );
+  }
+  if (decorations.qr.visible) {
+    const sizeMm = Math.max(
+      20,
+      Math.min(50, Number(decorations.qr.sizeMm) || 26)
+    );
+    const xMm = Math.max(
+      0,
+      Math.min(210 - sizeMm, Number(decorations.qr.xMm) || 0)
+    );
+    const yMm = Math.max(
+      0,
+      Math.min(297 - sizeMm, Number(decorations.qr.yMm) || 0)
+    );
+    decorationMarkup.push(
+      `<div class="omr-qr-reservation" data-omr-overlay="${esc(decorations.qr.overlayTag)}" data-omr-qr-size-mm="${sizeMm}" style="left: ${xMm}mm; top: ${yMm}mm; width: ${sizeMm}mm; height: ${sizeMm}mm;"><div class="omr-qr-placeholder" aria-hidden="true">QR</div><span class="omr-qr-label">INSTANCE QR</span></div>`
+    );
+  }
+  return decorationMarkup.join("\n  ");
+}
+function renderFieldHtml(label, typography, inputStyle, inputBackgroundColor, outerStyle, inputKind = "text", backgroundColor = "transparent") {
+  const inputClass = inputKind === "multiline" ? "omr-field-input omr-field-input-multiline" : `omr-field-input ${fieldInputStyleClass(inputStyle)}`;
+  return `<div class="omr-comp" style="${outerStyle}">
+    <div class="omr-field-box" style="background-color: ${safeComponentColor(backgroundColor, "transparent")};">
+      <div class="omr-field-label" style="${typographyToStyleString(typography)}">${esc(label)}</div>
+      <div class="${inputClass}" data-input-kind="${esc(inputKind)}" style="background-color: ${safeComponentColor(inputBackgroundColor, "#ffffff")};"></div>
+    </div>
+  </div>`;
+}
+function renderComponentHtml(c) {
+  const style = `left: ${c.posX}mm; top: ${c.posY}mm; width: ${c.w_mm}mm; background-color: ${safeComponentColor(c.backgroundColor)}; z-index: ${Number(c.zIndex) || 1};`;
+  if (c.type === "header") {
+    const titleStyle = typographyToStyleString(c.typography);
+    return `<div class="omr-comp omr-header" style="${style}">
+      <div class="omr-title">
+        <div style="${titleStyle}">${esc(c.title)}</div>
+        <div class="omr-subtitle" style="font-size: ${Math.max(5, (c.typography?.fontSizePt ?? 13) * 0.55)}pt; color: ${safeComponentColor(c.typography?.textColor, "#475569")}; font-family: ${esc(c.typography?.fontFamily)}; font-weight: 600; text-align: ${esc(c.typography?.textAlign)};">${esc(c.subtitle)}</div>
+      </div>
+      <div class="omr-sheet-code" style="font-size: 8pt;">${esc(c.formCode)}</div>
+    </div>`;
+  }
+  if (c.type === "candidate_name" || c.type === "birthdate" || c.type === "room_seat") {
+    return renderFieldHtml(
+      c.label,
+      c.typography,
+      c.inputStyle || "box",
+      c.inputBackgroundColor || "#ffffff",
+      style,
+      c.inputKind || "text",
+      c.backgroundColor
+    );
+  }
+  if (c.type === "custom_input") {
+    return renderFieldHtml(
+      c.label,
+      c.typography,
+      c.inputStyle || "box",
+      c.inputBackgroundColor || "#ffffff",
+      style,
+      c.inputKind || "text",
+      c.backgroundColor
+    );
+  }
+  if (c.type === "instructions") {
+    return `<div class="omr-comp" style="${style}">
+      <div class="omr-instructions" style="border-color: ${safeComponentColor(c.borderColor, "#cbd5e1")}; background: ${safeComponentColor(c.backgroundColor, "#ffffff")}; ${typographyToStyleString(c.typography)}">
+        <strong style="text-transform: uppercase;">${esc(c.label || "Instructions")}:</strong> ${esc(c.content)}
+      </div>
+    </div>`;
+  }
+  if (c.type === "roll") {
+    const digits = Number(c.digitsCount) || 7;
+    const bubbleDiameter = Number(c.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM;
+    const bubbleStyle = `width: ${bubbleDiameter}mm; height: ${bubbleDiameter}mm;`;
+    const boxStyle = `width: ${bubbleDiameter}mm; height: ${(bubbleDiameter * 1.15).toFixed(1)}mm;`;
+    const boxes = Array.from({ length: digits }).map(() => `<div class="omr-id-box" style="${boxStyle}"></div>`).join("");
+    const rows = Array.from({ length: 10 }).map(
+      (_, digit) => `
+      <div class="omr-id-row">
+        <span class="omr-id-num" style="${typographyToStyleString(c.typography)}">${digit}</span>
+        <div class="omr-id-bubs">${Array.from({ length: digits }).map(() => `<div class="omr-id-bub" style="${bubbleStyle}"></div>`).join("")}</div>
+      </div>`
+    ).join("");
+    return `<div class="omr-comp" style="${style}">
+      <div class="omr-id-container" style="background-color: ${safeComponentColor(c.backgroundColor, "#fafafa")};">
+        <div class="omr-id-title" style="${typographyToStyleString(c.typography)}">${esc(c.title)}</div>
+        <div class="omr-id-boxes">${boxes}</div>
+        <div class="omr-id-matrix" style="${typographyToStyleString(c.typography)}">${rows}</div>
+      </div>
+    </div>`;
+  }
+  if (isQuestionGridComponent(c)) {
+    const labels = gridOptionLabels(c);
+    const bubbleDiameter = Number(c.bubbleDiameterMm) || OMR_BUBBLE_DIAMETER_MM;
+    const bubbleStyle = `width: ${bubbleDiameter}mm; height: ${bubbleDiameter}mm;`;
+    const labelFontSize = Number(c.labelFontSizePt) || 6.5;
+    const rows = Array.from({
+      length: Math.min(Number(c.questionsCount) || 1, 50)
+    }).map((_, r) => {
+      const qNum = (Number(c.startQ) || 1) + r;
+      return `<div class="omr-q-row"><span class="omr-q-num">${qNum}</span><div class="omr-bubs">${labels.map(() => `<div class="omr-bub" style="${bubbleStyle}"></div>`).join("")}</div></div>`;
+    }).join("");
+    return `<div class="omr-comp omr-grid-block" style="${style}">
+      <div class="omr-subject-header" style="font-size: 6pt;">${esc(c.subjectName || c.name)}</div>
+      <div class="omr-option-header" style="font-size: ${labelFontSize}pt;"><span class="omr-q-num-spacer"></span><div class="omr-bubs">${labels.map((l) => `<span class="omr-opt-label" style="font-size: ${labelFontSize}pt; width: ${bubbleDiameter}mm;">${esc(l)}</span>`).join("")}</div></div>
+      <div style="font-size: ${labelFontSize}pt; line-height: 1;">${rows}</div>
+    </div>`;
+  }
+  if (c.type === "custom_text") {
+    return `<div class="omr-comp" style="${style}"><div style="${typographyToStyleString(c.typography)}">${esc(c.text)}</div></div>`;
+  }
+  if (c.type === "signature") {
+    return `<div class="omr-comp" style="${style}">
+      <div class="omr-signature">
+        <div class="omr-sign-label" style="${typographyToStyleString(c.typography)}">${esc(c.title)}</div>
+        <div class="omr-sign-line"></div>
+        <div class="omr-sign-cert" style="font-size: 6.5pt; color: #475569;">${esc(c.certificationText)}</div>
+      </div>
+    </div>`;
+  }
+  return "";
+}
+function renderFullSheetHtml(components, settings = DEFAULT_A4_SETTINGS, decorations = DEFAULT_SHEET_HTML_DECORATIONS, pageCount = Math.max(
+  1,
+  ...components.map((component) => component.page_no ?? 1)
+)) {
+  const pages = Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNo) => {
+    const pageComponents = components.filter(
+      (component) => (component.page_no ?? 1) === pageNo
+    );
+    return `<section class="omr-sheet" data-page-no="${pageNo}">
+  ${renderHtmlDecorations(settings, decorations)}
+  ${pageComponents.map(renderComponentHtml).join("\n  ")}
+</section>`;
+  }).join("\n");
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>${SHEET_CSS}</style>
+</head>
+<body>
+${pages}
+</body>
+</html>`;
+}
+function componentToSectionData(c) {
+  if (c.type === "roll") {
+    const geometry = effectiveRecognitionGeometryMm({
+      kind: "roll",
+      bubbleDiameterMm: c.bubbleDiameterMm,
+      bubblePitchMm: c.bubblePitchMm,
+      rowPitchMm: c.rowPitchMm
+    });
+    return {
+      id: c.id,
+      name: c.title || "Examinee Number",
+      type: "roll",
+      page_no: c.page_no ?? 1,
+      posX: c.posX,
+      posY: c.posY,
+      w_mm: rollBlockWidthMm(c),
+      h_mm: rollBlockHeightMm(c),
+      questionsCount: c.digitsCount,
+      cols: c.digitsCount,
+      optionsCount: 10,
+      startQ: 1,
+      customValuesStr: "0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
+      bubblePitchMm: geometry.bubblePitchMm,
+      bubbleDiameterMm: geometry.bubbleDiameterMm,
+      rowPitchMm: geometry.rowPitchMm,
+      isLocked: c.isLocked
+    };
+  }
+  if (isQuestionGridComponent(c)) {
+    const geometry = effectiveRecognitionGeometryMm({
+      kind: "grid",
+      bubbleDiameterMm: c.bubbleDiameterMm,
+      bubblePitchMm: c.bubblePitchMm,
+      rowPitchMm: c.rowPitchMm
+    });
+    const visualSize = canvasComponentBlockSizeMm(c);
+    return {
+      id: c.id,
+      page_no: c.page_no ?? 1,
+      name: c.name || c.subjectName,
+      aptitudeAreaCode: c.aptitudeAreaCode,
+      type: c.type,
+      posX: c.posX,
+      posY: c.posY,
+      w_mm: visualSize.w_mm,
+      h_mm: visualSize.h_mm,
+      questionsCount: c.questionsCount,
+      cols: c.cols || 1,
+      optionsCount: c.optionsCount || 4,
+      startQ: c.startQ || 1,
+      customValuesStr: c.customValuesStr || "A, B, C, D",
+      bubblePitchMm: geometry.bubblePitchMm,
+      bubbleDiameterMm: geometry.bubbleDiameterMm,
+      rowPitchMm: geometry.rowPitchMm,
+      isLocked: c.isLocked
+    };
+  }
+  return null;
+}
+const COMPONENT_PALETTE = [
+  {
+    kind: "header",
+    label: "Document Header",
+    description: "Exam title, subtitle, and form code badge",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "candidate_name",
+    label: "Candidate Name",
+    description: "Write-in line for the candidate printed name",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "birthdate",
+    label: "Birthdate",
+    description: "Write-in line for birthdate (MM / DD / YYYY)",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "room_seat",
+    label: "Room / Seat",
+    description: "Write-in line for room, seat, or group number",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "instructions",
+    label: "Instructions",
+    description: "Pencil / shading rules notice box",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "roll",
+    label: "Examinee ID Matrix",
+    description: "Write-in boxes + 0–9 vertical bubble columns",
+    paths: ["sheet_designer"]
+  },
+  {
+    kind: "question_grid",
+    label: "Question Grid",
+    description: "Numbered question rows with option bubbles",
+    paths: ["sheet_designer"]
+  },
+  {
+    kind: "custom_text",
+    label: "Custom Text",
+    description: "Free-positioned text label",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "custom_input",
+    label: "Custom Input Box",
+    description: "Labeled response field with configurable input shape",
+    paths: ["sheet_designer"]
+  },
+  {
+    kind: "signature",
+    label: "Signature Box",
+    description: "Signature line with certification text",
+    paths: ["sheet_designer", "upload_document"]
+  }
+];
+function paletteForPath(path) {
+  const filter = COMPONENT_PATH_FILTERS[path];
+  return COMPONENT_PALETTE.filter((item) => {
+    const isQuestionComponent = item.kind === "roll" || item.kind === "question_grid";
+    return item.paths.includes(path) && (filter.includeQuestionComponents || !isQuestionComponent) && (filter.includeTextComponents || isQuestionComponent);
+  });
+}
+const OVERLAY_PALETTE = [
+  {
+    kind: "qr_code",
+    label: "Blank Instance QR",
+    description: "Reserved QR block for blank-instance tracking",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "margins",
+    label: "Margin Insets",
+    description: "Physical quiet zone around the sheet edge",
+    paths: ["sheet_designer", "upload_document"]
+  },
+  {
+    kind: "markers",
+    label: "Fiducial Markers",
+    description: "Corner registration marker pattern",
+    paths: ["sheet_designer", "upload_document"]
+  }
+];
+function overlayPaletteForPath(path) {
+  return OVERLAY_PALETTE.filter((item) => item.paths.includes(path));
+}
+const FONT_FAMILY_OPTIONS = [
+  { value: "Inter, sans-serif", label: "Inter" },
+  { value: "IBM Plex Sans, sans-serif", label: "IBM Plex Sans" },
+  { value: 'Georgia, "Times New Roman", serif', label: "Georgia / Serif" },
+  { value: '"Courier New", Courier, monospace', label: "Courier / Mono" },
+  { value: "Arial, Helvetica, sans-serif", label: "Arial" }
+];
+export {
+  COMPONENT_PATH_FILTERS as C,
+  FONT_FAMILY_OPTIONS as F,
+  GRID_SECTION_HEADER_HEIGHT_MM as G,
+  componentToSectionData as a,
+  canvasComponentBlockSizeMm as b,
+  componentBlockSizeMm as c,
+  canvasRollRowGapPx as d,
+  canvasRollBubbleGapPx as e,
+  componentBackgroundColor as f,
+  gridOptionLabels as g,
+  componentInputBackgroundColor as h,
+  isQuestionGridComponent as i,
+  CANVAS_BUBBLE_DIAMETER_PX as j,
+  minimumCanvasPitchMm as m,
+  normalizeQuestionGridRowPositions as n,
+  overlayPaletteForPath as o,
+  paletteForPath as p,
+  renderFullSheetHtml as r
+};

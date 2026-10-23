@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "source_sha256": "5d3e30c40c747380bc64dfd8df0fcfbcd5ed0f141a43e1f8930c2c492438912b",
+  "acceptance_protocol_schema_version": "test-kit-acceptance-protocol-v1",
+  "acceptance_protocol_sha256": "e2be57fa029e14e3b3660cd7197d3159072abbc325de139ecb1e2d43cb2127c5",
+  "reviewer_reference": "tests/Fixtures/TestKit/two-item-count-native-v1.review.md",
+  "reviewer_name": "KitNativeFixtureReview (AI software reviewer; openai-codex/gpt-6.1-sol)",
+  "decision": "accepted"
+}

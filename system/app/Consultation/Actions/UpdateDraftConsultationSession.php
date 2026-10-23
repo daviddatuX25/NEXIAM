@@ -23,20 +23,21 @@ class UpdateDraftConsultationSession
         string $bookingMode,
         User $actor,
         int $expectedVersion,
+        ?bool $autoAssignEnabled = null,
     ): ConsultationSession {
-        return DB::transaction(function () use ($session, $cycle, $room, $code, $scheduledAt, $bookingMode, $actor, $expectedVersion): ConsultationSession {
+        return DB::transaction(function () use ($session, $cycle, $room, $code, $scheduledAt, $bookingMode, $actor, $expectedVersion, $autoAssignEnabled): ConsultationSession {
             $session = ConsultationSession::query()->lockForUpdate()->findOrFail($session->id);
 
             if ((int) $session->version !== $expectedVersion) {
-                throw new RuntimeException('Stale consultation session version.');
+                throw new RuntimeException('Stale Release Day session version.');
             }
 
             if ($session->status !== ConsultationSession::STATUS_DRAFT) {
-                throw new RuntimeException('Only draft sessions may be edited.');
+                throw new RuntimeException('Only draft Release Day sessions may be edited.');
             }
 
             if ($session->isOpenForReservation()) {
-                throw new RuntimeException('Close reservation before editing schedule fields.');
+                throw new RuntimeException('Close Release Day session reservations before editing schedule fields.');
             }
 
             if (! in_array($bookingMode, ConsultationSession::BOOKING_MODES, true)) {
@@ -49,6 +50,7 @@ class UpdateDraftConsultationSession
                 'code' => $code,
                 'scheduled_at' => $scheduledAt,
                 'booking_mode' => $bookingMode,
+                'auto_assign_enabled' => $autoAssignEnabled ?? $session->auto_assign_enabled,
                 'version' => $session->version + 1,
             ]);
 

@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "AD-ADM-01",
+      "kind": "diagram",
+      "name": "AD-ADM-01.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-ADM-01.svg",
+      "sha256": "1fc9d2f6d7a72df9157c65b82ecd511910dc345c485477c4fe9ba8f5e3d1f2c9",
+      "bytes": 54635
+    },
+    {
+      "id": "AD-EXM-01",
+      "kind": "diagram",
+      "name": "AD-EXM-01.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-EXM-01.svg",
+      "sha256": "bc18dfeb921176308635a0f870fe161eed7091daf4eb4f32d5dbb67dee34c154",
+      "bytes": 199093
+    },
+    {
+      "id": "AD-EXM-03",
+      "kind": "diagram",
+      "name": "AD-EXM-03.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-EXM-03.svg",
+      "sha256": "9e3cc663c41d83d964f8df17f7aaa30566271612c970ead14228624c9fb7bd08",
+      "bytes": 186584
+    },
+    {
+      "id": "AD-GRD-01",
+      "kind": "diagram",
+      "name": "AD-GRD-01.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-GRD-01.svg",
+      "sha256": "92e137cd1ad1984965bdfef71dfb17936cc35e32a77f9e4ea8653bf7c9fbc9c1",
+      "bytes": 363316
+    },
+    {
+      "id": "AD-DOC-02",
+      "kind": "diagram",
+      "name": "AD-DOC-02.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-DOC-02.svg",
+      "sha256": "21167b162a4c6b19e572b91526fb24165b8239ba6ebcd00cb01ccf557bce9aab",
+      "bytes": 179645
+    },
+    {
+      "id": "AD-CON-02",
+      "kind": "diagram",
+      "name": "AD-CON-02.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-CON-02.svg",
+      "sha256": "d6279ca80be7817a608c0efa189bdbb84b04044d260263027b7adc5623165107",
+      "bytes": 216670
+    },
+    {
+      "id": "AD-COM-02",
+      "kind": "diagram",
+      "name": "AD-COM-02.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-COM-02.svg",
+      "sha256": "64af3bb779a9d3f97354f7e196de372e316209b28e78901378327563a4a00a60",
+      "bytes": 41928
+    },
+    {
+      "id": "AD-ENR-01",
+      "kind": "diagram",
+      "name": "AD-ENR-01.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-ENR-01.svg",
+      "sha256": "79dec006cee0e994645e702ab484a7b07c16d5728572ded26d85b1e47ea76b9f",
+      "bytes": 183808
+    },
+    {
+      "id": "AD-IDN-02",
+      "kind": "diagram",
+      "name": "AD-IDN-02.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-IDN-02.svg",
+      "sha256": "5887d68782e6139c5444902ae2bebc6fd9b00c7d9c7800f7b840c2f7a5c0734c",
+      "bytes": 309303
+    },
+    {
+      "id": "AD-IDN-01",
+      "kind": "diagram",
+      "name": "AD-IDN-01.svg",
+      "source": "openspec/changes/action-core-authority-realignment/use-case-audit/diagrams/AD-IDN-01.svg",
+      "sha256": "d5b63dee2ff6689c169a182576ffe15055c550739728852394a68aab8347db05",
+      "bytes": 272199
+    },
+    {
+      "id": "protocol",
+      "kind": "material",
+      "name": "appendix-n-facilitator-protocol.md",
+      "source": "manuscript/sections/04_appendices/04_appendix_n_facilitator_protocol_and_orchestration_script.md",
+      "sha256": "f8ce941776d356c389451ba3f121b3bac73a805858121a97e288d31b10f7a15c",
+      "bytes": 23505
+    },
+    {
+      "id": "questionnaire",
+      "kind": "material",
+      "name": "appendix-j-tam-questionnaire.md",
+      "source": "manuscript/sections/04_appendices/04_appendix_j_tam_evaluation_instrument_sheet.md",
+      "sha256": "f0c90e068ed16c491b94f14eb52a186cd1fe9dfadf10c823e780c3429205eed0",
+      "bytes": 9301
+    },
+    {
+      "id": "activity-appendix",
+      "kind": "material",
+      "name": "appendix-o-activity-views.md",
+      "source": "manuscript/sections/04_appendices/04_appendix_o_use_case_activity_validation.md",
+      "sha256": "945208947d4eaac20d2bd3a1608b5ad4b9f8b2ad31f4bd8121d2f70a24909022",
+      "bytes": 10679
+    }
+  ]
+}

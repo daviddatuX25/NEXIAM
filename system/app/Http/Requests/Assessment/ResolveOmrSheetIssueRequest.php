@@ -18,7 +18,7 @@ class ResolveOmrSheetIssueRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'resolution_code' => ['required', Rule::in(['manual_review', 'manual_score_adjustment', 'abstained'])],
+            'resolution_code' => ['required', Rule::in(['manual_review', 'abstained'])],
             'resolution_reason' => ['required', 'string', 'max:255'],
         ];
     }

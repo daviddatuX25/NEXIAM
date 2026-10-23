@@ -5,14 +5,14 @@ namespace App\Assessment\Actions\Omr\Canonical;
 use App\Admission\Support\CommandIdempotency;
 use App\Assessment\Omr\Canonical\OmrAuthoringDraftService;
 use App\Assessment\Omr\Canonical\OmrTemplateAssetStore;
-use App\Models\Assessment\OmrTemplateAsset;
+use App\Foundation\Actions\RecordAuditEvent;
 use App\Jobs\Assessment\RenderOmrSourcePagesJob;
+use App\Models\Assessment\OmrTemplateAsset;
 use App\Models\Assessment\OmrTemplateAuthoringDraft;
 use App\Models\Foundation\Operation;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use App\Foundation\Actions\RecordAuditEvent;
 
 final class IngestOmrSourceDocument
 {
@@ -21,11 +21,10 @@ final class IngestOmrSourceDocument
         private readonly OmrTemplateAssetStore $assets,
         private readonly OmrAuthoringDraftService $drafts,
         private readonly RecordAuditEvent $recordAuditEvent,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     public function handle(
         OmrTemplateAuthoringDraft $draft,

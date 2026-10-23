@@ -18,13 +18,22 @@ use App\Examination\Actions\RecordExamSubmission;
 use App\Models\Admission\AdmissionAttempt;
 use App\Models\Admission\ApplicantAccessChallenge;
 use App\Models\Assessment\GradingSession;
+use App\Models\Assessment\OmrAnswerSheetTemplateVersion;
+use App\Models\Assessment\OmrQuestionBookletVersion;
+use App\Models\Communications\PublicPolicy;
+use App\Models\Consultation\ConsultationAssignment;
+use App\Models\Consultation\ConsultationSession;
 use App\Models\Examination\ExamSession;
 use App\Models\Foundation\AcademicCycle;
 use App\Models\Foundation\ApplicationWindow;
 use App\Models\Foundation\AptitudeArea;
 use App\Models\Foundation\Institution;
+use App\Models\Foundation\Program;
+use App\Models\Foundation\ProgramQuota;
 use App\Models\Foundation\Room;
+use App\Models\Foundation\SeatingArrangement;
 use App\Models\Release\ConsultationDecision;
+use App\Models\Release\ResultRelease;
 use App\Models\User;
 use App\Release\Actions\PrepareResultDocument;
 use App\Release\Actions\RecordConsultationDecision;
@@ -50,11 +59,47 @@ class ApplicantPortalDemoSeeder extends Seeder
     public function run(): void
     {
         $institution = Institution::query()->where('code', 'SYN-INST-001')->firstOrFail();
+        if (! $institution->usesSeatingArrangements()) {
+            throw new \RuntimeException('Applicant portal demo requires Allow assigned seating to be enabled explicitly before seeding.');
+        }
+        if (! $institution->usesMultiSetBooklets()) {
+            foreach (['ONL', 'F2F', 'DEF'] as $suffix) {
+                $session = ExamSession::query()->where('code', 'EX-PL-'.$suffix)->first();
+                if ($session !== null && $session->status !== ExamSession::STATUS_DRAFT) {
+                    continue;
+                }
+                $room = $session?->room()->first()
+                    ?? Room::query()->where('institution_id', $institution->id)->where('code', 'RM-PL-'.$suffix)->first();
+                $arrangement = SeatingArrangement::query()
+                    ->active()
+                    ->whereRaw('(rows * columns) <= ?', [$session !== null ? ($room?->capacity ?? 40) : 40])
+                    ->where(function ($query) use ($room): void {
+                        $query->where('availability_mode', SeatingArrangement::AVAILABILITY_ALL_ROOMS);
+                        if ($room !== null) {
+                            $query->orWhereHas('rooms', fn ($roomQuery) => $roomQuery->whereKey($room->id));
+                        }
+                    })
+                    ->orderBy('id')
+                    ->firstOrFail();
+                if ($arrangement->booklet_pattern !== SeatingArrangement::PATTERN_UNIFORM) {
+                    throw new \RuntimeException('Applicant portal demo layout requires Allow alternate Booklet Sets to be enabled explicitly before seeding.');
+                }
+            }
+        }
         $cycle = AcademicCycle::query()->where('code', 'SYN-CYCLE-2026')->firstOrFail();
         $window = ApplicationWindow::query()->where('code', 'SYN-WINDOW-2026-A')->firstOrFail();
         $guidance = User::query()->where('email', 'guidance.counselor@nexiam.test')->firstOrFail();
         $registrar = User::query()->where('email', 'registrar.clerk@nexiam.test')->firstOrFail();
 
+        foreach (['BSIT', 'BA-Psych'] as $code) {
+            $prog = Program::query()->where('code', $code)->first();
+            if ($prog) {
+                ProgramQuota::query()->updateOrCreate(
+                    ['program_id' => $prog->id, 'academic_cycle_id' => $cycle->id],
+                    ['slots' => 50],
+                );
+            }
+        }
         $this->releasedJourney(
             $institution,
             $cycle,
@@ -124,6 +169,10 @@ class ApplicantPortalDemoSeeder extends Seeder
         $attempt = $this->attemptFor($institution, $cycle, $email);
 
         if ($attempt === null) {
+            $policy = PublicPolicy::designatedIntake((int) $institution->getKey())
+                ?? throw new \RuntimeException('A designated published PublicPolicy revision is required for seeded intake.');
+            $revision = $policy->publishedRevision
+                ?? throw new \RuntimeException('The designated intake policy has no published revision.');
             $result = app(SubmitAdmissionAttempt::class)->handle(
                 $institution,
                 $cycle,
@@ -135,8 +184,7 @@ class ApplicantPortalDemoSeeder extends Seeder
                     sex: 'female',
                     contactEmail: $email,
                     applicantType: 'new',
-                    programPreferenceCodes: ['BSN', 'BSPSY'],
-                    grades: ['GWA' => '1.80', 'ENG' => '90.00', 'FIL' => '88.00', 'MATH' => '86.00', 'SCI' => '87.00'],
+                    programPreferenceCodes: ['BSIT', 'BA-Psych'],
                     middleName: null,
                     suffix: null,
                     contactPhone: '09171239999',
@@ -147,6 +195,9 @@ class ApplicantPortalDemoSeeder extends Seeder
                     province: 'Ilocos Sur',
                     zipCode: '2714',
                     termsAccepted: true,
+                    publicPolicyId: (int) $policy->getKey(),
+                    publicPolicyRevisionId: (int) $revision->getKey(),
+                    publicPolicyRevisionDigest: $revision->contentDigest(),
                 ),
                 'applicant-portal-seeder',
             );
@@ -183,6 +234,10 @@ class ApplicantPortalDemoSeeder extends Seeder
             app(FinalizeGradingSession::class)->handle($grading, $guidance, (int) ($grading->version ?? 1));
         }
 
+        if (! $attempt->resultDocuments()->where('status', 'ready')->exists()) {
+            app(PrepareResultDocument::class)->handle($attempt, $guidance);
+        }
+
         if (! ConsultationDecision::query()->where('admission_attempt_id', $attempt->id)->exists()) {
             app(RecordConsultationDecision::class)->handle(
                 $attempt,
@@ -193,8 +248,7 @@ class ApplicantPortalDemoSeeder extends Seeder
             );
         }
 
-        if (! $attempt->resultDocuments()->where('status', 'ready')->exists()) {
-            app(PrepareResultDocument::class)->handle($attempt, $guidance);
+        if (! ResultRelease::query()->where('admission_attempt_id', $attempt->id)->where('is_current', true)->exists()) {
             $document = $attempt->resultDocuments()->where('status', 'ready')->latest()->firstOrFail();
             app(ReleaseResult::class)->handle(
                 $attempt,
@@ -209,10 +263,10 @@ class ApplicantPortalDemoSeeder extends Seeder
             app(SetGuidanceProgramPool::class)->handle(
                 $attempt,
                 $guidance,
-                'BSN',
+                'BSIT',
                 [
-                    ['program_code' => 'BSN', 'display_order' => 1, 'basis' => 'preference'],
-                    ['program_code' => 'BSPSY', 'display_order' => 2, 'basis' => 'guidance_option'],
+                    ['program_code' => 'BSIT', 'display_order' => 1, 'basis' => 'preference'],
+                    ['program_code' => 'BA-Psych', 'display_order' => 2, 'basis' => 'guidance_option'],
                 ],
                 'Portal demo advised default.',
                 'portal-pool-'.$sessionCode,
@@ -229,7 +283,7 @@ class ApplicantPortalDemoSeeder extends Seeder
 
     private function bookTodayConsultation(AdmissionAttempt $attempt, User $guidance): void
     {
-        $session = \App\Models\Consultation\ConsultationSession::query()
+        $session = ConsultationSession::query()
             ->where('code', 'CON-AS-TODAY')
             ->first();
 
@@ -237,13 +291,13 @@ class ApplicantPortalDemoSeeder extends Seeder
             return;
         }
 
-        \App\Models\Consultation\ConsultationAssignment::query()->updateOrCreate(
+        ConsultationAssignment::query()->updateOrCreate(
             [
                 'consultation_session_id' => $session->id,
                 'admission_attempt_id' => $attempt->id,
             ],
             [
-                'status' => \App\Models\Consultation\ConsultationAssignment::STATUS_ASSIGNED,
+                'status' => ConsultationAssignment::STATUS_ASSIGNED,
                 'source' => 'staff_assigned',
                 'assigned_by_user_id' => $guidance->id,
                 'version' => 1,
@@ -255,23 +309,49 @@ class ApplicantPortalDemoSeeder extends Seeder
     {
         $session = ExamSession::query()->where('code', $code)->first();
 
-        if ($session !== null) {
+        if ($session !== null && $session->status !== ExamSession::STATUS_DRAFT) {
             return $session;
         }
 
-        $room = Room::query()->updateOrCreate(
+        $room = $session?->room()->first() ?? Room::query()->updateOrCreate(
             ['institution_id' => $cycle->institution_id, 'code' => $roomCode],
             ['name' => 'Portal Demo '.$roomCode, 'capacity' => 40, 'is_active' => true],
         );
 
-        return app(CreateExamSession::class)->handle(
-            $cycle,
-            $room,
-            $code,
-            now()->subHours(2)->toDateTimeString(),
-            now()->addMinutes(30)->toDateTimeString(),
-            $guidance,
-        );
+        $booklet = OmrQuestionBookletVersion::query()
+            ->whereNotNull('finalized_at')
+            ->whereNotNull('template_version_id')
+            ->whereHas('templateVersion', fn ($query) => $query->where('status', OmrAnswerSheetTemplateVersion::STATUS_ACTIVE))
+            ->orderBy('id')
+            ->firstOrFail();
+        $arrangement = SeatingArrangement::query()
+            ->active()
+            ->whereRaw('(rows * columns) <= ?', [$room->capacity])
+            ->where(function ($query) use ($room): void {
+                $query
+                    ->where('availability_mode', SeatingArrangement::AVAILABILITY_ALL_ROOMS)
+                    ->orWhereHas('rooms', fn ($roomQuery) => $roomQuery->whereKey($room->id));
+            })
+            ->orderBy('id')
+            ->firstOrFail();
+        if ($session === null) {
+            $session = app(CreateExamSession::class)->handle(
+                $cycle,
+                $room,
+                $code,
+                now()->subHours(2)->toDateTimeString(),
+                now()->addMinutes(30)->toDateTimeString(),
+                $guidance,
+                ExamSession::SEATING_MODE_ASSIGNED_SEATING,
+                $booklet,
+                $arrangement,
+            );
+        }
+        $session->forceFill([
+            'booklet_version_id' => $booklet->id,
+        ])->save();
+
+        return $session;
     }
 
     private function pinAccessKey(AdmissionAttempt $attempt, string $accessKey): void

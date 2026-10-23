@@ -5,13 +5,10 @@ namespace App\Ai\Knowledge;
 use App\Ai\Contracts\KnowledgeIndexPort;
 use App\Jobs\Ai\ExtractKnowledgeVersionJob;
 use App\Jobs\Ai\IndexKnowledgeVersionJob;
-use App\Models\Ai\KnowledgeCitationFixture;
 use App\Models\Ai\KnowledgeSource;
 use App\Models\Ai\KnowledgeSourceVersion;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 final class KnowledgeLifecycle
@@ -20,63 +17,6 @@ final class KnowledgeLifecycle
         private readonly PublicationDigest $digest,
         private readonly KnowledgeIndexPort $index,
     ) {}
-
-    /**
-     * @param  array{title: string, body_text: string, key?: string}  $input
-     */
-    public function createDraft(User $actor, array $input): KnowledgeSourceVersion
-    {
-        return DB::transaction(function () use ($actor, $input): KnowledgeSourceVersion {
-            $key = $input['key'] ?? Str::slug($input['title']).'-'.Str::lower(Str::random(4));
-            $source = KnowledgeSource::query()->create([
-                'id' => (string) Str::uuid(),
-                'key' => $key,
-                'title' => $input['title'],
-                'source_class' => 'institutional_policy',
-                'audience' => 'staff_and_applicant_inquiry',
-                'purpose' => 'policy_inquiry',
-                'classification' => 'public_institutional',
-                'institution_id' => $actor->actorScope()->institutionId,
-                'owner_user_id' => (string) $actor->id,
-            ]);
-
-            $body = trim($input['body_text']);
-            $checksum = hash('sha256', $body);
-            $path = 'knowledge/quarantine/'.$source->id.'/v1.txt';
-            Storage::disk('local')->put($path, $body);
-
-            $version = KnowledgeSourceVersion::query()->create([
-                'id' => (string) Str::uuid(),
-                'knowledge_source_id' => $source->id,
-                'version' => 1,
-                'status' => KnowledgeSourceVersion::STATUS_DRAFT,
-                'title' => $input['title'],
-                'body_text' => $body,
-                'content_checksum' => $checksum,
-                'quarantine_path' => $path,
-                'created_by' => (string) $actor->id,
-            ]);
-
-            KnowledgeCitationFixture::query()->create([
-                'id' => (string) Str::uuid(),
-                'knowledge_source_version_id' => $version->id,
-                'kind' => 'citation',
-                'query_text' => 'policy',
-                'expected_excerpt' => mb_substr($body, 0, 80),
-                'expected_outcome' => 'cite',
-            ]);
-            KnowledgeCitationFixture::query()->create([
-                'id' => (string) Str::uuid(),
-                'knowledge_source_version_id' => $version->id,
-                'kind' => 'refusal',
-                'query_text' => 'unrelated personal grades',
-                'expected_excerpt' => null,
-                'expected_outcome' => 'refuse',
-            ]);
-
-            return $version->fresh(['source', 'fixtures']) ?? $version;
-        });
-    }
 
     public function startExtraction(KnowledgeSourceVersion $version): void
     {
@@ -90,7 +30,7 @@ final class KnowledgeLifecycle
             'failure_reason' => null,
         ])->save();
 
-        if (app()->environment('testing') || (bool) config('nexi.process_inline', false)) {
+        if (app()->environment('testing') || (bool) config('xiam.process_inline', false)) {
             ExtractKnowledgeVersionJob::dispatchSync($version->id);
 
             return;
@@ -110,39 +50,68 @@ final class KnowledgeLifecycle
 
     public function approve(User $actor, KnowledgeSourceVersion $version): void
     {
-        $this->assertStatus($version, [KnowledgeSourceVersion::STATUS_REVIEW_REQUIRED]);
+        DB::transaction(function () use ($actor, $version): void {
+            $version = KnowledgeSourceVersion::query()
+                ->whereKey($version->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $version->load('fixtures');
-        $hasCite = $version->fixtures->contains(fn ($f) => $f->kind === 'citation');
-        $hasRefuse = $version->fixtures->contains(fn ($f) => $f->kind === 'refusal');
-        if (! $hasCite || ! $hasRefuse) {
-            throw new RuntimeException('fixtures_required');
-        }
+            if ($version->created_by === (string) $actor->getKey()) {
+                throw new RuntimeException('creator_cannot_approve');
+            }
 
-        $digest = $this->digest->forVersion($version);
-        $version->forceFill([
-            'status' => KnowledgeSourceVersion::STATUS_APPROVED,
-            'approved_by' => (string) $actor->id,
-            'approved_at' => now(),
-            'publication_digest' => $digest,
-        ])->save();
+            $this->assertStatus($version, [KnowledgeSourceVersion::STATUS_REVIEW_REQUIRED]);
+
+            $version->load('fixtures');
+            $hasCite = $version->fixtures->contains(fn ($f) => $f->kind === 'citation');
+            $hasRefuse = $version->fixtures->contains(fn ($f) => $f->kind === 'refusal');
+            if (! $hasCite || ! $hasRefuse) {
+                throw new RuntimeException('fixtures_required');
+            }
+
+            $digest = $this->digest->forVersion($version);
+            $version->forceFill([
+                'status' => KnowledgeSourceVersion::STATUS_APPROVED,
+                'approved_by' => (string) $actor->getKey(),
+                'approved_at' => now(),
+                'publication_digest' => $digest,
+            ])->save();
+        });
     }
 
     public function publish(User $actor, KnowledgeSourceVersion $version): void
     {
         unset($actor);
-        $this->assertStatus($version, [
-            KnowledgeSourceVersion::STATUS_APPROVED,
-            KnowledgeSourceVersion::STATUS_INDEX_FAILED,
-        ]);
 
-        if ($version->publication_digest !== $this->digest->forVersion($version)) {
-            throw new RuntimeException('digest_invalidated');
-        }
+        $version = DB::transaction(function () use ($version): KnowledgeSourceVersion {
+            $version = KnowledgeSourceVersion::query()
+                ->whereKey($version->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $version->forceFill(['status' => KnowledgeSourceVersion::STATUS_INDEXING])->save();
+            $this->assertStatus($version, [
+                KnowledgeSourceVersion::STATUS_APPROVED,
+                KnowledgeSourceVersion::STATUS_INDEX_FAILED,
+            ]);
 
-        if (app()->environment('testing') || (bool) config('nexi.process_inline', false)) {
+            if ($version->approved_by === null || $version->approved_by === '') {
+                throw new RuntimeException('approver_required');
+            }
+
+            if ($version->approved_by === $version->created_by) {
+                throw new RuntimeException('creator_cannot_approve');
+            }
+
+            if ($version->publication_digest !== $this->digest->forVersion($version)) {
+                throw new RuntimeException('digest_invalidated');
+            }
+
+            $version->forceFill(['status' => KnowledgeSourceVersion::STATUS_INDEXING])->save();
+
+            return $version;
+        });
+
+        if (app()->environment('testing') || (bool) config('xiam.process_inline', false)) {
             IndexKnowledgeVersionJob::dispatchSync($version->id);
 
             return;
@@ -154,8 +123,19 @@ final class KnowledgeLifecycle
     public function markActive(KnowledgeSourceVersion $version): void
     {
         DB::transaction(function () use ($version): void {
+            $source = KnowledgeSource::query()
+                ->whereKey($version->knowledge_source_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $version = KnowledgeSourceVersion::query()
+                ->whereKey($version->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            abort_unless($version->knowledge_source_id === $source->getKey(), 404);
+            $this->assertStatus($version, [KnowledgeSourceVersion::STATUS_INDEXING]);
+
             KnowledgeSourceVersion::query()
-                ->where('knowledge_source_id', $version->knowledge_source_id)
+                ->where('knowledge_source_id', $source->getKey())
                 ->where('status', KnowledgeSourceVersion::STATUS_ACTIVE)
                 ->where('id', '!=', $version->id)
                 ->each(function (KnowledgeSourceVersion $prior): void {
@@ -173,21 +153,32 @@ final class KnowledgeLifecycle
 
     public function revoke(User $actor, KnowledgeSourceVersion $version, string $reason = 'revoked'): void
     {
-        $this->assertStatus($version, [
-            KnowledgeSourceVersion::STATUS_ACTIVE,
-            KnowledgeSourceVersion::STATUS_APPROVED,
-            KnowledgeSourceVersion::STATUS_INDEXING,
-        ]);
+        DB::transaction(function () use ($actor, $version, $reason): void {
+            $source = KnowledgeSource::query()
+                ->whereKey($version->knowledge_source_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $version = KnowledgeSourceVersion::query()
+                ->whereKey($version->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            abort_unless($version->knowledge_source_id === $source->getKey(), 404);
+            $this->assertStatus($version, [
+                KnowledgeSourceVersion::STATUS_ACTIVE,
+                KnowledgeSourceVersion::STATUS_APPROVED,
+                KnowledgeSourceVersion::STATUS_INDEXING,
+            ]);
 
-        $version->forceFill([
-            'status' => KnowledgeSourceVersion::STATUS_REVOKED,
-            'revoked_at' => now(),
-            'revoke_reason' => $reason,
-            'approved_by' => $version->approved_by ?? (string) $actor->id,
-        ])->save();
+            $version->forceFill([
+                'status' => KnowledgeSourceVersion::STATUS_REVOKED,
+                'revoked_at' => now(),
+                'revoke_reason' => $reason,
+                'approved_by' => $version->approved_by ?? (string) $actor->id,
+            ])->save();
 
-        // Synchronous retrieval denial before async index cleanup reconcile.
-        $this->index->remove($version->id);
+            // Synchronous retrieval denial before async index cleanup reconcile.
+            $this->index->remove($version->id);
+        });
     }
 
     /**

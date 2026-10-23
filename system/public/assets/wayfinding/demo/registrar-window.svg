@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" role="img" aria-labelledby="title desc">
+  <title id="title">Registrar Service Window 1</title>
+  <desc id="desc">Registrar intake counter with glass divider, document tray, and a visible queuing sign.</desc>
+  <defs>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#e9edf0"/><stop offset="1" stop-color="#cbd5d9"/></linearGradient>
+    <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#e2f2f1"/><stop offset="1" stop-color="#a4d0d0"/></linearGradient>
+    <linearGradient id="counter" x2="0" y2="1"><stop stop-color="#476574"/><stop offset="1" stop-color="#293f4b"/></linearGradient>
+  </defs>
+  <path fill="#1d3340" d="M0 0h300v400H0z"/>
+  <path fill="url(#wall)" d="M16 18h268v350H16z"/>
+  <path fill="#d9e0df" d="M28 40h244v298H28z"/>
+  <path fill="#284553" d="M44 61h212v174H44z"/>
+  <path fill="url(#glass)" d="M51 69h198v157H51z"/>
+  <path fill="#f4f8f4" d="M62 81h176v135H62z" opacity=".58"/>
+  <path stroke="#8eafb0" stroke-width="3" d="M151 69v157M51 222h198"/>
+  <path fill="#f2f4eb" d="M65 42h170v37H65z"/>
+  <path fill="#294553" d="M65 42h170v5H65z"/>
+  <text x="150" y="59" fill="#273e49" font-family="Arial,sans-serif" font-size="11" font-weight="700" text-anchor="middle">REGISTRAR · WINDOW 1</text>
+  <text x="150" y="71" fill="#60747a" font-family="Arial,sans-serif" font-size="6" letter-spacing="1.2" text-anchor="middle">DOCUMENT INTAKE &amp; RECORDS</text>
+  <path fill="#324c59" d="M26 235h248v18H26z"/>
+  <path fill="url(#counter)" d="M26 253h248v83H26z"/>
+  <path fill="#d7e0de" d="M48 235h204v8H48z"/>
+  <path fill="#b7c6c5" d="M86 217h94v22H86z"/>
+  <path fill="#ecf0e9" d="M92 207h80v12H92z"/>
+  <path fill="#f6f4e9" d="M98 200h68v10H98z"/>
+  <path stroke="#b0bdba" stroke-width="1" d="M104 204h53m-52 3h41"/>
+  <path fill="#e7d49b" d="M196 213h31v23h-31z"/>
+  <path fill="#7e6540" d="M191 234h41v5h-41z"/>
+  <path fill="#f5f0df" d="M199 218h25v11h-25z"/>
+  <path fill="#2e4955" d="M202 221h19v2h-19zm0 4h14v2h-14z"/>
+  <path fill="#e5ece6" d="M58 266h184v54H58z" opacity=".16"/>
+  <path fill="#f0f3eb" d="M194 91h47v72H194z"/>
+  <path fill="#324f5a" d="M199 96h37v62h-37z"/>
+  <path fill="#f1d167" d="M202 100h31v31h-31z"/>
+  <text x="217.5" y="112" fill="#253b42" font-family="Arial,sans-serif" font-size="6" font-weight="700" text-anchor="middle">PLEASE</text>
+  <text x="217.5" y="120" fill="#253b42" font-family="Arial,sans-serif" font-size="6" font-weight="700" text-anchor="middle">TAKE A</text>
+  <text x="217.5" y="128" fill="#253b42" font-family="Arial,sans-serif" font-size="6" font-weight="700" text-anchor="middle">NUMBER</text>
+  <path fill="#f6f4ea" d="M207 137h21v15h-21z"/>
+  <text x="217.5" y="147" fill="#405963" font-family="Arial,sans-serif" font-size="7" font-weight="700" text-anchor="middle">QUEUE</text>
+  <path fill="#bac8c7" d="M34 338h232v15H34z"/>
+  <path fill="#213641" d="M16 368h268v32H16z"/>
+</svg>

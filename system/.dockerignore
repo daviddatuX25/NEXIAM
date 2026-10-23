@@ -1,4 +1,6 @@
 .env
+storage
+storage/app/sensitive
 .git
 node_modules
 vendor
@@ -7,4 +9,14 @@ storage/logs
 storage/framework/cache/data
 storage/framework/sessions
 storage/framework/views
+storage/framework/testing
 storage/app/private
+docker/tabfm/model.ckpt
+docker/tabfm/__pycache__/
+.env.*
+!.env.example
+backups
+test-results
+playwright-report
+**/*.sqlite*
+docker/tabfm/*.safetensors

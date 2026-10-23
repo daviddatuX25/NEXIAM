@@ -11,7 +11,6 @@ use RuntimeException;
 use function config;
 use function file_exists;
 use function hash_file;
-use function is_array;
 use function is_string;
 use function preg_match;
 
@@ -84,7 +83,7 @@ final class OmrMarkerProfileService
     }
 
     /**
-     * @param array<string, mixed> $evidence
+     * @param  array<string, mixed>  $evidence
      */
     public function qualify(OmrMarkerProfile $profile, array $evidence, User $actor): OmrMarkerProfile
     {
@@ -147,7 +146,7 @@ final class OmrMarkerProfileService
     }
 
     /**
-     * @param array<string, int|float> $insets
+     * @param  array<string, int|float>  $insets
      * @return array{top:float,right:float,bottom:float,left:float}
      */
     public function validateInsets(array $insets): array

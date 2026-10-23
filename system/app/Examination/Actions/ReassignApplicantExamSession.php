@@ -6,6 +6,7 @@ use App\Foundation\Actions\RecordAuditEvent;
 use App\Models\Examination\ExamAssignment;
 use App\Models\Examination\ExamSession;
 use App\Models\User;
+use App\Scheduling\AssignmentInvariant;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -16,9 +17,10 @@ use RuntimeException;
  */
 class ReassignApplicantExamSession
 {
-    public function __construct(private readonly RecordAuditEvent $recordAuditEvent)
-    {
-    }
+    public function __construct(
+        private readonly RecordAuditEvent $recordAuditEvent,
+        private readonly AssignmentInvariant $assignmentInvariant,
+    ) {}
 
     public function handle(
         ExamSession $fromSession,
@@ -28,8 +30,12 @@ class ReassignApplicantExamSession
         ?string $reason = null,
     ): ExamAssignment {
         return DB::transaction(function () use ($fromSession, $assignment, $toSession, $actor, $reason): ExamAssignment {
-            $fromSession = ExamSession::query()->lockForUpdate()->findOrFail($fromSession->id);
-            $toSession = ExamSession::query()->lockForUpdate()->findOrFail($toSession->id);
+            $firstId = min((int) $fromSession->id, (int) $toSession->id);
+            $secondId = max((int) $fromSession->id, (int) $toSession->id);
+            $first = ExamSession::query()->lockForUpdate()->findOrFail($firstId);
+            $second = ExamSession::query()->lockForUpdate()->findOrFail($secondId);
+            $fromSession = (int) $fromSession->id === $firstId ? $first : $second;
+            $toSession = (int) $toSession->id === $firstId ? $first : $second;
             $assignment = ExamAssignment::query()->lockForUpdate()->findOrFail($assignment->id);
 
             if ((int) $assignment->exam_session_id !== (int) $fromSession->id) {
@@ -43,13 +49,8 @@ class ReassignApplicantExamSession
             if ((int) $fromSession->id === (int) $toSession->id) {
                 throw new RuntimeException('Choose a different exam session for reassignment.');
             }
-
-            if (in_array($fromSession->status, [ExamSession::STATUS_COMPLETED, ExamSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Cannot reassign from a terminal session.');
-            }
-
-            if (in_array($toSession->status, [ExamSession::STATUS_COMPLETED, ExamSession::STATUS_CANCELLED], true)) {
-                throw new RuntimeException('Cannot reassign to a terminal session.');
+            if ($fromSession->status !== ExamSession::STATUS_DRAFT || $toSession->status !== ExamSession::STATUS_DRAFT) {
+                throw new RuntimeException('Published or finalized session rosters are locked for ordinary scheduling. Exam Day walk-in and early-traveler changes must use AccommodateApplicantExamSession on Monitoring.');
             }
 
             if ((int) $fromSession->academic_cycle_id !== (int) $toSession->academic_cycle_id) {
@@ -60,8 +61,7 @@ class ReassignApplicantExamSession
                 ->active()
                 ->where('exam_session_id', $toSession->id)
                 ->count();
-
-            $capacity = (int) $toSession->room()->value('capacity');
+            $capacity = $this->assignmentInvariant->capacityLimit($toSession);
             if ($activeOnTarget >= $capacity) {
                 throw new RuntimeException('Target exam session is full.');
             }

@@ -8,6 +8,7 @@
   import StaffLayout from '@/Pages/Staff/StaffLayout.svelte';
   import E2PageState from '@/Pages/Admission/E2PageState.svelte';
   import PageHeaderBar from '@/Components/kit/PageHeaderBar.svelte';
+  import PrintDocumentsSlot from '@/Components/DocumentTemplate/PrintDocumentsSlot.svelte';
   import * as Card from '@/Components/ui/card';
   import { Link } from '@inertiajs/svelte';
   import { ArrowRight, Inbox } from 'lucide-svelte';
@@ -15,16 +16,16 @@
   let { page_state = 'ready', attempt = { id: null, reference_code: '' }, destinations = [] } = $props();
 </script>
 
-<svelte:head><title>Applicant action hub</title></svelte:head>
+<svelte:head><title>Applicant Action Hub</title></svelte:head>
 
-<StaffLayout breadcrumbs={[{ label: 'Applicant action hub' }]}>
+<StaffLayout breadcrumbs={[{ label: 'Applicant Action Hub' }]}>
   <div class="min-w-0 space-y-6 p-4 sm:p-6">
     {#if page_state !== 'ready'}
       <E2PageState state={page_state} />
     {:else}
       <PageHeaderBar
-        title="Applicant action hub"
-        description="Server-authored destinations for your current duty and scope."
+        title="Applicant Action Hub"
+        description="Authorized workflow actions and quick destinations available for your current office role and assigned scope."
       />
 
       <Card.Root>
@@ -55,6 +56,7 @@
               {/each}
             </ul>
           {/if}
+          <PrintDocumentsSlot slotKey="applicant_qr_scan_modal" attemptIds={attempt?.id ? [attempt.id] : []} autoStart={true} />
         </Card.Content>
       </Card.Root>
 

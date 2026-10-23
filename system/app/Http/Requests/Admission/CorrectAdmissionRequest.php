@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Admission;
 
 use App\Models\Admission\AdmissionAttempt;
-use App\Models\Foundation\IntakeGradeField;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,6 +23,14 @@ class CorrectAdmissionRequest extends FormRequest
 
         $rules = [
             'expected_version' => ['required', 'integer', 'min:1'],
+            'identity_first_name' => ['nullable', 'string', 'max:120'],
+            'identity_middle_name' => ['nullable', 'string', 'max:120'],
+            'identity_last_name' => ['nullable', 'string', 'max:120'],
+            'identity_suffix' => ['nullable', 'string', 'max:32'],
+            'identity_birthdate' => ['nullable', 'date'],
+            'identity_sex' => ['nullable', Rule::in(['male', 'female'])],
+            'identity_email' => ['nullable', 'email', 'max:255'],
+            'identity_phone' => ['nullable', 'string', 'max:64'],
             'preferred_program_code' => ['nullable', 'string', 'max:32'],
             'program_preference_1_code' => [
                 'nullable',
@@ -56,19 +63,7 @@ class CorrectAdmissionRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:120'],
             'province' => ['nullable', 'string', 'max:120'],
             'zip_code' => ['nullable', 'string', 'max:32'],
-            'grades' => ['nullable', 'array'],
         ];
-
-        if ($attempt instanceof AdmissionAttempt) {
-            foreach (IntakeGradeField::activeForInstitution((int) $attempt->institution_id) as $field) {
-                $rules['grades.'.$field->code] = [
-                    'nullable',
-                    'numeric',
-                    'min:'.(float) $field->min_value,
-                    'max:'.(float) $field->max_value,
-                ];
-            }
-        }
 
         return $rules;
     }
@@ -79,17 +74,10 @@ class CorrectAdmissionRequest extends FormRequest
     public function correctionPayload(): array
     {
         $validated = $this->validated();
-        $gradesInput = $validated['grades'] ?? [];
-        $grades = [];
-        if (is_array($gradesInput)) {
-            foreach ($gradesInput as $code => $value) {
-                if (! is_string($code) || $value === null || $value === '') {
-                    continue;
-                }
-                $grades[$code] = (string) $value;
-            }
+
+        if (isset($validated['identity_birthdate'])) {
+            $validated['identity_birthdate'] = $this->date('identity_birthdate')?->format('Y-m-d');
         }
-        $validated['grades'] = $grades;
 
         return $validated;
     }
