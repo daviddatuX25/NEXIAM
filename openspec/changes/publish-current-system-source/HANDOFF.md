@@ -53,3 +53,9 @@ Future public-source work should start from a fresh clone of published `master` 
 - Verification containers/browser were stopped after smoke; private test databases/configuration/build output are ignored and excluded from Git. No live deployment, migration, seed, reset, key rotation or asset activation occurred.
 
 No all-project type/lint/full-suite, PostgreSQL concurrency, external provider, actual-device push or physical OMR acceptance is claimed. Existing domain planning gaps remain their owning change's responsibility, not completed by a source publication.
+
+## Publication receipt
+
+Source commit **`89d5d95f78e185752c7b6b5f147cb2249caa5cb8`** was pushed normally to GitHub `master`, advancing it from `d1f1a10a1ae6336e28fa79c49d3f606f02a35541`; no force push. GitHub API confirmed the exact remote revision, unchanged default branch `master`, and browsable root README, current `DatabaseSeeder.php` and hardened `WebPushService.php`. The encrypted backup branch remains separate.
+
+Final live health/login probes returned HTTP200 in0.201s/0.207s; host load3.37, root disk96%used with6.4GiBfree. These are single-request observations, not a load test. The original local branch/worktree and public deployment remain unchanged. This receipt-only documentation commit follows the verified source commit.

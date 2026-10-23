@@ -7,4 +7,4 @@
 - [x] Write root/application setup and safety documentation; exclude external weights/private state.
 - [x] Verify source, credential scan, focused tests, build and isolated runtime smoke; record limits.
 - [x] Review the complete publication delta and confirm no application deployment automation is triggered.
-- [ ] Commit and fast-forward push master; verify remote revision and plaintext source.
+- [x] Commit and fast-forward push master; verify remote revision and plaintext source.
