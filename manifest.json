@@ -1,0 +1,67 @@
+{
+  "format": "nexiam-encrypted-source-backup-v1",
+  "created_at": "2026-10-23T02:06:17.303Z",
+  "source_head": "bf256c67dfd341adfd12d9e23658f279ca68ff8e",
+  "includes_uncommitted_files": true,
+  "files": 4956,
+  "seeders": 74,
+  "archive_sha256": "d58e6563013e53c44a40a4e834271bf221c2d6a089e60d16a442f8e2e6cb76ea",
+  "encryption": "OpenPGP symmetric AES-256, integrity protection, salted iterated SHA-512 S2K; generated random passphrase stored off GitHub",
+  "parts": [
+    {
+      "file": "source.tar.gz.gpg.part-000",
+      "bytes": 47185920,
+      "sha256": "fb2000e3dcaa650ff798d5ae37500fb6ec8bb8182c2a80c26885be49a91570f6"
+    },
+    {
+      "file": "source.tar.gz.gpg.part-001",
+      "bytes": 47185920,
+      "sha256": "459dbf2a9370691e2417eb2bcf4f7b8e30a2dab4dd0e3cf50d3a0a9a4da46af4"
+    },
+    {
+      "file": "source.tar.gz.gpg.part-002",
+      "bytes": 47185920,
+      "sha256": "036ea1f3632e1cc82f7b1e1c733cba1c4821570a730e340156fbb0bab72c30dd"
+    },
+    {
+      "file": "source.tar.gz.gpg.part-003",
+      "bytes": 47185920,
+      "sha256": "bc2f6b986fd2481e12ab0182e1780efe372ecccfc0e4f069a067a2684fe6b8d0"
+    },
+    {
+      "file": "source.tar.gz.gpg.part-004",
+      "bytes": 47185920,
+      "sha256": "732293d46093c40b753fcad5792fd9e8a3effcae0d8103b28386d0799a90bda4"
+    },
+    {
+      "file": "source.tar.gz.gpg.part-005",
+      "bytes": 11859869,
+      "sha256": "ce8f241766562463f518ef8e5b6d0f68de15fd4c3bb8578da74b7f7551aa2cc1"
+    }
+  ],
+  "scope": "Current system source, migrations, seeders/data, tests, lockfiles, source assets; not Git history or deployment state",
+  "excludes": [
+    "Model checkpoint and redundant source-art ZIPs",
+    "Dependencies/vendor/node_modules",
+    "Runtime .env, databases, storage volumes, logs and served builds",
+    "Local QA outputs and lock files",
+    "Unrelated manuscript/planning working-tree edits"
+  ],
+  "verification": [
+    "Encrypted archive decrypted successfully and tar --compare matched all archived files in the source working tree",
+    "Split parts recombined SHA-256 matches encrypted archive",
+    "Git bundle private backup verified",
+    "Compose default and HTTPS overlay config validation passed",
+    "Runtime route registration command passed",
+    "Public health and login HTTP 200; measured login 0.326833s after load recovered"
+  ],
+  "limitations": [
+    "Not a deployment-ready or reviewed release",
+    "Full checks/build were stopped for host resource safety",
+    "Focused suggestion input regression: 2 failures among 12 tests",
+    "Academic-history input binding missing in current source",
+    "Live Web Push uses hardcoded fallback key: do not publish plaintext source until externalized",
+    "Browser verification failed due browser resource/connection errors",
+    "Application database, .env, volume and current selective built-asset restore are not included"
+  ]
+}
