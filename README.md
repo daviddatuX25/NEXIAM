@@ -69,10 +69,12 @@ Follow this sequence for every authorized code or documentation change. Permanen
    - **Frontend & PHP formatting checks:** run inside `system/` (`vendor/bin/pint --test --format agent`, `npm ci`, `npm run quality`, `npm run build`).
    - **PostgreSQL-sensitive suites — disposable provisioning from a fresh worktree:**
      1. Create an untracked env file (`cp system/.env.example system/.env`; never commit `.env` or copy a live `.env`).
-     2. `system/compose.yaml` bind-mounts `.:/var/www/html` over the image (hiding `/var/www/html/vendor` in a fresh worktree that has no `system/vendor/autoload.php`) and defaults `name: nexiam-system` with host ports `18000`, `5432`, `18025`, `11025`. Isolate by setting `COMPOSE_PROJECT_NAME=nexiam-test-<slice>` and passing an untracked override file clearing `ports: !reset []` (plus `image: nexiam-system-app:latest` if already built locally, or run `docker compose build app` on a clean host). Start `postgres` first, install `system/vendor/` and `APP_KEY` as your host UID/GID so `git worktree remove` stays clean, then start `app` with `--no-deps`:
+     2. `system/compose.yaml` bind-mounts `.:/var/www/html` over the image (hiding `/var/www/html/vendor` in a fresh worktree that has no `system/vendor/autoload.php`) and defaults `name: nexiam-system` with host ports `18000`, `5432`, `18025`, `11025`. Isolate with a concrete `COMPOSE_PROJECT_NAME` and a per-run override file clearing `ports: !reset []` (plus `image: nexiam-system-app:latest` if already built locally, or run `docker compose build app` on a clean host). Start `postgres` first, install `system/vendor/` and `APP_KEY` as your host UID/GID so `git worktree remove` stays clean, then start `app` with `--no-deps`:
 
         ```sh
-        cat > /tmp/nexiam-test-override.yaml <<'YAML'
+        export COMPOSE_PROJECT_NAME="nexiam-test-pg-verify"
+        export OVERRIDE_FILE="$(mktemp "/tmp/${COMPOSE_PROJECT_NAME}-override-XXXXXX.yaml")"
+        cat > "${OVERRIDE_FILE}" <<'YAML'
         services:
           app:
             image: nexiam-system-app:latest
@@ -82,22 +84,21 @@ Follow this sequence for every authorized code or documentation change. Permanen
           mailpit:
             ports: !reset []
         YAML
-        export COMPOSE_PROJECT_NAME=nexiam-test-<slice>
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml up -d --wait postgres
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml run --rm --no-deps \
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" up -d --wait postgres
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" run --rm --no-deps \
           --user "$(id -u):$(id -g)" -e COMPOSER_CACHE_DIR=/tmp/composer-cache -e SKIP_DB_WAIT=1 \
           app sh -lc 'composer install --no-interaction --prefer-dist --no-progress && php artisan key:generate --force'
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml up -d --no-deps --wait app
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" up -d --no-deps --wait app
         ```
 
      3. **Provision the suite database and verify the exact suite connection and storage before any migration or test:**
-        Replace `<suite_db>` with the exact disposable database your target suite requires (for example `nexiam_pg_acceptance_<slice>` or the database named by a `phpunit.*-postgres.xml` config):
+        Use a dedicated disposable database name (or the exact database name required by a `phpunit.*-postgres.xml` config):
 
         ```sh
-        SUITE_DB="<suite_db>"
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml exec -T postgres \
+        export SUITE_DB="nexiam_pg_acceptance_verify"
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" exec -T postgres \
           psql -U nexiam -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${SUITE_DB}\" TEMPLATE template0;"
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml exec -T app \
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" exec -T app \
           env APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=postgres DB_PORT=5432 \
               DB_DATABASE="${SUITE_DB}" DB_USERNAME=nexiam DB_PASSWORD=nexiam-local-only \
               DB_URL="" NEXIAM_TEST_PIN_SQLITE=0 \
@@ -117,7 +118,7 @@ Follow this sequence for every authorized code or documentation change. Permanen
             '\''
           '
         docker inspect -f '{{range .Mounts}}{{.Type}}:{{.Source}}->{{.Destination}} {{end}}' \
-          "$(docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml ps -q app)"
+          "$(docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" ps -q app)"
         docker volume ls --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}"
         ```
 
@@ -127,7 +128,7 @@ Follow this sequence for every authorized code or documentation change. Permanen
         - **Direct PostgreSQL concurrency / feature tests using `phpunit.pg.xml` (verified from inside the test runner on `origin/master`):** migrate the provisioned disposable database, seed `DatabaseSeeder::testSeeders()`, verify `DB::connection()->getDriverName()` and `SELECT current_database()` from inside the runner (e.g., via `phpunit.pg.xml` where both `getenv('DB_CONNECTION')` and `DB::connection()` resolve to `pgsql` + `"${SUITE_DB}"`), and run Pest with `--configuration=phpunit.pg.xml`:
 
           ```sh
-          docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml exec -T app \
+          docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" exec -T app \
             env APP_ENV=testing DB_CONNECTION=pgsql DB_HOST=postgres DB_PORT=5432 \
                 DB_DATABASE="${SUITE_DB}" DB_USERNAME=nexiam DB_PASSWORD=nexiam-local-only \
                 DB_URL="" NEXIAM_TEST_PIN_SQLITE=0 \
@@ -153,10 +154,10 @@ Follow this sequence for every authorized code or documentation change. Permanen
         Confirm only your disposable project's containers and volumes are listed, then tear down:
 
         ```sh
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml ps --format "table {{.Name}}\t{{.Project}}\t{{.State}}"
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" ps --format "table {{.Name}}\t{{.Project}}\t{{.State}}"
         docker volume ls --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}"
-        docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml down -v
-        rm -f /tmp/nexiam-test-override.yaml
+        docker compose -f system/compose.yaml -f "${OVERRIDE_FILE}" down -v
+        rm -f "${OVERRIDE_FILE}"
         ```
 
    - If optional local Git hooks are introduced later, keep them versioned, opt-in, and fast; hosted GitHub Actions checks remain authoritative.
