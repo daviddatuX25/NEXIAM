@@ -40,3 +40,46 @@ Publication checks and their limits are recorded in the [source publication hand
 Copy `system/.env.example` for a new local installation; never commit the resulting `.env`. Example/demo credentials and local transport secrets are deliberately nonproduction values. Replace them before any shared or public deployment. Never publish real applicant records, private keys, database dumps, model access tokens or storage backups.
 
 The existing GitHub Actions quality workflow targets the legacy reference application, not `system/`. It does not certify current-source correctness. No workflow in this publication deploys the NEXIAM application; the separate Pages workflow is scoped to changes under `capstone/`, which this publication does not modify.
+
+## Daily workflow (issue to PR)
+
+Follow this sequence for every authorized code or documentation change. Permanent engineering rules live in [`docs/project-context.md`](docs/project-context.md) and [`docs/GREENFIELD-MASTER-REFERENCE.md`](docs/GREENFIELD-MASTER-REFERENCE.md); this section defines the day-to-day branch, test-target, PR, and emergency mechanics.
+
+1. **Locate the issue and governing spec.**
+   - Inspect your assigned GitHub Issue (`gh issue view <number> --comments`) for scope, allowed paths, and blockers (`Blocked by: #<n>`). Issues organize work and dependencies; they do not authorize implementation on their own.
+   - Open the single owning OpenSpec change under `openspec/changes/<change>/` (`proposal.md`, `specs/`, `design.md`, `tasks.md`, `HANDOFF.md`) and confirm the task is active and unblocked.
+   - Treat `legacy_codebase/` and `docs/legacy-reference/` as **read-only evidence** unless independently authorized.
+
+2. **Create a bounded worktree off the pinned base.**
+   - Do not edit `master` directly, copy live mounted trees, or merge unpublished local workstation history ([source-publication boundary](openspec/changes/publish-current-system-source/HANDOFF.md)).
+   - Before editing, record `git rev-parse HEAD`, `git status --short`, `git worktree list --porcelain`, your assigned paths, and your intended disposable test target.
+   - Branch in a separate worktree off the integration lead's pinned clean ref (typically `origin/master`):
+
+     ```sh
+     git worktree add -b <type>/<slice-name> ../NEXIAM-<slice-name> <pinned-ref-or-sha>
+     ```
+
+   - Never `reset`, `stash`, `prune`, blanket-stage (`git add -A` / `git add .`), or clean another worktree. Stage only your assigned files selectively.
+   - Pushing branches, changing GitHub settings, tagging releases, and touching any live or VPS runtime each require separate explicit authorization.
+
+3. **Choose the right disposable test target.**
+   - Never run migrations, seeders, or test suites against a live, shared, or production database/storage path.
+   - **PHP unit/feature suite (SQLite `:memory:`):** `system/phpunit.xml` forces isolated in-memory SQLite (`php artisan test --compact` inside `system/`).
+   - **PostgreSQL-sensitive and concurrency suites:** run against a disposable Compose project with an isolated `COMPOSE_PROJECT_NAME` and non-colliding host ports/volumes (note `system/compose.yaml` defaults `name: nexiam-system` and host ports `18000`, `5432`, `18025` — override ports or run isolated one-off containers so you never collide with a running stack), passing `NEXIAM_TEST_PIN_SQLITE=0` with the scoped config (such as `system/phpunit.pg.xml` or `system/phpunit.*-postgres.xml`).
+   - **PHP formatting and frontend checks:** run inside `system/` (`vendor/bin/pint --test --format agent`, `npm ci`, `npm run quality`, `npm run build`).
+   - If optional local Git hooks are introduced later, keep them versioned, opt-in, and fast; hosted GitHub Actions checks remain authoritative.
+
+4. **Open a reviewed PR and hand off.**
+   - Complete every section of [the default PR template](.github/PULL_REQUEST_TEMPLATE.md). Link evidence (issue, OpenSpec `HANDOFF.md`, hosted CI run URL) instead of duplicating logs across docs.
+   - One integration lead owns integration order and canonical handoff updates.
+   - Close an issue only when its acceptance evidence exists and is linked—never solely because an agent reported completion.
+
+## Emergency hotfix and break-glass protocol
+
+Normal work flows through a reviewed PR from an isolated worktree. If an urgent production incident requires an emergency path:
+
+1. **Explicit authorization:** Obtain explicit operator/founder authorization naming the exact target, maintenance window, and approved scope. Never self-authorize or give agents blanket bypass.
+2. **Record incumbent and delta:** Capture the exact incumbent identity (release ID, commit/source SHA, manifest hash, image digests) and the bounded hotfix delta before making changes.
+3. **Validate and confirm rollback:** Verify the hotfix on an isolated target where feasible, confirm a paired recovery/rollback path before activation, and preserve current runtime data and keys.
+4. **Reconcile before the next release:** Open and merge a reconciliation PR to `master` recording the exact applied delta, verification results, and updated handoff before any subsequent ordinary release.
+5. **Accountable break-glass bypass:** Only an authorized GitHub maintainer/operator may invoke a branch-protection or review bypass. Record the explicit **reason**, **scope**, and **expiry** in the owning issue/handoff, and restore normal enforcement immediately when the window closes.
