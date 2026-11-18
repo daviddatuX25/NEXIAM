@@ -123,7 +123,8 @@ Follow this sequence for every authorized code or documentation change. Permanen
 
         Confirm `"current_database"` equals `"${SUITE_DB}"` (never `nexiam` or a live DB), storage mounts resolve to `volume:...${COMPOSE_PROJECT_NAME}_app_storage->/var/www/html/storage` (never a shared host custody mount), and the volume labels match `${COMPOSE_PROJECT_NAME}`.
      4. **Run the supported PostgreSQL command for the target suite:**
-        - **Direct PostgreSQL concurrency / feature tests (verified on `origin/master`):** migrate the provisioned disposable database and run the target test with the exact same verified `SUITE_DB` environment (`DatabaseSeeder::testSeeders()` provides the documented test seed baseline without invoking the broken `OmrDemoSeeder` chain):
+        - **Never use default `phpunit.xml` for PostgreSQL runs:** `phpunit.xml` declares `<env name="DB_CONNECTION" value="sqlite" force="true"/>`. Even with `NEXIAM_TEST_PIN_SQLITE=0`, PHPUnit sets `getenv('DB_CONNECTION') === 'sqlite'` while Laravel's `Env` falls back to the process `DB_*` environment (`nexiam` if `DB_DATABASE` is omitted). Always pass an explicit PostgreSQL configuration (`--configuration=phpunit.pg.xml` or a scoped `phpunit.*-postgres.xml`).
+        - **Direct PostgreSQL concurrency / feature tests using `phpunit.pg.xml` (verified from inside the test runner on `origin/master`):** migrate the provisioned disposable database, seed `DatabaseSeeder::testSeeders()`, verify `DB::connection()->getDriverName()` and `SELECT current_database()` from inside the runner (e.g., via `phpunit.pg.xml` where both `getenv('DB_CONNECTION')` and `DB::connection()` resolve to `pgsql` + `"${SUITE_DB}"`), and run Pest with `--configuration=phpunit.pg.xml`:
 
           ```sh
           docker compose -f system/compose.yaml -f /tmp/nexiam-test-override.yaml exec -T app \
@@ -133,7 +134,7 @@ Follow this sequence for every authorized code or documentation change. Permanen
             sh -lc '
               php artisan migrate:fresh --force &&
               php artisan tinker --execute "app()->make(Database\Seeders\DatabaseSeeder::class)->run(Database\Seeders\DatabaseSeeder::testSeeders());" &&
-              php artisan test --compact tests/Feature/Admission/QuotaReservationConcurrencyTest.php
+              vendor/bin/pest --configuration=phpunit.pg.xml tests/Feature/Admission/QuotaReservationConcurrencyTest.php
             '
           ```
 
@@ -191,7 +192,7 @@ Follow this sequence for every authorized code or documentation change. Permanen
 - **Impacted paths:** `README.md`, `.github/PULL_REQUEST_TEMPLATE.md`
 
 ## Verification Commands, Results & CI Run Link
-- **Disposable test target:** N/A (docs-only slice; separate disposable PostgreSQL runbook verified on `QuotaReservationConcurrencyTest` → `2 passed (18 assertions)`)
+- **Disposable test target:** N/A (docs-only slice; separate disposable PostgreSQL runbook verified inside the test runner via `vendor/bin/pest --configuration=phpunit.pg.xml tests/Feature/Admission/QuotaReservationConcurrencyTest.php` on `nexiam_pg_runner_probe` → `2 passed (18 assertions)`, `driver=pgsql`, `current_database=nexiam_pg_runner_probe`)
 - **Commands & observed results:**
   - `git diff --check 4321e30b..HEAD` → exit `0`
   - Relative doc/template links verified on disk → all present
